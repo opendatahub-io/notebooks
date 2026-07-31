@@ -50,7 +50,6 @@ from manifests.tools.package_names import all_workbench_pip_names, manifest_name
 from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
-    import pytest_subtests
     import testcontainers.core.container
 
 _LOG = logging.getLogger(__name__)
@@ -476,7 +475,7 @@ def _resolve_software_version(sw_item: dict[str, str], actual_packages: dict[str
 
 
 def _compare_manifest_vs_actual(
-    subtests: pytest_subtests.SubTests,
+    subtests: pytest.Subtests,
     is_name: str,
     tag_name: str,
     expected_deps: list[dict[str, str]],
@@ -606,7 +605,7 @@ _BASE_DIRS = [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manif
 @pytest.mark.manifest_validation
 @pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
 def test_old_tag_annotations_match_sbom(
-    subtests: pytest_subtests.SubTests,
+    subtests: pytest.Subtests,
     base_dir: pathlib.Path,
 ):
     """Fast: validate N-1 tag annotations against SBOM artifacts (cosign + skopeo, no image pull).
@@ -650,7 +649,7 @@ def test_old_tag_annotations_match_sbom(
 @pytest.mark.manifest_validation
 @pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
 def test_old_tag_annotations_match_image_content(
-    subtests: pytest_subtests.SubTests,
+    subtests: pytest.Subtests,
     base_dir: pathlib.Path,
     request: pytest.FixtureRequest,
 ):
@@ -808,7 +807,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
 @pytest.mark.manifest_validation
 @pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
 def test_old_tag_annotations_match_quay(
-    subtests: pytest_subtests.SubTests,
+    subtests: pytest.Subtests,
     base_dir: pathlib.Path,
 ):
     """Validate N-1 tag annotations against Quay.io Clair security scan data."""

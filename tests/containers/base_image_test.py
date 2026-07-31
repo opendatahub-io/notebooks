@@ -25,8 +25,6 @@ LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    import pytest_subtests
-
 
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
@@ -35,7 +33,7 @@ class TestBaseImage:
         with docker_utils.running_container(image) as container:
             test_fn(container)
 
-    def test_elf_files_can_link_runtime_libs(self, subtests: pytest_subtests.SubTests, image):
+    def test_elf_files_can_link_runtime_libs(self, subtests: pytest.Subtests, image):
         def test_fn(container: testcontainers.core.container.DockerContainer):
             def check_elf_file():
                 """This python function will be executed on the image itself.
@@ -176,7 +174,7 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     # @pytest.mark.environmentss("docker")
-    def test_oc_command_runs_fake_fips(self, image: str, subtests: pytest_subtests.SubTests):
+    def test_oc_command_runs_fake_fips(self, image: str, subtests: pytest.Subtests):
         """Establishes a best-effort fake FIPS environment and attempts to execute `oc` binary in it.
 
         Related issue: RHOAIENG-4350 In workbench the oc CLI tool cannot be used on FIPS enabled cluster.
@@ -248,7 +246,7 @@ class TestBaseImage:
                 with docker_utils.BestEffortCleanup():
                     docker_utils.NotebookContainer(container).stop(timeout=0)
 
-    def test_file_permissions(self, image: str, subtests: pytest_subtests.SubTests):
+    def test_file_permissions(self, image: str, subtests: pytest.Subtests):
         """Checks the permissions and ownership for some selected files/directories."""
 
         app_root_path = "/opt/app-root"
@@ -272,7 +270,7 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     @allure.issue("RHAIENG-2189")
-    def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
+    def test_python_package_index(self, image: str, subtests: pytest.Subtests):
         """Verify all images have AIPCC index config.
 
         All images (both ODH and RHOAI) use AIPCC wheels and must point pip/uv

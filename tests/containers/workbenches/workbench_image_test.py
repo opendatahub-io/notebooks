@@ -24,8 +24,6 @@ from tests.containers import docker_utils, kubernetes_utils, podman_machine_util
 if TYPE_CHECKING:
     from types import TracebackType
 
-    import pytest_subtests
-
     from tests.containers.conftest import Image
 
 
@@ -44,7 +42,7 @@ class TestWorkbenchImage:
             {"net.ipv6.conf.all.disable_ipv6": "1"},
         ],
     )
-    def test_image_entrypoint_starts(self, subtests: pytest_subtests.SubTests, workbench_image: str, sysctls) -> None:
+    def test_image_entrypoint_starts(self, subtests: pytest.Subtests, workbench_image: str, sysctls) -> None:
         with WorkbenchContainer(image=workbench_image, user=1000, group_add=[0], sysctls=sysctls) as container:
             try:
                 container.start()
@@ -55,7 +53,7 @@ class TestWorkbenchImage:
                 # try to grab logs regardless of whether container started or not
                 grab_and_check_logs(subtests, container)
 
-    def test_ipv6_only(self, subtests: pytest_subtests.SubTests, workbench_image: str, test_frame):
+    def test_ipv6_only(self, subtests: pytest.Subtests, workbench_image: str, test_frame):
         """Test that workbench image is accessible via IPv6.
         Workarounds for macOS will be needed, so that's why it's a separate test."""
 
@@ -117,7 +115,7 @@ class TestWorkbenchImage:
                 grab_and_check_logs(subtests, container)
 
     @pytest.mark.codeserver
-    def test_codeserver_starts_airgapped(self, subtests: pytest_subtests.SubTests, codeserver_image: Image) -> None:
+    def test_codeserver_starts_airgapped(self, subtests: pytest.Subtests, codeserver_image: Image) -> None:
         """Smoke test: code-server must start and serve its UI without network access."""
         with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
             container.with_kwargs(network_mode="none")
@@ -138,7 +136,7 @@ class TestWorkbenchImage:
 
     @pytest.mark.codeserver
     @allure.issue("RHAIENG-5652")
-    def test_nginx_absolute_redirect_off(self, subtests: pytest_subtests.SubTests, codeserver_image: Image) -> None:
+    def test_nginx_absolute_redirect_off(self, subtests: pytest.Subtests, codeserver_image: Image) -> None:
         """CWE-601: absolute_redirect off must be present in the live nginx config."""
         with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
             container.start(wait_for_readiness=True)
@@ -151,7 +149,7 @@ class TestWorkbenchImage:
 
     @pytest.mark.codeserver
     @allure.issue("RHAIENG-5652")
-    def test_nginx_no_open_redirect(self, subtests: pytest_subtests.SubTests, codeserver_image: Image) -> None:
+    def test_nginx_no_open_redirect(self, subtests: pytest.Subtests, codeserver_image: Image) -> None:
         """CWE-601 regression: return 302 rules must emit relative Location headers (FIND-011).
 
         A forged Host header must not appear in the Location response header.
@@ -303,7 +301,7 @@ def _wait_for_http_inside_container(container: WorkbenchContainer, port: int = 8
 
 
 def grab_and_check_logs(
-    subtests: pytest_subtests.SubTests,
+    subtests: pytest.Subtests,
     container: WorkbenchContainer,
     extra_allowed: list[str] | None = None,
 ) -> None:

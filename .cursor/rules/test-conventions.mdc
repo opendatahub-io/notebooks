@@ -21,8 +21,7 @@ alwaysApply: false
 
 | Tool | Purpose |
 |------|---------|
-| pytest | Test runner for all Python tests |
-| pytest-subtests | Granular sub-assertions within a single test |
+| pytest | Test runner for all Python tests (subtests support is built in since pytest 9.0) |
 | pytest-cov | Coverage (XML + terminal) |
 | allure-pytest | Issue tracking + step decoration |
 | testcontainers | Container lifecycle for integration tests |
@@ -48,12 +47,11 @@ Use **module-level functions**. Group related assertions with `subtests`:
 from __future__ import annotations
 
 import pytest
-import pytest_subtests
 
 from tests import PROJECT_ROOT
 
 
-def test_something_across_manifests(subtests: pytest_subtests.SubTests):
+def test_something_across_manifests(subtests: pytest.Subtests):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         with subtests.test(msg=str(file.relative_to(PROJECT_ROOT))):
             # assertion per file
@@ -78,7 +76,7 @@ class TestMyFeature:
     def test_something(
         self,
         workbench_image: conftest.Image,
-        subtests: pytest_subtests.SubTests,
+        subtests: pytest.Subtests,
     ):
         with WorkbenchContainer(workbench_image) as container:
             container.start()
@@ -245,7 +243,7 @@ from __future__ import annotations  # Always first
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import pytest_subtests
+    import pytest
     from pathlib import Path
 ```
 
