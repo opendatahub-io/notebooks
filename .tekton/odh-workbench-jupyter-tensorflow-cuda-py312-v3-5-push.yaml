@@ -11,7 +11,6 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "push"
       && target_branch == "rhoai-3.5"
-      && !("manifests/rhoai/base/params-latest.env".pathChanged())
       && ( ".tekton/odh-workbench-jupyter-tensorflow-cuda-py312-v3-5-push.yaml".pathChanged() || "jupyter/tensorflow/ubi9-python-3.12/**".pathChanged() || "cuda/**".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/start-notebook.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.12/mongodb-org-6.0.repo-x86_64/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/mssql-3.5.repo-x86_64/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/setup-elyra.sh".pathChanged() || "prefetch-input/rhds/**".pathChanged() || "prefetch-input/mongocli/**".pathChanged() )
   labels:
     appstudio.openshift.io/application: rhoai-v3-5
