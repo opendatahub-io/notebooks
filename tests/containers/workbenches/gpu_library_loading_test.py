@@ -52,7 +52,6 @@ class RocmLibCheckResult(pydantic.BaseModel):
     rocm_lib: str
 
 
-logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 

@@ -492,7 +492,7 @@ jobs:
         run: |
           set -Eeuxo pipefail
           mkdir -p "$(dirname "${JUNIT_XML}")"
-          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}" -o junit_family=legacy
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}" -o junit_family=legacy --log-level=DEBUG
 
       - name: Upload Testcontainers pytest JUnit XML
         if: ${{ always() && steps.pytest-testcontainers.conclusion != 'skipped' }}
@@ -566,7 +566,7 @@ jobs:
         run: |
           set -Eeuxo pipefail
           mkdir -p "$(dirname "${JUNIT_XML}")"
-          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}" -o junit_family=legacy
+          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}" -o junit_family=legacy --log-level=DEBUG
 
       - name: Upload OpenShift pytest JUnit XML
         if: ${{ always() && steps.pytest-openshift.conclusion != 'skipped' }}
