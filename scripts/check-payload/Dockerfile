@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.25
 
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26.5-1785156757 AS build
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26.5-1785443561 AS build
 
 ARG CHECK_PAYLOAD_VERSION
 
