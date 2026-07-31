@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from os import PathLike
 
-    import pytest_subtests
+    import pytest
     from pyfakefs.fake_filesystem import FakeFilesystem
 
 
@@ -76,7 +76,7 @@ def process_template_with_indents(template: templatelib.Template) -> str:
 
 
 class TestProcessTemplateWithIndents:
-    def test_process_template_with_indents(self, subtests: pytest_subtests.plugin.SubTests) -> None:
+    def test_process_template_with_indents(self, subtests: pytest.Subtests) -> None:
         a = "a\na"
         b = "b\n b"
         test_cases = [

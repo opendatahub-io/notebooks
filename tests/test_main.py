@@ -31,8 +31,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
     from typing import Any
 
-    import pytest_subtests
-
 MAKE = shutil.which("gmake") or shutil.which("make") or "make"
 
 _LOG = logging.getLogger(__name__)
@@ -182,7 +180,7 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
 
 
 @pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
-def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path):
+def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathlib.Path):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         with subtests.test(msg="checking pyproject.toml", pipfile=file):
@@ -382,9 +380,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
 
 @pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
-def test_image_manifests_version_alignment(
-    subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path
-):
+def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_directory: pathlib.Path):
     """Check recommended-tag package versions across imagestreams, allowing lockfile-backed rolling drifts."""
     collected_manifests = []
     pylock_major_minor_versions = _collect_pylock_major_minor_versions()
@@ -470,7 +466,7 @@ def test_image_manifests_version_alignment(
             pytest.fail(f"{name} has multiple versions: {pprint.pformat(mapping)}")
 
 
-def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.SubTests):
+def test_image_pyprojects_version_alignment(subtests: pytest.Subtests):
     requirements = defaultdict(list)
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
@@ -517,7 +513,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             )
 
 
-def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
+def test_files_that_should_be_same_are_same(subtests: pytest.Subtests):
     file_groups = {
         "ROCm de-vendor script": [
             PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.12/de-vendor-torch.py",
@@ -535,7 +531,7 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
 
 
 @allure.issue("RHOAIENG-42632")
-def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests):
+def test_rhds_pipelines_use_rhds_args(subtests: pytest.Subtests):
     r"""RHDS pipelines (output-image under quay.io/rhoai/) must pair Dockerfile.konflux.*
     with konflux.* build-args conf files.
 
@@ -631,7 +627,7 @@ _PLACEHOLDER_RE = re.compile(
 @pytest.mark.parametrize(
     "base_dir", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
 )
-def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.SubTests, base_dir):
+def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_dir):
     """Validate that imagestream YAML files, kustomization.yaml replacements, and .env files are consistent."""
     kustomization = yaml.safe_load((base_dir / "kustomization.yaml").read_text())
     replacements = kustomization.get("replacements", [])
@@ -910,7 +906,7 @@ def test_get_accelerator_version_for_directory_returns_none_for_gpu_stable_tag(t
 def _check_all_accelerator_variants(
     directory: pathlib.Path,
     manifests_directory: pathlib.Path,
-    subtests: pytest_subtests.plugin.SubTests,
+    subtests: pytest.Subtests,
 ) -> None:
     """Check accelerator versions for all build-args variants (cuda, rocm) in a directory.
 
@@ -962,7 +958,7 @@ _KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset()
 
 
 @pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))
-def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest_subtests.plugin.SubTests, lockfile: pathlib.Path):
+def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest.Subtests, lockfile: pathlib.Path):
     """Assert that every RPM name pinned in RHDS rpms.lock.yaml has the same EVR across all architectures.
 
     This only validates lockfile-installed RPMs. Packages inherited from the base

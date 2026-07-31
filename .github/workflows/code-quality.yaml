@@ -105,6 +105,7 @@ jobs:
         run: uv sync --locked
 
       - name: Static tests (pytest + Dockerfile alignment)
+        id: static-tests
         run: make test
         if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
         env:
@@ -113,9 +114,20 @@ jobs:
             --cov-branch
             --cov-report=term-missing
             --cov-report=xml:coverage.xml
+            --junitxml=junit.xml -o junit_family=legacy
+            -o log_file=logs/pytest-logs.txt -o log_file_level=DEBUG
           # PR: compare to the PR base (fork PRs vs upstream main, not the fork default branch).
           # Push: compare to the previous tip of this branch (not origin/main on stable/rhoai-*).
           NOTEBOOKS_DOWNGRADE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+
+      - name: Upload pytest debug log
+        if: ${{ always() && steps.static-tests.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: logs/pytest-logs.txt
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Upload Python coverage to Codecov
         if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
