@@ -227,9 +227,27 @@ make undeploy9-${NOTEBOOK_NAME} # Cleanup
 When contributing to this project:
 
 1. **Fork and branch** from main (ODH) or push a same-repo branch (RHDS/RHOAI)
-2. **Write clear commit messages**
-3. **Add tests** for new functionality
-4. **Update documentation**
+2. **Stage and commit carefully**:
+   - Stage explicitly: `git add <file1> <file2> ...`. Do **NOT** use `git add -A`,
+     `git add .`, or `git add --all` — these sweep in whatever else is sitting in
+     the tree (scratch files, unrelated in-progress edits, generated artifacts,
+     secrets) with no chance to notice until it's already committed.
+   - For genuine bulk-regen output where hand-listing every path is impractical
+     (lockfiles from `make refresh-lock-files`, `.tekton/` pipeline regen,
+     imagestream manifest updates), a scoped pathspec is fine — but only right
+     after checking `git status`/`git diff --stat` for that scope so you know
+     exactly what it matches, using a tight pattern anchored to a shared prefix
+     and suffix (e.g. `git add .tekton/odh-*-pull-request.yaml`, not
+     `git add .tekton/*` or `git add .`).
+   - Before committing, re-run `git status` and skim `git diff --cached` for the
+     staged paths — `git status` only shows which paths are staged, not which
+     hunks, so a file you explicitly staged can still carry an unrelated edit.
+     If the changed set is short enough to read at a glance, just spell out the
+     filenames — a glob earns its keep only when the set is too large to
+     enumerate by hand.
+3. **Write clear commit messages**
+4. **Add tests** for new functionality
+5. **Update documentation**
 
 **RHDS (`red-hat-data-services/notebooks`):** Open PRs from branches pushed to
 `red-hat-data-services/notebooks`, not from forks. Fork PRs still schedule
