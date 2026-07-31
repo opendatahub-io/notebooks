@@ -29,7 +29,7 @@ Tag bumps for `quay.io/centos/centos` are blocked by `allowedVersions` in
 |---|---|
 | `cpu/` | CPU-only base image |
 | `cuda/` | NVIDIA CUDA (12.9, 13.0) |
-| `rocm/` | AMD ROCm (6.4, 7.1) |
+| `rocm/` | AMD ROCm (6.4, 7.14) |
 | `build-args/` | `.conf` files with `INDEX_URL` per variant |
 | `utils/` | Shared scripts: `aipcc.sh`, `dnf-helper.sh`, `fix-permissions`, `pip.conf.in`, `uv.toml.in` |
 | `copr/` | Tool to rebuild Fedora SRPMs for EL9 ([README](copr/README.md)) |
@@ -78,6 +78,17 @@ References:
 - [RHEL Life Cycle / Errata Policy](https://access.redhat.com/support/policy/updates/errata)
 
 ## Adding a New Accelerator Version
+
+> **NOTE (midstream migration):** Since [opendatahub-io/notebooks#3678](https://github.com/opendatahub-io/notebooks/pull/3678),
+> ODH CUDA/ROCm c9s base images layer on [opendatahub-io/base-containers](https://github.com/opendatahub-io/base-containers)
+> midstream images (`odh-midstream-cuda-base-*`, `odh-midstream-rocm-base-*`) instead of installing
+> GPU packages in-tree. For routine SDK bumps: pick the matching midstream tag, digest-pin the `FROM`,
+> and open the SDK/repo change against **base-containers** first.
+>
+> The steps below describe the **legacy in-repo workflow** (vendor Dockerfiles, `cuda-repos/`, GPG keys).
+> We keep them on purpose — we should not be helplessly beholden to midstream alone, and contributors
+> should retain knowledge of how to build accelerator bases here. See #3678 for the last implementation
+> of that approach before the migration.
 
 The CUDA and ROCm Dockerfiles are adapted from upstream vendor references:
 
