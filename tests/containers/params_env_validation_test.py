@@ -28,8 +28,6 @@ from tests import PROJECT_ROOT
 if TYPE_CHECKING:
     import pathlib
 
-    import pytest_subtests
-
 _LOG = logging.getLogger(__name__)
 
 _BASE_DIRS = [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
@@ -212,7 +210,7 @@ def _find_commit_value(variable: str, commit_entries: dict[str, str]) -> str | N
 @pytest.mark.manifest_validation
 @pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
 def test_params_env_variable_uniqueness(
-    subtests: pytest_subtests.SubTests,
+    subtests: pytest.Subtests,
     base_dir: pathlib.Path,
 ):
     """All variable names in params.env + params-latest.env are unique."""
@@ -252,7 +250,7 @@ def test_params_env_variable_uniqueness(
 @pytest.mark.manifest_validation
 @pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
 def test_params_env_record_count(
-    subtests: pytest_subtests.SubTests,
+    subtests: pytest.Subtests,
     base_dir: pathlib.Path,
 ):
     """Expected number of entries in env files."""
@@ -274,7 +272,7 @@ def test_params_env_record_count(
 @pytest.mark.manifest_validation
 @pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
 def test_params_env_image_metadata(
-    subtests: pytest_subtests.SubTests,
+    subtests: pytest.Subtests,
     base_dir: pathlib.Path,
 ):
     """Each image in params.env has correct labels, commit ID, repo name, and size."""

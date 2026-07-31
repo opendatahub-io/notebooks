@@ -14,6 +14,7 @@ alwaysApply: false
 ## Projects
 
 - **RHAIENG** -- engineering work (Epics, Stories, Tasks, Bugs)
+- **RHOAIENG** -- per-component CVE vulnerability trackers (auto-generated from RHAIENG CVE bugs)
 - **RHAIRFE** -- inbound feature requests (Feature Request type)
 - **RHAISTRAT** -- strategy-level Initiatives and Features
 
@@ -50,6 +51,57 @@ alwaysApply: false
 - `Related` (id: 10077) -- general association
 - `Blocks` (id: 10000) -- dependency
 - `Depend` (id: 10076) -- dependency (alternative)
+
+## RHOAIENG Project (per-component CVE trackers)
+
+RHOAIENG tickets are per-component vulnerability trackers created automatically from RHAIENG parent CVE bugs. They use a different Jira project configuration with different field IDs on different screens.
+
+### Key Differences from RHAIENG
+
+| Aspect | RHAIENG | RHOAIENG |
+|--------|---------|----------|
+| Sprint field | `customfield_12310940` | `customfield_10020` (standard Jira Cloud sprint) |
+| Sprint screen | Main issue fields | Different tab / screen |
+| Issue types | Bug, Story, Task, Epic | Vulnerability |
+
+### Sprint Assignment
+
+The sprint field ID differs between projects. Use `jira_add_issues_to_sprint` (from the project MCP server) which works for **both** projects regardless of field ID:
+
+```
+jira_add_issues_to_sprint(sprint_id="66724", issue_keys="RHOAIENG-12345,RHOAIENG-12346")
+```
+
+Do **not** try to set `customfield_12310940` on RHOAIENG tickets — it will fail with "Field is not on the appropriate screen, or unknown."
+
+### CVE Resolution Workflow
+
+Standard workflow for resolving CVE tickets on `rhoai-2.25`:
+
+1. **Verify fix**: Check `dependencies/cve-constraints.txt` for the package constraint, then confirm all `pylock.toml` files on the branch have the required version.
+2. **Post evidence** on parent RHAIENG + all RHOAIENG children (evidence first, always).
+3. **Assign** unassigned tickets (skip tickets already assigned to someone else).
+4. **Set sprint** via `jira_add_issues_to_sprint` (works for both RHAIENG and RHOAIENG).
+5. **Transition to Resolved** using transition ID `131`.
+
+### Updating RHOAIENG Issues via MCP
+
+Use `jira_update_issue` with the `fields` parameter as a JSON string:
+
+```
+jira_update_issue(issue_key="RHOAIENG-12345", fields="{\"assignee\": \"user@redhat.com\"}")
+```
+
+For transitions:
+
+```
+jira_transition_issue(issue_key="RHOAIENG-12345", transition_id="131")
+```
+
+### Current Sprint
+
+- **Sprint name**: "Notebooks - Narwal"
+- **Sprint ID**: `66724`
 
 ## Recently Created Issues (reference)
 
