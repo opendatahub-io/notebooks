@@ -7,8 +7,9 @@ COPY base-images/utils/fix-permissions /mnt/usr/bin/
 ####################
 # base             #
 ####################
-# quay.io/sclorg/python-312-c9s:c9s
-FROM quay.io/sclorg/python-312-c9s@sha256:816f73ad2f1f8ffae012279f95e758306a6f78074a4425b85619595b76436849 AS base
+# ROCm packages, repos, env vars, and SDK are provided by the midstream image.
+# Source: https://github.com/opendatahub-io/base-containers (rocm/7.14/)
+FROM quay.io/opendatahub/odh-midstream-rocm-base-7-14:1.20260720.5 AS base
 
 USER 0
 ARG TARGETARCH
@@ -17,7 +18,7 @@ ENV PYTHON=python3.12
 ENV VIRTUAL_ENV=/opt/app-root/
 
 # Duplicated in the AIPCC config block below; needed here so aipcc.sh
-# (which runs in this stage) can pip-install from the configured index.
+# (which runs in this stage) can pip-install from the AIPCC index.
 ARG INDEX_URL
 ENV PIP_INDEX_URL=${INDEX_URL}
 ENV UV_INDEX_URL=${INDEX_URL}
@@ -41,129 +42,10 @@ EOF
 USER 1001
 WORKDIR /opt/app-root/bin
 
-########################
-# rocm-base            #
-########################
-FROM base AS rocm-base
-
-USER 0
-WORKDIR /opt/app-root/bin
-
-# Please keep in sync with ROCm/python3.12 dependent images.
-ARG ROCM_MAJOR=7
-ARG ROCM_MAJOR_MINOR=7-14
-ARG ROCM_MAJOR_MINOR_DOT=7.14
-ARG ROCM_VERSION=7.14.0
-ARG RELEASEVER=9.6
-ARG THEROCK_REPO_URL=https://repo.amd.com/rocm/packages-multi-arch/rhel9/x86_64/
-ARG FRAMEWORKS_REPO_URL=https://rocm.frameworks.amd.com/rpm-multi-arch/amdrocm-migraphx/
-ARG ROCM_HOME=/opt/rocm/core
-
-ENV ROCM_VERSION=${ROCM_VERSION}
-ENV ROCM_HOME=${ROCM_HOME}
-
-# ROCm 7.14+ uses TheRock (amdrocm-*) repositories and packages.
-RUN dnf install -y \
-      --allowerasing \
-      curl \
-      ca-certificates \
-      dnf-plugins-core \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
-
-# ROCm GPG keys (GA + TheRock key used by prerelease channels).
-RUN curl -fsSL "https://repo.radeon.com/rocm/rocm.gpg.key" > /etc/pki/rpm-gpg/RPM-GPG-KEY-AMD-ROCM && \
-    curl -fsSL "https://rocm.prereleases.amd.com/packages/gpg/rocm.gpg" > /etc/pki/rpm-gpg/RPM-GPG-KEY-AMD-ROCM-THEROCK
-
-RUN { echo "[therock]"; \
-      echo "name=TheRock ROCm ${ROCM_VERSION}"; \
-      echo "baseurl=${THEROCK_REPO_URL}"; \
-      echo "enabled=1"; \
-      echo "priority=150"; \
-      echo "gpgcheck=1"; \
-      echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AMD-ROCM"; \
-      echo "       file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AMD-ROCM-THEROCK"; \
-    } > /etc/yum.repos.d/rocm.repo
-
-# MIGraphX is distributed via a separate frameworks repository.
-RUN { echo "[rocm-frameworks]"; \
-      echo "name=ROCm Frameworks (migraphx)"; \
-      echo "baseurl=${FRAMEWORKS_REPO_URL}"; \
-      echo "enabled=1"; \
-      echo "priority=200"; \
-      echo "gpgcheck=0"; \
-    } > /etc/yum.repos.d/rocm-frameworks.repo
-
-# Install ROCm runtime/devel libraries and compiler toolchain.
-RUN dnf install -y \
-      gcc-toolset-14 \
-      gcc-toolset-14-gcc-c++ \
-      gcc-toolset-14-gcc-gfortran \
-      gcc-toolset-14-libatomic-devel \
-      libdrm \
-      amdrocm-amdsmi \
-      amdrocm-llvm \
-      amdrocm-runtime \
-      amdrocm-runtime-devel \
-      amdrocm-rccl \
-      amdrocm-rccl-devel \
-      amdrocm-math-common \
-      amdrocm-core-sdk \
-      amdrocm-core-devel \
-      amdrocm-blas \
-      amdrocm-blas-devel \
-      amdrocm-dnn \
-      amdrocm-dnn-devel \
-      amdrocm-fft \
-      amdrocm-fft-devel \
-      amdrocm-solver \
-      amdrocm-solver-devel \
-      amdrocm-sparse \
-      amdrocm-sparse-devel \
-      amdrocm-rand \
-      amdrocm-rand-devel \
-      amdrocm-ccl-devel \
-      amdrocm-migraphx \
-      amdrocm-migraphx-devel \
-      make \
-      findutils \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
-
-# ROCm 7.14 installs under /opt/rocm/core.
-ENV PATH=${ROCM_HOME}/bin:${ROCM_HOME}/hip/bin:${PATH}
-ENV LD_LIBRARY_PATH=${ROCM_HOME}/lib:${ROCM_HOME}/lib64
-
-# Backward compatibility symlinks for software expecting /opt/rocm/*.
-RUN ln -sfn "${ROCM_HOME}"/include /opt/rocm/include && \
-    ln -sfn "${ROCM_HOME}"/lib /opt/rocm/lib && \
-    ln -sfn "${ROCM_HOME}"/bin /opt/rocm/bin && \
-    ln -sfn "${ROCM_HOME}"/share /opt/rocm/share && \
-    for subdir in llvm hip; do \
-      if [ -d "${ROCM_HOME}/${subdir}" ]; then \
-        ln -sfn "${ROCM_HOME}/${subdir}" "/opt/rocm/${subdir}"; \
-      fi; \
-    done
-
-# Ensure ROCm CLI tools use the system Python path.
-RUN for script in "${ROCM_HOME}/bin/amd-smi" "${ROCM_HOME}/bin/rocm-smi"; do \
-      if [ -f "${script}" ]; then \
-        sed -i -e '1s,#!/usr/bin/env python3,#!/usr/bin/python3,' "${script}"; \
-      fi; \
-    done
-
-# Make amdsmi importable by Python.
-RUN if [ -d "${ROCM_HOME}/share/amd_smi" ]; then \
-      sitepkg_path="$(python -c "import sysconfig; print(sysconfig.get_path('platlib'))")"; \
-      pth_file="${sitepkg_path}/rocm-amdsmi.pth"; \
-      echo "${ROCM_HOME}/share/amd_smi" > "${pth_file}"; \
-      chown 1001:0 "${pth_file}"; \
-      chmod g+w "${pth_file}"; \
-    fi
-
 # TensorFlow ROCm compatibility shim for EL9 userspace:
 # tensorflow-rocm 2.19.x can require GLIBCXX_3.4.30 / GLIBC_2.35 symbols that are
 # not provided by stock EL9 runtime libs. Build wrapper libs and prefer them.
+USER 0
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
@@ -292,29 +174,6 @@ gcc -shared -fPIC \
 
 python -m pip uninstall -y patchelf
 EOF
-
-# https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/post-install.html#configure-rocm-shared-objects
-RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
-  ${ROCM_HOME}/lib
-  ${ROCM_HOME}/lib64
-EOF
-
-RUN tee /etc/ld.so.conf.d/gcc-toolset-14.conf <<EOF
-/opt/rh/gcc-toolset-14/root/usr/lib64
-/opt/rh/gcc-toolset-14/root/usr/lib
-EOF
-
-RUN ldconfig
-
-# Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
-# libqhull_r is in CRB (Code Ready Builder) repo.
-RUN dnf config-manager --set-enabled crb && \
-    dnf -y install \
-      openmpi \
-      libqhull_r \
-      snappy \
-    && dnf -y clean all --enablerepo="*" && \
-    rm -rf /var/cache/dnf
 
 ### BEGIN AIPCC pip and uv config files
 ARG INDEX_URL
