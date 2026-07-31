@@ -155,13 +155,13 @@ Required repository secrets: `GIT_CRYPT_KEY`, `SUBSCRIPTION_ACTIVATION_KEY`,
 
 #### Prepare Python + uv + pytest env
 
-Root dev tooling uses `[tool.uv] required-version` in `pyproject.toml` (currently `>=0.10,<0.12`).
+Root dev tooling uses `[tool.uv] required-version` in `pyproject.toml` (currently `>=0.11.8,<0.13`).
 Install any uv in that range and use it directly for sync, tests, and pre-commit:
 
 ```shell
 # Linux
 sudo dnf install python3.14
-pip install --user 'uv>=0.10,<0.12'
+pip install --user 'uv>=0.11.8,<0.13'
 # macOS
 brew install python@3.14 uv
 
@@ -170,7 +170,7 @@ uv sync --locked
 ```
 
 Per-image lock files (`pylock.toml` / `uv.lock.d/`) are generated with a **stricter** uv pin
-(`dependencies/uv-image-lock-version`, currently `0.11.18`) via the `./uv` wrapper and
+(`dependencies/uv-image-lock-version`, currently `0.12.0`) via the `./uv` wrapper and
 `make refresh-lock-files`. Do not use `./uv` for everyday dev commands unless you are
 refreshing image locks.
 
