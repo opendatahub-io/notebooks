@@ -104,10 +104,13 @@ runs:
         if [[ ! -f "${pkg_file}" ]]; then
           pkg_file="${WORKING_DIRECTORY}/package.json"
         fi
+        ver=""
         if [[ -f scripts/get-pnpm-version.sh ]] && command -v yq >/dev/null 2>&1; then
-          ver=$(scripts/get-pnpm-version.sh "${lockfile}")
-        else
-          ver=$(grep -oP '"packageManager"\s*:\s*"pnpm@\K[0-9.]+' "${pkg_file}")
+          ver=$(scripts/get-pnpm-version.sh "${lockfile}") || true
+        fi
+        if [[ -z "${ver}" ]]; then
+          # Fallback for lockfiles predating the pnpm 11 devEngines.packageManager migration.
+          ver=$(grep -oP '"packageManager"\s*:\s*"pnpm@\K[0-9.]+' "${pkg_file}") || true
         fi
         if [[ -z "${ver}" ]]; then
           echo "::error::Failed to resolve pnpm version from ${pkg_file} or ${lockfile}"
