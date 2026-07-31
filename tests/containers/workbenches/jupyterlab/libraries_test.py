@@ -7,7 +7,7 @@ from tests.containers import docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer, grab_and_check_logs
 
 if TYPE_CHECKING:
-    import pytest_subtests
+    import pytest
 
     from tests.containers.conftest import Image
 
@@ -16,9 +16,7 @@ class TestWorkbenchImage:
     """Tests for workbench images in this repository.
     A workbench image is an image running a web IDE that listens on port 8888."""
 
-    def test_image_entrypoint_starts(
-        self, subtests: pytest_subtests.SubTests, jupyterlab_datascience_image: Image
-    ) -> None:
+    def test_image_entrypoint_starts(self, subtests: pytest.Subtests, jupyterlab_datascience_image: Image) -> None:
         with WorkbenchContainer(image=jupyterlab_datascience_image.name, user=1000, group_add=[0]) as container:
             try:
                 container.start()

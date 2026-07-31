@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import logging
-
 import pytest
 
 # Enable pytest assertion introspection for the ntb helper module.
@@ -11,8 +9,6 @@ import pytest
 # https://github.com/pytest-dev/pytest/issues/1871
 # https://github.com/pytest-dev/pytest/issues/3454
 pytest.register_assert_rewrite("ntb.asserts")
-
-logging.basicConfig(level=logging.DEBUG)
 
 # Exclude tests/containers from default collection (see pytest.ini near testpaths).
 # Rationale: heavy third-party imports at collection time; run that subtree explicitly

@@ -52,9 +52,6 @@ class RocmLibCheckResult(pydantic.BaseModel):
     rocm_lib: str
 
 
-if TYPE_CHECKING:
-    import pytest_subtests
-
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
@@ -101,7 +98,7 @@ class TestGPULibraryLoading:
             pytest.fail(f"Test function did not return a result. Exit code: {ecode}, Output: {output_str}")
 
     @pytest.mark.parametrize("loading_mode", ["LAZY", "EAGER"])
-    def test_pytorch_cuda_library_loading(self, cuda_image: str, subtests: pytest_subtests.SubTests, loading_mode: str):
+    def test_pytorch_cuda_library_loading(self, cuda_image: str, subtests: pytest.Subtests, loading_mode: str):
         """Test that PyTorch CUDA libraries can be loaded."""
         image_metadata = conftest.get_image_metadata(cuda_image)
         if "-pytorch-" not in image_metadata.labels.get("name", ""):
@@ -231,7 +228,7 @@ class TestGPULibraryLoading:
             if any(x in lib for x in ["cuda", "cublas", "cudnn", "nccl", "nvrtc", "torch"]):
                 LOGGER.info(f"  GPU-related lib: {lib}")
 
-    def test_pytorch_rocm_library_loading(self, rocm_image: str, subtests: pytest_subtests.SubTests):
+    def test_pytorch_rocm_library_loading(self, rocm_image: str, subtests: pytest.Subtests):
         """Test that PyTorch ROCm libraries can be loaded."""
         image_metadata = conftest.get_image_metadata(rocm_image)
         if "-pytorch-" not in image_metadata.labels.get("name", ""):
@@ -339,7 +336,7 @@ class TestGPULibraryLoading:
             if any(x in lib for x in ["hip", "rocm", "roc", "mio", "amd", "torch"]):
                 LOGGER.info(f"  ROCm-related lib: {lib}")
 
-    def test_tensorflow_cuda_library_loading(self, cuda_image: str, subtests: pytest_subtests.SubTests):
+    def test_tensorflow_cuda_library_loading(self, cuda_image: str, subtests: pytest.Subtests):
         """Test that TensorFlow CUDA libraries can be loaded."""
         image_metadata = conftest.get_image_metadata(cuda_image)
         if "-tensorflow-" not in image_metadata.labels.get("name", ""):
@@ -418,7 +415,7 @@ class TestGPULibraryLoading:
 
         LOGGER.info(f"TensorFlow devices: {result.get('devices')}")
 
-    def test_tensorflow_rocm_library_loading(self, rocm_image: str, subtests: pytest_subtests.SubTests):
+    def test_tensorflow_rocm_library_loading(self, rocm_image: str, subtests: pytest.Subtests):
         """Test that TensorFlow ROCm libraries can be loaded."""
         image_metadata = conftest.get_image_metadata(rocm_image)
         if "-tensorflow-" not in image_metadata.labels.get("name", ""):
@@ -491,7 +488,7 @@ class TestGPULibraryLoading:
 
         LOGGER.info(f"TensorFlow devices: {result.get('devices')}")
 
-    def test_rocm_critical_library_loading(self, rocm_image: str, subtests: pytest_subtests.SubTests):
+    def test_rocm_critical_library_loading(self, rocm_image: str, subtests: pytest.Subtests):
         """Verify critical ROCm compute libraries can be loaded via ctypes.
 
         Uses ctypes.cdll.LoadLibrary to attempt loading each critical ROCm library.
@@ -598,7 +595,7 @@ class TestGPULibraryLoading:
 class TestLibrarySymlinks:
     """Tests that verify library symlinks are correctly set up."""
 
-    def test_rocm_devendor_symlinks(self, rocm_image: str, subtests: pytest_subtests.SubTests):
+    def test_rocm_devendor_symlinks(self, rocm_image: str, subtests: pytest.Subtests):
         """Verify that PyTorch's de-vendored ROCm libraries are correctly symlinked."""
         image_metadata = conftest.get_image_metadata(rocm_image)
         if "-pytorch-" not in image_metadata.labels.get("name", ""):
