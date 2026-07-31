@@ -79,6 +79,10 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build/npm/gyp
       type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build/vite
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-extras
+      type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/configuration-editing
@@ -135,7 +139,11 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/references-view
       type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/search-result
+      type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/simple-browser
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/terminal-suggest
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/tunnel-forwarding
       type: npm
@@ -163,11 +171,15 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/smoke
       type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/sanity
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/src/vs/sessions/test/e2e
+      type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/test/e2e/extensions/test-extension
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
       type: npm
-    # patches/ overlay (overwrites code-server at build); use these so Cachi2 prefetches registry-only lockfiles
+    # patches/ overlay (codeserver/ubi9-python-3.12/prefetch-input/patches/) — Cachi2 prefetches registry-only lockfiles; keep in sync with patches that have package.json
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/remote
@@ -175,6 +187,8 @@ spec:
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/extensions
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/extensions/emmet
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/build/vite
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/test
       type: npm
