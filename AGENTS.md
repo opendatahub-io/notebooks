@@ -83,6 +83,17 @@ make refresh-lock-files
 - Prefer existing docs over guesswork. Read the linked doc before inventing process or policy.
 - Verify bulk edits after scripting them. This repo has generated files and repeated patterns.
 - Update nearby documentation when behavior changes, especially build, dependency, and CI workflows.
+- Stage explicitly: `git add <file1> <file2> ...`. For genuine bulk-regen output where
+  hand-listing every path is impractical (lockfiles from `make refresh-lock-files`, `.tekton/`
+  pipeline regen, imagestream manifest updates), a scoped pathspec is fine — but only right
+  after checking `git status`/`git diff --stat` for that scope so you know exactly what it
+  matches, using a tight pattern anchored to a shared prefix and suffix (e.g.
+  `git add .tekton/odh-*-pull-request.yaml`, not `git add .tekton/*` or `git add .`). Before
+  committing, re-run `git status` and skim `git diff --cached` for the staged paths —
+  `git status` only shows which paths are staged, not which hunks, so a file you explicitly
+  staged can still carry an unrelated edit. If the changed set is short enough to read at a
+  glance, just spell out the filenames — a glob earns its keep only when the set is too large
+  to enumerate by hand.
 
 ## Boundaries
 
@@ -96,6 +107,9 @@ make refresh-lock-files
   directly (PipelineRuns are synced from `konflux-central`). Bump container OS bases
   to RHEL/UBI/CentOS 10 or accept MintMaker PRs that do — the project stays on EL9;
   see [base-images/README.md](base-images/README.md#os-version-policy-el9-only).
+  Stage with `git add -A`, `git add .`, or `git add --all` — these sweep in whatever
+  else is sitting in the tree (scratch files, unrelated in-progress edits, generated
+  artifacts) with no chance to notice until it's already committed.
 
 ## Communication
 
