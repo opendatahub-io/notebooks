@@ -69,7 +69,7 @@ def test_minimal_valid_config_passes_validation() -> None:
             [
                 (
                     "RHDS enable rule matchBaseBranches must be "
-                    "['rhoai-2.25', 'rhoai-3.3', 'rhoai-3.4'], got ['rhoai-2.25']"
+                    "['rhoai-2.25', 'rhoai-3.3', 'rhoai-3.4', 'rhoai-3.5'], got ['rhoai-2.25']"
                 ),
             ],
             id="rhds-enable-wrong-branches",
