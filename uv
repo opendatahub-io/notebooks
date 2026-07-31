@@ -13,7 +13,7 @@
 # The pinned version is cached by uvx after the first run.
 set -Eeuo pipefail
 
-UV_VERSION="0.11.27"
+UV_VERSION="0.12.0"
 
 # Fast path: use the system uv directly if it already matches the pinned version
 if current=$(uv --version 2>/dev/null); then
