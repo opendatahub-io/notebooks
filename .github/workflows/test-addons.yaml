@@ -44,5 +44,10 @@ jobs:
             - cwd: jupyter/utils/addons
               args: [--frozen-lockfile]
 
-      - run: pnpm test
+      - name: Typecheck
+        run: pnpm typecheck
+        working-directory: jupyter/utils/addons
+
+      - name: Build and verify
+        run: pnpm test
         working-directory: jupyter/utils/addons
