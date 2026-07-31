@@ -55,7 +55,6 @@ jobs:
           from find_images_for_test_matrix import find_suitable_sha
 
           registry = os.environ["IMAGE_REGISTRY"]
-          ref_prefix = re.sub(r"[^a-zA-Z0-9._-]", "_", os.environ["REF_NAME"])[:40]
           if os.environ.get("GITHUB_REPOSITORY") == "opendatahub-io/notebooks":
               tag_suffix = "_odh_linux_amd64"
           else:
@@ -66,6 +65,14 @@ jobs:
               "jupyter-datascience-ubi9-python-3.12",
               "runtime-datascience-ubi9-python-3.12",
           ]
+          # 40 is a placeholder cap, not derived from anything. The exactly-correct
+          # value would mirror build-notebooks-TEMPLATE.yaml's max_ref_len formula
+          # (128 - len(target) - 7-char short sha - len(suffix) - 3 separators),
+          # minimized over `required` since that formula is computed per target
+          # there. In practice it doesn't matter: real branch names (main, stable,
+          # rhoai-X.Y[-eaN]) are far shorter than either cap, so no truncation ever
+          # actually happens on either side.
+          ref_prefix = re.sub(r"[^a-zA-Z0-9._-]", "_", os.environ["REF_NAME"])[:40]
 
           result = subprocess.run(
               ["skopeo", "list-tags", "--creds", f"token:{os.environ['GH_TOKEN']}", f"docker://{registry}"],
