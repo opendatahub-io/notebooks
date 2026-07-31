@@ -45,7 +45,7 @@ fi
 
 # SVG assets from PatternFly CSS are resolved at build time then removed; dist must
 # not ship them or reference them (inline spinner SVG in index.html is fine).
-SVG_FILES=$(find "$SCRIPT_DIR/dist" -name '*.svg' || true)
+SVG_FILES=$(find "$SCRIPT_DIR/dist" -name '*.svg')
 SVG_COUNT=$(printf '%s\n' "$SVG_FILES" | sed '/^$/d' | wc -l | tr -d ' ')
 if [ "$SVG_COUNT" -gt 0 ]; then
   echo "ERROR: Found $SVG_COUNT SVG file(s) in dist/ — cleanup plugin should remove them!"
@@ -56,6 +56,12 @@ fi
 if grep -q '\.svg' "$CSS_FILE"; then
   echo "ERROR: CSS references .svg assets that are not shipped!"
   exit 1
+else
+  GREP_STATUS=$?
+  if [ "$GREP_STATUS" -gt 1 ]; then
+    echo "ERROR: Could not inspect CSS for SVG references (grep exit $GREP_STATUS)"
+    exit "$GREP_STATUS"
+  fi
 fi
 
 # Verify that unnecessary components are removed
