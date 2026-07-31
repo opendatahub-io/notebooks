@@ -210,7 +210,7 @@ jobs:
         if: ${{ !cancelled() }}
         id: validate-dockerfiles
         run: |
-          wget --output-document=hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          wget --output-document=hadolint https://github.com/hadolint/hadolint/releases/download/v2.15.0/hadolint-Linux-x86_64
           chmod a+x hadolint
           echo "Starting Hadolint"
           find . -name "Dockerfile*" | xargs ./hadolint --config ./ci/hadolint-config.yaml

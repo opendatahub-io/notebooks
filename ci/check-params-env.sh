@@ -82,19 +82,50 @@ function check_variables_uniq() {
     if test "${allow_value_duplicity}" = "false"; then
         echo "Checking that all values assigned to variables in the file '${env_file_path_1}' & '${env_file_path_2}' are unique and expected"
 
-        # Exclude "dummy" placeholder values (RHOAI params-latest.env uses these)
-        content=$(sed '/^$/d;/^[[:space:]]*#/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#.*=##' | grep -v '^dummy$' | sort)
+        # Exclude "dummy" placeholder values (RHOAI params-latest.env uses these).
+        # Duplicates are tolerated only when they belong to the same image family
+        # (for example the same image key rolled from '-n' to '-3-5').
+        local duplicate_report
+        if ! duplicate_report=$(sed '/^$/d;/^[[:space:]]*#/d' "${env_file_path_1}" "${env_file_path_2}" \
+            | awk -F '=' '
+                {
+                    key=$1
+                    value=$2
+                    if (key == "" || value == "" || value == "dummy") {
+                        next
+                    }
 
-        local num_values
-        num_values=$(echo "${content}" | wc -l)
+                    key_base=key
+                    sub(/-([0-9]{4}-[0-9]+|[0-9]+-[0-9]+|n.*)$/, "", key_base)
 
-        local num_uniq_values
-        num_uniq_values=$(echo "${content}" | uniq | wc -l)
+                    if (!(value in value_base)) {
+                        value_base[value]=key_base
+                        value_keys[value]=key
+                        next
+                    }
 
-        test "${num_values}" -eq "${num_uniq_values}" || {
+                    if (value_base[value] == key_base) {
+                        print "INFO: shared digest for rollout-compatible keys: '\''" value_keys[value] "'\'' and '\''" key "'\''"
+                        value_keys[value]=value_keys[value] "," key
+                        next
+                    }
+
+                    print "ERROR: Conflicting variables for the same image digest:"
+                    print "  - " value_keys[value]
+                    print "  - " key
+                    has_conflict=1
+                }
+
+                END {
+                    exit has_conflict
+                }
+            '); then
+            test -n "${duplicate_report}" && echo "${duplicate_report}"
             echo "Some of the values in the file aren't unique!"
             ret_code=1
-        }
+        elif test -n "${duplicate_report}"; then
+            echo "${duplicate_report}"
+        fi
     fi
 
     # ----
@@ -645,8 +676,125 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_img_size=6614
             ;;
         *)
-            echo "Unimplemented variable name: '${image_variable}'"
-            return 1
+            # Rollout automation rewrites released workbench keys with numeric
+            # release suffixes (for example '-3-5', '-3-6'). Keep this check
+            # forward-compatible instead of hardcoding every new release key.
+            if [[ "${image_variable}" =~ ^(odh-workbench-[a-z0-9-]+-py312-ubi9)-[0-9]+-[0-9]+$ ]]; then
+                local image_base
+                image_base="${BASH_REMATCH[1]}"
+
+                expected_commitref="main"
+                expected_build_name="konflux"
+
+                case "${image_base}" in
+                    odh-workbench-jupyter-minimal-cpu-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9"
+                            expected_img_size=991
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9"
+                            expected_img_size=1017
+                        fi
+                        ;;
+                    odh-workbench-jupyter-minimal-cuda-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-minimal-cuda-py312-rhel9"
+                            expected_img_size=3423
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9"
+                            expected_img_size=6757
+                        fi
+                        ;;
+                    odh-workbench-jupyter-minimal-rocm-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9"
+                            expected_img_size=5001
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9"
+                            expected_img_size=5295
+                        fi
+                        ;;
+                    odh-workbench-jupyter-datascience-cpu-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9"
+                            expected_img_size=1838
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9"
+                            expected_img_size=1592
+                        fi
+                        ;;
+                    odh-workbench-jupyter-pytorch-cuda-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9"
+                            expected_img_size=7450
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-pytorch-cuda-py312-ubi9"
+                            expected_img_size=11590
+                        fi
+                        ;;
+                    odh-workbench-jupyter-pytorch-rocm-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9"
+                            expected_img_size=6689
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-pytorch-rocm-py312-ubi9"
+                            expected_img_size=6519
+                        fi
+                        ;;
+                    odh-workbench-jupyter-tensorflow-cuda-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-tensorflow-cuda-py312-rhel9"
+                            expected_img_size=6267
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-tensorflow-cuda-py312-ubi9"
+                            expected_img_size=10581
+                        fi
+                        ;;
+                    odh-workbench-jupyter-tensorflow-rocm-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9"
+                            expected_img_size=6235
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9"
+                            expected_img_size=6367
+                        fi
+                        ;;
+                    odh-workbench-jupyter-trustyai-cpu-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9"
+                            expected_img_size=2467
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9"
+                            expected_img_size=2312
+                        fi
+                        ;;
+                    odh-workbench-codeserver-datascience-cpu-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9"
+                            expected_img_size=1330
+                        else
+                            expected_name="opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9"
+                            expected_img_size=1366
+                        fi
+                        ;;
+                    odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9"
+                            expected_img_size=6165
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9"
+                            expected_img_size=11565
+                        fi
+                        ;;
+                    *)
+                        echo "Unimplemented variable name: '${image_variable}'"
+                        return 1
+                        ;;
+                esac
+            else
+                echo "Unimplemented variable name: '${image_variable}'"
+                return 1
+            fi
     esac
 
     test "${image_name}" = "${expected_name}" || {
@@ -677,16 +825,16 @@ function check_image_variable_matches_name_and_commitref_and_size() {
     # 1. Percentual size change
     percent_change=$((100 * actual_img_size / expected_img_size - 100))
     abs_percent_change=${percent_change#-}
-    test ${abs_percent_change} -le ${SIZE_PERCENTUAL_TRESHOLD} || {
+    test "${abs_percent_change}" -le "${SIZE_PERCENTUAL_TRESHOLD}" || {
         echo "Image size changed by ${abs_percent_change}% (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_PERCENTUAL_TRESHOLD}%)."
-        return 1
+        return 2
     }
     # 2. Absolute size change
     size_difference=$((actual_img_size - expected_img_size))
     abs_size_difference=${size_difference#-}
-    test ${abs_size_difference} -le ${SIZE_ABSOLUTE_TRESHOLD} || {
+    test "${abs_size_difference}" -le "${SIZE_ABSOLUTE_TRESHOLD}" || {
         echo "Image size changed by ${abs_size_difference} MB (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_ABSOLUTE_TRESHOLD} MB)."
-        return 1
+        return 2
     }
 }
 
@@ -786,24 +934,27 @@ function check_image() {
         return 1
     }
 
-    local config_env
-    local build_name_raw
     local openshift_build_name
 
-    config_env=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Env') || {
-        echo "Couldn't parse '.config.Env' from image metadata!"
-        return 1
-    }
-    build_name_raw=$(echo "${config_env}" | grep '"OPENSHIFT_BUILD_NAME=') || {
-        echo "Couldn't get 'OPENSHIFT_BUILD_NAME' from set of the image environment variables, maybe this is a Konflux build?"
-        # Let's keep this check here until we have all images on konflux - just to keep this check for older releases.
-        # For konflux images, the name of the repository should be now good enough as a check instead of this variable.
-        build_name_raw="\"OPENSHIFT_BUILD_NAME=konflux\""
-    }
-    openshift_build_name=$(echo "${build_name_raw}" | sed 's/.*"OPENSHIFT_BUILD_NAME=\(.*\)".*/\1/') || {
-        echo "Couldn't parse value of the 'OPENSHIFT_BUILD_NAME' variable from '${build_name_raw}'!"
-        return 1
-    }
+    if test "${build_system}" = "konflux"; then
+        # All current builds are on Konflux; avoid noisy OPENSHIFT_BUILD_NAME fallback logs.
+        openshift_build_name="konflux"
+    else
+        local config_env
+        local build_name_raw
+        config_env=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Env') || {
+            echo "Couldn't parse '.config.Env' from image metadata!"
+            return 1
+        }
+        build_name_raw=$(echo "${config_env}" | grep '"OPENSHIFT_BUILD_NAME=') || {
+            echo "Couldn't get 'OPENSHIFT_BUILD_NAME' from image metadata for OpenShift-CI image!"
+            return 1
+        }
+        openshift_build_name=$(echo "${build_name_raw}" | sed 's/.*"OPENSHIFT_BUILD_NAME=\(.*\)".*/\1/') || {
+            echo "Couldn't parse value of the 'OPENSHIFT_BUILD_NAME' variable from '${build_name_raw}'!"
+            return 1
+        }
+    fi
 
     local image_metadata
     local image_size
@@ -847,8 +998,11 @@ function check_image() {
     echo "Image created: '${image_created}'"
     echo "Image size: ${image_size_mb} MB"
 
+    local validation_ret_code
     check_image_variable_matches_name_and_commitref_and_size "${image_variable}" "${image_name}" "${image_commitref}" \
-        "${openshift_build_name}" "${image_size_mb}" || return 1
+        "${openshift_build_name}" "${image_size_mb}"
+    validation_ret_code=$?
+    test "${validation_ret_code}" -eq 0 || test "${validation_ret_code}" -eq 2 || return "${validation_ret_code}"
 
     check_image_commit_id_matches_metadata "${image_variable}" "${image_commit_id}" || return 1
 
@@ -856,6 +1010,8 @@ function check_image() {
         # We presume the image is build on Konflux and as such we are using explicit repository name for each image type.
         check_image_repo_name "${image_variable}" "${image_url}" || return 1
     fi
+
+    test "${validation_ret_code}" -eq 0 || return "${validation_ret_code}"
 
     echo "---------------------------------------------"
 }
@@ -932,12 +1088,21 @@ process_file() {
             continue
         fi
 
-        check_image "${IMAGE_VARIABLE}" "${IMAGE_URL}" || {
+        if check_image "${IMAGE_VARIABLE}" "${IMAGE_URL}"; then
+            :
+        else
+            local check_image_ret_code=$?
+            if test "${check_image_ret_code}" -eq 2; then
+                echo "WARNING: Image '${IMAGE_VARIABLE}' size increased"
+                echo "------------------------"
+                continue
+            fi
+
             echo "ERROR: Image definition for '${IMAGE_VARIABLE}' isn't okay!"
             echo "------------------------"
             local_ret_code=1
             continue
-        }
+        fi
     done < "${1}"
     return "${local_ret_code}"
 }

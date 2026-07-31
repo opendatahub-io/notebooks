@@ -1,3 +1,14 @@
+# yaml-language-server: $schema=./ci/versions_config.schema.json
+# =============================================================================
+# IMPORTANT: PRIMARY RELEASE COMMANDS
+# - New release stream (for example, 3.5 -> 3.6):
+#     1) Update full_version in this file and preferred image versions.
+#     2) Run: make kickoff-release
+# - Mid-release image version updates:
+#     1) Update preferred image versions in this file.
+#     2) Run: make sync-build-args-from-versions
+#     3) Run: make refresh-lock-files to refresh the lock files.
+# =============================================================================
 ---
 schema_version: 1
 
@@ -41,7 +52,6 @@ artifacts:
           channel: fast
         odh:
           origin: in-house
-
     rocm:
       minimal:
         acc_version: "7.14"

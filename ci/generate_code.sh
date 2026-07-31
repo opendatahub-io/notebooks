@@ -41,6 +41,7 @@ uv --version || pip install 'uv>=0.10,<0.12'
 
 uv run scripts/dockerfile_fragments.py
 uv run manifests/tools/generate_kustomization.py
+uv run python -m ci.versions_config_schema
 
 if [[ -n "${PR_BASE}" ]]; then
   PYLOCKS_CI_CHECK=1 uv run scripts/pylocks_generator.py auto --pr-base "${PR_BASE}" --pr-to-ref "${PR_TO_REF}"
