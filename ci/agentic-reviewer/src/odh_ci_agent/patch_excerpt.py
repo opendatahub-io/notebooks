@@ -4,10 +4,10 @@ from __future__ import annotations
 
 
 def capped_patch_excerpt(patch: str | None, *, max_lines: int) -> str | None:
-    if not patch:
-        return None
     if max_lines < 1:
         raise ValueError("max_lines must be >= 1")
+    if not patch:
+        return None
     lines = patch.splitlines()
     if len(lines) <= max_lines:
         return patch

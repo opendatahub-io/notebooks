@@ -103,10 +103,16 @@ The `check-generated-code` job runs `ci/generate_code.sh`, then verifies a clean
 | pytest-subtests | Granular sub-assertions within a single test |
 | pytest-cov | Coverage (XML + terminal) |
 | allure-pytest | Issue tracking + step decoration |
+| hypothesis | Property-based tests for pure helpers (`tests/unit/test_property_helpers.py`) |
 | testcontainers | Container lifecycle for integration tests |
 | pyfakefs | Filesystem mocking for unit tests |
 | Playwright | Browser tests (TypeScript) |
 | papermill | Notebook execution verification |
+
+Hypothesis tests run in the normal `make test` / `make test-unit` pytest jobs
+(same `pytest-tests` CI job). There is no separate Hypothesis workflow: default
+`max_examples` is enough for PR CI. Raise examples locally when exploring
+(`settings(max_examples=...)` or a Hypothesis profile).
 
 ## Troubleshooting
 
