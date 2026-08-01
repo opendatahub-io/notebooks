@@ -267,12 +267,22 @@ class ImageDeployment:
 
             self.port = p.get_actual_port()
             LOGGER.debug(f"Listening on port {self.port}")
-            # Use 120s timeout for slower cold starts (e.g. code-server on arm64).
+
+            # Use TIMEOUT_2MIN for slower cold starts (e.g. code-server on arm64).
+            # Always probe / (not /api): RStudio's nginx redirects /api to a
+            # hardcoded http://127.0.0.1:8888/api/, which is wrong (and unreachable)
+            # through a port-forward where the local port isn't literally 8888.
+            # https://github.com/red-hat-data-services/notebooks/issues/2684
+            def _ready() -> bool:
+                with requests.Session() as session:
+                    response = session.get(f"http://127.0.0.1:{self.port}/", timeout=5, allow_redirects=True)
+                return response.status_code == 200
+
             Wait.until(
                 "Connecting to pod succeeds",
                 1,
-                120,
-                lambda: requests.get(f"http://127.0.0.1:{self.port}/api", timeout=10).status_code == 200,
+                TestFrameConstants.TIMEOUT_2MIN,
+                _ready,
             )
             LOGGER.debug("Done setting up portforward")
 
