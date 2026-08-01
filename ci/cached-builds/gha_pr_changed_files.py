@@ -11,7 +11,7 @@ import unittest
 from typing import Literal
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
-MAKE = shutil.which("gmake") or shutil.which("make")
+MAKE = shutil.which("gmake") or shutil.which("make") or "make"
 
 
 def get_github_token() -> str:
@@ -80,13 +80,18 @@ def find_dockerfiles(directory: str) -> list:
     return matching_files
 
 
+def _is_file_in_directory(changed_file: str, directory: str) -> bool:
+    """Returns True if changed_file is exactly the directory or is within it."""
+    return changed_file == directory or changed_file.startswith(directory + "/")
+
+
 def should_build_target(changed_files: list[str], target_directory: str) -> str:
     """Returns truthy if there is at least one changed file necessitating a build.
     Falsy (empty) string is returned otherwise."""
 
     # detect change in the Dockerfile directory
     for changed_file in changed_files:
-        if changed_file.startswith(target_directory):
+        if _is_file_in_directory(changed_file, target_directory):
             return changed_file
     # detect change in any of the files outside
     dockerfiles = find_dockerfiles(target_directory)
@@ -107,7 +112,7 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
         dependencies: list[str] = json.loads(stdout)
         for dependency in dependencies:
             for changed_file in changed_files:
-                if changed_file.startswith(dependency):
+                if _is_file_in_directory(changed_file, dependency):
                     return changed_file
     return ""
 
@@ -128,9 +133,12 @@ def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[s
 
 
 def get_go_arch() -> Literal["amd64", "arm64", "ppc64le", "s390x"]:
-    arch = os.environ.get("GOARCH")
-    if arch is not None:
-        return arch
+    if goarch := os.environ.get("GOARCH"):
+        match goarch.lower():
+            case "amd64" | "arm64" | "ppc64le" | "s390x" as arch:
+                return arch
+            case _:
+                raise ValueError(f"Unsupported GOARCH value: {goarch!r}")
     match platform.machine().lower():
         case "x86_64" | "amd64":
             arch = "amd64"
@@ -159,8 +167,14 @@ class SelfTests(unittest.TestCase):
         assert directory == "jupyter/rocm/pytorch/ubi9-python-3.12"
 
     def test_get_build_dockerfile(self):
-        dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.11")
-        assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.11/Dockerfile.rocm"
+        dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.12")
+        assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm"
 
     def test_should_build_target(self):
-        assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.11")
+        assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.12")
+
+    def test_is_file_in_directory_distinguishes_prefix_siblings(self):
+        """Regression test for .github/workflows/... falsely matching the .git dependency."""
+        assert not _is_file_in_directory(".github/workflows/build-notebooks-pr.yaml", ".git")
+        assert _is_file_in_directory(".git/config", ".git")
+        assert _is_file_in_directory(".git", ".git")
