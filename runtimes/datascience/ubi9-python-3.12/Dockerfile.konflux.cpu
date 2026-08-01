@@ -82,17 +82,23 @@ RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
     # Install Rust and set up environment
-    mkdir -p /opt/.cargo
+    mkdir -p /opt/.cargo /opt/.rustup
     export HOME=/root
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
     chmod +x rustup-init.sh
-    CARGO_HOME=/opt/.cargo HOME=/root ./rustup-init.sh -y --no-modify-path
+    # RUSTUP_HOME must be set explicitly too: the base image ships a pre-existing
+    # /root/.rustup/settings.toml, which makes rustup-init skip configuring a default
+    # toolchain ("rustup could not choose a version of rustc to run"). Isolating
+    # RUSTUP_HOME (like CARGO_HOME) and pinning --default-toolchain avoids that.
+    CARGO_HOME=/opt/.cargo RUSTUP_HOME=/opt/.rustup HOME=/root ./rustup-init.sh -y --no-modify-path \
+        --default-toolchain stable --profile minimal
     rm -f rustup-init.sh
-    chown -R 1001:0 /opt/.cargo
+    chown -R 1001:0 /opt/.cargo /opt/.rustup
     # Set environment variables
     cat > /etc/profile.d/cargo.sh <<'CARGO_EOF'
 export PATH=/opt/.cargo/bin:$PATH
 export CARGO_HOME=/opt/.cargo
+export RUSTUP_HOME=/opt/.rustup
 export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
 CARGO_EOF
 fi
@@ -142,6 +148,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
+    # /etc/profile.d scripts aren't sourced by non-login RUN shells; source explicitly for cargo/rustc
+    # (needed to build libcst from source, a build dep of pyarrow's requirements-build.txt).
+    source /etc/profile.d/cargo.sh
     PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform s390x)
     # Install build dependencies
     dnf install -y cmake make gcc-c++ pybind11-devel wget git \
@@ -158,8 +167,11 @@ if [ "$TARGETARCH" = "s390x" ]; then
     # Build C++ library first
     cd cpp
     mkdir build && cd build
-    # ORC 2.0.1 was removed from downloads.apache.org; archive mirror has the expected tarball hash
-    export ARROW_ORC_URL="https://archive.apache.org/dist/orc/orc-2.0.1/orc-2.0.1.tar.gz"
+    # Pin to a fixed archive.apache.org URL instead of Arrow's default closer.lua mirror redirect,
+    # which is unreliable in CI. Version must match ARROW_ORC_BUILD_VERSION in
+    # arrow/cpp/thirdparty/versions.txt for the pinned PYARROW_VERSION, or the bundled ORC build
+    # fails a checksum mismatch.
+    export ARROW_ORC_URL="https://archive.apache.org/dist/orc/orc-2.2.1/orc-2.2.1.tar.gz"
     cmake -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
           -DARROW_PYTHON=ON \
@@ -187,6 +199,11 @@ if [ "$TARGETARCH" = "s390x" ]; then
     # RHAIENG-5986: requirements-build.txt may pull setuptools 82+ (no pkg_resources)
     pip install --force-reinstall setuptools==80.9.0 wheel
     # Build Python package
+    # Arrow 25.0.0 dropped python/setup.py for a PEP 517 (scikit-build-core) build;
+    # `python -m build` replaces `python setup.py build_ext ... bdist_wheel`. The
+    # PYARROW_WITH_*/PYARROW_BUNDLE_ARROW_CPP env vars are still read directly by
+    # python/CMakeLists.txt, so they carry over unchanged; PYARROW_PARALLEL is gone
+    # (Ninja/scikit-build-core parallelize automatically).
     PYARROW_WITH_PARQUET=1 \
     PYARROW_WITH_DATASET=1 \
     PYARROW_WITH_FILESYSTEM=1 \
@@ -196,8 +213,7 @@ if [ "$TARGETARCH" = "s390x" ]; then
     PYARROW_WITH_ZSTD=1 \
     PYARROW_WITH_BZ2=1 \
     PYARROW_BUNDLE_ARROW_CPP=1 \
-    PYARROW_PARALLEL=$(nproc) \
-    python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel
+    python -m build --wheel --no-isolation --outdir dist .
     mkdir -p /tmp/wheels
     cp dist/pyarrow-*.whl /tmp/wheels/
     # Ensure wheels directory exists and has content
@@ -318,7 +334,6 @@ if [ "$TARGETARCH" = "ppc64le" ]; then
         -DARROW_BUILD_TESTS=OFF
     cd cpp/build
     make -j20 install
-    export PYARROW_PARALLEL=20
     export PYARROW_WITH_PARQUET=1
     export PYARROW_WITH_DATASET=1
     export PYARROW_BUNDLE_ARROW_CPP=1
@@ -326,10 +341,12 @@ if [ "$TARGETARCH" = "ppc64le" ]; then
     # RHAIENG-5986: requirements-build.txt may pull setuptools 82+ (no pkg_resources)
     pip3 install --force-reinstall setuptools==80.9.0 wheel
     cd ../../python
-    python setup.py build_ext \
-        --build-type=release \
-        --bundle-arrow-cpp \
-        bdist_wheel --dist-dir /arrowwheels
+    # Arrow 25.0.0 dropped python/setup.py for a PEP 517 (scikit-build-core) build;
+    # `python -m build` replaces `python setup.py build_ext ... bdist_wheel`. The
+    # PYARROW_WITH_*/PYARROW_BUNDLE_ARROW_CPP env vars exported above are still read
+    # directly by python/CMakeLists.txt, so they carry over unchanged; PYARROW_PARALLEL
+    # is gone (Ninja/scikit-build-core parallelize automatically).
+    python -m build --wheel --no-isolation --outdir /arrowwheels .
 else
     echo "Not ppc64le, skipping pyarrow build"
     mkdir -p /arrowwheels
