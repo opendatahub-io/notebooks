@@ -158,7 +158,9 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform "$TARGETARCH")
     ARROW_BRANCH="apache-arrow-${PYARROW_VERSION}"
     # Install build dependencies (shared for pyarrow and onnx)
-    dnf install -y cmake make gcc-c++ pybind11-devel wget
+    # ninja-build is required by scikit-build-core (pyarrow's PEP 517 build backend) to drive
+    # the CMake build; `python -m build` fails with "Missing dependencies: ninja>=1.5" without it.
+    dnf install -y cmake make gcc-c++ pybind11-devel wget ninja-build
     dnf clean all
     # Build and collect pyarrow wheel
     git clone --depth 1 --branch "${ARROW_BRANCH}" https://github.com/apache/arrow.git
