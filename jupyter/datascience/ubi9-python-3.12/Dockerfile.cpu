@@ -193,13 +193,18 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     pip install --upgrade pip
     # RHAIENG-5986: requirements-build.txt may pull setuptools 82+ (no pkg_resources)
     pip install --force-reinstall setuptools==80.9.0 wheel
+    # Arrow 25.0.0 dropped python/setup.py for a PEP 517 (scikit-build-core) build;
+    # `python -m build` replaces `python setup.py build_ext ... bdist_wheel`. The
+    # PYARROW_WITH_*/PYARROW_BUNDLE_ARROW_CPP env vars are still read directly by
+    # python/CMakeLists.txt, so they carry over unchanged; PYARROW_PARALLEL is gone
+    # (Ninja/scikit-build-core parallelize automatically).
     PYARROW_WITH_PARQUET=1 \
     PYARROW_WITH_DATASET=1 \
     PYARROW_WITH_FILESYSTEM=1 \
     PYARROW_WITH_JSON=1 \
     PYARROW_WITH_CSV=1 \
-    PYARROW_PARALLEL=$(nproc) \
-    python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel
+    PYARROW_BUNDLE_ARROW_CPP=1 \
+    python -m build --wheel --no-isolation --outdir dist .
     mkdir -p /tmp/wheels
     cp dist/pyarrow-*.whl /tmp/wheels/
     chmod -R 777 /tmp/wheels
