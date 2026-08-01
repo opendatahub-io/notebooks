@@ -82,17 +82,23 @@ RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
     # Install Rust and set up environment
-    mkdir -p /opt/.cargo
+    mkdir -p /opt/.cargo /opt/.rustup
     export HOME=/root
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
     chmod +x rustup-init.sh
-    CARGO_HOME=/opt/.cargo HOME=/root ./rustup-init.sh -y --no-modify-path
+    # RUSTUP_HOME must be set explicitly too: the base image ships a pre-existing
+    # /root/.rustup/settings.toml, which makes rustup-init skip configuring a default
+    # toolchain ("rustup could not choose a version of rustc to run"). Isolating
+    # RUSTUP_HOME (like CARGO_HOME) and pinning --default-toolchain avoids that.
+    CARGO_HOME=/opt/.cargo RUSTUP_HOME=/opt/.rustup HOME=/root ./rustup-init.sh -y --no-modify-path \
+        --default-toolchain stable --profile minimal
     rm -f rustup-init.sh
-    chown -R 1001:0 /opt/.cargo
+    chown -R 1001:0 /opt/.cargo /opt/.rustup
     # Set environment variables
     cat > /etc/profile.d/cargo.sh <<'CARGO_EOF'
 export PATH=/opt/.cargo/bin:$PATH
 export CARGO_HOME=/opt/.cargo
+export RUSTUP_HOME=/opt/.rustup
 export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
 CARGO_EOF
 fi
