@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "EsNext",
+    "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": ["node"],
 
     "allowJs": true,
     "esModuleInterop": true,
     "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
+    "noEmit": true,
 
     "strict": true,
     "noImplicitAny": true,
@@ -15,12 +17,5 @@
     "noImplicitThis": true,
     "noUnusedLocals": true,
     "allowUnreachableCode": false
-  },
-  // https://webpack.js.org/configuration/configuration-languages/#typescript
-  "ts-node": {
-    "esm": true,
-    "compilerOptions": {
-      "module": "CommonJS"
-    },
   }
 }

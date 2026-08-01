@@ -4,15 +4,15 @@ import webpack from 'webpack';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import CleanupWebpackPlugin from './cleanup-webpack-plugin.ts';
+import CleanupWebpackPlugin from './cleanup-webpack-plugin.mts';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
-import HtmlWebpackPlugin from "html-webpack-plugin";
 import {PurgeCSSPlugin} from 'purgecss-webpack-plugin';
 
 // Define __dirname for ES modules
-// import { fileURLToPath } from 'node:url';
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
+// https://webpack.js.org/configuration/configuration-languages/#typescript
+import { fileURLToPath } from 'node:url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Define the PatternFly CSS entry point
 const patternflyCssEntry = './node_modules/@patternfly/patternfly/patternfly-no-globals.css';
@@ -58,16 +58,12 @@ const config: webpack.Configuration = {
     ]
   },
   plugins: [
-    // https://webpack.js.org/guides/output-management/#setting-up-htmlwebpackplugin
-    new HtmlWebpackPlugin({
-        title: 'Example spinner page',
-        inject: false,
-    }),
     // Use the cleanup plugin for any remaining files we want to remove
     new CleanupWebpackPlugin({
         patterns: [
             /^main.js$/, // useless empty js file
             /\.woff2$/, // Red Hat fonts used in pf.css
+            /\.svg$/, // PatternFly asset URLs resolved during CSS build
         ]
     }),
     // https://webpack.js.org/plugins/mini-css-extract-plugin/

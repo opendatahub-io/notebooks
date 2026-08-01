@@ -1,6 +1,6 @@
 // https://pnpm.io/package_json
 {
-  type: "module",
+  type: 'module',
   private: true,
   name: 'jupyter-utils-addons',
   version: '1.0.0',
@@ -8,40 +8,38 @@
   license: 'Apache-2.0',
   scripts: {
     test: './test-build.sh',
-    build: 'webpack --mode production',
-    'build:dev': 'webpack --mode development',
-    start: 'webpack serve --open',
+    typecheck: 'tsc --noEmit',
+    'build:css': 'webpack --mode production',
+    'build:css:dev': 'webpack --mode development',
+    build: 'pnpm build:css && ./build-demo.sh',
+    'build:dev': 'pnpm build:css:dev && ./build-demo.sh',
     watch: 'webpack --watch',
     clean: 'rm -rf dist .cache',
     'build:clean': 'pnpm clean && pnpm build',
   },
   dependencies: {
-    '@patternfly/patternfly': '6.0.0',
+    '@patternfly/patternfly': '6.6.0',
   },
   devDependencies: {
     // webpack to minify css file
-    webpack: '^5.99.6',
-    'webpack-cli': '^6.0.1',
-    'webpack-dev-server': '^5.2.3',
-
+    '@types/node': '^26.1.1',
+    '@types/webpack': '^5.28.5',
     // plugins for webpack
-    'css-loader': '^7.1.2',
-    'html-loader': '^5.1.0',
-    'html-webpack-plugin': '^5.6.3',
-    'mini-css-extract-plugin': '^2.9.2',
-    'purgecss-webpack-plugin': '^7.0.2',
-
-    // https://webpack.js.org/configuration/configuration-languages/#typescript,
-    'ts-node': '^10.9.2',
-    typescript: '^5.8.3',
-    '@types/node': '^22.14.1',
-    '@types/webpack': '^5.28.5'
+    'css-loader': '^7.1.4',
+    'mini-css-extract-plugin': '^2.10.2',
+    'purgecss-webpack-plugin': '^8.0.0',
+    typescript: '^7.0.2',
+    webpack: '^5.108.4',
+    'webpack-cli': '^7.2.1',
   },
-  // "packageManager": "pnpm@10.8.1" // forces install of a precise version, so annoying
-  pnpm: {
-    overrides: {
-      // RHOAIENG-51140 / RHOAIENG-50431: CVE-2026-27904 & CVE-2026-26996 minimatch DoS
-      "minimatch": ">=10.2.3",
+  devEngines: {
+    packageManager: {
+      name: 'pnpm',
+      version: '>=11.5.3 <12',
+      onFail: 'download',
     },
   },
+  // DO NOT add "pnpm": { ... } here — pnpm 11 ignores it silently (pnpm#11536).
+  // All pnpm settings go in pnpm-workspace.yaml.
+  // "packageManager": "pnpm@10.8.1" // forces install of a precise version, so annoying
 }

@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Test script to verify the tree-shaking improvements
-set -e
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CSS_FILE="$SCRIPT_DIR/dist/pf.css"
 ORIGINAL_CSS="$SCRIPT_DIR/node_modules/@patternfly/patternfly/patternfly-no-globals.css"
 
-echo "Building project..."
-cd "$SCRIPT_DIR" && pnpm build
+echo "Building CSS..."
+cd "$SCRIPT_DIR" && pnpm run build:css
 
 # Check if the CSS file exists
 if [ ! -f "$CSS_FILE" ]; then
@@ -41,6 +41,27 @@ fi
 if ! grep -q "pf-v6-c-spinner__path" "$CSS_FILE"; then
   echo "ERROR: Spinner path class not found in CSS!"
   exit 1
+fi
+
+# SVG assets from PatternFly CSS are resolved at build time then removed; dist must
+# not ship them or reference them (inline spinner SVG in index.html is fine).
+SVG_FILES=$(find "$SCRIPT_DIR/dist" -name '*.svg')
+SVG_COUNT=$(printf '%s\n' "$SVG_FILES" | sed '/^$/d' | wc -l | tr -d ' ')
+if [ "$SVG_COUNT" -gt 0 ]; then
+  echo "ERROR: Found $SVG_COUNT SVG file(s) in dist/ — cleanup plugin should remove them!"
+  printf '%s\n' "$SVG_FILES"
+  exit 1
+fi
+
+if grep -q '\.svg' "$CSS_FILE"; then
+  echo "ERROR: CSS references .svg assets that are not shipped!"
+  exit 1
+else
+  GREP_STATUS=$?
+  if [ "$GREP_STATUS" -gt 1 ]; then
+    echo "ERROR: Could not inspect CSS for SVG references (grep exit $GREP_STATUS)"
+    exit "$GREP_STATUS"
+  fi
 fi
 
 # Verify that unnecessary components are removed
