@@ -158,3 +158,76 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: junit.xml
+
+  openshift-container-tests:
+    name: "openshift: ${{ matrix.name }}"
+    needs: find-images
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.find-images.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          version-file: pyproject.toml
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install deps
+        run: uv sync --locked
+
+      # Rootful podman sharing image storage with cri-o, same as build-notebooks-TEMPLATE.yaml,
+      # so the pod created by the openshift-marked tests can find the image without re-pulling.
+      - name: Install and configure Podman
+        uses: './.github/actions/install-podman-action'
+        with:
+          platform: linux/amd64
+
+      - name: Provision K8s cluster
+        uses: ./.github/actions/provision-k8s
+
+      - name: Login to GHCR
+        uses: docker/login-action@371161bbe7024a29a25c5e19bfcbc0804fe9ad2c  # v4.5.2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # install-podman-action's storage.conf enables zstd:chunked partial pulls, which
+      # only matters for `podman build`'s own registry pulls elsewhere. Here we `podman
+      # pull` an already-published ghcr.io image, and ghcr.io's blob endpoint returns
+      # "501 Unsupported client range" for partial/ranged fetches, failing the pull
+      # outright instead of falling back to a full one. Disable it for this job only.
+      - name: Disable zstd:chunked partial image pulls
+        run: sudo sed -i 's/enable_partial_images = "true"/enable_partial_images = "false"/' /etc/containers/storage.conf
+
+      - name: Pull and run OpenShift container tests
+        env:
+          TEST_IMAGE: ${{ matrix.image }}
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+        run: |
+          set -Eeuxo pipefail
+          podman pull "${TEST_IMAGE}"
+          uv run pytest --capture=fd tests/containers \
+            -m 'openshift and not cuda and not rocm' \
+            --image="${TEST_IMAGE}" \
+            --junitxml=junit-openshift.xml \
+            -v
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3  # v1.2.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit-openshift.xml
