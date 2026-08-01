@@ -142,6 +142,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
+    # /etc/profile.d scripts aren't sourced by non-login RUN shells; source explicitly for cargo/rustc
+    # (needed to build libcst from source, a build dep of pyarrow's requirements-build.txt).
+    source /etc/profile.d/cargo.sh
     PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform s390x)
     # Install build dependencies
     dnf install -y cmake make gcc-c++ pybind11-devel wget git \
