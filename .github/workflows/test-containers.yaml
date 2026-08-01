@@ -176,3 +176,57 @@ jobs:
         uses: ./.github/actions/capture-kernel-logs
         with:
           log-prefix: ${{ matrix.name }}
+
+  openshift-container-tests:
+    name: "openshift: ${{ matrix.name }}"
+    needs: find-images
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.find-images.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install deps
+        run: uv sync --locked
+
+      # Rootful podman sharing image storage with cri-o, same as build-notebooks-TEMPLATE.yaml,
+      # so the pod created by the openshift-marked tests can find the image without re-pulling.
+      - name: Install and configure Podman
+        uses: './.github/actions/install-podman-action'
+        with:
+          platform: linux/amd64
+
+      - name: Provision K8s cluster
+        uses: ./.github/actions/provision-k8s
+
+      - name: Login to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0  # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and run OpenShift container tests
+        env:
+          TEST_IMAGE: ${{ matrix.image }}
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+        run: |
+          set -Eeuxo pipefail
+          podman pull "${TEST_IMAGE}"
+          uv run pytest --capture=fd tests/containers \
+            -m 'openshift and not cuda and not rocm' \
+            --image="${TEST_IMAGE}" \
+            --junitxml=junit-openshift.xml \
+            -v
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3  # v1.2.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit-openshift.xml
