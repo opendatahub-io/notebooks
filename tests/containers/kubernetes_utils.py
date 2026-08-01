@@ -267,11 +267,12 @@ class ImageDeployment:
 
             self.port = p.get_actual_port()
             LOGGER.debug(f"Listening on port {self.port}")
+            # Use 120s timeout for slower cold starts (e.g. code-server on arm64).
             Wait.until(
                 "Connecting to pod succeeds",
                 1,
-                30,
-                lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
+                120,
+                lambda: requests.get(f"http://127.0.0.1:{self.port}/api", timeout=10).status_code == 200,
             )
             LOGGER.debug("Done setting up portforward")
 
