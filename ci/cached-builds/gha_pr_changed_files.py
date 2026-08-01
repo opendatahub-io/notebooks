@@ -164,11 +164,11 @@ class SelfTests(unittest.TestCase):
         assert directory == "jupyter/rocm/pytorch/ubi9-python-3.12"
 
     def test_get_build_dockerfile(self):
-        dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.11")
-        assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.11/Dockerfile.rocm"
+        dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.12")
+        assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm"
 
     def test_should_build_target(self):
-        assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.11")
+        assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.12")
 
     def test_is_file_in_directory_distinguishes_prefix_siblings(self):
         """Regression test for .github/workflows/... falsely matching the .git dependency."""
