@@ -169,3 +169,9 @@ class SelfTests(unittest.TestCase):
 
     def test_should_build_target(self):
         assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.11")
+
+    def test_is_file_in_directory_distinguishes_prefix_siblings(self):
+        """Regression test for .github/workflows/... falsely matching the .git dependency."""
+        assert not _is_file_in_directory(".github/workflows/build-notebooks-pr.yaml", ".git")
+        assert _is_file_in_directory(".git/config", ".git")
+        assert _is_file_in_directory(".git", ".git")
