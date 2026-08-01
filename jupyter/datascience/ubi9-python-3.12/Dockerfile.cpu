@@ -155,8 +155,11 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     git clone --depth 1 --branch "${ARROW_BRANCH}" https://github.com/apache/arrow.git
     cd arrow/cpp
     mkdir release && cd release
-    # ORC 2.0.1 was removed from downloads.apache.org; archive mirror has the expected tarball hash
-    export ARROW_ORC_URL="https://archive.apache.org/dist/orc/orc-2.0.1/orc-2.0.1.tar.gz"
+    # Pin to a fixed archive.apache.org URL instead of Arrow's default closer.lua mirror redirect,
+    # which is unreliable in CI. Version must match ARROW_ORC_BUILD_VERSION in
+    # arrow/cpp/thirdparty/versions.txt for the pinned PYARROW_VERSION, or the bundled ORC build
+    # fails a checksum mismatch.
+    export ARROW_ORC_URL="https://archive.apache.org/dist/orc/orc-2.2.1/orc-2.2.1.tar.gz"
     cmake -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr/local \
           -DARROW_PYTHON=ON \
