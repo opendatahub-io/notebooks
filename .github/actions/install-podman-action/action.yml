@@ -28,6 +28,35 @@ runs:
           sudo apparmor_parser -r /etc/apparmor.d/usr.bin.pasta
         fi
 
+    - name: Tune ephemeral host I/O and memory for CI builds
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+
+        # Ephemeral runners: favor build throughput over durability guarantees.
+        sudo swapoff -a 2>/dev/null || true
+        sudo sysctl -w vm.swappiness=0 || true
+
+        remount_greed() {
+          local target="$1"
+          if mountpoint -q "${target}"; then
+            if ! sudo mount -o remount,nobarrier,nodiscard,commit=600 "${target}"; then
+              echo "warning: remount greed options failed for ${target}" >&2
+            fi
+          fi
+        }
+
+        graphroot=/mnt/containers/storage
+        sudo mkdir -p "${graphroot}"
+        # Single-disk runners resolve graphroot to /; remounting both is idempotent.
+        remount_greed "$(findmnt -n -o TARGET --target "${graphroot}")"
+        remount_greed "$(findmnt -n -o TARGET --target /)"
+
+        for wbt in /sys/block/*/queue/wbt_lat_usec; do
+          [[ -f "${wbt}" ]] || continue
+          echo 0 | sudo tee "${wbt}" >/dev/null || true
+        done
+
     - name: Configure Podman
       shell: bash
       run: |

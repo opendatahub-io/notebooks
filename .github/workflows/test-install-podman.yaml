@@ -30,6 +30,20 @@ jobs:
         with:
           platform: linux/amd64
 
+      - name: Verify Podman overlay mountopt and native diff
+        run: |
+          set -Eeuxo pipefail
+
+          grep -q 'metacopy=off' /etc/containers/storage.conf
+          grep -q 'redirect_dir=off' /etc/containers/storage.conf
+
+          if podman info 2>&1 | grep -qiE '"?Native Overlay Diff"?:\s*"?true"?'; then
+            echo "Podman native overlay diff is active"
+          else
+            echo "Podman is not using native overlay diff" >&2
+            exit 1
+          fi
+
       - name: Test Podman installation
         run: |
           set -Eeuxo pipefail
