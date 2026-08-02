@@ -11,10 +11,14 @@ jobs:
     steps:
       - name: Generate github-app token
         id: app-token
-        uses: getsentry/action-github-app-token@5c1e90706fe007857338ac1bfbd7a4177db2f789  # v4.0.0
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
         with:
-          app_id: ${{ secrets.DEVOPS_APP_ID }}
-          private_key: ${{ secrets.DEVOPS_APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.DEVOPS_APP_ID }}
+          private-key: ${{ secrets.DEVOPS_APP_PRIVATE_KEY }}
+          owner: opendatahub-io
+          repositories: notebooks
+          permission-organization-projects: write
+          permission-issues: read  # add-to-project reads the triggering issue; no PR permission needed since this workflow only fires on issues: opened
       - uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd  # v2.0.0
         with:
           project-url: https://github.com/orgs/opendatahub-io/projects/40
