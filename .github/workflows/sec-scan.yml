@@ -126,24 +126,29 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-
-      - name: pull-request
-        uses: repo-sync/pull-request@7e79a9f5dc3ad0ce53138f01df2fad14a04831c5  # v2.12.1
-        with:
-          source_branch: ${{ env.SEC_SCAN_BRANCH }}
-          destination_branch: ${{ env.BRANCH_NAME}}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_label: "automated pr"
-          pr_title: "[Security Scanner Action] Weekly update of security vulnerabilities reported by Quay"
-          pr_body: |
+      - name: Create pull request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: "[Security Scanner Action] Weekly update of security vulnerabilities reported by Quay"
+          PR_BODY: |
             :rocket: This is an automated Pull Request.
 
             This PR updates:
 
             * `ci/security-scan/security_scan_results.md` file with the latest security vulnerabilities reported by Quay.
             * `ci/security-scan/weekly_commit_ids` with the latest updated SHA digests of the notebooks (N & N-1)
-            Created by `/.github/workflows/sec-scan.yaml`
+            Created by `/.github/workflows/sec-scan.yml`
 
-            :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.SEC_SCAN_BRANCH }}` branch after merging the changes
+            :exclamation: **IMPORTANT NOTE**: Remember to delete the `${{ env.SEC_SCAN_BRANCH }}` branch after merging the changes
+        run: |
+          gh label create "automated pr" \
+            --description "Pull requests created by automation" \
+            --color "ededed" \
+            2>/dev/null || true
+
+          gh pr create \
+            --head "${{ env.SEC_SCAN_BRANCH }}" \
+            --base "${{ env.BRANCH_NAME }}" \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --label "automated pr"
