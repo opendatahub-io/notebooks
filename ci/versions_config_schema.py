@@ -220,42 +220,42 @@ _VERSIONS_CONFIG_ADAPTER = TypeAdapter(VersionsConfig)
 def build_json_schema() -> dict[str, Any]:
     """Build the JSON Schema document for ``versions_config.yml``."""
     schema = _VERSIONS_CONFIG_ADAPTER.json_schema(schema_generator=GenerateJsonSchema)
+    example = {
+        "schema_version": 1,
+        "release": {
+            "full_version": "3.5.0",
+            "rhds_os_base": "el9.6",
+            "python_version": "3.12",
+        },
+        "artifacts": {
+            "base_image": {
+                "cpu": {
+                    "rhds": {"channel": "fast", "version": "<full_version>"},
+                    "odh": {"origin": "in-house", "version": "latest"},
+                },
+                "cuda": {
+                    "minimal": {
+                        "acc_version": "13.0",
+                        "rhds": {"channel": "fast"},
+                        "odh": {"origin": "in-house"},
+                    }
+                },
+                "rocm": {
+                    "minimal": {
+                        "acc_version": "7.14",
+                        "rhds": {"channel": "fast"},
+                        "odh": {"origin": "in-house"},
+                    }
+                },
+            }
+        },
+    }
+    _VERSIONS_CONFIG_ADAPTER.validate_python(example)  # fail fast if example drifts from the model
     return {
         "$schema": GenerateJsonSchema.schema_dialect,
         "$id": SCHEMA_ID,
         **schema,
-        "examples": [
-            {
-                "schema_version": 1,
-                "release": {
-                    "full_version": "3.5.0",
-                    "rhds_os_base": "el9.6",
-                    "python_version": "3.12",
-                },
-                "artifacts": {
-                    "base_image": {
-                        "cpu": {
-                            "rhds": {"channel": "fast", "version": "<full_version>"},
-                            "odh": {"origin": "in-house", "version": "latest"},
-                        },
-                        "cuda": {
-                            "minimal": {
-                                "acc_version": "13.0",
-                                "rhds": {"channel": "fast"},
-                                "odh": {"origin": "in-house"},
-                            }
-                        },
-                        "rocm": {
-                            "minimal": {
-                                "acc_version": "7.14",
-                                "rhds": {"channel": "fast"},
-                                "odh": {"origin": "in-house"},
-                            }
-                        },
-                    }
-                },
-            }
-        ],
+        "examples": [example],
     }
 
 
