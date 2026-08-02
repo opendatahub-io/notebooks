@@ -28,6 +28,11 @@ because Docker on GHA runners sets `FORWARD DROP`, which breaks rootful netavark
 ([podman #24486](https://github.com/containers/podman/issues/24486),
 [runner-images #13422](https://github.com/actions/runner-images/issues/13422)).
 
+On ephemeral runners the install action also applies best-effort host I/O greed
+(`swapoff`, `vm.swappiness=0`, `nobarrier`/`nodiscard`/`commit` remounts, WBT off) and
+`ci/cached-builds/storage.conf` sets overlay `mountopt=nodev,metacopy=off,redirect_dir=off`
+so Podman can use native overlay diff for faster layer commits.
+
 `test-install-podman` validates container IP and DNS reachability (TCP `nc`, HTTP `wget`, `dig` UDP/TCP) after configure.
 
 ## buildinputs image
