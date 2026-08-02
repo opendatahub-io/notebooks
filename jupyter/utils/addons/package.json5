@@ -8,6 +8,7 @@
   license: 'Apache-2.0',
   scripts: {
     test: './test-build.sh',
+    typecheck: 'tsc --noEmit',
     'build:css': 'webpack --mode production',
     'build:css:dev': 'webpack --mode development',
     build: 'pnpm build:css && ./build-demo.sh',
