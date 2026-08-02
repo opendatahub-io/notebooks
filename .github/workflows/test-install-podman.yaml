@@ -37,7 +37,7 @@ jobs:
           grep -q 'metacopy=off' /etc/containers/storage.conf
           grep -q 'redirect_dir=off' /etc/containers/storage.conf
 
-          if podman --log-level=debug info 2>&1 | grep -qiE 'useNativeDiff=true|native diff'; then
+          if podman --log-level=debug info 2>&1 | grep -qi 'useNativeDiff=true'; then
             echo "Podman native overlay diff is active"
           else
             echo "podman --log-level=debug info did not report native diff; probing build output" >&2
