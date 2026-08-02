@@ -660,7 +660,7 @@ jobs:
             scan local --path "${IMAGE_MOUNT_DIR}" -c /config.toml
           sudo "${PODMAN}" image unmount --all
         env:
-          CHECK_PAYLOAD_IMAGE: ghcr.io/${{ github.repository }}/check-payload:0.3.16
+          CHECK_PAYLOAD_IMAGE: ghcr.io/${{ github.repository }}/check-payload:0.3.17
 
       # endregion
 
