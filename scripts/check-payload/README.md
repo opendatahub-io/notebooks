@@ -15,6 +15,6 @@ This image is ~50 MB compressed (`ubi9-minimal` base for `rpm` + static binary).
 
 ## Version management
 
-The version is pinned in `.github/workflows/build-check-payload.yaml` as `CHECK_PAYLOAD_VERSION: "0.3.16"` and passed to the Dockerfile as a build arg. To bump, update that env var and the `:0.3.16` tag reference in `build-notebooks-TEMPLATE.yaml`.
+The version is pinned in `.github/workflows/build-check-payload.yaml` as `CHECK_PAYLOAD_VERSION: "0.3.17"` and passed to the Dockerfile as a build arg. To bump, update that env var and the `:0.3.17` tag reference in `build-notebooks-TEMPLATE.yaml`.
 
 Releases: https://github.com/openshift/check-payload/releases
