@@ -35,7 +35,7 @@ runs:
 
         # Ephemeral runners: favor build throughput over durability guarantees.
         sudo swapoff -a 2>/dev/null || true
-        sudo sysctl -w vm.swappiness=0
+        sudo sysctl -w vm.swappiness=0 || true
 
         remount_greed() {
           local target="$1"
@@ -48,6 +48,7 @@ runs:
 
         graphroot=/mnt/containers/storage
         sudo mkdir -p "${graphroot}"
+        # Single-disk runners resolve graphroot to /; remounting both is idempotent.
         remount_greed "$(findmnt -n -o TARGET --target "${graphroot}")"
         remount_greed "$(findmnt -n -o TARGET --target /)"
 
