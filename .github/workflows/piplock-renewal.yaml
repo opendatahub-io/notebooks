@@ -65,7 +65,7 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           token: ${{ secrets.GH_ACCESS_TOKEN }}
-          persist-credentials: true
+          persist-credentials: true  # git push in Pull and push changes
 
       - name: Configure Git
         run: |

@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ env.BRANCH_NAME }}
-          persist-credentials: true
+          persist-credentials: true  # git push in Create a new branch / Commit Changes
 
       - name: Create a new branch
         run: |
@@ -66,7 +66,7 @@ jobs:
         with:
           ref: ${{ env.TMP_BRANCH }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: true  # git push in Commit Changes
 
       - name: Invoke ci/sha-digest-updater.sh script to handle the updates
         shell: bash

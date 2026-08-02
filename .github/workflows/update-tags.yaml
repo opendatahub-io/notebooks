@@ -18,7 +18,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: true  # git push in Commit and push changes to branch
 
       - name: Detect and replace tags in .tekton and params-latest.env files
         id: replace

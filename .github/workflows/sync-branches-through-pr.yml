@@ -23,6 +23,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.target }}
           fetch-depth: 0
+          persist-credentials: false  # https://github.com/actions/checkout/issues/2312
 
       - name: Prepare sync branch
         id: prepare
