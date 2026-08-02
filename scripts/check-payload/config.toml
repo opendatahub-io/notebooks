@@ -1,59 +1,104 @@
+certified_distributions = [
+  "Red Hat Enterprise Linux release 8.4 (Ootpa)",
+  "Red Hat Enterprise Linux release 8.5 (Ootpa)",
+  "Red Hat Enterprise Linux release 8.6 (Ootpa)",
+  "Red Hat Enterprise Linux release 8.7 (Ootpa)",
+  "Red Hat Enterprise Linux release 8.9 (Ootpa)",
+  "Red Hat Enterprise Linux release 8.10 (Ootpa)",
+  "Red Hat Enterprise Linux release 9.0 (Plow)",
+  "Red Hat Enterprise Linux release 9.2 (Plow)",
+  "Red Hat Enterprise Linux release 9.4 (Plow)",
+  "Red Hat Enterprise Linux release 9.5 (Plow)",
+  "Red Hat Enterprise Linux release 9.6 (Plow)",
+  "Red Hat Enterprise Linux release 9.7 (Plow)",
+  "Red Hat Enterprise Linux release 9.8 (Plow)",
+  "Red Hat Enterprise Linux release 10.0 (Coughlan)",
+  "Red Hat Enterprise Linux release 10.1 (Coughlan)",
+  "Red Hat Enterprise Linux release 10.2 (Coughlan)",
+]
 
-# DEFAULT CONFIG
-# **************
-# https://github.com/openshift/check-payload/blob/main/config.toml
-
-certified_distributions = []
+# FIPS certified modules. Multiple entries per module are alternatives — first match wins.
+fips_certified_modules = [
+  # OpenSSL 3.x FIPS Provider (CMVP #4857) — RHEL 9.4+ and RHEL 10 (pending OE update)
+  { module = "openssl",
+    artifact_source = "image",
+    certified_artifact = "openssl-fips-provider",
+    certified_artifact_min_version = "3.0.7",
+    certified_artifact_paths = ["/usr/lib64/ossl-modules/fips.so"],
+  },
+  # OpenSSL 3.x FIPS Provider (CMVP #4857) — RHEL 9.2-9.3
+  # Same certified module, different package: fips.so shipped inside openssl-libs.
+  { module = "openssl",
+    artifact_source = "image",
+    certified_artifact = "openssl-libs",
+    certified_artifact_min_version = "3.0.7",
+    certified_artifact_max_version = "3.0.7",
+    certified_artifact_paths = ["/usr/lib64/ossl-modules/fips.so"],
+  },
+  # OpenSSL 1.1.1 FIPS (CMVP #3842) — RHEL 8
+  { module = "openssl",
+    artifact_source = "image",
+    certified_artifact = "openssl-libs",
+    certified_artifact_min_version = "1.1.1",
+    certified_artifact_max_version = "1.1.1",
+  },
+  # Go FIPS 140 (CMVP #5247)
+  { module = "go",
+    artifact_source = "binary",
+    certified_artifact = "crypto/fips140",
+    certified_artifact_min_version = "v1.0.0",
+  },
+]
 
 # List of directories to ignore. This is a prefix match,
 # i.e. everything under a matched directory is ignored.
 filter_dirs = [
-    "/lib/firmware",
-    "/lib/modules",
-    "/usr/lib/.build-id",
-    "/usr/lib/firmware",
-    "/usr/lib/grub",
-    "/usr/lib/modules",
-    "/usr/share/app-info",
-    "/usr/share/doc",
-    "/usr/share/fonts",
-    "/usr/share/icons",
-    "/usr/share/openshift",
-    "/usr/src/plugins",
-    "/rootfs",
-    "/sysroot",
+  "/lib/firmware",
+  "/lib/modules",
+  "/usr/lib/.build-id",
+  "/usr/lib/firmware",
+  "/usr/lib/grub",
+  "/usr/lib/modules",
+  "/usr/share/app-info",
+  "/usr/share/doc",
+  "/usr/share/fonts",
+  "/usr/share/icons",
+  "/usr/share/openshift",
+  "/usr/src/plugins",
+  "/rootfs",
+  "/sysroot",
 ]
 
 java_fips_disabled_algorithms = [
-    "DH keySize < 2048",
-    "TLSv1.1",
-    "TLSv1",
-    "SSLv3",
-    "SSLv2",
-    "TLS_RSA_WITH_AES_256_CBC_SHA256",
-    "TLS_RSA_WITH_AES_256_CBC_SHA",
-    "TLS_RSA_WITH_AES_128_CBC_SHA256",
-    "TLS_RSA_WITH_AES_128_CBC_SHA",
-    "TLS_RSA_WITH_AES_256_GCM_SHA384",
-    "TLS_RSA_WITH_AES_128_GCM_SHA256",
-    "DHE_DSS",
-    "RSA_EXPORT",
-    "DHE_DSS_EXPORT",
-    "DHE_RSA_EXPORT",
-    "DH_DSS_EXPORT",
-    "DH_RSA_EXPORT",
-    "DH_anon",
-    "ECDH_anon",
-    "DH_RSA",
-    "DH_DSS",
-    "ECDH",
-    "3DES_EDE_CBC",
-    "DES_CBC",
-    "RC4_40",
-    "RC4_128",
-    "DES40_CBC",
-    "RC2",
-    "HmacMD5",
+  "DH keySize < 2048",
+  "TLSv1.1",
+  "TLSv1",
+  "SSLv3",
+  "SSLv2",
+  "TLS_RSA_WITH_AES_256_CBC_SHA256",
+  "TLS_RSA_WITH_AES_256_CBC_SHA",
+  "TLS_RSA_WITH_AES_128_CBC_SHA256",
+  "TLS_RSA_WITH_AES_128_CBC_SHA",
+  "TLS_RSA_WITH_AES_256_GCM_SHA384",
+  "TLS_RSA_WITH_AES_128_GCM_SHA256",
+  "DHE_DSS",
+  "RSA_EXPORT",
+  "DHE_DSS_EXPORT",
+  "DHE_RSA_EXPORT",
+  "DH_DSS_EXPORT",
+  "DH_RSA_EXPORT",
+  "DH_anon",
+  "ECDH_anon",
+  "DH_RSA",
+  "DH_DSS",
+  "ECDH",
+  "3DES_EDE_CBC",
+  "DES_CBC",
+  "RC4_40",
+  "RC4_128",
+  "DES40_CBC",
+  "RC2",
+  "HmacMD5",
 ]
 
 [[rpm.tini.ignore]]
@@ -89,9 +134,9 @@ files = ["/usr/bin/runc"]
 [[rpm.podman.ignore]]
 error = "ErrGoMissingTag"
 files = [
-    "/usr/bin/podman",
-    "/usr/libexec/podman/quadlet",
-    "/usr/libexec/podman/rootlessport",
+  "/usr/bin/podman",
+  "/usr/libexec/podman/quadlet",
+  "/usr/libexec/podman/rootlessport",
 ]
 
 [[rpm.podman.ignore]]
@@ -103,6 +148,10 @@ error = "ErrGoMissingSymbols"
 files = ["/usr/libexec/podman/rootlessport"]
 
 [[rpm.podman-catatonit.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/libexec/catatonit/catatonit"]
+
+[[rpm.catatonit.ignore]]
 error = "ErrNotDynLinked"
 files = ["/usr/libexec/catatonit/catatonit"]
 
@@ -129,6 +178,26 @@ dirs = ["/usr/libexec/cni"]
 [[rpm.ignition.ignore]]
 error = "ErrGoMissingTag"
 files = ["/usr/lib/dracut/modules.d/30ignition/ignition"]
+
+[[rpm.valgrind.ignore]]
+error = "ErrNotDynLinked"
+files = [
+  "/usr/libexec/valgrind/cachegrind-amd64-linux",
+  "/usr/libexec/valgrind/callgrind-amd64-linux",
+  "/usr/libexec/valgrind/dhat-amd64-linux",
+  "/usr/libexec/valgrind/drd-amd64-linux",
+  "/usr/libexec/valgrind/exp-bbv-amd64-linux",
+  "/usr/libexec/valgrind/helgrind-amd64-linux",
+  "/usr/libexec/valgrind/lackey-amd64-linux",
+  "/usr/libexec/valgrind/massif-amd64-linux",
+  "/usr/libexec/valgrind/memcheck-amd64-linux",
+  "/usr/libexec/valgrind/none-amd64-linux",
+]
+
+[[rpm.habanalabs-firmware-tools.ignore]]
+# hl-smi: Intel Gaudi hardware monitor, static by design, no crypto.
+error = "ErrNotDynLinked"
+files = ["/usr/bin/hl-smi"]
 
 [[payload.openshift-enterprise-pod-container.ignore]]
 error = "ErrNotDynLinked"
@@ -170,6 +239,179 @@ dirs = ["/assets/downloads/cli"]
 error = "ErrGoMissingTag"
 dirs = ["/assets/downloads/cli"]
 
+[[payload.mta-cli-container.ignore]]
+error = "ErrGoNotCgoEnabled"
+files = ["/usr/local/bin/mta-cli"]
+
+[[payload.mta-cli-container.ignore]]
+error = "ErrGoMissingSymbols"
+files = ["/usr/local/bin/mta-cli"]
+
+[[payload.mta-cli-container.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/local/bin/mta-cli"]
+
+# -----------------------------------------------------------------------------
+# Open Data Hub (ODH) / RHOAI payloads: odh-workbench-* and odh-pipeline-runtime-*
+#
+# odh-workbench-* images are interactive JupyterLab and code-server workbenches.
+# Pandoc and ripgrep (via code-server) cover notebook PDF export and IDE search.
+#
+# py-spy is a Python sampling profiler brought in with the datascience/ML dependency
+# graph so users can debug performance from the workbench. It does not use
+# cryptography. Upstream distributes it as a statically linked executable, so
+# check-payload raises ErrNotDynLinked; we waive that here because the finding reflects
+# static linking, not an in-image cryptographic module or TLS endpoint.
+#
+# odh-pipeline-runtime-* images are non-interactive Elyra/KFP-style job runtimes; see the
+# comment block immediately before those entries for py-spy on pipeline images.
+#
+# ErrNotDynLinked ignores cite RHOAIENG-58626 (umbrella epic for multiple check-payload
+# FIPS findings across RHOAI). py-spy waivers: track RHOAIENG-58916. Work is broken
+# down by failing component/image in Jira. VS Code 1.112 apply-seccomp (sandbox-runtime):
+# RHAIENG-6078. Pandoc rebuild/remediation: AIPCC-7795.
+# -----------------------------------------------------------------------------
+
+# odh-workbench-codeserver-datascience-cpu-py312-rhel9
+[[payload.odh-workbench-codeserver-datascience-cpu-py312-rhel9.ignore]]
+# py-spy: track RHOAIENG-58916. rg (@vscode/ripgrep, IDE search): RHOAIENG-58626.
+# apply-seccomp: VS Code 1.112+ @anthropic-ai/sandbox-runtime seccomp BPF loaders;
+# statically linked, no cryptography, optional MCP/terminal sandbox only (RHAIENG-6078).
+# npm ships arm64/x64 only (no arch-specific variants for ppc64le/s390x image builds).
+error = "ErrNotDynLinked"
+files = [
+    "/opt/app-root/bin/py-spy",
+    "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
+    "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp/arm64/apply-seccomp",
+    "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp/x64/apply-seccomp",
+    "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp/arm64/apply-seccomp",
+    "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp/x64/apply-seccomp",
+]
+
+# odh-workbench-jupyter-datascience-cpu-py312-rhel9
+[[payload.odh-workbench-jupyter-datascience-cpu-py312-rhel9.ignore]]
+# Pandoc (PDF export): RHOAIENG-58626. py-spy: track RHOAIENG-58916.
+error = "ErrNotDynLinked"
+files = [
+    "/usr/local/pandoc/bin/pandoc",
+    "/opt/app-root/bin/py-spy",
+]
+
+# odh-workbench-jupyter-minimal-cpu-py312-rhel9
+[[payload.odh-workbench-jupyter-minimal-cpu-py312-rhel9.ignore]]
+# Pandoc: bundled for notebook PDF/LaTeX export; not a crypto boundary. Track: RHOAIENG-58626.
+error = "ErrNotDynLinked"
+files = ["/usr/local/pandoc/bin/pandoc"]
+
+# odh-workbench-jupyter-minimal-cuda-py312-rhel9
+[[payload.odh-workbench-jupyter-minimal-cuda-py312-rhel9.ignore]]
+# Pandoc: bundled for notebook PDF/LaTeX export; not a crypto boundary. Track: RHOAIENG-58626.
+error = "ErrNotDynLinked"
+files = ["/usr/local/pandoc/bin/pandoc"]
+
+# odh-workbench-jupyter-minimal-rocm-py312-rhel9
+[[payload.odh-workbench-jupyter-minimal-rocm-py312-rhel9.ignore]]
+# Pandoc: bundled for notebook PDF/LaTeX export; not a crypto boundary. Track: RHOAIENG-58626.
+error = "ErrNotDynLinked"
+files = ["/usr/local/pandoc/bin/pandoc"]
+
+# odh-workbench-jupyter-pytorch-cuda-py312-rhel9
+[[payload.odh-workbench-jupyter-pytorch-cuda-py312-rhel9.ignore]]
+# Pandoc (PDF export): RHOAIENG-58626. py-spy: track RHOAIENG-58916.
+error = "ErrNotDynLinked"
+files = [
+    "/usr/local/pandoc/bin/pandoc",
+    "/opt/app-root/bin/py-spy",
+]
+
+# odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9
+[[payload.odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9.ignore]]
+# Pandoc (PDF export): RHOAIENG-58626. py-spy: track RHOAIENG-58916.
+error = "ErrNotDynLinked"
+files = [
+    "/usr/local/pandoc/bin/pandoc",
+    "/opt/app-root/bin/py-spy",
+]
+
+# odh-workbench-jupyter-pytorch-rocm-py312-rhel9
+[[payload.odh-workbench-jupyter-pytorch-rocm-py312-rhel9.ignore]]
+# Pandoc (PDF export): RHOAIENG-58626. py-spy: track RHOAIENG-58916.
+error = "ErrNotDynLinked"
+files = [
+    "/usr/local/pandoc/bin/pandoc",
+    "/opt/app-root/bin/py-spy",
+]
+
+# odh-workbench-jupyter-tensorflow-cuda-py312-rhel9
+[[payload.odh-workbench-jupyter-tensorflow-cuda-py312-rhel9.ignore]]
+# Pandoc (PDF export): RHOAIENG-58626. py-spy: track RHOAIENG-58916.
+error = "ErrNotDynLinked"
+files = [
+    "/usr/local/pandoc/bin/pandoc",
+    "/opt/app-root/bin/py-spy",
+]
+
+# odh-workbench-jupyter-tensorflow-rocm-py312-rhel9
+[[payload.odh-workbench-jupyter-tensorflow-rocm-py312-rhel9.ignore]]
+# Pandoc (PDF export): RHOAIENG-58626. py-spy: track RHOAIENG-58916.
+error = "ErrNotDynLinked"
+files = [
+    "/usr/local/pandoc/bin/pandoc",
+    "/opt/app-root/bin/py-spy",
+]
+
+# odh-workbench-jupyter-trustyai-cpu-py312-rhel9
+[[payload.odh-workbench-jupyter-trustyai-cpu-py312-rhel9.ignore]]
+# Pandoc (PDF export): RHOAIENG-58626. py-spy: track RHOAIENG-58916.
+error = "ErrNotDynLinked"
+files = [
+    "/usr/local/pandoc/bin/pandoc",
+    "/opt/app-root/bin/py-spy",
+]
+
+# odh-pipeline-runtime-*, py-spy (all [[payload.odh-pipeline-runtime-*]] blocks below):
+# Same waivers as in the section header (static binary -> ErrNotDynLinked; no crypto).
+# The binary is there because these images share the ODH Python base and datascience
+# pip lock with workbench stacks (stack parity); Elyra/KFP does not rely on py-spy for
+# pipeline execution. py-spy: track RHOAIENG-58916.
+
+# odh-pipeline-runtime-datascience-cpu-py312-rhel9
+[[payload.odh-pipeline-runtime-datascience-cpu-py312-rhel9.ignore]]
+error = "ErrNotDynLinked"
+files = ["/opt/app-root/bin/py-spy"]
+
+# odh-pipeline-runtime-pytorch-cuda-py312-rhel9
+[[payload.odh-pipeline-runtime-pytorch-cuda-py312-rhel9.ignore]]
+error = "ErrNotDynLinked"
+files = ["/opt/app-root/bin/py-spy"]
+
+# odh-pipeline-runtime-pytorch-rocm-py312-rhel9
+[[payload.odh-pipeline-runtime-pytorch-rocm-py312-rhel9.ignore]]
+error = "ErrNotDynLinked"
+files = ["/opt/app-root/bin/py-spy"]
+
+# odh-pipeline-runtime-tensorflow-cuda-py312-rhel9
+[[payload.odh-pipeline-runtime-tensorflow-cuda-py312-rhel9.ignore]]
+error = "ErrNotDynLinked"
+files = ["/opt/app-root/bin/py-spy"]
+
+# odh-pipeline-runtime-tensorflow-rocm-py312-rhel9
+[[payload.odh-pipeline-runtime-tensorflow-rocm-py312-rhel9.ignore]]
+error = "ErrNotDynLinked"
+files = ["/opt/app-root/bin/py-spy"]
+
+# -----------------------------------------------------------------------------
+# opendatahub-io/notebooks project-specific additions
+# (not yet incorporated into the upstream default above)
+# -----------------------------------------------------------------------------
+#
+# The [[payload.NAME.ignore]] blocks upstream only match `check-payload scan
+# payload` (component-name matching). Our own CI always runs
+# `check-payload scan local --path` (see build-check-payload.yaml,
+# build-notebooks-TEMPLATE.yaml), where the payload name is always empty, so
+# `payload.*` entries never match for us — the rpm/global waivers below are
+# what actually apply to our scans.
+
 # AI Pipelines override (RHOAIENG-24702 and RHOAIENG-38121)
 # When FIPS is enabled, /usr/bin/argoexec-fips is used. /usr/bin/argoexec is
 # only used for portability reasons in non-FIPS environments.
@@ -200,29 +442,8 @@ files = ["/usr/bin/launcher-v2"]
 error = "ErrNotDynLinked"
 files = ["/usr/bin/launcher-v2"]
 
-# Temporary supprsssions for workbenches
-# https://github.com/openshift/check-payload/blob/main/internal/types/errors.go
-# See docs/fips.md for full context on FIPS compliance status.
-
-# valgrind is waived since it doesn't do anything with crypto in a
-# security context
-[[rpm.valgrind.ignore]]
-error = "ErrNotDynLinked"
-files = [
-    # executable is not dynamically linked
-    "/usr/libexec/valgrind/cachegrind-amd64-linux",
-    "/usr/libexec/valgrind/callgrind-amd64-linux",
-    "/usr/libexec/valgrind/dhat-amd64-linux",
-    "/usr/libexec/valgrind/drd-amd64-linux",
-    "/usr/libexec/valgrind/exp-bbv-amd64-linux",
-    "/usr/libexec/valgrind/helgrind-amd64-linux",
-    "/usr/libexec/valgrind/lackey-amd64-linux",
-    "/usr/libexec/valgrind/massif-amd64-linux",
-    "/usr/libexec/valgrind/memcheck-amd64-linux",
-    "/usr/libexec/valgrind/none-amd64-linux",
-]
-
-# py-spy is excluded from images via exclude-dependencies (RHAIENG-58916).
+# py-spy is excluded from images via exclude-dependencies (RHAIENG-58916), so
+# it never appears in a local scan; no waiver needed here.
 # pandoc-rhai 3.9.0.2 is dynamically linked (RHAIENG-5765) — no waiver needed.
 
 # when scanning with `scan local --path`
