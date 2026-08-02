@@ -12,9 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-logging.basicConfig(level=logging.DEBUG)
-
-
 def open_ssh_tunnel(
     machine_predicate: Callable[[tests.containers.pydantic_schemas.PodmanMachine], bool],
     local_port: int,
