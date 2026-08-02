@@ -3,16 +3,13 @@ name: Test Jupyter Addons
 "on":
   workflow_dispatch:
   pull_request:
-    paths:
+    paths: &test-addons-paths
       - '.github/workflows/test-addons.yaml'
       - 'jupyter/utils/addons/**'
       - 'scripts/get-pnpm-version.sh'
   push:
     branches: [main, stable, 'rhoai-*']
-    paths:
-      - '.github/workflows/test-addons.yaml'
-      - 'jupyter/utils/addons/**'
-      - 'scripts/get-pnpm-version.sh'
+    paths: *test-addons-paths
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
