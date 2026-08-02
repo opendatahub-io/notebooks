@@ -6,11 +6,13 @@ name: Test Jupyter Addons
     paths:
       - '.github/workflows/test-addons.yaml'
       - 'jupyter/utils/addons/**'
+      - 'scripts/get-pnpm-version.sh'
   push:
     branches: [main, stable, 'rhoai-*']
     paths:
       - '.github/workflows/test-addons.yaml'
       - 'jupyter/utils/addons/**'
+      - 'scripts/get-pnpm-version.sh'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -44,5 +46,10 @@ jobs:
             - cwd: jupyter/utils/addons
               args: [--frozen-lockfile]
 
-      - run: pnpm test
+      - name: Typecheck
+        run: pnpm typecheck
+        working-directory: jupyter/utils/addons
+
+      - name: Build and verify
+        run: pnpm test
         working-directory: jupyter/utils/addons
