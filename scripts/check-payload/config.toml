@@ -470,3 +470,11 @@ dirs = [
     "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp",
     "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp",
 ]
+
+# `scan local --path` (used by our own CI) always uses an empty tag name.
+# Our images are also built on CentOS Stream (ODH midstream), which is
+# never going to be a certified RHEL distribution. Waive OS certification
+# for local scans only.
+[[tag."".ignore]]
+error = "ErrOSNotCertified"
+tags = [""]
