@@ -142,11 +142,13 @@ jobs:
             :exclamation: **IMPORTANT NOTE**: Remember to delete the `${{ env.SEC_SCAN_BRANCH }}` branch after merging the changes
         run: |
           gh label create "automated pr" \
+            --repo "$GITHUB_REPOSITORY" \
             --description "Pull requests created by automation" \
             --color "ededed" \
             2>/dev/null || true
 
           gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
             --head "${{ env.SEC_SCAN_BRANCH }}" \
             --base "${{ env.BRANCH_NAME }}" \
             --title "$PR_TITLE" \

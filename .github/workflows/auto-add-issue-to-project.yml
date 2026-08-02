@@ -16,7 +16,9 @@ jobs:
           app-id: ${{ secrets.DEVOPS_APP_ID }}
           private-key: ${{ secrets.DEVOPS_APP_PRIVATE_KEY }}
           owner: opendatahub-io
+          repositories: notebooks
           permission-organization-projects: write
+          permission-issues: read
       - uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd  # v2.0.0
         with:
           project-url: https://github.com/orgs/opendatahub-io/projects/40
