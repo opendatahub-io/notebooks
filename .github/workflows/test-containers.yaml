@@ -25,6 +25,9 @@ permissions:
 env:
   TESTCONTAINERS_RYUK_DISABLED: "true"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
+  # pytest's --color=auto sees a non-tty stdout in CI and disables color;
+  # FORCE_COLOR forces it back on for the (colorable) GitHub Actions log viewer.
+  FORCE_COLOR: "1"
 
 jobs:
   find-images:

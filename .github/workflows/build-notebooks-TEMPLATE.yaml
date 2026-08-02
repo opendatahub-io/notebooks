@@ -489,6 +489,9 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           OUTPUT_IMAGE: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
           JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_testcontainers-junit.xml"
+          # pytest's --color=auto sees a non-tty stdout in CI and disables color;
+          # FORCE_COLOR forces it back on for the (colorable) GitHub Actions log viewer.
+          FORCE_COLOR: "1"
         run: |
           set -Eeuxo pipefail
           mkdir -p "$(dirname "${JUNIT_XML}")"
@@ -563,6 +566,9 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           OUTPUT_IMAGE: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
           JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_openshift-junit.xml"
+          # pytest's --color=auto sees a non-tty stdout in CI and disables color;
+          # FORCE_COLOR forces it back on for the (colorable) GitHub Actions log viewer.
+          FORCE_COLOR: "1"
         run: |
           set -Eeuxo pipefail
           mkdir -p "$(dirname "${JUNIT_XML}")"
