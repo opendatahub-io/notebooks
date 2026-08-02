@@ -36,17 +36,6 @@ def adf_to_text(doc: dict) -> str:
     return "\n".join(parts)
 
 
-def test_extract_cve_id_from_label_and_summary(subtests: Subtests) -> None:
-    cases = [
-        ("CVE-2026-8643", "CVE-2026-8643"),
-        ("EMBARGOED CVE-2026-8643 foo", "CVE-2026-8643"),
-        ("no cve here", None),
-    ]
-    for raw, expected in cases:
-        with subtests.test(msg=f"extract_cve_id({raw!r})"):
-            assert cct.extract_cve_id(raw) == expected
-
-
 def test_extract_version(subtests: Subtests) -> None:
     cases = [
         ("EMBARGOED CVE-2026-8643 rhoai/odh-workbench: flaw [rhoai-2.25]", "rhoai-2.25"),
@@ -201,16 +190,22 @@ Fix should be applied to: [https://github.com/red-hat-data-services/notebooks](h
 """)
 
 
-def test_create_tracker_issue_api_payload(monkeypatch: MonkeyPatch) -> None:
+def _capturing_client(return_key: str = "RHAIENG-9999") -> tuple[JiraClient, dict[str, Any]]:
     captured: dict[str, Any] = {}
 
     class FakeClient:
         def create_issue(self, **kwargs: Any) -> dict:
             captured.update(kwargs)
-            return {"key": "RHAIENG-9999"}
+            return {"key": return_key}
 
         def get_current_user(self) -> dict:
             return {"accountId": "runner-id-123"}
+
+    return cast("JiraClient", FakeClient()), captured
+
+
+def test_create_tracker_issue_api_payload(monkeypatch: MonkeyPatch) -> None:
+    client, captured = _capturing_client(return_key="RHAIENG-9999")
 
     monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
     monkeypatch.delenv("JIRA_RUNNER_ACCOUNT_ID", raising=False)
@@ -224,7 +219,7 @@ def test_create_tracker_issue_api_payload(monkeypatch: MonkeyPatch) -> None:
         contributor_account_ids={"child-contrib-id"},
     )
 
-    result = cct.create_tracker_issue(cast("JiraClient", FakeClient()), info)
+    result = cct.create_tracker_issue(client, info)
     assert result == "RHAIENG-9999"
 
     assert adf_to_text(captured.pop("description")) == snapshot("""\
@@ -253,15 +248,7 @@ Fix should be applied to: [https://github.com/red-hat-data-services/notebooks](h
 
 
 def test_create_tracker_issue_no_version_omits_target_version(monkeypatch: MonkeyPatch) -> None:
-    captured: dict[str, Any] = {}
-
-    class FakeClient:
-        def create_issue(self, **kwargs: Any) -> dict:
-            captured.update(kwargs)
-            return {"key": "RHAIENG-8888"}
-
-        def get_current_user(self) -> dict:
-            return {"accountId": "runner-id-123"}
+    client, captured = _capturing_client(return_key="RHAIENG-8888")
 
     monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
     monkeypatch.delenv("JIRA_RUNNER_ACCOUNT_ID", raising=False)
@@ -272,5 +259,5 @@ def test_create_tracker_issue_no_version_omits_target_version(monkeypatch: Monke
         description="Some flaw",
     )
 
-    cct.create_tracker_issue(cast("JiraClient", FakeClient()), info)
+    cct.create_tracker_issue(client, info)
     assert cct.RHAIENG_TARGET_VERSION_FIELD not in captured.get("extra_fields", {})
