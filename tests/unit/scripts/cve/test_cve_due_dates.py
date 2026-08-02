@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
+from scripts.cve import extract_cve_id
 from scripts.cve.cve_due_dates import (
     TrackerInfo,
-    extract_cve_id,
     get_linked_issue_keys,
     list_missing_due_dates,
     list_overdue_trackers,

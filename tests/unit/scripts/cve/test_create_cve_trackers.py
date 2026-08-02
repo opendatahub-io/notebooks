@@ -36,17 +36,6 @@ def adf_to_text(doc: dict) -> str:
     return "\n".join(parts)
 
 
-def test_extract_cve_id_from_label_and_summary(subtests: Subtests) -> None:
-    cases = [
-        ("CVE-2026-8643", "CVE-2026-8643"),
-        ("EMBARGOED CVE-2026-8643 foo", "CVE-2026-8643"),
-        ("no cve here", None),
-    ]
-    for raw, expected in cases:
-        with subtests.test(msg=f"extract_cve_id({raw!r})"):
-            assert cct.extract_cve_id(raw) == expected
-
-
 def test_extract_version(subtests: Subtests) -> None:
     cases = [
         ("EMBARGOED CVE-2026-8643 rhoai/odh-workbench: flaw [rhoai-2.25]", "rhoai-2.25"),
