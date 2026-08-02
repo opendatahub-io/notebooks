@@ -18,7 +18,7 @@ jobs:
           owner: opendatahub-io
           repositories: notebooks
           permission-organization-projects: write
-          permission-issues: read
+          permission-issues: read  # add-to-project reads the triggering issue; no PR permission needed since this workflow only fires on issues: opened
       - uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd  # v2.0.0
         with:
           project-url: https://github.com/orgs/opendatahub-io/projects/40
