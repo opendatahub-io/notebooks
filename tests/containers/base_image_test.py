@@ -19,7 +19,6 @@ import ntb
 from tests import index_config_utils
 from tests.containers import docker_utils
 
-logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
