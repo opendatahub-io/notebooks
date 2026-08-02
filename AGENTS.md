@@ -131,11 +131,12 @@ Use formatting: bold, italics and code blocks.
   required when binding: `except (ExcA, ExcB) as e:`.
 - CI pytest runs force `FORCE_COLOR=1`, so their console output contains ANSI
   color codes. Don't grep/process that text directly. Prefer the
-  `pytest-logs.txt` artifact instead (uploaded by the `pytest-tests` job's
-  "Upload pytest debug log" step) — it's written by pytest's `log_file`
-  handler, a plain `logging.FileHandler` independent of the colorized
-  terminal writer, so pytest itself never colors it. It can still contain
-  color if a logged message embeds its own escape codes (e.g.
+  `pytest-logs*.txt` artifact instead (uploaded by each job's own
+  "Upload pytest debug log" step, e.g. `pytest-tests` in `code-quality.yaml`
+  and `container-tests` in `test-containers.yaml`) — it's written by pytest's
+  `log_file` handler, a plain `logging.FileHandler` independent of the
+  colorized terminal writer, so pytest itself never colors it. It can still
+  contain color if a logged message embeds its own escape codes (e.g.
   `scripts/update_build_args_from_versions.py`'s `ANSI_RED`-style warnings),
   so don't assume it's *guaranteed* ANSI-free — check with `grep -c $'\x1b'`
   if it matters. If you do need to strip ANSI codes from console/log text,

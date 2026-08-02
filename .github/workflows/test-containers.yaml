@@ -142,6 +142,7 @@ jobs:
       - name: Pull and run tests
         env:
           TEST_IMAGE: ${{ matrix.image }}
+          LOG_PREFIX: ${{ matrix.name }}
         run: |
           set -Eeuxo pipefail
           podman pull "${TEST_IMAGE}"
@@ -150,7 +151,18 @@ jobs:
             --image="${TEST_IMAGE}" \
             --junitxml=junit.xml -o junit_family=legacy \
             --log-level=DEBUG \
+            -o "log_file=logs/pytest-logs-${LOG_PREFIX}.txt" -o log_file_level=DEBUG \
             -v
+
+      - name: Upload pytest debug log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: pytest-logs-${{ matrix.name }}
+          path: logs/pytest-logs-${{ matrix.name }}.txt
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Upload test results
         if: ${{ !cancelled() }}
