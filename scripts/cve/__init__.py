@@ -1,7 +1,14 @@
 """Shared utilities for CVE scripts."""
 
 import os
+import re
 import ssl
+
+
+def extract_cve_id(text: str) -> str | None:
+    """Extract CVE ID from text."""
+    match = re.search(r"CVE-\d{4}-\d+", text)
+    return match.group() if match else None
 
 
 def create_ssl_context() -> ssl.SSLContext:
