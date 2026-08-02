@@ -30,6 +30,33 @@ jobs:
         with:
           platform: linux/amd64
 
+      - name: Verify Podman overlay mountopt and native diff
+        run: |
+          set -Eeuxo pipefail
+
+          grep -q 'metacopy=off' /etc/containers/storage.conf
+          grep -q 'redirect_dir=off' /etc/containers/storage.conf
+
+          if podman --log-level=debug info 2>&1 | grep -qiE 'useNativeDiff=true|native diff'; then
+            echo "Podman native overlay diff is active"
+          else
+            echo "podman --log-level=debug info did not report native diff; probing build output" >&2
+            probe_dir="$(mktemp -d)"
+            trap 'rm -rf "${probe_dir}"' EXIT
+            printf '%s\n' 'FROM docker.io/alpine' 'RUN echo native-diff-probe' > "${probe_dir}/Containerfile"
+            build_log="$(mktemp)"
+            if ! podman --log-level=debug build -t native-diff-probe "${probe_dir}" >"${build_log}" 2>&1; then
+              cat "${build_log}"
+              exit 1
+            fi
+            if grep -qi 'Not using native diff for overlay' "${build_log}"; then
+              cat "${build_log}"
+              echo "Podman is not using native overlay diff" >&2
+              exit 1
+            fi
+            echo "Podman native overlay diff probe passed"
+          fi
+
       - name: Test Podman installation
         run: |
           set -Eeuxo pipefail
