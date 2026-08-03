@@ -27,14 +27,8 @@ set -euo pipefail
 # When PRODUCT=rhoai, validate the RHOAI manifests; otherwise default to ODH.
 if [ "${PRODUCT:-odh}" = 'rhoai' ]; then
     _MANIFESTS_VARIANT="rhoai"
-    # This value needs to be updated everytime we deliberately change number of the
-    # images we want to have in the commit env files.
-    EXPECTED_COMMIT_NUM_RECORDS=43
 else
     _MANIFESTS_VARIANT="odh"
-    # This value needs to be updated everytime we deliberately change number of the
-    # images we want to have in the commit env files.
-    EXPECTED_COMMIT_NUM_RECORDS=22
 fi
 
 COMMIT_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit-latest.env"
@@ -139,6 +133,13 @@ function check_variables_uniq() {
 
     echo "---------------------------------------------"
     return "${ret_code}"
+}
+
+function discover_expected_commit_num_records() {
+    # Commit env files track only workbench images. Derive the expected number
+    # from params files and exclude pipeline runtime entries.
+    sed '/^$/d;/^[[:space:]]*#/d' "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" \
+        | awk -F '=' '$1 !~ /^odh-pipeline-runtime-/ { count++ } END { print count + 0 }'
 }
 
 function check_image_variable_matches_name_and_commitref_and_size() {
@@ -1024,7 +1025,8 @@ ret_code=0
 echo "Starting check of image references in files: '${COMMIT_LATEST_ENV_PATH}', '${COMMIT_ENV_PATH}' , '${PARAMS_LATEST_ENV_PATH}' and '${PARAMS_ENV_PATH}'"
 echo "---------------------------------------------"
 
-EXPECTED_NUM_RECORDS="${EXPECTED_COMMIT_NUM_RECORDS}"
+EXPECTED_NUM_RECORDS=$(discover_expected_commit_num_records)
+echo "Discovered expected commit record count: '${EXPECTED_NUM_RECORDS}'"
 check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" "true" || {
     echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' & '${COMMIT_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
