@@ -94,10 +94,14 @@ class SocketProxy:
                     try:
                         # handle client synchronously, which means that there can be at most one at a time
                         self._handle_client(client_socket)
-                    except (BrokenPipeError, ConnectionResetError) as e:
+                    except (BrokenPipeError, ConnectionResetError, TimeoutError) as e:
                         # BrokenPipeError happens when the proxy connects to the pod, but the service inside is not yet listening.
+                        # TimeoutError is raised by remote_socket_factory() (e.g. exposing_contextmanager) when it can't
+                        # establish a working connection within its own bound -- see https://github.com/red-hat-data-services/notebooks/issues/2684.
                         # The client (Wait.until) will retry.
-                        logging.info(f"Proxy connection to remote failed, likely due to service not being ready: {e}")
+                        logging.info(
+                            f"Proxy connection to remote failed, will retry on the next connection attempt: {e}"
+                        )
                         # The client_socket is closed by the `with` statement in `_handle_client`.
                         # We continue the loop to accept the next connection attempt.
                         continue
