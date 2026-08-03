@@ -878,7 +878,7 @@ This command:
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml
 
-# Custom flavor (e.g. cuda — requires Dockerfile.cuda and build-args/cuda.conf)
+# Custom flavor (e.g. cuda — requires Dockerfile.konflux.cuda and build-args/cuda.conf)
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml \
     --flavor cuda

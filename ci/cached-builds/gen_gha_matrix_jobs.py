@@ -217,10 +217,10 @@ class SelfTests(unittest.TestCase):
     def test_select_changed_targets_dockerfile(self):
         targets = extract_image_targets(makefile_dir=project_dir)
 
-        changed_files = ["jupyter/datascience/ubi9-python-3.11/Dockerfile.cpu"]
+        changed_files = ["jupyter/datascience/ubi9-python-3.12/Dockerfile.konflux.cpu"]
 
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
-        assert set(targets) == {"jupyter-datascience-ubi9-python-3.11"}
+        assert set(targets) == {"jupyter-datascience-ubi9-python-3.12"}
 
     def test_select_changed_targets_shared_file(self):
         targets = extract_image_targets(makefile_dir=project_dir)

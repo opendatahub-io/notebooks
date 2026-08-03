@@ -72,12 +72,16 @@ def get_build_dockerfile(make_target: str, env: dict[str, str] | None = None) ->
 
 
 def find_dockerfiles(directory: str) -> list:
-    """Finds and returns a list of files matching the pattern 'Dockerfile*' in the specified directory."""
-    matching_files = []
-    for filename in os.listdir(directory):
-        if fnmatch.fnmatch(filename, "Dockerfile*") and filename != "Dockerfile.konflux":
-            matching_files.append(filename)
-    return matching_files
+    """Find Dockerfile(s) in a build directory for buildinputs dependency analysis."""
+    dir_path = pathlib.Path(directory)
+    if not dir_path.is_absolute():
+        dir_path = PROJECT_ROOT / dir_path
+    konflux = sorted(
+        f for f in os.listdir(dir_path) if f.startswith("Dockerfile.konflux.")
+    )
+    if konflux:
+        return konflux
+    return sorted(f for f in os.listdir(dir_path) if fnmatch.fnmatch(f, "Dockerfile*"))
 
 
 def _is_file_in_directory(changed_file: str, directory: str) -> bool:

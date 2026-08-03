@@ -89,7 +89,7 @@ func TestParseDockerfileWithBindMount(t *testing.T) {
 		EOF
 	`)), 0644))
 
-	//dockerfile = "/Users/jdanek/IdeaProjects/notebooks/jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm"
+	//dockerfile = "/Users/jdanek/IdeaProjects/notebooks/jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm"
 
 	result := getDockerfileDeps(dockerfile, "amd64")
 	expected := []string{"codeserver/ubi9-python-3.12/test", "foo"}
