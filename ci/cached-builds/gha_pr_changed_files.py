@@ -76,9 +76,7 @@ def find_dockerfiles(directory: str) -> list:
     dir_path = pathlib.Path(directory)
     if not dir_path.is_absolute():
         dir_path = PROJECT_ROOT / dir_path
-    konflux = sorted(
-        f for f in os.listdir(dir_path) if f.startswith("Dockerfile.konflux.")
-    )
+    konflux = sorted(f for f in os.listdir(dir_path) if f.startswith("Dockerfile.konflux."))
     if konflux:
         return konflux
     return sorted(f for f in os.listdir(dir_path) if fnmatch.fnmatch(f, "Dockerfile*"))
