@@ -85,9 +85,9 @@ jobs:
         with:
           version-file: pyproject.toml
 
-      - name: Run make refresh-pipfilelock-files
+      - name: Run make refresh-lock-files
         run: |
-          make refresh-pipfilelock-files PYTHON_VERSION=${{ matrix.python-version }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
+          make refresh-lock-files PYTHON_VERSION=${{ matrix.python-version }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
         env:
           FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
 
