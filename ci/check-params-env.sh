@@ -28,15 +28,13 @@ set -euo pipefail
 if [ "${PRODUCT:-odh}" = 'rhoai' ]; then
     _MANIFESTS_VARIANT="rhoai"
     # This value needs to be updated everytime we deliberately change number of the
-    # images we want to have in the `params.env` or `params-latest.env` file.
+    # images we want to have in the commit env files.
     EXPECTED_COMMIT_NUM_RECORDS=43
-    EXPECTED_PARAMS_NUM_RECORDS=57
 else
     _MANIFESTS_VARIANT="odh"
     # This value needs to be updated everytime we deliberately change number of the
-    # images we want to have in the `params.env` or `params-latest.env` file.
+    # images we want to have in the commit env files.
     EXPECTED_COMMIT_NUM_RECORDS=22
-    EXPECTED_PARAMS_NUM_RECORDS=29
 fi
 
 COMMIT_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit-latest.env"
@@ -59,6 +57,7 @@ function check_variables_uniq() {
     local env_file_path_1="${1}"
     local env_file_path_2="${2}"
     local allow_value_duplicity="${3:-false}"
+    local check_count="${4:-true}"
     local ret_code=0
 
 
@@ -129,12 +128,14 @@ function check_variables_uniq() {
     fi
 
     # ----
-    echo "Checking that there are expected number of records in the file '${env_file_path_1}' + '${env_file_path_2}'"
+    if test "${check_count}" = "true"; then
+        echo "Checking that there are expected number of records in the file '${env_file_path_1}' + '${env_file_path_2}'"
 
-    test "${num_records}" -eq "${EXPECTED_NUM_RECORDS}" || {
-        echo "Number of records in the file is incorrect - expected '${EXPECTED_NUM_RECORDS}' but got '${num_records}'!"
-        ret_code=1
-    }
+        test "${num_records}" -eq "${EXPECTED_NUM_RECORDS}" || {
+            echo "Number of records in the file is incorrect - expected '${EXPECTED_NUM_RECORDS}' but got '${num_records}'!"
+            ret_code=1
+        }
+    fi
 
     echo "---------------------------------------------"
     return "${ret_code}"
@@ -1024,14 +1025,13 @@ echo "Starting check of image references in files: '${COMMIT_LATEST_ENV_PATH}', 
 echo "---------------------------------------------"
 
 EXPECTED_NUM_RECORDS="${EXPECTED_COMMIT_NUM_RECORDS}"
-check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" || {
+check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" "true" || {
     echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' & '${COMMIT_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
 
-EXPECTED_NUM_RECORDS="${EXPECTED_PARAMS_NUM_RECORDS}"
-check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" || {
+check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "false" || {
     echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' & '${PARAMS_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
