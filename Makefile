@@ -153,7 +153,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-pipfilelock-files scan-image-vulnerabilities print-release
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files scan-image-vulnerabilities print-release
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
 $(SELF): bin/buildinputs
 endif
@@ -476,9 +476,9 @@ INCLUDE_OPT_DIRS ?= false
 OPT_DIRS :=
 
 # This recipe gets args, can be used like
-# make refresh-pipfilelock-files PYTHON_VERSION=3.11 INCLUDE_OPT_DIRS=false
-.PHONY: refresh-pipfilelock-files
-refresh-pipfilelock-files:
+# make refresh-lock-files PYTHON_VERSION=3.11 INCLUDE_OPT_DIRS=false
+.PHONY: refresh-lock-files
+refresh-lock-files:
 	@echo "Updating Pipfile.lock files for Python $(PYTHON_VERSION)"
 	@if [ "$(INCLUDE_OPT_DIRS)" = "true" ]; then
 		echo "Including optional directories"
