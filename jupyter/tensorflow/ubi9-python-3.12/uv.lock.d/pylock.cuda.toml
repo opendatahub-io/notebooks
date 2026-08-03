@@ -871,12 +871,6 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cuda12.9-ubi9-test/kubeflow_kale-2.1.1-8-py3-none-any.whl", upload-time = 2026-07-20T15:41:28Z, size = 368238, hashes = { sha256 = "f132dede45587cfa631919bbd098e5c4bff0892537f087ee2ea99f52e1c17e78" } }]
 
 [[packages]]
-name = "kubeflow-training"
-version = "1.9.3"
-marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cuda12.9-ubi9-test/kubeflow_training-1.9.3-8-py3-none-any.whl", upload-time = 2026-07-20T15:41:28Z, size = 115245, hashes = { sha256 = "3a97d364f97c82f3bb275c2aad8d86a12007e417d53d82b88c72651066218199" } }]
-
-[[packages]]
 name = "kubernetes"
 version = "35.0.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
