@@ -25,6 +25,9 @@ permissions:
 env:
   TESTCONTAINERS_RYUK_DISABLED: "true"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
+  # pytest's --color=auto sees a non-tty stdout in CI and disables color;
+  # FORCE_COLOR forces it back on for the (colorable) GitHub Actions log viewer.
+  FORCE_COLOR: "1"
 
 jobs:
   find-images:
@@ -139,6 +142,7 @@ jobs:
       - name: Pull and run tests
         env:
           TEST_IMAGE: ${{ matrix.image }}
+          LOG_PREFIX: ${{ matrix.name }}
         run: |
           set -Eeuxo pipefail
           podman pull "${TEST_IMAGE}"
@@ -146,7 +150,19 @@ jobs:
             -m 'not openshift and not cuda and not rocm and not manifest_validation' \
             --image="${TEST_IMAGE}" \
             --junitxml=junit.xml -o junit_family=legacy \
+            --log-level=DEBUG \
+            -o "log_file=logs/pytest-logs-${LOG_PREFIX}.txt" -o log_file_level=DEBUG \
             -v
+
+      - name: Upload pytest debug log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: pytest-logs-${{ matrix.name }}
+          path: logs/pytest-logs-${{ matrix.name }}.txt
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Upload test results
         if: ${{ !cancelled() }}
@@ -160,3 +176,67 @@ jobs:
         uses: ./.github/actions/capture-kernel-logs
         with:
           log-prefix: ${{ matrix.name }}
+
+  openshift-container-tests:
+    name: "openshift: ${{ matrix.name }}"
+    needs: find-images
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.find-images.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install deps
+        run: uv sync --locked
+
+      # Rootful podman sharing image storage with cri-o, same as build-notebooks-TEMPLATE.yaml,
+      # so the pod created by the openshift-marked tests can find the image without re-pulling.
+      - name: Install and configure Podman
+        uses: './.github/actions/install-podman-action'
+        with:
+          platform: linux/amd64
+
+      - name: Provision K8s cluster
+        uses: ./.github/actions/provision-k8s
+
+      - name: Login to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0  # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # install-podman-action's storage.conf enables zstd:chunked partial pulls, which
+      # only matters for `podman build`'s own registry pulls elsewhere. Here we `podman
+      # pull` an already-published ghcr.io image, and ghcr.io's blob endpoint returns
+      # "501 Unsupported client range" for partial/ranged fetches, failing the pull
+      # outright instead of falling back to a full one. Disable it for this job only.
+      - name: Disable zstd:chunked partial image pulls
+        run: sudo sed -i 's/enable_partial_images = "true"/enable_partial_images = "false"/' /etc/containers/storage.conf
+
+      - name: Pull and run OpenShift container tests
+        env:
+          TEST_IMAGE: ${{ matrix.image }}
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+        run: |
+          set -Eeuxo pipefail
+          podman pull "${TEST_IMAGE}"
+          uv run pytest --capture=fd tests/containers \
+            -m 'openshift and not cuda and not rocm' \
+            --image="${TEST_IMAGE}" \
+            --junitxml=junit-openshift.xml \
+            -v
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3  # v1.2.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit-openshift.xml

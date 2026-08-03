@@ -39,7 +39,6 @@ class TestFrameConstants:
     READINESS_TIMEOUT = TIMEOUT_5MIN
 
 
-logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 

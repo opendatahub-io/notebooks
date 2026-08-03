@@ -116,6 +116,9 @@ jobs:
             --cov-report=xml:coverage.xml
             --junitxml=junit.xml -o junit_family=legacy
             -o log_file=logs/pytest-logs.txt -o log_file_level=DEBUG
+          # pytest's --color=auto sees a non-tty stdout in CI and disables color;
+          # FORCE_COLOR forces it back on for the (colorable) GitHub Actions log viewer.
+          FORCE_COLOR: "1"
           # PR: compare to the PR base (fork PRs vs upstream main, not the fork default branch).
           # Push: compare to the previous tip of this branch (not origin/main on stable/rhoai-*).
           NOTEBOOKS_DOWNGRADE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}

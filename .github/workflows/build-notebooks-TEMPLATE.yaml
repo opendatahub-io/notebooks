@@ -489,10 +489,13 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           OUTPUT_IMAGE: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
           JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_testcontainers-junit.xml"
+          # pytest's --color=auto sees a non-tty stdout in CI and disables color;
+          # FORCE_COLOR forces it back on for the (colorable) GitHub Actions log viewer.
+          FORCE_COLOR: "1"
         run: |
           set -Eeuxo pipefail
           mkdir -p "$(dirname "${JUNIT_XML}")"
-          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}" -o junit_family=legacy
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}" -o junit_family=legacy --log-level=DEBUG
 
       - name: Upload Testcontainers pytest JUnit XML
         if: ${{ always() && steps.pytest-testcontainers.conclusion != 'skipped' }}
@@ -563,10 +566,13 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           OUTPUT_IMAGE: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
           JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_openshift-junit.xml"
+          # pytest's --color=auto sees a non-tty stdout in CI and disables color;
+          # FORCE_COLOR forces it back on for the (colorable) GitHub Actions log viewer.
+          FORCE_COLOR: "1"
         run: |
           set -Eeuxo pipefail
           mkdir -p "$(dirname "${JUNIT_XML}")"
-          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}" -o junit_family=legacy
+          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}" -o junit_family=legacy --log-level=DEBUG
 
       - name: Upload OpenShift pytest JUnit XML
         if: ${{ always() && steps.pytest-openshift.conclusion != 'skipped' }}
@@ -654,7 +660,7 @@ jobs:
             scan local --path "${IMAGE_MOUNT_DIR}" -c /config.toml
           sudo "${PODMAN}" image unmount --all
         env:
-          CHECK_PAYLOAD_IMAGE: ghcr.io/${{ github.repository }}/check-payload:0.3.16
+          CHECK_PAYLOAD_IMAGE: ghcr.io/${{ github.repository }}/check-payload:0.3.17
 
       # endregion
 

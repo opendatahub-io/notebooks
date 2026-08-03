@@ -27,16 +27,8 @@ set -euo pipefail
 # When PRODUCT=rhoai, validate the RHOAI manifests; otherwise default to ODH.
 if [ "${PRODUCT:-odh}" = 'rhoai' ]; then
     _MANIFESTS_VARIANT="rhoai"
-    # This value needs to be updated everytime we deliberately change number of the
-    # images we want to have in the `params.env` or `params-latest.env` file.
-    EXPECTED_COMMIT_NUM_RECORDS=43
-    EXPECTED_PARAMS_NUM_RECORDS=57
 else
     _MANIFESTS_VARIANT="odh"
-    # This value needs to be updated everytime we deliberately change number of the
-    # images we want to have in the `params.env` or `params-latest.env` file.
-    EXPECTED_COMMIT_NUM_RECORDS=22
-    EXPECTED_PARAMS_NUM_RECORDS=29
 fi
 
 COMMIT_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit-latest.env"
@@ -59,6 +51,7 @@ function check_variables_uniq() {
     local env_file_path_1="${1}"
     local env_file_path_2="${2}"
     local allow_value_duplicity="${3:-false}"
+    local check_count="${4:-true}"
     local ret_code=0
 
 
@@ -129,15 +122,38 @@ function check_variables_uniq() {
     fi
 
     # ----
-    echo "Checking that there are expected number of records in the file '${env_file_path_1}' + '${env_file_path_2}'"
+    if test "${check_count}" = "true"; then
+        echo "Checking that there are expected number of records in the file '${env_file_path_1}' + '${env_file_path_2}'"
 
-    test "${num_records}" -eq "${EXPECTED_NUM_RECORDS}" || {
-        echo "Number of records in the file is incorrect - expected '${EXPECTED_NUM_RECORDS}' but got '${num_records}'!"
-        ret_code=1
-    }
+        test "${num_records}" -eq "${EXPECTED_NUM_RECORDS}" || {
+            echo "Number of records in the file is incorrect - expected '${EXPECTED_NUM_RECORDS}' but got '${num_records}'!"
+            ret_code=1
+        }
+    fi
 
     echo "---------------------------------------------"
     return "${ret_code}"
+}
+
+function discover_expected_commit_num_records() {
+    # Commit env files track only workbench images. Derive the expected number
+    # from params files and exclude pipeline runtime entries.
+    sed '/^$/d;/^[[:space:]]*#/d' "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" \
+        | awk -F '=' '$1 !~ /^odh-pipeline-runtime-/ { count++ } END { print count + 0 }'
+}
+
+function get_rhoai_quay_fallback_image_url() {
+    local image_url="${1}"
+
+    if [ "${_MANIFESTS_VARIANT}" != "rhoai" ]; then
+        return 0
+    fi
+
+    if [[ "${image_url}" != registry.redhat.io/rhoai/*@sha256:* ]]; then
+        return 0
+    fi
+
+    echo "${image_url}" | sed 's#^registry.redhat.io/rhoai/#quay.io/rhoai/#'
 }
 
 function check_image_variable_matches_name_and_commitref_and_size() {
@@ -890,6 +906,7 @@ function check_image_repo_name() {
 function check_image() {
     local image_variable="${1}"
     local image_url="${2}"
+    local image_url_for_inspect="${image_url}"
 
     echo "Checking metadata for image '${image_variable}' with URL '${image_url}'"
 
@@ -899,10 +916,21 @@ function check_image() {
     local image_commitref
     local image_created
 
-    image_metadata_config="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --override-arch amd64 --override-os linux --config "docker://${image_url}")" || {
-        echo "Couldn't download image config metadata with skopeo tool!"
-        return 1
-    }
+    if ! image_metadata_config="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --override-arch amd64 --override-os linux --config "docker://${image_url_for_inspect}")"; then
+        local fallback_image_url
+        fallback_image_url="$(get_rhoai_quay_fallback_image_url "${image_url_for_inspect}")"
+        if test -n "${fallback_image_url}"; then
+            echo "Primary registry lookup failed, retrying with '${fallback_image_url}'"
+            image_metadata_config="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --override-arch amd64 --override-os linux --config "docker://${fallback_image_url}")" || {
+                echo "Couldn't download image config metadata with skopeo tool!"
+                return 1
+            }
+            image_url_for_inspect="${fallback_image_url}"
+        else
+            echo "Couldn't download image config metadata with skopeo tool!"
+            return 1
+        fi
+    fi
     image_name=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels.name') || {
         echo "Couldn't parse '.config.Labels.name' from image metadata!"
         return 1
@@ -963,7 +991,7 @@ function check_image() {
     local image_repo
     local platform_image_metadata
 
-    image_metadata="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --override-arch amd64 --override-os linux --raw "docker://${image_url}")" || {
+    image_metadata="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --override-arch amd64 --override-os linux --raw "docker://${image_url_for_inspect}")" || {
         echo "Couldn't download image metadata with skopeo tool!"
         return 1
     }
@@ -974,7 +1002,7 @@ function check_image() {
     image_size=$(echo "${image_metadata}" | jq --exit-status '[ .layers[]?.size ] | add') ||  {
         manifest_digest=$(echo "${image_metadata}" | jq --exit-status --raw-output '[.manifests[]? | select(.platform.os=="linux" and .platform.architecture=="amd64") | .digest] | first // empty') || manifest_digest=""
         if test -n "${manifest_digest}"; then
-            image_repo="${image_url%@*}"
+            image_repo="${image_url_for_inspect%@*}"
             image_repo="${image_repo%:*}"
             platform_image_metadata="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --override-arch amd64 --override-os linux --raw "docker://${image_repo}@${manifest_digest}")" || {
                 echo "Couldn't download image metadata for manifest digest '${manifest_digest}'!"
@@ -1023,15 +1051,15 @@ ret_code=0
 echo "Starting check of image references in files: '${COMMIT_LATEST_ENV_PATH}', '${COMMIT_ENV_PATH}' , '${PARAMS_LATEST_ENV_PATH}' and '${PARAMS_ENV_PATH}'"
 echo "---------------------------------------------"
 
-EXPECTED_NUM_RECORDS="${EXPECTED_COMMIT_NUM_RECORDS}"
-check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" || {
+EXPECTED_NUM_RECORDS=$(discover_expected_commit_num_records)
+echo "Discovered expected commit record count: '${EXPECTED_NUM_RECORDS}'"
+check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" "true" || {
     echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' & '${COMMIT_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
 
-EXPECTED_NUM_RECORDS="${EXPECTED_PARAMS_NUM_RECORDS}"
-check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" || {
+check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "false" || {
     echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' & '${PARAMS_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1

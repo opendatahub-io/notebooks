@@ -4,7 +4,7 @@ import webpack from 'webpack';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import CleanupWebpackPlugin from './cleanup-webpack-plugin.ts';
+import CleanupWebpackPlugin from './cleanup-webpack-plugin.mts';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import {PurgeCSSPlugin} from 'purgecss-webpack-plugin';
 
