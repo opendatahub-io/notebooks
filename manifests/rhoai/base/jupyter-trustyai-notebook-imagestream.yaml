@@ -55,6 +55,50 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "3.6"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"},
+            {"name": "TrustyAI", "version": "0.6"},
+            {"name": "Transformers", "version": "5.14"},
+            {"name": "Datasets", "version": "5.0"},
+            {"name": "Accelerate", "version": "1.14"},
+            {"name": "Torch", "version": "2.11"},
+            {"name": "Boto3", "version": "1.43"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Kfp", "version": "2.17"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "2.5"},
+            {"name": "Pandas", "version": "3.0"},
+            {"name": "Scikit-learn", "version": "1.9"},
+            {"name": "Scipy", "version": "1.18"},
+            {"name": "Odh-Elyra", "version": "5.0"},
+            {"name": "PyMongo", "version": "4.17"},
+            {"name": "Pyodbc", "version": "5.3"},
+            {"name": "Codeflare-SDK", "version": "0.38"},
+            {"name": "Sklearn-onnx", "version": "1.20"},
+            {"name": "Psycopg", "version": "3.3"},
+            {"name": "MySQL Connector/Python", "version": "9.7"},
+            {"name": "Kubeflow-Training", "version": "1.9"},
+            {"name": "MLflow", "version": "3.14"},
+            {"name": "Feast", "version": "0.64"}
+          ]
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-3-5_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-3-5_PLACEHOLDER
       name: "3.5"
       referencePolicy:
         type: Source
@@ -91,8 +135,8 @@ spec:
             {"name": "MLflow", "version": "3.10"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9
-        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-3-4_PLACEHOLDER
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-3-4_PLACEHOLDER
@@ -132,8 +176,8 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9
-        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-2025-2_PLACEHOLDER
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-2025-2_PLACEHOLDER
@@ -174,7 +218,7 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py311-rhel9
-        opendatahub.io/image-tag-outdated: "true"
+        opendatahub.io/image-tag-outdated: 'true'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-trustyai-cpu-py311-ubi9-commit-2025-1_PLACEHOLDER
       from:
         kind: DockerImage
