@@ -3,25 +3,6 @@
 #########################
 ARG BASE_IMAGE
 
-############################
-# Stage 1: PDF Tool Build #
-############################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS pdf-builder
-
-WORKDIR /opt/app-root/bin
-
-# OS Packages needs to be installed as root
-# hadolint ignore=DL3002
-USER 0
-
-# Copy scripts
-COPY jupyter/utils/install_texlive.sh ./install_texlive.sh
-COPY jupyter/utils/install_pandoc.sh ./install_pandoc.sh
-RUN chmod +x install_texlive.sh install_pandoc.sh
-
-RUN ./install_texlive.sh
-RUN ./install_pandoc.sh
-
 # External image alias for UBI repository configuration
 FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 
