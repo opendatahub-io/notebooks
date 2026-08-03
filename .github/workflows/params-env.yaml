@@ -40,8 +40,11 @@ jobs:
           cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
 
       - name: Configure Quay.io pull auth for RHOAI namespace
-        if: env.RHOAI_QUAY_BOT_USERNAME != ''
         run: |
+          if [ -z "${RHOAI_QUAY_BOT_USERNAME}" ] || [ -z "${RHOAI_QUAY_BOT_PASSWORD}" ]; then
+            echo "::error title=Missing RHOAI Quay bot secrets::RHOAI_QUAY_BOT_USERNAME and RHOAI_QUAY_BOT_PASSWORD are required for params-env validation. Fork PRs are inherently less secure (GitHub withholds repository secrets) and are unsupported — push a same-repo branch instead. See CONTRIBUTING.md#contributing-from-branches-vs-forks."
+            exit 1
+          fi
           printf '%s' "${RHOAI_QUAY_BOT_PASSWORD}" | skopeo login --username "${RHOAI_QUAY_BOT_USERNAME}" --password-stdin quay.io
         env:
           RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
