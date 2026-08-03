@@ -463,28 +463,82 @@ class Utils:
             raise ValueError(message)
 
 
+def _portforward_with_timeout(
+    core_v1_api: kubernetes.client.CoreV1Api, pod: kubernetes.client.models.V1Pod, timeout: float
+) -> kubernetes.stream.ws_client.PortForward:
+    """Runs kubernetes.stream.portforward() with a wall-clock bound.
+
+    The kubernetes client doesn't expose a per-call connect timeout for portforward() -- it calls
+    websocket.connect() with no timeout, so a wedged connection to the API server can hang this call
+    forever. The only alternative the library offers is a process-wide `websocket.setdefaulttimeout()`,
+    which isn't safe to use here since multiple SocketProxy instances (one per ImageDeployment) can be
+    making concurrent portforward() calls from different threads. So we run the call in a helper thread
+    and bound it with join(timeout) instead.
+
+    If the call doesn't return in time, it is abandoned rather than joined: the daemon thread and any
+    partially established connection are leaked for the remainder of the test process. That's an
+    accepted tradeoff for test infrastructure that's about to raise TimeoutError and fail the test
+    (and the process will exit soon after) rather than hang forever with no recovery.
+    """
+    pf_result: list[kubernetes.stream.ws_client.PortForward] = []
+    error_result: list[Exception] = []
+
+    def _target() -> None:
+        try:
+            pf = kubernetes.stream.portforward(
+                api_method=core_v1_api.connect_get_namespaced_pod_portforward,
+                name=pod.metadata.name,
+                namespace=pod.metadata.namespace,
+                ports=",".join(str(p) for p in [8888]),
+            )
+            pf_result.append(pf)
+        except Exception as e:  # propagated to the caller below, not swallowed
+            error_result.append(e)
+
+    thread = threading.Thread(target=_target, daemon=True)
+    thread.start()
+    thread.join(timeout)
+    if error_result:
+        raise error_result[0]
+    if not pf_result:
+        raise TimeoutError(
+            f"kubernetes.stream.portforward() to {pod.metadata.name} did not return within {timeout:.1f}s"
+        )
+    return pf_result[0]
+
+
 @contextlib.contextmanager
 def exposing_contextmanager(
     core_v1_api: kubernetes.client.CoreV1Api,
     pod: kubernetes.client.models.V1Pod,
+    timeout: float = 30,
 ) -> Generator[socket]:
     # If we e.g., specify the wrong port, the pf = portforward() call succeeds,
     # but pf.connected will later flip to False
     # we need to check that _everything_ works before moving on
+    #
+    # https://github.com/red-hat-data-services/notebooks/issues/2684: bound this retry loop (and each
+    # individual portforward() attempt via _portforward_with_timeout, since a single hung call would
+    # otherwise never let this loop's own deadline check run again) so a pod that never becomes
+    # reachable can't block the single-threaded SocketProxy forever and starve every later
+    # Wait.until retry.
+    deadline = time.monotonic() + timeout
     pf: kubernetes.stream.ws_client.PortForward | None = None
     s = None
     while not pf or not pf.connected or not s:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            if s is not None:
+                s.close()
+            if pf is not None:
+                pf.close()
+            raise TimeoutError(f"Failed to establish a working portforward to {pod.metadata.name} within {timeout}s")
         if s is not None:
             s.close()
             s = None
         if pf is not None:
             pf.close()
-        pf = kubernetes.stream.portforward(
-            api_method=core_v1_api.connect_get_namespaced_pod_portforward,
-            name=pod.metadata.name,
-            namespace=pod.metadata.namespace,
-            ports=",".join(str(p) for p in [8888]),
-        )
+        pf = _portforward_with_timeout(core_v1_api, pod, remaining)
         s = pf.socket(8888)
     assert s, "Failed to establish connection"
 
