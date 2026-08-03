@@ -120,6 +120,13 @@ def _strip_tag_if_digest(image_ref: str) -> str:
     return image_ref
 
 
+def _rhoai_quay_fallback_ref(image_ref: str) -> str:
+    """Map registry.redhat.io/rhoai refs to quay.io/rhoai for pre-release digests."""
+    if image_ref.startswith("registry.redhat.io/rhoai/"):
+        return image_ref.replace("registry.redhat.io/rhoai/", "quay.io/rhoai/", 1)
+    return image_ref
+
+
 def _resolve_amd64(image_ref: str) -> str:
     """Resolve a multi-arch manifest list to the amd64 image digest.
 
@@ -127,13 +134,27 @@ def _resolve_amd64(image_ref: str) -> str:
     Requires ``skopeo`` on PATH.
     """
     image_ref = _strip_tag_if_digest(image_ref)
-    raw = subprocess.run(
-        ["skopeo", "inspect", "--raw", f"docker://{image_ref}"],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=30,
-    )
+    try:
+        raw = subprocess.run(
+            ["skopeo", "inspect", "--raw", f"docker://{image_ref}"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+    except subprocess.CalledProcessError:
+        fallback_ref = _rhoai_quay_fallback_ref(image_ref)
+        if fallback_ref == image_ref:
+            raise
+        _LOG.info(f"Primary registry lookup failed, retrying with '{fallback_ref}'")
+        raw = subprocess.run(
+            ["skopeo", "inspect", "--raw", f"docker://{fallback_ref}"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        image_ref = fallback_ref
     manifest = json.loads(raw.stdout)
     if "manifests" in manifest:
         amd64 = next(
