@@ -68,11 +68,19 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build/vite
       type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build/rspack
+      type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-extras
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-pr-pinger
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/configuration-editing
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/copilot
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/copilot/chat-lib
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/css-language-features
       type: npm
@@ -116,7 +124,7 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/merge-conflict
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/mermaid-chat-features
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/mermaid-markdown-features
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/notebook-renderers
       type: npm
@@ -167,22 +175,22 @@ spec:
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
       type: npm
     # patches/ overlay (codeserver/ubi9-python-3.12/prefetch-input/patches/) — Cachi2 prefetches registry-only lockfiles; keep in sync with patches that have package.json
-    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/lib/vscode
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/remote
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/lib/vscode/remote
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/extensions
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/lib/vscode/extensions
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/extensions/emmet
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/lib/vscode/extensions/emmet
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/build/vite
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/lib/vscode/build/vite
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/test
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/test
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/lib/vscode/extensions/microsoft-authentication
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/lib/vscode/extensions/microsoft-authentication
       type: npm
     # Registry-only npm deps (ProdSec); @parcel/watcher, @emmetio/css-parser, @playwright/browser-chromium in custom-packages/package.json
-    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.112.0/custom-packages
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/custom-packages
       type: npm
 
   taskRunSpecs:

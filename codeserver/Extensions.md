@@ -42,14 +42,14 @@ When adding or updating extensions, place the downloaded `.vsix` artifacts under
 
 ### Current versions
 
-For `codeserver/ubi9-python-3.12` (code-server v4.112.0 / VS Code 1.112.0), the image expects these user-facing `.vsix` files in `utils/`:
+For `codeserver/ubi9-python-3.12` (code-server v4.122.1 / VS Code 1.122.1), the image expects these user-facing `.vsix` files in `utils/`:
 
 - **ms-python.python** 2026.4.0: <https://open-vsx.org/api/ms-python/python/2026.4.0/file/ms-python.python-2026.4.0.vsix>
 - **ms-toolsai.jupyter** 2025.9.1 (latest on Open VSX): <https://open-vsx.org/api/ms-toolsai/jupyter/2025.9.1/file/ms-toolsai.jupyter-2025.9.1.vsix>
 
 The same `utils/` directory also holds built-in VS Code extensions used during the hermetic code-server build. Those are not installed via `Dockerfile.konflux.cpu`; they are consumed by `prefetch-input/patches/setup-offline-binaries.sh`:
 
-- **ms-vscode.js-debug** 1.112.0 (matches VS Code 1.112 built-in)
+- **ms-vscode.js-debug** 1.117.0 (matches product.json builtInExtensions)
 - **ms-vscode.js-debug-companion** 1.1.3
 - **ms-vscode.vscode-js-profile-table** 1.0.10
 
