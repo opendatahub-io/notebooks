@@ -122,6 +122,8 @@
         // Workbenches and runtimes only — excludes base-images/
         "/(jupyter|codeserver|runtimes)/.+/build-args/konflux\\..+\\.conf$/",
       ],
+      // Requires repo:tag (not digest-only repo@sha256); registry hosts with
+      // embedded ports (host:5000/…) are out of scope for quay.io / registry.redhat.io.
       "matchStrings": [
         "BASE_IMAGE=(?<depName>[^:@\\s]+(?:/[^:@\\s]+)+):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?",
       ],
