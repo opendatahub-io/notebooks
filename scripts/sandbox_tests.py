@@ -1,13 +1,17 @@
 #! /usr/bin/env python3
+from __future__ import annotations
 
 import pathlib
 import tempfile
+from typing import TYPE_CHECKING
 
-import pyfakefs.fake_filesystem
 import pytest
-
 from ci.logging_config import configure_logging
+
 from scripts.sandbox import _copy_tree, _ignored_dir_names, _load_dockerignore, setup_sandbox
+
+if TYPE_CHECKING:
+    import pyfakefs.fake_filesystem
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
@@ -67,9 +71,7 @@ class TestLoadDockerignore:
         assert _load_dockerignore(repo_root) == []
 
     def test_skips_comments_and_blank_lines(self, repo_root: pathlib.Path):
-        (repo_root / ".dockerignore").write_text(
-            "# this is a comment\n\n**/node_modules/\n  \n.pnpm-store/\n"
-        )
+        (repo_root / ".dockerignore").write_text("# this is a comment\n\n**/node_modules/\n  \n.pnpm-store/\n")
         result = _load_dockerignore(repo_root)
         assert result == ["**/node_modules/", ".pnpm-store/"]
 
@@ -112,10 +114,21 @@ class TestIgnoredDirNames:
     def test_real_dockerignore(self):
         root_only, any_depth = _ignored_dir_names(ROOT_DIR)
         assert root_only == {
-            "bin", "ci", "tests", ".idea", "env", "venv", ".venv", "docs", "examples",
+            "bin",
+            "ci",
+            "tests",
+            ".idea",
+            "env",
+            "venv",
+            ".venv",
+            "docs",
+            "examples",
         }
         assert any_depth == {
-            "node_modules", ".mypy_cache", ".pytest_cache", "__pycache__",
+            "node_modules",
+            ".mypy_cache",
+            ".pytest_cache",
+            "__pycache__",
         }
 
 

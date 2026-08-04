@@ -128,6 +128,8 @@ class IndexMode(StrEnum):
     auto = "auto"
     rh_index = "rh-index"
     public_index = "public-index"
+
+
 # endregion
 
 
@@ -180,6 +182,8 @@ class LogBuffer:
             sys.stdout.write("\n".join(self._lines) + "\n")
             sys.stdout.flush()
             self._lines.clear()
+
+
 # endregion
 
 
@@ -247,7 +251,7 @@ def _list_changed_files(from_ref: str, to_ref: str = "HEAD") -> list[str]:
     cached_builds = ROOT_DIR / "ci" / "cached-builds"
     if str(cached_builds) not in sys.path:
         sys.path.insert(0, str(cached_builds))
-    import gha_pr_changed_files
+    import gha_pr_changed_files  # ruff: ignore[import-outside-top-level]
 
     return gha_pr_changed_files.list_changed_files(from_ref, to_ref)
 
@@ -402,6 +406,8 @@ def resolve_exclude_newer(
         return live_timestamp
     parsed = parse_exclude_newer_from_lockfile(lockfile)
     return parsed if parsed is not None else live_timestamp
+
+
 # endregion
 
 
@@ -519,9 +525,7 @@ def run_lock(
     cmd.extend(["--constraints", relative_constraints, "--override", relative_overrides])
 
     lock_path = project_dir / output
-    exclude_newer = resolve_exclude_newer(
-        lock_path, ci_check=ci_check, live_timestamp=live_timestamp
-    )
+    exclude_newer = resolve_exclude_newer(lock_path, ci_check=ci_check, live_timestamp=live_timestamp)
     cmd.append(f"--exclude-newer={exclude_newer}")
 
     cmd.extend(index_flags)
@@ -534,15 +538,9 @@ def run_lock(
     extra_idx = lock_extra_index_flags_from_env()
     if extra_idx:
         cmd.extend(extra_idx)
-        log.print(
-            "  📎 Extra lock indexes from UV_LOCK_EXTRA_INDEX_URL / PIP_LOCK_EXTRA_INDEX_URL"
-        )
+        log.print("  📎 Extra lock indexes from UV_LOCK_EXTRA_INDEX_URL / PIP_LOCK_EXTRA_INDEX_URL")
 
-    compile_env = {
-        k: v
-        for k, v in os.environ.items()
-        if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")
-    }
+    compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
 
     try:
         result = subprocess.run(
@@ -585,9 +583,7 @@ def generate_requirements_txt(
 
     cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
     if resolved is None:
-        log.warning(
-            f"Falling back to --default-index recorded in {pylock_path} for requirements generation."
-        )
+        log.warning(f"Falling back to --default-index recorded in {pylock_path} for requirements generation.")
     else:
         cmd.append(resolved.index_url)
 
@@ -691,6 +687,8 @@ def process_directory(
                 dir_success = False
 
     return tdir, dir_success, log
+
+
 # endregion
 
 
@@ -702,11 +700,13 @@ def main(
     index_mode: Annotated[
         IndexMode, typer.Argument(help="Index mode: auto, rh-index, or public-index")
     ] = IndexMode.auto,
-    target_dir: Annotated[
-        Path | None, typer.Argument(help="Specific project directory to process")
-    ] = None,
+    target_dir: Annotated[Path | None, typer.Argument(help="Specific project directory to process")] = None,
     requirements_only: Annotated[
-        bool, typer.Option("--requirements-only", help="Only regenerate requirements.txt from existing pylock files, skip lock generation")
+        bool,
+        typer.Option(
+            "--requirements-only",
+            help="Only regenerate requirements.txt from existing pylock files, skip lock generation",
+        ),
     ] = False,
     pr_base: Annotated[
         str | None,
@@ -803,7 +803,9 @@ def main(
         log.warning("Failed lock generation for:")
         for d in sorted(failed_dirs):
             log.print(f"  • {d}")
-            log.print("Please comment out the missing package to continue and report the missing package to the RH index maintainers")
+            log.print(
+                "Please comment out the missing package to continue and report the missing package to the RH index maintainers"
+            )
         raise SystemExit(1)
 
 

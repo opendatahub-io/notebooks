@@ -267,7 +267,7 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 # S604: call-with-shell-equals-true
 "tests/**/*.py" = ["S101", "S602", "S603", "S604"]
 "ci/**/*.py" = ["S101", "S602", "S603", "S604"]
-"scripts/**/*.py" = ["S602", "S603", "S604"]
+  "scripts/**/*.py" = ["S101", "S602", "S603", "S604"]
 # Test assertion helpers use assert by design
 "ntb/**/*.py" = ["S101"]
 # Copr client wraps CLI commands via subprocess with controlled arguments
