@@ -777,6 +777,17 @@ def _image_ref_to_quay(image_ref: str) -> tuple[str, str]:
     return repo, digest
 
 
+# Clair statuses where package extraction is unavailable (skip, do not fail).
+_CLAIR_SKIP_STATUSES = frozenset(
+    {
+        "queued",
+        "scanning",
+        "manifest_layer_too_large",
+        "unsupported",
+    }
+)
+
+
 class _ClairScanNotReadyError(RuntimeError):
     pass
 
@@ -817,9 +828,9 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     features = ((data.get("data") or {}).get("Layer") or {}).get("Features", [])
     if not features:
         status = data.get("status")
-        if status in {"queued", "scanning"}:
-            raise _ClairScanNotReadyError(f"Clair scan not ready for {image_ref} (status={status})")
-        raise RuntimeError(f"No features in Clair response for {image_ref}")
+        if status in _CLAIR_SKIP_STATUSES:
+            raise _ClairScanNotReadyError(f"Clair scan unavailable for {image_ref} (status={status})")
+        raise RuntimeError(f"No features in Clair response for {image_ref} (status={status})")
 
     # Collect all entries keyed by both rpm: and normalized-pip forms,
     # tracking layer index for disambiguation.
@@ -888,7 +899,7 @@ def test_old_tag_annotations_match_quay(
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
             skipped_scans.append(f"{t.is_name} tag {t.tag_name}")
-            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
+            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan unavailable"):
                 pytest.skip(str(exc))
             continue
         except (
@@ -912,6 +923,6 @@ def test_old_tag_annotations_match_quay(
         summary = ", ".join(skipped_scans)
         if len(skipped_scans) == len(all_tags):
             with subtests.test(msg="Clair scan skip summary"):
-                pytest.fail(f"All {len(all_tags)} tags were skipped because Clair scans were not ready: {summary}")
+                pytest.fail(f"All {len(all_tags)} tags were skipped because Clair scans were unavailable: {summary}")
         else:
-            _LOG.warning(f"{len(skipped_scans)}/{len(all_tags)} tags skipped (Clair scans not ready): {summary}")
+            _LOG.warning(f"{len(skipped_scans)}/{len(all_tags)} tags skipped (Clair scans unavailable): {summary}")
