@@ -40,6 +40,7 @@ import urllib.parse
 from dataclasses import dataclass, field
 from typing import Any
 
+from scripts.cve import extract_cve_id
 from scripts.cve.jira_auth import JiraAuthError
 from scripts.cve.jira_client import JIRA_DEFAULT_URL, JiraClient
 
@@ -100,12 +101,6 @@ class CVEInfo:
     @property
     def issue_count(self) -> int:
         return len(self.issues)
-
-
-def extract_cve_id(text: str) -> str | None:
-    """Extract CVE ID from text."""
-    match = re.search(r"CVE-\d{4}-\d+", text)
-    return match.group() if match else None
 
 
 def extract_version(summary: str) -> str | None:

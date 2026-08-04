@@ -29,11 +29,11 @@ Requires:
 """
 
 import argparse
-import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, date
 
+from scripts.cve import extract_cve_id
 from scripts.cve.jira_auth import JiraAuthError
 from scripts.cve.jira_client import JiraClient
 
@@ -67,12 +67,6 @@ class TrackerInfo:
         """True if tracker has no due date but linked issues do."""
         return self.due_date is None and self.earliest_child_due_date is not None
 
-
-
-def extract_cve_id(text: str) -> str | None:
-    """Extract CVE ID from text."""
-    match = re.search(r'CVE-\d{4}-\d+', text)
-    return match.group() if match else None
 
 
 def parse_date(date_str: str | None) -> date | None:

@@ -34,6 +34,28 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-minimal-rocm-py312-ubi9-n_PLACEHOLDER
+      name: "3.6"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "ROCm", "version": "7.14"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.6"}
+          ]
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-rocm-py312-ubi9-commit-3-5_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-minimal-rocm-py312-ubi9-3-5_PLACEHOLDER
       name: "3.5"
       referencePolicy:
         type: Source
@@ -49,8 +71,8 @@ spec:
             {"name": "JupyterLab", "version": "4.5"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9
-        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-rocm-py312-ubi9-commit-3-4_PLACEHOLDER
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-minimal-rocm-py312-ubi9-3-4_PLACEHOLDER
@@ -70,8 +92,8 @@ spec:
             {"name": "JupyterLab", "version": "4.4"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9
-        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-rocm-py312-ubi9-commit-2025-2_PLACEHOLDER
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-minimal-rocm-py312-ubi9-2025-2_PLACEHOLDER
@@ -92,7 +114,7 @@ spec:
             {"name": "JupyterLab", "version": "4.4"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-rocm-py311-rhel9
-        opendatahub.io/image-tag-outdated: "true"
+        opendatahub.io/image-tag-outdated: 'true'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-rocm-py311-ubi9-commit-2025-1_PLACEHOLDER
       from:
         kind: DockerImage
