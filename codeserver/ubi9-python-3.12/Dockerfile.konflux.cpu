@@ -169,7 +169,7 @@ set -Eeuxo pipefail
 dnf install -y tar perl mesa-libGL skopeo
 dnf clean all
 rm -rf /var/cache/dnf
-# Install the oc client (same approach as pre-hermetic Dockerfile.cpu)
+# Install the oc client
 curl -fsSL "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz" \
     -o /tmp/openshift-client-linux.tar.gz
 tar -xzf /tmp/openshift-client-linux.tar.gz -C /usr/local/bin oc

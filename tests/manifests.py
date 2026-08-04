@@ -115,10 +115,10 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
     elif "cuda" in notebook_identity_parts:
         accelerator_flavor = "cuda"
     # The shell script has an implicit rule for pytorch being cuda. We can
-    # replicate this by checking for a specific Dockerfile.
-    elif (directory / "Dockerfile.cuda").exists():
+    # replicate this by checking for a Konflux Dockerfile variant.
+    elif (directory / "Dockerfile.konflux.cuda").exists():
         accelerator_flavor = "cuda"
-    elif (directory / "Dockerfile.rocm").exists():
+    elif (directory / "Dockerfile.konflux.rocm").exists():
         accelerator_flavor = "rocm"
 
     return NotebookMetadata(

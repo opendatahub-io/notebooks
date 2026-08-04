@@ -217,28 +217,29 @@ class SelfTests(unittest.TestCase):
     def test_select_changed_targets_dockerfile(self):
         targets = extract_image_targets(makefile_dir=project_dir)
 
-        changed_files = ["jupyter/datascience/ubi9-python-3.11/Dockerfile.cpu"]
+        changed_files = ["jupyter/datascience/ubi9-python-3.12/Dockerfile.konflux.cpu"]
 
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
-        assert set(targets) == {"jupyter-datascience-ubi9-python-3.11"}
+        assert set(targets) == {"jupyter-datascience-ubi9-python-3.12"}
 
     def test_select_changed_targets_shared_file(self):
         targets = extract_image_targets(makefile_dir=project_dir)
 
-        changed_files = ["cuda/ubi9-python-3.11/NGC-DL-CONTAINER-LICENSE"]
+        changed_files = ["jupyter/utils/install_pdf_deps.sh"]
 
-        # With the removal of chained builds - which now potentially has multiple Dockerfiles defined in a given
-        # directory, there is an inefficiency introduced to 'gha_pr_changed_files' as demonstrated by this unit test.
-        # Even though this test only changes a (shared) CUDA file - you will notice the 'cpu' and 'rocm' targets
-        # also being returned.  Odds of this inefficiency noticably "hurting us" is low - so of the opinion we can
-        # simply treat this as technical debt.
+        # With multiple Dockerfile.konflux.* files per directory, should_build_target scans
+        # every Konflux Dockerfile in a build directory for buildinputs dependencies. A shared
+        # jupyter/utils change therefore fans out to CPU, CUDA, and ROCm targets (not just CUDA).
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
         assert set(targets) == {
-            "jupyter-minimal-ubi9-python-3.11",
-            "cuda-jupyter-minimal-ubi9-python-3.11",
-            "cuda-jupyter-pytorch-ubi9-python-3.11",
-            "runtime-cuda-pytorch-ubi9-python-3.11",
-            "cuda-jupyter-tensorflow-ubi9-python-3.11",
-            "rocm-jupyter-minimal-ubi9-python-3.11",
-            "runtime-cuda-tensorflow-ubi9-python-3.11",
+            "jupyter-minimal-ubi9-python-3.12",
+            "jupyter-datascience-ubi9-python-3.12",
+            "jupyter-trustyai-ubi9-python-3.12",
+            "cuda-jupyter-minimal-ubi9-python-3.12",
+            "cuda-jupyter-pytorch-ubi9-python-3.12",
+            "cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12",
+            "cuda-jupyter-tensorflow-ubi9-python-3.12",
+            "rocm-jupyter-minimal-ubi9-python-3.12",
+            "rocm-jupyter-pytorch-ubi9-python-3.12",
+            "rocm-jupyter-tensorflow-ubi9-python-3.12",
         }
