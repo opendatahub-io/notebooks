@@ -199,8 +199,9 @@ USER 0
 
 WORKDIR /opt/app-root/bin
 
-# [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
-RUN dnf module enable nodejs:22 -y
+# [HERMETIC] Enable module streams declared in rpms.in.yaml (see rpm-base comment).
+# nodejs:22 — nodejs-devel / runtime libnode; nginx:1.26 — patched nginx RPMs (RHAIENG-6699+).
+RUN dnf module enable nodejs:22 nginx:1.26 -y
 
 # [HERMETIC] Install useful OS packages from prefetched RPMs.
 # nodejs: provides libnode.so needed at runtime by code-server's bundled node binary.
@@ -243,8 +244,8 @@ EOF
 # Install NGINX to proxy code-server and pass probes check
 ENV APP_ROOT=/opt/app-root
 
-ENV NGINX_VERSION=1.24 \
-    NGINX_SHORT_VER=124 \
+ENV NGINX_VERSION=1.26 \
+    NGINX_SHORT_VER=126 \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
     NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
     NGINX_LOG_PATH=/var/log/nginx

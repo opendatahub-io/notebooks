@@ -119,6 +119,7 @@ if podman image exists localhost/notebook-rpm-lockfile:latest 2>/dev/null; then
   echo "--- Reusing existing Lockfile Generator Image ---"
 else
   echo "--- Building Lockfile Generator Image ---"
+  # CACHE_ARGS may be empty; with set -u, bare "${CACHE_ARGS[@]}" errors.
   podman build \
       -f "$SCRIPTS_PATH/Dockerfile.rpm-lockfile" \
       --platform=linux/x86_64 \
@@ -126,7 +127,7 @@ else
       --build-arg BASE_IMAGE="$BASE_IMAGE" \
       --build-arg ACTIVATION_KEY="$ACTIVATION_KEY" \
       --build-arg ORG="$ORG" \
-      "${CACHE_ARGS[@]}" \
+      ${CACHE_ARGS[@]+"${CACHE_ARGS[@]}"} \
       -t notebook-rpm-lockfile "$SCRIPTS_PATH"
 fi
 
