@@ -9,6 +9,10 @@ set -Eeuo pipefail
 # (4 mangler workers + cpus/2 transpiler workers + 16GB Node heap), total
 # memory exceeds what the runner provides.
 #
+# VS Code 1.122+ core-ci also runs three minify esbuild bundles in parallel
+# (desktop + server + server-web). Peak RSS ~11Gi; AIPCC/RHEL builds still
+# OOM the hosted runner even with swap kept on. Serialize those bundles here.
+#
 # Called by apply-patch.sh when GHA_BUILD=true. Expects CWD to be the
 # code-server source root (CODESERVER_SOURCE_PREFETCH).
 #
@@ -36,5 +40,29 @@ sed -i "s/minWorkers: 'max'/minWorkers: 2/" \
 # VS Code 1.112+: transpiler sources are TypeScript (transpiler.ts).
 sed -i 's/Math\.floor(cpus()\.length \* \.5)/Math.min(2, Math.floor(cpus().length * .5))/' \
     lib/vscode/build/lib/tsb/transpiler.ts
+
+# VS Code 1.122+: serialize core-ci minify bundles (desktop / server / server-web).
+python3 - <<'PY'
+from pathlib import Path
+path = Path("lib/vscode/build/gulpfile.vscode.ts")
+text = path.read_text()
+old = """\ttask.parallel(
+\t\ttask.define('esbuild-vscode-min', () => runEsbuildBundle('out-vscode-min', true, true, 'desktop', `${sourceMappingURLBase}/core`)),
+\t\ttask.define('esbuild-vscode-reh-min', () => runEsbuildBundle('out-vscode-reh-min', true, true, 'server', `${sourceMappingURLBase}/core`)),
+\t\ttask.define('esbuild-vscode-reh-web-min', () => runEsbuildBundle('out-vscode-reh-web-min', true, true, 'server-web', `${sourceMappingURLBase}/core`)),
+\t)"""
+new = """\ttask.series(
+\t\ttask.define('esbuild-vscode-min', () => runEsbuildBundle('out-vscode-min', true, true, 'desktop', `${sourceMappingURLBase}/core`)),
+\t\ttask.define('esbuild-vscode-reh-min', () => runEsbuildBundle('out-vscode-reh-min', true, true, 'server', `${sourceMappingURLBase}/core`)),
+\t\ttask.define('esbuild-vscode-reh-web-min', () => runEsbuildBundle('out-vscode-reh-web-min', true, true, 'server-web', `${sourceMappingURLBase}/core`)),
+\t)"""
+if new in text:
+    print(f"{path}: core-ci minify already serialized")
+elif old not in text:
+    raise SystemExit(f"ERROR: core-ci parallel minify block not found in {path}")
+else:
+    path.write_text(text.replace(old, new, 1))
+    print(f"Patched {path}: serialized core-ci esbuild minify bundles")
+PY
 
 echo "tweak-gha.sh: done"

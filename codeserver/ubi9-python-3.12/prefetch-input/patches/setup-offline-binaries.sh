@@ -27,7 +27,7 @@ set -euo pipefail
 . ./patches/codeserver-offline-env.sh
 
 # Set npm global config so settings persist for subprocesses and lifecycle scripts
-# (e.g. release:standalone) that may not inherit env vars.
+# (e.g. release) that may not inherit env vars.
 npm config set --global offline true
 npm config set --global prefer-offline true
 npm config set --global fetch-retries 0
@@ -35,7 +35,7 @@ npm config set --global audit false
 npm config set --global fund false
 # Skip auto-installing peer dependencies (e.g. tslib@* from @microsoft/applicationinsights-core-js).
 # The remote/.npmrc has legacy-peer-deps=true but that file is NOT copied into
-# release-standalone/lib/vscode/, so npm install there would try to fetch peer deps.
+# release/lib/vscode/, so npm install there would try to fetch peer deps.
 npm config set --global legacy-peer-deps true
 
 # node-gyp: NPM_CONFIG_NODEDIR=/usr (codeserver-offline-env.sh) uses system headers
@@ -45,12 +45,14 @@ npm config set --global legacy-peer-deps true
 # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 (set in codeserver-offline-env.sh) prevents
 # the @playwright/browser-chromium postinstall from attempting any download.
 
-# Setup VSCode ripgrep from RHOAI Python wheel (ripgrep==15.0.0 in pyproject.toml; prefetched by cachi2 into deps/pip).
-# The patched @vscode/ripgrep postinstall.js copies the binary from RIPGREP_BINARY_PATH into its bin/.
+# Ripgrep: install the AIPCC/RHOAI Python wheel (dynamically linked). VS Code 1.122+
+# resolves @vscode/ripgrep-universal from npm (static/musl bins); after npm ci /
+# build:vscode we overwrite those with this binary via replace-aipcc-ripgrep.sh so
+# FIPS check-payload accepts the image (same approach as hermetic 4.112 on main).
 pip install --no-cache-dir --no-index --find-links "${HERMETO_OUTPUT}/deps/pip" ripgrep
 RIPGREP_BINARY_PATH=$(which rg)
 if [[ -z "${RIPGREP_BINARY_PATH}" || ! -x "${RIPGREP_BINARY_PATH}" ]]; then
-  echo "ERROR: ripgrep binary not found after pip install (which rg: $(which rg))"
+  echo "ERROR: AIPCC/RHOAI ripgrep wheel did not provide an executable rg on PATH" >&2
   exit 1
 fi
 export RIPGREP_BINARY_PATH
@@ -81,7 +83,7 @@ VSIX_UTILS="${CODESERVER_SOURCE_CODE}/utils"
 
 # Copy .vsix extension files from utils/ (git-tracked large files)
 for f in "${VSIX_UTILS}/ms-vscode.js-debug-companion.1.1.3.vsix" \
-         "${VSIX_UTILS}/ms-vscode.js-debug.1.112.0.vsix" \
+         "${VSIX_UTILS}/ms-vscode.js-debug.1.117.0.vsix" \
          "${VSIX_UTILS}/ms-vscode.vscode-js-profile-table.1.0.10.vsix"; do
     require_valid_vsix "${f}"
     cp "${f}" "${VSCODE_OFFLINE_CACHE}/"
@@ -128,7 +130,7 @@ populate_vsix() {
 }
 
 populate_vsix "${VSIX_UTILS}/ms-vscode.js-debug-companion.1.1.3.vsix" "ms-vscode.js-debug-companion"
-populate_vsix "${VSIX_UTILS}/ms-vscode.js-debug.1.112.0.vsix" "ms-vscode.js-debug"
+populate_vsix "${VSIX_UTILS}/ms-vscode.js-debug.1.117.0.vsix" "ms-vscode.js-debug"
 populate_vsix "${VSIX_UTILS}/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "ms-vscode.vscode-js-profile-table"
 
 # Rewrite all package-lock.json "resolved" URLs to point to the cachi2 file cache.

@@ -73,56 +73,24 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
     #   npm documentation (see github.com/npm/cli/issues/2606), but patching the tarball
     #   adds defence in depth.
     #
-    # [RIPGREP] Overwrite @vscode/ripgrep postinstall in the cached npm tarball with our
-    # patched version (ripgrep/postinstall.js). When RIPGREP_BINARY_PATH is set (by
-    # setup-offline-binaries.sh from the RHOAI Python wheel), the binary is copied from
-    # there; otherwise the script falls back to downloading the prebuilt v13.0.0-13.
-    RIPGREP_PATCHED="${CODESERVER_SOURCE_PREFETCH}/ripgrep/postinstall.js"
-    RIPGREP_TGZ=$(find /cachi2/output/deps/npm -name "*ripgrep*.tgz" -type f 2>/dev/null | head -1)
-    if [[ -n "${RIPGREP_TGZ}" && -f "${RIPGREP_PATCHED}" ]]; then
-        echo "Patching @vscode/ripgrep: overwrite with ${RIPGREP_PATCHED}"
-        tmpdir=$(mktemp -d)
-        tar xzf "${RIPGREP_TGZ}" -C "$tmpdir"
-        cp "${RIPGREP_PATCHED}" "$tmpdir/package/lib/postinstall.js"
-        tar czf "${RIPGREP_TGZ}" -C "$tmpdir" package
-        rm -rf "$tmpdir"
-        # Strip integrity so npm accepts the modified tarball (lib/vscode, remote, and build all depend on @vscode/ripgrep).
-        for lock in lib/vscode/package-lock.json lib/vscode/remote/package-lock.json lib/vscode/build/package-lock.json; do
-            jq 'del(.packages["node_modules/@vscode/ripgrep"].integrity)' "$lock" > /tmp/lock-ripgrep.json && mv /tmp/lock-ripgrep.json "$lock"
-        done
-    elif [[ -z "${RIPGREP_TGZ}" ]]; then
-        echo "WARNING: @vscode/ripgrep tarball not found in /cachi2/output/deps/npm/"
-    elif [[ ! -f "${RIPGREP_PATCHED}" ]]; then
-        echo "WARNING: ripgrep postinstall not found at ${RIPGREP_PATCHED}"
-    fi
-
-    # [AGENT-BROWSER] Overwrite agent-browser postinstall in the cached npm tarball.
-    # The npm tarball bundles native binaries for linux-x64/arm64 only; ppc64le/s390x
-    # are missing. Upstream postinstall then downloads from GitHub releases (not npm),
-    # which fails in hermetic builds. arm64/amd64 succeed because the bundled binary
-    # is found before any download is attempted.
-    AGENT_BROWSER_PATCHED="${CODESERVER_SOURCE_PREFETCH}/agent-browser/postinstall.js"
-    AGENT_BROWSER_TGZ=$(find /cachi2/output/deps/npm -name "agent-browser-*.tgz" -type f 2>/dev/null | head -1)
-    if [[ -n "${AGENT_BROWSER_TGZ}" && -f "${AGENT_BROWSER_PATCHED}" ]]; then
-        echo "Patching agent-browser: overwrite with ${AGENT_BROWSER_PATCHED}"
-        tmpdir=$(mktemp -d)
-        tar xzf "${AGENT_BROWSER_TGZ}" -C "$tmpdir"
-        cp "${AGENT_BROWSER_PATCHED}" "$tmpdir/package/scripts/postinstall.js"
-        tar czf "${AGENT_BROWSER_TGZ}" -C "$tmpdir" package
-        rm -rf "$tmpdir"
-        jq 'del(.packages["node_modules/agent-browser"].integrity)' \
-            lib/vscode/package-lock.json > /tmp/lock-agent-browser.json \
-            && mv /tmp/lock-agent-browser.json lib/vscode/package-lock.json
-    elif [[ -z "${AGENT_BROWSER_TGZ}" ]]; then
-        echo "WARNING: agent-browser tarball not found in /cachi2/output/deps/npm/"
-    elif [[ ! -f "${AGENT_BROWSER_PATCHED}" ]]; then
-        echo "WARNING: agent-browser postinstall not found at ${AGENT_BROWSER_PATCHED}"
-    fi
+    # [RIPGREP] code-server ≥4.122 uses @vscode/ripgrep-universal (no postinstall
+    # download). Static bins from that tarball fail FIPS check-payload; Dockerfile
+    # replaces them with the AIPCC/RHOAI Python-wheel rg via replace-aipcc-ripgrep.sh
+    # after npm ci / build:vscode / release (same AIPCC source as hermetic 4.112).
+    # [AGENT-BROWSER] Removed upstream; no postinstall override required.
 
     if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
-        # Try to patch the cached tarball (remove postinstall from its package.json)
-        VSCE_TGZ=$(find /cachi2/output/deps/npm -name "*vsce-sign*.tgz" -type f 2>/dev/null | head -1)
-        if [[ -n "${VSCE_TGZ}" ]]; then
+        # Neutralize vsce-sign meta tarballs only (vscode-vsce-sign-2.*.tgz), not
+        # platform optionalDeps (*-linux-x64-*.tgz). 1.122 also vendors vsce-sign
+        # via extensions/copilot (multiple 2.0.x versions).
+        mapfile -t VSCE_TGZS < <(find /cachi2/output/deps/npm -maxdepth 1 -type f \
+            -name 'vscode-vsce-sign-2.*.tgz' 2>/dev/null | sort)
+        if [[ ${#VSCE_TGZS[@]} -eq 0 ]]; then
+            echo "WARNING: vsce-sign tarball not found in /cachi2/output/deps/npm/"
+            echo "  Searched: vscode-vsce-sign-[0-9]*.tgz"
+            find /cachi2/output/deps/npm -name "*vsce*" -type f 2>/dev/null || true
+        fi
+        for VSCE_TGZ in "${VSCE_TGZS[@]}"; do
             echo "Patching vsce-sign: removing postinstall for ${ARCH} (${VSCE_TGZ})"
             tmpdir=$(mktemp -d)
             tar xzf "${VSCE_TGZ}" -C "$tmpdir"
@@ -130,18 +98,19 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
                 > /tmp/pkg-tmp.json && mv /tmp/pkg-tmp.json "$tmpdir/package/package.json"
             tar czf "${VSCE_TGZ}" -C "$tmpdir" package
             rm -rf "$tmpdir"
-        else
-            echo "WARNING: vsce-sign tarball not found in /cachi2/output/deps/npm/"
-            echo "  Searched: find /cachi2/output/deps/npm -name '*vsce-sign*.tgz'"
-            find /cachi2/output/deps/npm -name "*vsce*" -type f 2>/dev/null || true
-        fi
+        done
         # Tell npm not to run vsce-sign's postinstall (hasInstallScript=false) and
-        # strip integrity so npm accepts the modified tarball if found above.
-        jq '
-            (.packages["node_modules/@vscode/vsce-sign"].hasInstallScript = false) |
-            del(.packages["node_modules/@vscode/vsce-sign"].integrity)
-        ' lib/vscode/build/package-lock.json > /tmp/lock-tmp.json \
-            && mv /tmp/lock-tmp.json lib/vscode/build/package-lock.json
+        # strip integrity so npm accepts the modified tarball. Cover every lockfile
+        # that vendors @vscode/vsce-sign (build + extensions/copilot in 1.122).
+        while IFS= read -r -d '' lockfile; do
+            if jq -e '.packages["node_modules/@vscode/vsce-sign"]' "$lockfile" >/dev/null 2>&1; then
+                echo "Patching vsce-sign hasInstallScript=false in ${lockfile}"
+                jq '
+                    (.packages["node_modules/@vscode/vsce-sign"].hasInstallScript = false) |
+                    del(.packages["node_modules/@vscode/vsce-sign"].integrity)
+                ' "$lockfile" > /tmp/lock-tmp.json && mv /tmp/lock-tmp.json "$lockfile"
+            fi
+        done < <(find lib/vscode -name package-lock.json -print0 2>/dev/null)
     fi
 
     # apply code-server's own patches to VS Code source
