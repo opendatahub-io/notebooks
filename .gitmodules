@@ -2,7 +2,7 @@
 	path = codeserver/ubi9-python-3.12/prefetch-input/code-server
 	url = https://github.com/coder/code-server.git
 	shallow = true
-# mongocli: keep at tag mongocli/v2.0.4 (pinned by parent commit; update via: cd path && git fetch && git checkout mongocli/v2.0.4)
+# mongocli: pin past mongocli/v2.0.4 for golang.org/x/crypto >= 0.52.0 (RHAIENG-6697); no upstream tag yet — pinned to 4a3115cf6 (x/crypto v0.52.0). Update via: cd path && git fetch && git checkout <sha-or-tag>
 [submodule "prefetch-input/mongocli"]
 	path = prefetch-input/mongocli
 	url = https://github.com/mongodb/mongodb-cli
