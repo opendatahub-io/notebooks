@@ -49,7 +49,7 @@ fi
 # npm offline settings: skip peer dep auto-install and ensure offline mode.
 # These are also set globally (npm config set --global) by setup-offline-binaries.sh,
 # but we export them here so they apply in every RUN step that sources this file
-# (e.g. build, build:vscode, release, release:standalone, package).
+# (e.g. build, build:vscode, release, package).
 export npm_config_offline=true
 export npm_config_prefer_offline=true
 export npm_config_fetch_retries=0

@@ -450,11 +450,15 @@ files = ["/usr/bin/launcher-v2"]
 [[ignore]]
 error = "ErrNotDynLinked"
 files = [
-    # when code-server is not installed from rpm, the exclusion below won't apply
+    # Legacy path (pre-1.122 @vscode/ripgrep). Prefer AIPCC replacement via
+    # replace-aipcc-ripgrep.sh; keep waiver for residual static bins if any.
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
 ]
 dirs = [
-    # VS Code 1.112+ @anthropic-ai/sandbox-runtime seccomp BPF loaders (no crypto)
+    # VS Code 1.122+ @vscode/sandbox-runtime seccomp BPF loaders (no crypto)
+    "/usr/lib/code-server/lib/vscode/node_modules/@vscode/sandbox-runtime/dist/vendor/seccomp",
+    "/usr/lib/code-server/lib/vscode/node_modules/@vscode/sandbox-runtime/vendor/seccomp",
+    # Older package name kept for images built before the rename
     "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp",
     "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp",
 ]
@@ -462,11 +466,11 @@ dirs = [
 [[rpm.code-server.ignore]]
 error = "ErrNotDynLinked"
 files = [
-    # executable is not dynamically linked
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
 ]
 dirs = [
-    # VS Code 1.112+ @anthropic-ai/sandbox-runtime seccomp BPF loaders (no crypto)
+    "/usr/lib/code-server/lib/vscode/node_modules/@vscode/sandbox-runtime/dist/vendor/seccomp",
+    "/usr/lib/code-server/lib/vscode/node_modules/@vscode/sandbox-runtime/vendor/seccomp",
     "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp",
     "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp",
 ]

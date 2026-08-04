@@ -7,13 +7,13 @@ for Open Data Hub / OpenShift AI workbenches.
 
 | Component | Version |
 |-----------|---------|
-| code-server | **v4.112.0** (submodule `prefetch-input/code-server`) |
-| VS Code | **1.112.0** |
+| code-server | **v4.122.1** (submodule `prefetch-input/code-server`) |
+| VS Code | **1.122.1** |
 | Node.js (RPM) | **22.22.0** (`nodejs:22` module) |
 
-Hermetic-build customizations live in **`prefetch-input/patches/code-server-v4.112.0/`**
+Hermetic-build customizations live in **`prefetch-input/patches/code-server-v4.122.1/`**
 (overlay copied over the submodule at build time). See that directory's
-[`README.md`](prefetch-input/patches/code-server-v4.112.0/README.md) for the full
+[`README.md`](prefetch-input/patches/code-server-v4.122.1/README.md) for the full
 list of overrides, what gets overwritten vs. preserved from older releases, and
 how to regenerate lockfiles when bumping code-server again.
 
