@@ -57,6 +57,10 @@ _LOG = logging.getLogger(__name__)
 # Software annotation items that cannot be validated from SBOM data.
 _SKIP_SOFTWARE: frozenset[str] = frozenset()
 
+# ROCm 6.x images expose ``rocm-core`` RPMs; ROCm 7.x / TheRock stacks set
+# ``ROCM_VERSION`` in the OCI config instead and may not ship ``rocm-core``.
+_ROCM_VERSION_ENV_KEY = "env:ROCM_VERSION"
+
 
 # Packages listed in manifest annotations that are not pip packages.
 def _imagestream_to_source_hint(is_name: str) -> str:
@@ -225,6 +229,7 @@ def _packages_from_sbom(image_ref: str, *, source_hint: str = "", python_version
                 packages[key] = version
 
     packages.update(_resolve_pypi_duplicates(pypi_entries, source_hint, python_version))
+    _enrich_rocm_version_from_image_config(image_ref, packages)
     return packages
 
 
@@ -336,10 +341,14 @@ def _collect_software_versions(
                 if len(parts) == 2:
                     packages[f"rpm:{parts[0]}"] = parts[1]
 
-    # ROCm — "6.4.3.60403"
+    # ROCm — legacy stacks ship ``rocm-core`` RPMs; ROCm 7.x uses ``ROCM_VERSION``.
     out = _exec_or_none(container, ["rpm", "-q", "--queryformat", "%{VERSION}", "rocm-core"])
     if out and "not installed" not in out:
         packages["rpm:rocm-core"] = out
+    else:
+        out = _exec_or_none(container, ["printenv", "ROCM_VERSION"])
+        if out:
+            packages[_ROCM_VERSION_ENV_KEY] = out
 
     # R — "R version 4.5.0 (2025-04-11)"
     out = _exec_or_none(container, ["R", "--version"])
@@ -432,6 +441,37 @@ def _check_major_minor(manifest_version: str, actual_version_str: str) -> tuple[
         return False, f"unparseable actual version: {actual_version_str!r}"
 
 
+def _rocm_version_from_image_config(image_ref: str) -> str | None:
+    """Read ``ROCM_VERSION`` from OCI image config when Clair/SBOM lack ``rocm-core``."""
+    try:
+        from manifests.tools import skopeo_inspect  # noqa: PLC0415
+    except ImportError:
+        return None
+
+    try:
+        config_payload = skopeo_inspect.inspect_config(image_ref)
+    except ValueError:
+        return None
+
+    env = config_payload.get("config", {}).get("Env") or config_payload.get("Env") or []
+    for entry in env:
+        if entry.startswith("ROCM_VERSION="):
+            return entry.split("=", 1)[1]
+    return None
+
+
+def _enrich_rocm_version_from_image_config(image_ref: str, packages: dict[str, str]) -> None:
+    if "rpm:rocm-core" in packages or _ROCM_VERSION_ENV_KEY in packages:
+        return
+    rocm_version = _rocm_version_from_image_config(image_ref)
+    if rocm_version:
+        packages[_ROCM_VERSION_ENV_KEY] = rocm_version
+
+
+def _resolve_rocm_version(actual_packages: dict[str, str]) -> str | None:
+    return actual_packages.get("rpm:rocm-core") or actual_packages.get(_ROCM_VERSION_ENV_KEY)
+
+
 def _resolve_software_version(sw_item: dict[str, str], actual_packages: dict[str, str]) -> str | None:
     """Look up the actual version for a notebook-software item from SBOM data.
 
@@ -473,7 +513,7 @@ def _resolve_software_version(sw_item: dict[str, str], actual_packages: dict[str
         return None
 
     if name == "ROCm":
-        return actual_packages.get("rpm:rocm-core")
+        return _resolve_rocm_version(actual_packages)
 
     if name == "R":
         return actual_packages.get("rpm:R-core")
@@ -737,6 +777,17 @@ def _image_ref_to_quay(image_ref: str) -> tuple[str, str]:
     return repo, digest
 
 
+# Clair statuses where package extraction is unavailable (skip, do not fail).
+_CLAIR_SKIP_STATUSES = frozenset(
+    {
+        "queued",
+        "scanning",
+        "manifest_layer_too_large",
+        "unsupported",
+    }
+)
+
+
 class _ClairScanNotReadyError(RuntimeError):
     pass
 
@@ -777,9 +828,9 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     features = ((data.get("data") or {}).get("Layer") or {}).get("Features", [])
     if not features:
         status = data.get("status")
-        if status in {"queued", "scanning"}:
-            raise _ClairScanNotReadyError(f"Clair scan not ready for {image_ref} (status={status})")
-        raise RuntimeError(f"No features in Clair response for {image_ref}")
+        if status in _CLAIR_SKIP_STATUSES:
+            raise _ClairScanNotReadyError(f"Clair scan unavailable for {image_ref} (status={status})")
+        raise RuntimeError(f"No features in Clair response for {image_ref} (status={status})")
 
     # Collect all entries keyed by both rpm: and normalized-pip forms,
     # tracking layer index for disambiguation.
@@ -822,6 +873,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
         if m:
             packages[f"rpm:python{m.group(1)}"] = py38_ver
 
+    _enrich_rocm_version_from_image_config(image_ref, packages)
     return packages
 
 
@@ -847,7 +899,7 @@ def test_old_tag_annotations_match_quay(
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
             skipped_scans.append(f"{t.is_name} tag {t.tag_name}")
-            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
+            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan unavailable"):
                 pytest.skip(str(exc))
             continue
         except (
@@ -871,6 +923,6 @@ def test_old_tag_annotations_match_quay(
         summary = ", ".join(skipped_scans)
         if len(skipped_scans) == len(all_tags):
             with subtests.test(msg="Clair scan skip summary"):
-                pytest.fail(f"All {len(all_tags)} tags were skipped because Clair scans were not ready: {summary}")
+                pytest.fail(f"All {len(all_tags)} tags were skipped because Clair scans were unavailable: {summary}")
         else:
-            _LOG.warning(f"{len(skipped_scans)}/{len(all_tags)} tags skipped (Clair scans not ready): {summary}")
+            _LOG.warning(f"{len(skipped_scans)}/{len(all_tags)} tags skipped (Clair scans unavailable): {summary}")
