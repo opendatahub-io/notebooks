@@ -19,7 +19,7 @@ The `check-payload` FIPS scanner flags binaries that are not dynamically linked
 | pandoc | `.../pandoc_rhai/data/bin/pandoc` | PDF export via `pandoc-rhai` 3.9.0.2 pip wheel | No (dynamically linked, `-http` build) |
 | py-spy | *(removed)* | Was a transitive dep from Ray/CodeFlare; excluded via `exclude-dependencies` | No |
 | rg (ripgrep) | `/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg` | IDE search, required by code-server | No |
-| apply-seccomp | `.../node_modules/@anthropic-ai/sandbox-runtime/**/seccomp/*/apply-seccomp` | VS Code 1.112+ optional AI/MCP terminal sandbox (seccomp BPF loader) | No |
+| apply-seccomp | `.../node_modules/@vscode/sandbox-runtime/**/seccomp/*/apply-seccomp` (also legacy `@anthropic-ai/...`) | VS Code 1.112+/1.122+ optional AI/MCP terminal sandbox (seccomp BPF loader) | No |
 
 Tracked under [RHOAIENG-58626](https://redhat.atlassian.net/browse/RHOAIENG-58626).
 

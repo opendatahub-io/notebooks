@@ -3,7 +3,6 @@ set -x
 
 # Runtime configuration for Kubeflow Kale JupyterLab extension
 # This script configures Kale to connect to KFP by reading Elyra runtime config
-# Note: The extension is disabled by default at build time (see Dockerfile)
 
 # Read Elyra config and copy the relevant information to Kale config
 # Extract KFP configuration from Elyra runtime configs if available
