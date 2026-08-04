@@ -29,7 +29,7 @@ because Docker on GHA runners sets `FORWARD DROP`, which breaks rootful netavark
 [runner-images #13422](https://github.com/actions/runner-images/issues/13422)).
 
 On ephemeral runners the install action also applies best-effort host I/O greed
-(`swapoff`, `vm.swappiness=0`, `nobarrier`/`nodiscard`/`commit` remounts, WBT off) and
+(`nobarrier`/`nodiscard`/`commit` remounts, WBT off) and
 `ci/cached-builds/storage.conf` sets overlay `mountopt=nodev,metacopy=off,redirect_dir=off`
 so Podman can use native overlay diff for faster layer commits.
 

@@ -28,15 +28,12 @@ runs:
           sudo apparmor_parser -r /etc/apparmor.d/usr.bin.pasta
         fi
 
-    - name: Tune ephemeral host I/O and memory for CI builds
+    - name: Tune ephemeral host I/O for CI builds
       shell: bash
       run: |
         set -Eeuxo pipefail
 
         # Ephemeral runners: favor build throughput over durability guarantees.
-        sudo swapoff -a 2>/dev/null || true
-        sudo sysctl -w vm.swappiness=0 || true
-
         remount_greed() {
           local target="$1"
           if mountpoint -q "${target}"; then
