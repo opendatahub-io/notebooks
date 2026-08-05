@@ -258,6 +258,14 @@ rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
 
+
+####################################### Buildchain for Baseline Images (Codeserver, Jupyter, Runtime) using PYPI #######################################
+
+.PHONY: codeserver-baseline-pypi-$(RELEASE_PYTHON_VERSION)
+codeserver-baseline-pypi-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,codeserver-baseline/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
+
+
 ####################################### Deployments #######################################
 
 # Download kubectl binary
@@ -614,7 +622,8 @@ all-images: \
  	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	codeserver-baseline-pypi-$(RELEASE_PYTHON_VERSION)
 else
 	$(error Invalid Python version $(RELEASE_PYTHON_VERSION))
 endif
