@@ -57,6 +57,11 @@ ARG CODESERVER_VERSION=v4.122.1
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
+# RHDS builds on the RHEL 9.6 Python base need EUS CodeReady Builder for
+# libxkbfile-devel, which code-server's native-keymap build depends on.
+RUN basearch="$(rpm --eval '%{_arch}')" && \
+    subscription-manager repos --enable="codeready-builder-for-rhel-9-${basearch}-eus-rpms"
+
 # The RHEL 9 Python base can arrive with nodejs:20 enabled already.
 # Reset first so RHDS builds can switch cleanly to the required nodejs:22 stream.
 RUN dnf module reset nodejs -y && dnf module enable nodejs:22 -y
@@ -99,6 +104,10 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Runtime installs need the OpenShift layered-product repo for openshift-clients.
+RUN basearch="$(rpm --eval '%{_arch}')" && \
+    dnf config-manager --set-enabled "rhocp-4.16-for-rhel-9-${basearch}-rpms"
 
 RUN dnf module reset nodejs -y && dnf module enable nodejs:22 -y
 
