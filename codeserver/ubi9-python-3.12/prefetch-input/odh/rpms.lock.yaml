@@ -2083,6 +2083,13 @@ arches:
     name: gnupg2
     evr: 2.3.3-5.el9_7
     sourcerpm: gnupg2-2.3.3-5.el9_7.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/g/gnutls-3.8.10-8.el9_8.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 1339758
+    checksum: sha256:3138fd9e96947b38707bc5ef99b781c7d90dc9836ce746cf6ff8a0364b4c765a
+    name: gnutls
+    evr: 3.8.10-8.el9_8
+    sourcerpm: gnutls-3.8.10-8.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/g/gpgme-1.15.1-6.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 209615
@@ -2265,6 +2272,13 @@ arches:
     name: libfido2
     evr: 1.13.0-2.el9
     sourcerpm: libfido2-1.13.0-2.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libgcrypt-1.10.0-13.el9_8.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 469908
+    checksum: sha256:4a270fae0cf2f5ad846ce530664bbde72e798bb4a8196afb8fd2db93086c31c9
+    name: libgcrypt
+    evr: 1.10.0-13.el9_8
+    sourcerpm: libgcrypt-1.10.0-13.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libgpg-error-1.42-5.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 222476
@@ -4463,13 +4477,6 @@ arches:
     name: glibc-minimal-langpack
     evr: 2.34-276.el9
     sourcerpm: glibc-2.34-276.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/gnutls-3.8.10-8.el9.aarch64.rpm
-    repoid: baseos
-    size: 1332375
-    checksum: sha256:530f18b1cdf0a56ff8ce81d5d9e1617f026224f39a9f494df73cd0b88e6f7774
-    name: gnutls
-    evr: 3.8.10-8.el9
-    sourcerpm: gnutls-3.8.10-8.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/jq-1.6-21.el9.aarch64.rpm
     repoid: baseos
     size: 184566
@@ -4540,13 +4547,6 @@ arches:
     name: libgcc
     evr: 11.5.0-15.el9
     sourcerpm: gcc-11.5.0-15.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/libgcrypt-1.10.0-13.el9.aarch64.rpm
-    repoid: baseos
-    size: 463445
-    checksum: sha256:dd1b8da929a138573303d096391893f6ebf72a2964771d793b2c65334dbefe0f
-    name: libgcrypt
-    evr: 1.10.0-13.el9
-    sourcerpm: libgcrypt-1.10.0-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/libgfortran-11.5.0-15.el9.aarch64.rpm
     repoid: baseos
     size: 433836
@@ -6935,6 +6935,13 @@ arches:
     name: gnupg2
     evr: 2.3.3-5.el9_7
     sourcerpm: gnupg2-2.3.3-5.el9_7.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/g/gnutls-3.8.10-8.el9_8.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 1387663
+    checksum: sha256:ff8aac961aa42bbd5707c6a00902f74d60a9df0dbba90d10e92f1a149d6b6229
+    name: gnutls
+    evr: 3.8.10-8.el9_8
+    sourcerpm: gnutls-3.8.10-8.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/g/gpgme-1.15.1-6.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 235171
@@ -7131,6 +7138,13 @@ arches:
     name: libfido2
     evr: 1.13.0-2.el9
     sourcerpm: libfido2-1.13.0-2.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/libgcrypt-1.10.0-13.el9_8.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 614376
+    checksum: sha256:cd0365593ac9982a10b01b84237873a578ee715c17a27fa781451203f935df9b
+    name: libgcrypt
+    evr: 1.10.0-13.el9_8
+    sourcerpm: libgcrypt-1.10.0-13.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/libgpg-error-1.42-5.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 234885
@@ -9315,13 +9329,6 @@ arches:
     name: glibc-minimal-langpack
     evr: 2.34-276.el9
     sourcerpm: glibc-2.34-276.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/gnutls-3.8.10-8.el9.ppc64le.rpm
-    repoid: baseos
-    size: 1380516
-    checksum: sha256:7aa98fd09c3a3e36bcbb489d39055e62bff77572c4f549d3e7e33411bfe448a3
-    name: gnutls
-    evr: 3.8.10-8.el9
-    sourcerpm: gnutls-3.8.10-8.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/jq-1.6-21.el9.ppc64le.rpm
     repoid: baseos
     size: 203855
@@ -9392,13 +9399,6 @@ arches:
     name: libgcc
     evr: 11.5.0-15.el9
     sourcerpm: gcc-11.5.0-15.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/libgcrypt-1.10.0-13.el9.ppc64le.rpm
-    repoid: baseos
-    size: 607714
-    checksum: sha256:fcb38fe5c970a27cc3b4425e4e5bbefbed45a9c73c0d2f761d0915e3214508f5
-    name: libgcrypt
-    evr: 1.10.0-13.el9
-    sourcerpm: libgcrypt-1.10.0-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/libgfortran-11.5.0-15.el9.ppc64le.rpm
     repoid: baseos
     size: 516958
@@ -11794,6 +11794,13 @@ arches:
     name: gnupg2
     evr: 2.3.3-5.el9_7
     sourcerpm: gnupg2-2.3.3-5.el9_7.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/g/gnutls-3.8.10-8.el9_8.s390x.rpm
+    repoid: ubi-9-for-s390x-baseos-rpms
+    size: 1255886
+    checksum: sha256:152884dbc31ed56618107930a14504ffd083a1acd3f6328a6ad09805561f34b7
+    name: gnutls
+    evr: 3.8.10-8.el9_8
+    sourcerpm: gnutls-3.8.10-8.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/g/gpgme-1.15.1-6.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 209562
@@ -11976,6 +11983,13 @@ arches:
     name: libfido2
     evr: 1.13.0-2.el9
     sourcerpm: libfido2-1.13.0-2.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/l/libgcrypt-1.10.0-13.el9_8.s390x.rpm
+    repoid: ubi-9-for-s390x-baseos-rpms
+    size: 470164
+    checksum: sha256:e29ed2d365748f7aa865e875ec33b16243a132af30ce4878e5dbcebda17cfa54
+    name: libgcrypt
+    evr: 1.10.0-13.el9_8
+    sourcerpm: libgcrypt-1.10.0-13.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/l/libgpg-error-1.42-5.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 224395
@@ -14160,13 +14174,6 @@ arches:
     name: glibc-minimal-langpack
     evr: 2.34-276.el9
     sourcerpm: glibc-2.34-276.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/gnutls-3.8.10-8.el9.s390x.rpm
-    repoid: baseos
-    size: 1248440
-    checksum: sha256:0d3a7b77a92bc9da0594366818e6bb70db3e6e01a7491565dff1143dbf3d9145
-    name: gnutls
-    evr: 3.8.10-8.el9
-    sourcerpm: gnutls-3.8.10-8.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/jq-1.6-21.el9.s390x.rpm
     repoid: baseos
     size: 200177
@@ -14237,13 +14244,6 @@ arches:
     name: libgcc
     evr: 11.5.0-15.el9
     sourcerpm: gcc-11.5.0-15.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/libgcrypt-1.10.0-13.el9.s390x.rpm
-    repoid: baseos
-    size: 463582
-    checksum: sha256:46bc0123d8d988b3cd91c76cf6ef7c4c4c61482a83ad919bb001a6f7809ce69e
-    name: libgcrypt
-    evr: 1.10.0-13.el9
-    sourcerpm: libgcrypt-1.10.0-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/libgfortran-11.5.0-15.el9.s390x.rpm
     repoid: baseos
     size: 488278
@@ -16632,6 +16632,13 @@ arches:
     name: gnupg2
     evr: 2.3.3-5.el9_7
     sourcerpm: gnupg2-2.3.3-5.el9_7.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/g/gnutls-3.8.10-8.el9_8.x86_64.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 1453380
+    checksum: sha256:427e11f3b3b0af618b9a1bd09ec7614a634328e9d93fe8499b5e5257d25b7e44
+    name: gnutls
+    evr: 3.8.10-8.el9_8
+    sourcerpm: gnutls-3.8.10-8.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/g/gpgme-1.15.1-6.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 215857
@@ -16814,6 +16821,13 @@ arches:
     name: libfido2
     evr: 1.13.0-2.el9
     sourcerpm: libfido2-1.13.0-2.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libgcrypt-1.10.0-13.el9_8.x86_64.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 523829
+    checksum: sha256:c07cd9f613809195b8691d28fd2f3bff55b2a83b9c1cdf4a32c681e0e32dfafb
+    name: libgcrypt
+    evr: 1.10.0-13.el9_8
+    sourcerpm: libgcrypt-1.10.0-13.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libgpg-error-1.42-5.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 225603
@@ -19019,13 +19033,6 @@ arches:
     name: glibc-minimal-langpack
     evr: 2.34-276.el9
     sourcerpm: glibc-2.34-276.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/gnutls-3.8.10-8.el9.x86_64.rpm
-    repoid: baseos
-    size: 1446098
-    checksum: sha256:7995375d84e6592cdba3d94ba01e47f5607aecb2ff73b7af67a756def78e8a31
-    name: gnutls
-    evr: 3.8.10-8.el9
-    sourcerpm: gnutls-3.8.10-8.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/hwdata-0.348-9.23.el9.noarch.rpm
     repoid: baseos
     size: 1789091
@@ -19103,13 +19110,6 @@ arches:
     name: libgcc
     evr: 11.5.0-15.el9
     sourcerpm: gcc-11.5.0-15.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/libgcrypt-1.10.0-13.el9.x86_64.rpm
-    repoid: baseos
-    size: 517291
-    checksum: sha256:71026b5a461fc0c4777db81a529dea0f9205f74c175bbdfbc0f5bab8475d05c9
-    name: libgcrypt
-    evr: 1.10.0-13.el9
-    sourcerpm: libgcrypt-1.10.0-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/libgfortran-11.5.0-15.el9.x86_64.rpm
     repoid: baseos
     size: 812338
