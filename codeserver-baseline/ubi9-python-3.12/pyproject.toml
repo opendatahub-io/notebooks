@@ -1,0 +1,40 @@
+# [HERMETIC] pyproject.toml changes for hermetic build:
+#   - Added uv + micropipenv as explicit deps (cachi2 prefetches everything in dependencies[])
+#   - Added ipykernel + debugpy explicitly (previously pulled transitively)
+#   - protobuf==6.31.1 override (AIPCC-13675: UPB C extension segfault on s390x)
+
+[project]
+name = "notebooks"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Installer/tooling used in Docker/CI (prefetched with main deps for cachi2 offline)
+    "uv",
+    "micropipenv[toml]",
+
+    # Base packages
+    "wheel",
+    "setuptools",
+
+    # RHAIENG-6157: VS Code Jupyter extension requires these
+    #  ipykernel: raw-kernel gate
+    #  jupyter+notebook: Jupyter-Server gate (s390x/ppc64le, no built-in native zeromq for nodejs)
+    "ipykernel",
+    "jupyter",
+    "notebook",
+    "debugpy",
+]
+
+[tool.uv]
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+]
+
+override-dependencies = [
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
+]
+
+[tool.uv.sources]
