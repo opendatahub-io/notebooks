@@ -77,6 +77,8 @@ RUN dnf install -y \
         jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
         krb5-devel libX11-devel libxkbfile-devel && \
     dnf clean all
+# Git metadata needed by code-server's build scripts (version detection, submodules).
+COPY .git /root/.git
 COPY ${CODESERVER_CONTEXT}/code-server/ ${CODESERVER_SOURCE_SUBMODULE}/
 COPY ${CODESERVER_CONTEXT}/patches/ ${CODESERVER_PATCHES}/
 COPY ${CODESERVER_CONTEXT}/utils/ ${CODESERVER_SOURCE_CODE}/utils/
