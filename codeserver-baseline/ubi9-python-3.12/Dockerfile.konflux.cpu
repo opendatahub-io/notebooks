@@ -7,8 +7,8 @@
 # - Python packages are installed from the checked-in root pylock.toml via PyPI
 #
 # [PHASE 2 HERMETIC]
-# The copied codeserver Dockerfile used cachi2/prefetch-input and offline rpm,
-# npm, and pip installs. That logic is intentionally deferred for the later
+# The copied codeserver Dockerfile used cachi2-managed source inputs and offline
+# rpm, npm, and pip installs. That logic is intentionally deferred for the later
 # hermetic conversion of codeserver-baseline.
 #
 # Multi-stage layout:
@@ -83,7 +83,7 @@ COPY .git /root/.git
 COPY ${CODESERVER_CONTEXT}/code-server/ ${CODESERVER_SOURCE_SUBMODULE}/
 # Keep a baseline-local copy of the code-server source overlay so phase 1
 # stays aligned with the working codeserver build without advertising a
-# hermetic prefetch-input contract to repo tooling.
+# hermetic source-prefetch contract to repo tooling.
 COPY ${CODESERVER_CONTEXT}/patches/code-server-${CODESERVER_VERSION}/ ${CODESERVER_SOURCE_SUBMODULE}/
 COPY ${CODESERVER_CONTEXT}/patches/ ${CODESERVER_PATCHES}/
 COPY ${CODESERVER_CONTEXT}/utils/ ${CODESERVER_SOURCE_CODE}/utils/
@@ -125,6 +125,8 @@ WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
 USER 0
+
+ARG RHEL_VERSION=9.6
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
