@@ -78,7 +78,7 @@ pushd "/workspace/$PREFETCH_INPUT_DIR" >/dev/null
             "rhel-9-for-${basearch}-appstream-eus-rpms" \
             "codeready-builder-for-rhel-9-${basearch}-eus-rpms" \
             "rhocp-4.16-for-rhel-9-${basearch}-rpms" \
-            "rhelai-3.3-for-rhel-9-${basearch}-rpms"; do
+            "rhelai-3.5-for-rhel-9-${basearch}-rpms"; do
             subscription-manager repos --enable="$repo" 2>/dev/null || true
         done
 
