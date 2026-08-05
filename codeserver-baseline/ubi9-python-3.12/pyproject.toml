@@ -1,7 +1,5 @@
-# [HERMETIC] pyproject.toml changes for hermetic build:
-#   - Added uv + micropipenv as explicit deps (cachi2 prefetches everything in dependencies[])
-#   - Added ipykernel + debugpy explicitly (previously pulled transitively)
-#   - protobuf==6.31.1 override (AIPCC-13675: UPB C extension segfault on s390x)
+# Phase 1: baseline build resolves Python packages from PyPI using `pylock.toml`.
+# Hermetic Python input generation stays deferred to phase 2.
 
 [project]
 name = "notebooks"
@@ -9,7 +7,7 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    # Installer/tooling used in Docker/CI (prefetched with main deps for cachi2 offline)
+    # Installer/tooling used in Docker/CI
     "uv",
     "micropipenv[toml]",
 
@@ -24,6 +22,8 @@ dependencies = [
     "jupyter",
     "notebook",
     "debugpy",
+    # Used to replace static VS Code ripgrep binaries with a dynamically-linked one.
+    "ripgrep",
 ]
 
 [tool.uv]

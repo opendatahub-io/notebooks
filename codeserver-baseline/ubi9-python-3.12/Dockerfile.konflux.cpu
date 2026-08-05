@@ -1,15 +1,21 @@
 ############################################################################################
-# Hermetic Dockerfile for codeserver/ubi9-python-3.12
+# Phase 1 Dockerfile for codeserver-baseline/ubi9-python-3.12
 #
-# RHAIENG-2846: All build steps run without network access. Every dependency
-# (RPMs, npm packages, Python wheels, generic tarballs) is prefetched by cachi2
-# and mounted at /cachi2/output/deps/{rpm,pip,generic}/ during the build.
+# This baseline image intentionally uses a non-hermetic build path for phase 1:
+# - code-server is built from a baseline-owned source checkout
+# - RPMs and npm packages are resolved online during the image build
+# - Python packages are installed from the checked-in root pylock.toml via PyPI
+#
+# [PHASE 2 HERMETIC]
+# The copied codeserver Dockerfile used cachi2/prefetch-input and offline rpm,
+# npm, and pip installs. That logic is intentionally deferred for the later
+# hermetic conversion of codeserver-baseline.
 #
 # Multi-stage layout:
-#   rpm-base  -> builds code-server from prefetched source (release tree, all arches)
-#   cpu-base  -> installs OS packages + tools (oc client)
+#   rpm-base   -> builds code-server from source (release tree)
+#   cpu-base   -> installs OS packages + tools (oc client)
 #   codeserver -> final image (code-server + nginx + Python packages)
-#   tests     -> smoke test stage
+#   tests      -> smoke test stage
 ############################################################################################
 
 #########################
@@ -18,16 +24,16 @@
 ARG BASE_IMAGE
 
 ############################################################################################
-# rpm-base: Build code-server from source (release tree with KEEP_MODULES=1, all architectures)
+# rpm-base: Build code-server from source (release tree)
 #
-# [HERMETIC] The build runs offline using prefetched sources (no git clone, no nvm, no
-# Node download). apply-patch.sh only applies patches and offline fixes. Sources:
-#   - code-server source: prefetch-input/code-server/ (git submodule)
-#   - Node.js/npm: installed from prefetched RPMs
-#   - npm dependencies: package-lock.json resolved URLs rewritten to file:///cachi2/...
-#   - node-gyp: system headers via nodejs-devel RPM (NPM_CONFIG_NODEDIR=/usr);
-#     preinstall.ts overlay skips Electron/Node header tarball downloads
-#   - Build scripts patched to avoid any network fetches (patches/*.patch)
+# Phase 1 uses the baseline-owned `code-server/` checkout and a minimal helper
+# set under `patches/`:
+# - `tweak-gha.sh` reduces build parallelism on GHA runners
+# - `replace-aipcc-ripgrep.sh` swaps static ripgrep binaries after install
+#
+# [PHASE 2 HERMETIC]
+# Restore the prefetched code-server source tree plus cachi2/offline flow
+# here when baseline moves to hermetic builds.
 ############################################################################################
 # e.g., registry.access.redhat.com/ubi9/python-312:latest
 FROM ${BASE_IMAGE} AS rpm-base
@@ -38,9 +44,10 @@ WORKDIR /root
 
 ENV HOME=/root
 # Build-context-relative path (for COPY sources — must NOT include /root/ prefix)
-ENV CODESERVER_CONTEXT=codeserver/ubi9-python-3.12
+ENV CODESERVER_CONTEXT=codeserver-baseline/ubi9-python-3.12
 ENV CODESERVER_SOURCE_CODE=${HOME}/${CODESERVER_CONTEXT}
-ENV CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-server
+ENV CODESERVER_SOURCE_SUBMODULE=${CODESERVER_SOURCE_CODE}/code-server
+ENV CODESERVER_PATCHES=${CODESERVER_SOURCE_CODE}/patches
 
 ARG BASE_IMAGE
 ARG GHA_BUILD=false
@@ -48,14 +55,8 @@ ARG GHA_BUILD=false
 ARG NODE_VERSION=22.22.0
 ARG CODESERVER_VERSION=v4.122.1
 
-# [HERMETIC] Import GPG keys for prefetched RPM verification.
-# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Enable nodejs:22 module stream so DNF can resolve nodejs-devel
-# and other modular packages. The hermeto repos include module metadata
-# (modules.yaml) because rpms.in.yaml declares moduleEnable: [nodejs:22].
 RUN dnf module enable nodejs:22 -y
 
 # libxkbfile-devel = util-macros + libxkbfile (Previously built from source)
@@ -64,65 +65,21 @@ RUN dnf install -y \
         jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
         krb5-devel libX11-devel libxkbfile-devel && \
     dnf clean all
-
-# [HERMETIC] Git metadata needed by code-server's build scripts (version detection, submodules).
-COPY .git /root/.git
-# [HERMETIC] Rewrite script: used by setup-offline-binaries.sh to rewrite npm
-# "resolved" URLs from https://registry.npmjs.org/... to file:///cachi2/...
-COPY scripts/lockfile-generators/rewrite-npm-urls.sh /root/scripts/lockfile-generators/
-
-# [HERMETIC] Copy prefetched code-server source (git submodule checked out at the target version).
-COPY ${CODESERVER_CONTEXT}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFETCH}/
-
-# [HERMETIC] Overlay patched files onto the submodule source. Files in
-# patches/code-server-<version>/ mirror the submodule directory layout and
-# overwrite the originals (e.g. s390x web-tree-sitter upgrade, lockfile fixes).
-COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/code-server-${CODESERVER_VERSION}/ ${CODESERVER_SOURCE_PREFETCH}/
-COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/patches/
-COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/replace-aipcc-ripgrep.sh ${CODESERVER_SOURCE_CODE}/patches/
-COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
-COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/tweak-gha.sh ${CODESERVER_SOURCE_CODE}/patches/
-COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
-# [HERMETIC] utils/ contains git-tracked .vsix (built-in extensions + Python/Jupyter); used by setup-offline-binaries.sh and final stage.
+COPY ${CODESERVER_CONTEXT}/code-server/ ${CODESERVER_SOURCE_SUBMODULE}/
+COPY ${CODESERVER_CONTEXT}/patches/ ${CODESERVER_PATCHES}/
 COPY ${CODESERVER_CONTEXT}/utils/ ${CODESERVER_SOURCE_CODE}/utils/
+RUN chmod 755 ${CODESERVER_PATCHES}/*.sh
 
-# [HERMETIC] apply-patch.sh enables gcc-toolset-14 and applies patches (ripgrep, vsce-sign,
-# patches/series). npm ci, build, and release run in separate RUN steps below for caching.
-RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
-
-# [HERMETIC] Step 1: npm ci --offline (install all npm dependencies from local cache).
-# setup-offline-binaries.sh does all offline preparation in one shot:
-#   - sources codeserver-offline-env.sh (ELECTRON_SKIP_BINARY_DOWNLOAD, NPM_CONFIG_NODEDIR, etc.)
-#   - node-gyp uses system headers (NPM_CONFIG_NODEDIR=/usr from nodejs-devel RPM)
-#   - ripgrep from pip (RHOAI wheel in deps/pip), .vsix from cachi2 generic; .build/node/ = system /usr/bin/node (per-arch)
-#   - pre-populates .build/builtInExtensions/ so gulp skips network downloads
-#   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
-# CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
-# so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
-RUN cd ${CODESERVER_SOURCE_CODE} && \
-    source ./patches/setup-offline-binaries.sh && \
-    cd ${CODESERVER_SOURCE_PREFETCH} && \
-    CI=1 npm ci --offline && \
-    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}"
-
-# [HERMETIC] Step 2: Build code-server TypeScript
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run build
-
-# [HERMETIC] Step 3: Build VS Code (the embedded editor)
-# Raise soft nofile before esbuild transpile (~6k sources); build-vscode.sh also caps concurrency.
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+# Phase 1 online build: install dependencies from npm and build the release tree.
+RUN if [[ "${GHA_BUILD}" == "true" ]]; then \
+      cd "${CODESERVER_SOURCE_SUBMODULE}" && "${CODESERVER_PATCHES}/tweak-gha.sh"; \
+    fi
+RUN cd ${CODESERVER_SOURCE_SUBMODULE} && npm ci
+RUN cd ${CODESERVER_SOURCE_SUBMODULE} && npm run build
+RUN cd ${CODESERVER_SOURCE_SUBMODULE} && \
     (ulimit -n 65536 2>/dev/null || ulimit -n 16384 2>/dev/null || true) && \
-    VERSION=${CODESERVER_VERSION/v/} npm run build:vscode && \
-    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}"
-
-# [HERMETIC] Step 4: Create release bundle.
-# Upstream 4.122+ dropped release:standalone; KEEP_MODULES=1 npm run release now produces
-# the platform tree (modules + bundled node + bin/code-server) under ./release.
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release && \
-    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}/release"
+    VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
+RUN cd ${CODESERVER_SOURCE_SUBMODULE} && export KEEP_MODULES=1 && npm run release
 
 # Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
 RUN echo "done" > /tmp/control
@@ -130,9 +87,7 @@ RUN echo "done" > /tmp/control
 ############################################################################################
 # cpu-base: Runtime base image with OS packages, tools (oc)
 #
-# [HERMETIC] Previously this stage ran `subscription-manager refresh`, `dnf upgrade --refresh`,
-# and `curl` to download the oc client. Now all packages come from prefetched RPMs;
-# the oc client is installed via the openshift-clients RPM (see rpms.in.yaml).
+# Phase 1 online runtime base.
 ############################################################################################
 FROM ${BASE_IMAGE} AS cpu-base
 
@@ -141,15 +96,10 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
-# [HERMETIC] Import GPG keys for prefetched RPM verification.
-# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
 RUN dnf module enable nodejs:22 -y
 
-# [HERMETIC] Install Node.js runtime from prefetched RPMs.
 RUN dnf install -y nodejs npm && dnf clean all
 
 # Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
@@ -182,7 +132,7 @@ FROM cpu-base AS codeserver
 ARG TARGETOS
 ARG TARGETARCH
 
-ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG CODESERVER_SOURCE_CODE=codeserver-baseline/ubi9-python-3.12
 ARG CODESERVER_VERSION=v4.122.1
 ARG PYLOCK_FLAVOR
 
@@ -203,16 +153,13 @@ USER 0
 
 WORKDIR /opt/app-root/bin
 
-# [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
 RUN dnf module enable nodejs:22 -y
 
-# [HERMETIC] Install useful OS packages from prefetched RPMs.
-# nodejs: provides libnode.so needed at runtime by code-server's bundled node binary.
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(
     nodejs
-    jq git-lfs libsndfile
+    jq git-lfs libsndfile file
     # provides envsubst which is required by run-nginx.sh
     gettext
     # nss_wrapper: required by generate_container_user (LD_PRELOAD=libnss_wrapper.so)
@@ -227,13 +174,14 @@ EOF
 COPY --from=rpm-base /tmp/control /dev/null
 
 # Install code-server from built tree (no RPM: avoids unsigned-package issues on Konflux/Conforma).
-# Path in rpm-base: /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release
-COPY --from=rpm-base /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release/. /usr/lib/code-server/
+COPY --from=rpm-base /root/codeserver-baseline/ubi9-python-3.12/code-server/release/. /usr/lib/code-server/
 # Wrapper script (from code-server ci/build) that execs /usr/lib/code-server/bin/code-server
-COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ci/build/code-server-nfpm.sh /usr/bin/code-server
+COPY ${CODESERVER_SOURCE_CODE}/code-server/ci/build/code-server-nfpm.sh /usr/bin/code-server
 RUN chmod 755 /usr/bin/code-server
 
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh ./replace-aipcc-ripgrep.sh
+RUN chmod 755 ./replace-aipcc-ripgrep.sh
 
 # Create and install the extensions at build-time in a temporary directory. Later this directory will be copied to `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh on startup.
 # https://coder.com/docs/code-server/FAQ#how-do-i-install-an-extension
@@ -258,10 +206,6 @@ ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_APP_ROOT=${APP_ROOT} \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
-# [HERMETIC] Install nginx/httpd from prefetched RPMs.
-# NOTE: httpd is prefetched from CentOS Stream repos (not UBI) via the
-# exclude=httpd* rule in ubi.repo, aligning with the ODH c9s base image.
-# RHOAI builds use prefetch-input/rhds (RHEL httpd) instead of this ODH lockfile.
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd)
@@ -334,20 +278,18 @@ ENV SHELL=/bin/bash
 # Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
 ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
 
-# Copy requirements files (pylock.toml for metadata; requirements.txt used for installation)
-COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
-COPY ${CODESERVER_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
-
-# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index).
-# /cachi2/output/deps/pip/ contains PyPI wheels and RHOAI ppc64le/s390x wheels.
+# Phase 1 Python install: sync directly from the checked-in PyPI pylock.
+COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./pylock.toml
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing software and packages"
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
-    --strict --no-deps --no-config --no-progress \
-    --compile-bytecode --index-strategy=unsafe-best-match \
-    --find-links /cachi2/output/deps/pip \
-    --requirements=./requirements.txt
+UV_DEFAULT_INDEX=https://pypi.org/simple \
+UV_NO_CACHE=true \
+UV_LINK_MODE=copy \
+uv pip sync ./pylock.toml \
+    --strict --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match
+./replace-aipcc-ripgrep.sh /usr/lib/code-server
 
 # change ownership to default user (all packages were installed as root and has root:root ownership
 chown -R 1001:0 /opt/app-root
@@ -366,9 +308,9 @@ WORKDIR /opt/app-root/src
 
 CMD ["/opt/app-root/bin/run-code-server.sh"]
 
-# [HERMETIC] Smoke test stage.
+# Smoke test stage.
 FROM codeserver as tests
-ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG CODESERVER_SOURCE_CODE=codeserver-baseline/ubi9-python-3.12
 COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
 # TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
 RUN /bin/bash <<'EOF'

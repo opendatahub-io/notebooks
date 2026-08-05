@@ -40,6 +40,16 @@ S390X_COMPATIBLE = {
     # add more here
 }
 
+# Targets that need the GHA "Add subscriptions" step even though their make
+# target names do not contain the historical "rhel" marker.
+SUBSCRIPTION_BACKED_TARGETS = {
+    "codeserver-baseline-pypi-3.12",
+}
+
+
+def target_needs_subscription(target: str) -> bool:
+    return "rhel" in target or target in SUBSCRIPTION_BACKED_TARGETS
+
 
 def extract_image_targets(
     makefile_dir: pathlib.Path | str | None = None, env: dict[str, str] | None = None
@@ -186,7 +196,7 @@ def main() -> None:
                         "target": target,
                         "python": "3.12",
                         "platform": platform,
-                        "subscription": "rhel" in target,
+                        "subscription": target_needs_subscription(target),
                     }
                     for (target, platform) in targets_with_platform
                 ],
@@ -212,6 +222,11 @@ if __name__ == "__main__":
 
 
 class TestSelf(unittest.TestCase):
+    def test_target_needs_subscription(self):
+        assert target_needs_subscription("codeserver-baseline-pypi-3.12") is True
+        assert target_needs_subscription("cuda-jupyter-minimal-ubi9-python-3.12") is False
+        assert target_needs_subscription("runtime-rhel-cuda-tensorflow-ubi9-python-3.12") is True
+
     def test_select_changed_targets_dockerfile(self):
         targets = extract_image_targets(makefile_dir=project_dir)
 
