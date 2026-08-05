@@ -75,8 +75,12 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
     await codeServer.isEditorVisible()
     page.on("console", (msg) => log.info(msg.text()))
 
-    await codeServer.isEditorVisible()
-    await utils.waitForStableDOM(page, "div.monaco-workbench", 1000, 10000)
+    // With chat.disableAIFeatures:false, Agent Status / Chat keep mutating
+    // div.monaco-workbench, so whole-workbench waitForStableDOM never settles.
+    // Assert the welcome surface itself instead (title is heading + paragraph).
+    await expect(page.getByRole('tab', { name: /Welcome/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'code-server', level: 1 })).toBeVisible()
+    await expect(page.getByText('Editing evolved')).toBeVisible()
     await utils.waitForNextRender(page)
 
     await utils.takeScreenshot(page, testInfo, "welcome.png")
