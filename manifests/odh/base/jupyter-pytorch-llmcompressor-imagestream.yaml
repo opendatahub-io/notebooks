@@ -27,11 +27,13 @@ spec:
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
+            {"name": "Accelerate", "version": "1.13"},
             {"name": "JupyterLab", "version": "4.5"},
             {"name": "PyTorch", "version": "2.11"},
             {"name": "LLM-Compressor", "version": "0.12"},
             {"name": "Tensorboard", "version": "2.20"},
             {"name": "Boto3", "version": "1.43"},
+            {"name": "Datasets", "version": "5.0"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
             {"name": "Kfp", "version": "2.17"},
             {"name": "Matplotlib", "version": "3.11"},
@@ -48,7 +50,8 @@ spec:
             {"name": "Psycopg", "version": "3.3"},
             {"name": "MySQL Connector/Python", "version": "9.7"},
             {"name": "Kubeflow-Training", "version": "1.9"},
-            {"name": "MLflow", "version": "3.14"}
+            {"name": "MLflow", "version": "3.14"},
+            {"name": "Transformers", "version": "5.10"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'true'
@@ -71,11 +74,13 @@ spec:
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
+            {"name": "Accelerate", "version": "1.13"},
             {"name": "JupyterLab", "version": "4.5"},
             {"name": "PyTorch", "version": "2.11"},
             {"name": "LLM-Compressor", "version": "0.12"},
             {"name": "Tensorboard", "version": "2.20"},
             {"name": "Boto3", "version": "1.43"},
+            {"name": "Datasets", "version": "5.0"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
             {"name": "Kfp", "version": "2.17"},
             {"name": "Matplotlib", "version": "3.11"},
@@ -92,7 +97,8 @@ spec:
             {"name": "Psycopg", "version": "3.3"},
             {"name": "MySQL Connector/Python", "version": "9.7"},
             {"name": "Kubeflow-Training", "version": "1.9"},
-            {"name": "MLflow", "version": "3.14"}
+            {"name": "MLflow", "version": "3.14"},
+            {"name": "Transformers", "version": "5.10"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'false'
