@@ -204,6 +204,16 @@ spec:
         memory: 32Gi
   - pipelineTaskName: build-images
     stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 160Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 160Gi
     - name: prepare-sboms
       computeResources:
         requests:

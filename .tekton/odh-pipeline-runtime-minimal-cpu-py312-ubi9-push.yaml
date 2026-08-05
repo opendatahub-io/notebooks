@@ -88,9 +88,11 @@ spec:
         requests:
           cpu: '4'
           memory: 8Gi
+          ephemeral-storage: 64Gi
         limits:
           cpu: '4'
           memory: 8Gi
+          ephemeral-storage: 64Gi
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
