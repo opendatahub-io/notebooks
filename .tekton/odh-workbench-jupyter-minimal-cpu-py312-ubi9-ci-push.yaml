@@ -26,7 +26,7 @@ spec:
     value: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:odh-stable
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
     - linux-d160-m4xlarge/arm64
   - name: dockerfile
     value: jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu

@@ -29,7 +29,7 @@ spec:
     value: quay.io/opendatahub/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9:{{revision}}
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
   - name: dockerfile
     value: runtimes/rocm-tensorflow/ubi9-python-3.12/Dockerfile.konflux.rocm
   - name: build-args-file

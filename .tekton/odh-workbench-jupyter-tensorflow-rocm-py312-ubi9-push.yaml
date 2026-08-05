@@ -52,7 +52,7 @@ spec:
           requirements_files: [requirements.rocm.txt]
     - name: build-platforms
       value:
-        - linux-d160-m4xlarge/amd64
+        - linux/x86_64
     - name: additional-tags
       value:
         - '{{target_branch}}-{{revision}}'

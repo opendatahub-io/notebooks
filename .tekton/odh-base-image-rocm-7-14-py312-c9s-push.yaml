@@ -26,7 +26,7 @@ spec:
     value: quay.io/opendatahub/odh-base-image-rocm-py312-c9s:{{revision}}
   - name: build-platforms
     value:
-    - linux-d160-m2xlarge/amd64
+    - linux/x86_64
   - name: dockerfile
     value: base-images/rocm/7.14/c9s-python-3.12/Dockerfile.rocm
   - name: build-args-file

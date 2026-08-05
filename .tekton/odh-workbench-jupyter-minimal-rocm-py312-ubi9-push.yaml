@@ -60,7 +60,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
   taskRunSpecs:
   - pipelineTaskName: prefetch-dependencies
     computeResources:
