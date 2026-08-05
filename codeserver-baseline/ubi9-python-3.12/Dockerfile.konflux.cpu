@@ -54,8 +54,13 @@ ARG GHA_BUILD=false
 
 ARG NODE_VERSION=22.22.0
 ARG CODESERVER_VERSION=v4.122.1
+ARG RHEL_VERSION=9.6
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Pin RHSM to the same EL point release as the Python base image so EUS repo
+# URLs resolve to /content/eus/rhel9/9.6/... instead of /content/eus/rhel9/9/...
+RUN subscription-manager release --set="${RHEL_VERSION}"
 
 # RHDS builds on the RHEL 9.6 Python base need EUS CodeReady Builder for
 # libxkbfile-devel, which code-server's native-keymap build depends on.
@@ -104,6 +109,8 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+RUN subscription-manager release --set="${RHEL_VERSION}"
 
 # Runtime installs need the OpenShift layered-product repo for openshift-clients.
 RUN basearch="$(rpm --eval '%{_arch}')" && \
