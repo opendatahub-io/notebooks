@@ -26,8 +26,9 @@ ARG BASE_IMAGE
 ############################################################################################
 # rpm-base: Build code-server from source (release tree)
 #
-# Phase 1 uses the baseline-owned `code-server/` checkout and a minimal helper
-# set under `patches/`:
+# Phase 1 uses the baseline-owned `code-server/` checkout and the same
+# code-server/VS Code source overlay contract as the working `codeserver`
+# image, but keeps npm and Python package resolution online:
 # - `tweak-gha.sh` reduces build parallelism on GHA runners
 # - `replace-aipcc-ripgrep.sh` swaps static ripgrep binaries after install
 #
@@ -80,14 +81,29 @@ RUN dnf install -y \
 # Git metadata needed by code-server's build scripts (version detection, submodules).
 COPY .git /root/.git
 COPY ${CODESERVER_CONTEXT}/code-server/ ${CODESERVER_SOURCE_SUBMODULE}/
+# Keep a baseline-local copy of the code-server source overlay so phase 1
+# stays aligned with the working codeserver build without advertising a
+# hermetic prefetch-input contract to repo tooling.
+COPY ${CODESERVER_CONTEXT}/patches/code-server-${CODESERVER_VERSION}/ ${CODESERVER_SOURCE_SUBMODULE}/
 COPY ${CODESERVER_CONTEXT}/patches/ ${CODESERVER_PATCHES}/
 COPY ${CODESERVER_CONTEXT}/utils/ ${CODESERVER_SOURCE_CODE}/utils/
 RUN chmod 755 ${CODESERVER_PATCHES}/*.sh
 
-# Phase 1 online build: install dependencies from npm and build the release tree.
-RUN if [[ "${GHA_BUILD}" == "true" ]]; then \
-      cd "${CODESERVER_SOURCE_SUBMODULE}" && "${CODESERVER_PATCHES}/tweak-gha.sh"; \
-    fi
+# Phase 1 online build: reuse the source overlay and apply code-server's own
+# patch series before npm/install build steps, but keep package resolution online.
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+. /opt/rh/gcc-toolset-14/enable
+cd "${CODESERVER_SOURCE_SUBMODULE}"
+while IFS= read -r src_patch || [[ -n "$src_patch" ]]; do
+    [[ -z "$src_patch" ]] && continue
+    patch -p1 < "patches/$src_patch"
+done < patches/series
+npm cache clean --force
+if [[ "${GHA_BUILD}" == "true" ]]; then
+    "${CODESERVER_PATCHES}/tweak-gha.sh"
+fi
+EOF
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && npm ci
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && npm run build
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && \
