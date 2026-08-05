@@ -19,14 +19,16 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name": "code-server", "version": "4.106"},
+            {"name": "code-server", "version": "4.122"},
             {"name": "Python", "version": "v3.12"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
             {"name": "Boto3", "version": "1.43"},
+            {"name": "Codeflare-SDK", "version": "0.38"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Kfp", "version": "2.17"},
             {"name": "Matplotlib", "version": "3.11"},
             {"name": "Numpy", "version": "2.5"},
             {"name": "Pandas", "version": "2.3"},
@@ -34,6 +36,7 @@ spec:
             {"name": "Scipy", "version": "1.18"},
             {"name": "Sklearn-onnx", "version": "1.20"},
             {"name": "ipykernel", "version": "7.3"},
+            {"name": "JupyterLab", "version": "4.6"},
             {"name": "MLflow", "version": "3.14"},
             {"name": "Feast", "version": "0.63"}
           ]
@@ -58,6 +61,7 @@ spec:
         opendatahub.io/notebook-python-dependencies: |
           [
             {"name": "Boto3", "version": "1.43"},
+            {"name": "Codeflare-SDK", "version": "0.38"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
             {"name": "Matplotlib", "version": "3.11"},
             {"name": "Numpy", "version": "2.5"},
@@ -66,6 +70,7 @@ spec:
             {"name": "Scipy", "version": "1.18"},
             {"name": "Sklearn-onnx", "version": "1.20"},
             {"name": "ipykernel", "version": "7.3"},
+            {"name": "JupyterLab", "version": "4.6"},
             {"name": "Kubeflow-Training", "version": "1.9"},
             {"name": "MLflow", "version": "3.14"},
             {"name": "Feast", "version": "0.63"}

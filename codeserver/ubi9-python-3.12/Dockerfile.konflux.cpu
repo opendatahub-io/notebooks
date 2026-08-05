@@ -6,7 +6,7 @@
 # and mounted at /cachi2/output/deps/{rpm,pip,generic}/ during the build.
 #
 # Multi-stage layout:
-#   rpm-base  -> builds code-server from prefetched source (release-standalone, all arches)
+#   rpm-base  -> builds code-server from prefetched source (release tree, all arches)
 #   cpu-base  -> installs OS packages + tools (oc client)
 #   codeserver -> final image (code-server + nginx + Python packages)
 #   tests     -> smoke test stage
@@ -18,7 +18,7 @@
 ARG BASE_IMAGE
 
 ############################################################################################
-# rpm-base: Build code-server from source (release-standalone tree, all architectures)
+# rpm-base: Build code-server from source (release tree with KEEP_MODULES=1, all architectures)
 #
 # [HERMETIC] The build runs offline using prefetched sources (no git clone, no nvm, no
 # Node download). apply-patch.sh only applies patches and offline fixes. Sources:
@@ -46,7 +46,7 @@ ARG BASE_IMAGE
 ARG GHA_BUILD=false
 
 ARG NODE_VERSION=22.22.0
-ARG CODESERVER_VERSION=v4.112.0
+ARG CODESERVER_VERSION=v4.122.1
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
 # CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
@@ -79,6 +79,7 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFE
 # overwrite the originals (e.g. s390x web-tree-sitter upgrade, lockfile fixes).
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/code-server-${CODESERVER_VERSION}/ ${CODESERVER_SOURCE_PREFETCH}/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/patches/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/replace-aipcc-ripgrep.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/tweak-gha.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
@@ -101,24 +102,27 @@ RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 RUN cd ${CODESERVER_SOURCE_CODE} && \
     source ./patches/setup-offline-binaries.sh && \
     cd ${CODESERVER_SOURCE_PREFETCH} && \
-    CI=1 npm ci --offline
+    CI=1 npm ci --offline && \
+    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}"
 
 # [HERMETIC] Step 2: Build code-server TypeScript
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run build
 
 # [HERMETIC] Step 3: Build VS Code (the embedded editor)
+# Raise soft nofile before esbuild transpile (~6k sources); build-vscode.sh also caps concurrency.
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
+    (ulimit -n 65536 2>/dev/null || ulimit -n 16384 2>/dev/null || true) && \
+    VERSION=${CODESERVER_VERSION/v/} npm run build:vscode && \
+    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}"
 
 # [HERMETIC] Step 4: Create release bundle.
+# Upstream 4.122+ dropped release:standalone; KEEP_MODULES=1 npm run release now produces
+# the platform tree (modules + bundled node + bin/code-server) under ./release.
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release
-
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release:standalone
+    npm run release && \
+    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}/release"
 
 # Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
 RUN echo "done" > /tmp/control
@@ -179,7 +183,7 @@ ARG TARGETOS
 ARG TARGETARCH
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-ARG CODESERVER_VERSION=v4.112.0
+ARG CODESERVER_VERSION=v4.122.1
 ARG PYLOCK_FLAVOR
 
 ARG LABEL_REGISTRY_PREFIX
@@ -219,12 +223,12 @@ dnf clean all
 rm -rf /var/cache/dnf
 EOF
 
-# Wait for rpm-base stage (builds code-server release-standalone).
+# Wait for rpm-base stage (builds code-server release tree).
 COPY --from=rpm-base /tmp/control /dev/null
 
 # Install code-server from built tree (no RPM: avoids unsigned-package issues on Konflux/Conforma).
-# Path in rpm-base: /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release-standalone
-COPY --from=rpm-base /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release-standalone/. /usr/lib/code-server/
+# Path in rpm-base: /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release
+COPY --from=rpm-base /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release/. /usr/lib/code-server/
 # Wrapper script (from code-server ci/build) that execs /usr/lib/code-server/bin/code-server
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ci/build/code-server-nfpm.sh /usr/bin/code-server
 RUN chmod 755 /usr/bin/code-server
