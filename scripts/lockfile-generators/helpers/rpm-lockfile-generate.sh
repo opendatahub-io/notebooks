@@ -66,19 +66,21 @@ pushd "/workspace/$PREFETCH_INPUT_DIR" >/dev/null
         # RHOAI/AIPCC runtime images use RHEL 9.6 EUS repos (baseos/appstream/CRB).
         # Without EUS enabled, rpm-lockfile-prototype resolves system RPMs like python3
         # from the older non-EUS dist channel (el9_6.2) instead of EUS (el9_6.6).
+        #
+        # Activation keys often attach hundreds of layered/debug/source repos. Loading
+        # all of them is slow and some return 403 for non-x86_64 arches, so disable
+        # everything first and enable only what notebook lockfiles need.
         basearch=$(rpm --eval '%{_arch}')
-        echo "Enabling RHEL 9.6 EUS repos (match AIPCC/RHOAI base images)..."
+        echo "Restricting yum repos to EUS + required layered products..."
+        subscription-manager repos --disable="*" >/dev/null || true
         for repo in \
             "rhel-9-for-${basearch}-baseos-eus-rpms" \
             "rhel-9-for-${basearch}-appstream-eus-rpms" \
-            "codeready-builder-for-rhel-9-${basearch}-eus-rpms"; do
+            "codeready-builder-for-rhel-9-${basearch}-eus-rpms" \
+            "rhocp-4.16-for-rhel-9-${basearch}-rpms" \
+            "rhelai-3.5-for-rhel-9-${basearch}-rpms"; do
             subscription-manager repos --enable="$repo" 2>/dev/null || true
         done
-
-        # Layered-product repos for openshift-clients and texlive-tcolorbox (also set in
-        # Dockerfile.rpm-lockfile at image build time; re-enable here for cached images).
-        dnf config-manager --set-enabled "rhocp-4.16-for-rhel-9-${basearch}-rpms" 2>/dev/null || true
-        dnf config-manager --set-enabled "rhelai-3.3-for-rhel-9-${basearch}-rpms" 2>/dev/null || true
 
         # subscription-manager generates redhat.repo with literal x86_64
         # in URLs (e.g. .../9.6/x86_64/appstream/os). For multi-arch
