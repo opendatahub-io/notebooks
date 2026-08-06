@@ -864,11 +864,23 @@ def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bo
 
 def is_image_directory(directory: pathlib.Path) -> bool:
     """image directory e.g. "ubi9-python-3.11"""
-    try:
-        _ubi, _lang, _python = directory.name.split("-")
-    except ValueError:
+    if re.fullmatch(r"ubi9-python-\d+\.\d+", directory.name) is None:
         return False
     return (directory / "build-args").is_dir()
+
+
+def test_is_image_directory_accepts_expected_pattern(tmp_path: pathlib.Path) -> None:
+    directory = tmp_path / "ubi9-python-3.12"
+    (directory / "build-args").mkdir(parents=True)
+
+    assert is_image_directory(directory)
+
+
+def test_is_image_directory_rejects_lookalike_three_token_name(tmp_path: pathlib.Path) -> None:
+    directory = tmp_path / "foo-bar-baz"
+    (directory / "build-args").mkdir(parents=True)
+
+    assert not is_image_directory(directory)
 
 
 def is_dependencies_directory(file: pathlib.Path) -> bool:

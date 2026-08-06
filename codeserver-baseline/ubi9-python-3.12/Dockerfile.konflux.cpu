@@ -303,7 +303,8 @@ COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SO
 
 # The raw RHEL Python base does not bootstrap uv the way the AIPCC notebook
 # base does, so install it explicitly for the phase-1 online PyPI sync.
-RUN python3 -m pip install --no-cache-dir uv
+ARG UV_VERSION=0.12.1
+RUN python3 -m pip install --no-cache-dir "uv==${UV_VERSION}"
 
 ENV SHELL=/bin/bash
 

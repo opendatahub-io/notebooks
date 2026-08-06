@@ -107,6 +107,16 @@ class S390xImages(enum.Enum):
     ONLY = "only"
 
 
+def filter_rhel_targets(targets: list[str], mode: RhelImages) -> list[str]:
+    if mode == RhelImages.INCLUDE:
+        return targets
+    if mode == RhelImages.EXCLUDE:
+        return [target for target in targets if not target_needs_subscription(target)]
+    if mode == RhelImages.INCLUDE_ONLY:
+        return [target for target in targets if target_needs_subscription(target)]
+    raise Exception(f"Unknown value for --rhel-images: {mode}")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -162,14 +172,7 @@ def main() -> None:
         changed_files = gha_pr_changed_files.list_changed_files(args.from_ref, args.to_ref)
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
 
-    if args.rhel_images == RhelImages.INCLUDE:
-        pass
-    elif args.rhel_images == RhelImages.EXCLUDE:
-        targets = [target for target in targets if "rhel" not in target]
-    elif args.rhel_images == RhelImages.INCLUDE_ONLY:
-        targets = [target for target in targets if "rhel" in target]
-    else:
-        raise Exception(f"Unknown value for --rhel-images: {args.rhel_images}")
+    targets = filter_rhel_targets(targets, args.rhel_images)
 
     targets_with_platform: list[tuple[str, str]] = []
     for target in targets:
@@ -226,6 +229,27 @@ class TestSelf(unittest.TestCase):
         assert target_needs_subscription("codeserver-baseline-ubi9-python-3.12") is True
         assert target_needs_subscription("cuda-jupyter-minimal-ubi9-python-3.12") is False
         assert target_needs_subscription("runtime-rhel-cuda-tensorflow-ubi9-python-3.12") is True
+
+    def test_filter_rhel_targets_excludes_subscription_backed_baseline(self):
+        targets = [
+            "codeserver-baseline-ubi9-python-3.12",
+            "jupyter-minimal-ubi9-python-3.12",
+            "runtime-rhel-cuda-tensorflow-ubi9-python-3.12",
+        ]
+
+        assert filter_rhel_targets(targets, RhelImages.EXCLUDE) == ["jupyter-minimal-ubi9-python-3.12"]
+
+    def test_filter_rhel_targets_include_only_keeps_subscription_backed_baseline(self):
+        targets = [
+            "codeserver-baseline-ubi9-python-3.12",
+            "jupyter-minimal-ubi9-python-3.12",
+            "runtime-rhel-cuda-tensorflow-ubi9-python-3.12",
+        ]
+
+        assert filter_rhel_targets(targets, RhelImages.INCLUDE_ONLY) == [
+            "codeserver-baseline-ubi9-python-3.12",
+            "runtime-rhel-cuda-tensorflow-ubi9-python-3.12",
+        ]
 
     def test_select_changed_targets_dockerfile(self):
         targets = extract_image_targets(makefile_dir=project_dir)

@@ -289,10 +289,14 @@ ifeq (,$(wildcard $(YQ_BIN)))
 	@chmod +x $(YQ_BIN)
 endif
 
+target_and_python_from_stem = $(subst -ubi9-python-, ,$1)
+target_from_stem = $(word 1,$(call target_and_python_from_stem,$1))
+python_version_from_stem = $(word 2,$(call target_and_python_from_stem,$1))
+
 .PHONY: deploy9
 deploy9-%: bin/kubectl bin/yq
-	$(eval TARGET := $(shell echo $* | sed -E 's/-ubi9-python-.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed -E 's/.*-python-//'))
+	$(eval TARGET := $(call target_from_stem,$*))
+	$(eval PYTHON_VERSION := $(call python_version_from_stem,$*))
 	$(eval TARGET_PATH := $(if $(filter codeserver-baseline,$(TARGET)),codeserver-baseline,$(subst -,/,$(subst cuda-,,$(TARGET)))))
 	$(eval NOTEBOOK_DIR := $(TARGET_PATH)/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
@@ -305,8 +309,8 @@ endif
 
 .PHONY: undeploy9
 undeploy9-%: bin/kubectl
-	$(eval TARGET := $(shell echo $* | sed -E 's/-ubi9-python-.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed -E 's/.*-python-//'))
+	$(eval TARGET := $(call target_from_stem,$*))
+	$(eval PYTHON_VERSION := $(call python_version_from_stem,$*))
 	$(eval TARGET_PATH := $(if $(filter codeserver-baseline,$(TARGET)),codeserver-baseline,$(subst -,/,$(subst cuda-,,$(TARGET)))))
 	$(eval NOTEBOOK_DIR := $(TARGET_PATH)/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
