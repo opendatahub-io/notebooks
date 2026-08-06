@@ -20,6 +20,7 @@ from tests import index_config_utils
 from tests.containers import docker_utils
 
 LOGGER = logging.getLogger(__name__)
+PUBLIC_INDEX_IMAGE_NAME_FRAGMENTS = ("-pypi-",)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -270,13 +271,18 @@ class TestBaseImage:
 
     @allure.issue("RHAIENG-2189")
     def test_python_package_index(self, image: str, subtests: pytest.Subtests):
-        """Verify all images have AIPCC index config.
+        """Verify images advertise the expected Python index contract.
 
-        All images (both ODH and RHOAI) use AIPCC wheels and must point pip/uv
-        to the AIPCC index. Mixing AIPCC wheels with PyPI wheels causes ABI
-        incompatibility — especially for CUDA/torch-dependent packages (flash-attn,
-        vllm, xformers, etc.) which link against the exact torch C++ ABI that
-        AIPCC builds. Crashes range from core dumps to random garbage results.
+        Most images in this repo use AIPCC wheels and must point pip/uv to the
+        AIPCC index. Mixing AIPCC wheels with PyPI wheels causes ABI
+        incompatibility — especially for CUDA/torch-dependent packages
+        (flash-attn, vllm, xformers, etc.) which link against the exact torch
+        C++ ABI that AIPCC builds. Crashes range from core dumps to random
+        garbage results.
+
+        Public-index images are the explicit exception. Their published image
+        reference includes ``-pypi-`` and they must not advertise the AIPCC
+        config-file contract.
 
         ODH-derived images usually also export PIP_INDEX_URL / UV_INDEX_URL.
         RHOAI/AIPCC base images configure the index via pip.conf and uv.toml,
@@ -289,6 +295,8 @@ class TestBaseImage:
           https://redhat-internal.slack.com/archives/C0987K24BNV/p1761159166691689
         - Customer docs: https://access.redhat.com/articles/7137881
         """
+        public_index_image = any(fragment in image for fragment in PUBLIC_INDEX_IMAGE_NAME_FRAGMENTS)
+
         with docker_utils.running_container(image=image) as container:
 
             def read_container_file(path: str) -> str:
@@ -306,6 +314,24 @@ class TestBaseImage:
 
             _, output = container.exec(["env"])
             actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
+
+            if public_index_image:
+                with subtests.test("Public-index images do not export AIPCC config file env vars"):
+                    unexpected = {
+                        key: actual[key] for key in ("PIP_CONFIG_FILE", "UV_CONFIG_FILE") if key in actual
+                    }
+                    assert unexpected == {}, (
+                        "Public-index images must not export AIPCC config file env vars. "
+                        f"Got: {unexpected}"
+                    )
+
+                for key in ("PIP_INDEX_URL", "UV_INDEX_URL"):
+                    with subtests.test(f"{key}, if present, points to PyPI"):
+                        if key in actual:
+                            assert index_config_utils.is_pypi_index_url(actual[key]), (
+                                f"{key} must point to PyPI for public-index images. Got: {actual[key]}"
+                            )
+                return
 
             # All images have pip.conf and uv.toml pointing to the AIPCC index
             aipcc_config_vars = {
