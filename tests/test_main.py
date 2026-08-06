@@ -852,9 +852,7 @@ def is_subproject_metapackage(package_name: str) -> bool:
 
 
 def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bool:
-    unimplemented_dirs = (
-        "codeserver-baseline/ubi9-python-3.12",
-    )
+    unimplemented_dirs = ("codeserver-baseline/ubi9-python-3.12",)
     for d in unimplemented_dirs:
         if is_suffix(directory.parts, pathlib.Path(d).parts):
             if call_skip:

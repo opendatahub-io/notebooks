@@ -317,12 +317,9 @@ class TestBaseImage:
 
             if public_index_image:
                 with subtests.test("Public-index images do not export AIPCC config file env vars"):
-                    unexpected = {
-                        key: actual[key] for key in ("PIP_CONFIG_FILE", "UV_CONFIG_FILE") if key in actual
-                    }
+                    unexpected = {key: actual[key] for key in ("PIP_CONFIG_FILE", "UV_CONFIG_FILE") if key in actual}
                     assert unexpected == {}, (
-                        "Public-index images must not export AIPCC config file env vars. "
-                        f"Got: {unexpected}"
+                        f"Public-index images must not export AIPCC config file env vars. Got: {unexpected}"
                     )
 
                 for key in ("PIP_INDEX_URL", "UV_INDEX_URL"):
