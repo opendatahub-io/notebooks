@@ -63,36 +63,36 @@ spec:
         - name: prepare-sboms
           computeResources:
             requests:
-              cpu: '8'
-              memory: 32Gi
+              cpu: '4'
+              memory: 8Gi
             limits:
-              cpu: '8'
-              memory: 32Gi
+              cpu: '4'
+              memory: 8Gi
         - name: sbom-syft-generate
           computeResources:
             requests:
-              cpu: '8'
-              memory: 32Gi
+              cpu: '4'
+              memory: 8Gi
             limits:
-              cpu: '8'
-              memory: 32Gi
+              cpu: '4'
+              memory: 8Gi
         - name: build
           computeResources:
             requests:
               cpu: '4'
               memory: 8Gi
-              ephemeral-storage: 160Gi
+              ephemeral-storage: 64Gi
             limits:
               cpu: '4'
               memory: 8Gi
-              ephemeral-storage: 160Gi
+              ephemeral-storage: 64Gi
     - pipelineTaskName: clair-scan
       computeResources:
         requests:
-          cpu: '4'
+          cpu: '8'
           memory: 8Gi
         limits:
-          cpu: '4'
+          cpu: '8'
           memory: 8Gi
     - pipelineTaskName: ecosystem-cert-preflight-checks
       computeResources:
@@ -108,7 +108,11 @@ spec:
           memory: 8Gi
     - pipelineTaskName: prefetch-dependencies
       computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
         limits:
+          cpu: '4'
           memory: 8Gi
     - pipelineTaskName: clamav-scan
       computeResources:

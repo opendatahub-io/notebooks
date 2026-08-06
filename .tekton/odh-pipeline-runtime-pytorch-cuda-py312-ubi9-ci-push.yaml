@@ -85,14 +85,18 @@ spec:
         requests:
           cpu: '4'
           memory: 8Gi
-          ephemeral-storage: 160Gi
+          ephemeral-storage: 64Gi
         limits:
           cpu: '4'
           memory: 8Gi
-          ephemeral-storage: 160Gi
+          ephemeral-storage: 64Gi
   - pipelineTaskName: clair-scan
     computeResources:
+      requests:
+        cpu: '8'
+        memory: 8Gi
       limits:
+        cpu: '8'
         memory: 8Gi
   - pipelineTaskName: sast-shell-check
     computeResources:
@@ -104,7 +108,11 @@ spec:
         memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
       limits:
+        cpu: '4'
         memory: 8Gi
   - pipelineTaskName: clamav-scan
     computeResources:

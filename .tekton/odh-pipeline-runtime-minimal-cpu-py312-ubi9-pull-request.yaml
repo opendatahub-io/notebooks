@@ -108,10 +108,10 @@ spec:
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
-        cpu: '4'
+        cpu: '8'
         memory: 8Gi
       limits:
-        cpu: '4'
+        cpu: '8'
         memory: 8Gi
   - pipelineTaskName: sast-shell-check
     computeResources:
@@ -139,7 +139,11 @@ spec:
         memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
       limits:
+        cpu: '4'
         memory: 8Gi
   - pipelineTaskName: clamav-scan
     computeResources:

@@ -56,42 +56,46 @@ spec:
     - name: prepare-sboms
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: sbom-syft-generate
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
         cpu: '8'
-        memory: 32Gi
+        memory: 8Gi
       limits:
         cpu: '8'
-        memory: 32Gi
+        memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
       requests:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
       limits:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: sast-unicode-check
     computeResources:
       limits:
         memory: 8Gi
   - pipelineTaskName: prefetch-dependencies
     computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
       limits:
+        cpu: '4'
         memory: 8Gi
   - pipelineTaskName: clamav-scan
     computeResources:
