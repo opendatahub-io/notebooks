@@ -37,3 +37,17 @@ def test_lookalike_baseline_name_is_not_public_index() -> None:
     assert not is_public_index_image(
         "quay.io/example/codeserver-baseline-ubi9-python-3.12-extra:latest",
     )
+
+
+def test_workbench_images_tag_encoded_baseline_is_public_index() -> None:
+    assert is_public_index_image(
+        "ghcr.io/opendatahub-io/notebooks/workbench-images:"
+        "codeserver-baseline-ubi9-python-3.12-4304_merge_9b9123b_rhoai_linux_amd64",
+    )
+
+
+def test_workbench_images_tag_encoded_standard_codeserver_is_not_public_index() -> None:
+    assert not is_public_index_image(
+        "ghcr.io/opendatahub-io/notebooks/workbench-images:"
+        "codeserver-ubi9-python-3.12-4304_merge_9b9123b_rhoai_linux_amd64",
+    )
