@@ -194,7 +194,7 @@ a three-process stack per workbench container:
   the IDE's heartbeat (Code-Server)
 
 Key files:
-- `codeserver/*/nginx/api/kernels/access.cgi` — polls `localhost:8888/codeserver/healthz`,
+- `codeserver/*/nginx/api/kernels/access.cgi` — polls `localhost:8787/healthz`,
   converts heartbeat to Jupyter kernel format
 - `codeserver/*/nginx/httpconf/http.conf` — custom nginx log format producing JSON with
   `last_activity` in ISO 8601 format

@@ -216,10 +216,18 @@ class TestCullingApi:
             _wait_for_healthz(container, nb_prefix=nb_prefix)
             _install_culling_stack(container)
 
+            healthz = _fetch_healthz(container, nb_prefix=nb_prefix)
             status, kernels = _get_kernels_via_http(container, kernels_path=f"{nb_prefix}/api/kernels/")
             assert status == 200, f"expected 200 for prefixed kernels URL, got {status}"
             assert kernels is not None and len(kernels) == 1
             _assert_valid_kernel_record(kernels[0])
+            # Fresh pod healthz is expired (lastHeartbeat=0). CGI polls code-server
+            # directly on :8787 (not nginx), so NB_PREFIX must not affect this mapping.
+            expected_state = "busy" if healthz.get("status") == "alive" else "idle"
+            assert kernels[0]["execution_state"] == expected_state, (
+                f"CGI must map healthz status={healthz.get('status')!r} to "
+                f"execution_state={expected_state!r} (got {kernels[0]!r}; healthz={healthz!r})."
+            )
 
             legacy_status, legacy_kernels = _get_kernels_via_http(container, kernels_path="/api/kernels/")
             assert legacy_status == 404, f"expected 404 for legacy kernels URL under NB_PREFIX, got {legacy_status}"
