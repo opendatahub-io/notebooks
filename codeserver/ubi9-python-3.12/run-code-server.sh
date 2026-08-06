@@ -59,9 +59,12 @@ universal_json_settings='// vscode settings are written in json-with-comments
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
 
-  // Disable GitHub Copilot in code-server
-  // official doc https://code.visualstudio.com/docs/copilot/faq#_how-can-i-remove-copilot-from-vs-code
-  "chat.disableAIFeatures": true,
+  // RHAIENG-6400 / RHAISTRAT-2209: enable Copilot Chat surfaces for Device Code auth validation.
+  // Customer GA still gated by Legal RHAI-113; preferDeviceCodeFlow so UrlHandler/OAuth
+  // redirects are not tried first behind Kubeflow OAuth / kube-rbac-proxy.
+  // https://code.visualstudio.com/docs/copilot/faq#_how-can-i-remove-copilot-from-vs-code
+  "chat.disableAIFeatures": false,
+  "github-authentication.preferDeviceCodeFlow": true,
 
   // RHOAIENG-14518: Disable the "Do you trust the authors [...]" startup prompt
   "security.workspace.trust.enabled": false,
