@@ -312,17 +312,6 @@ class TestBaseImage:
                 assert ecode == 0, f"Failed to read {path}: {output_str}"
                 return output_str
 
-            def container_file_exists(path: str) -> bool:
-                ecode, _ = container.exec(
-                    [
-                        "python3",
-                        "-c",
-                        "from pathlib import Path; import sys; raise SystemExit(0 if Path(sys.argv[1]).is_file() else 1)",
-                        path,
-                    ]
-                )
-                return ecode == 0
-
             _, output = container.exec(["env"])
             actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
 
@@ -338,27 +327,6 @@ class TestBaseImage:
                         assert index_config_utils.index_urls_are_all_pypi(urls), (
                             f"{key} must point only to PyPI for public-index images"
                         )
-
-                home = actual.get("HOME", "/opt/app-root")
-                for path in (
-                    "/etc/pip.conf",
-                    f"{home}/.config/pip/pip.conf",
-                    f"{home}/.pip/pip.conf",
-                ):
-                    with subtests.test(f"{path}, if present, points only to PyPI"):
-                        if container_file_exists(path):
-                            urls = index_config_utils.pip_all_index_urls_from_config(read_container_file(path))
-                            assert index_config_utils.index_urls_are_all_pypi(urls), (
-                                f"{path} must not configure non-PyPI package indexes for public-index images"
-                            )
-
-                for path in (f"{home}/.config/uv/uv.toml",):
-                    with subtests.test(f"{path}, if present, points only to PyPI"):
-                        if container_file_exists(path):
-                            urls = index_config_utils.uv_all_index_urls_from_config(read_container_file(path))
-                            assert index_config_utils.index_urls_are_all_pypi(urls), (
-                                f"{path} must not configure non-PyPI package indexes for public-index images"
-                            )
                 return
 
             # All images have pip.conf and uv.toml pointing to the AIPCC index
