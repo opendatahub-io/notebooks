@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 import configparser
 import shlex
 import tomllib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 PYPI_SIMPLE_INDEX = "https://pypi.org/simple"
 

@@ -77,9 +77,7 @@ def test_env_index_urls_collects_extra_and_named_uv_indexes():
     env = {
         "PIP_INDEX_URL": "https://pypi.org/simple",
         "PIP_EXTRA_INDEX_URL": "https://packages.example.invalid/simple/",
-        "UV_EXTRA_INDEX_URL": (
-            "https://packages.example.invalid/simple/ https://mirror.example.invalid/simple/"
-        ),
+        "UV_EXTRA_INDEX_URL": "https://packages.example.invalid/simple/ https://mirror.example.invalid/simple/",
         "UV_INDEX": "private=https://packages.example.invalid/simple/ https://pypi.org/simple",
     }
 
