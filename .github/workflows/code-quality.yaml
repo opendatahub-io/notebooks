@@ -86,6 +86,10 @@ jobs:
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
           # Full history so tests/test_pylock_downgrade.py can `git show origin/main:…/pylock.toml`.
           fetch-depth: 0
+          # Check out the PR head (not the merge commit) so coverage maps to head.sha, which is
+          # what upload-code-coverage attributes the report to (matches the action's README
+          # example). On push, head.sha is empty -> falls back to github.sha (unchanged).
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Login to GitHub Container Registry
         if: ${{ github.repository != 'opendatahub-io/notebooks' }}
@@ -152,8 +156,16 @@ jobs:
       # Setup guide:    https://docs.github.com/en/code-security/how-tos/maintain-quality-code/set-up-code-coverage
       # Enable feature: https://docs.github.com/en/code-security/how-tos/maintain-quality-code/enable-code-quality
       # Upload action:  https://github.com/actions/upload-code-coverage
+      # SECURITY: the ref_name guards below work around a script injection in upstream
+      # actions/upload-code-coverage -- on push it interpolates github.ref_name/github.ref
+      # into a shell `run:` block, so a branch named e.g. rhoai-$(...) would execute code.
+      # `if:` is a GHA-expression (non-shell) context, so we safely skip the upload when the
+      # branch name contains a shell metacharacter ($ ` " \). Drop once upstream injects via env.
       - name: Upload Python coverage to GitHub Code Quality
-        if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
+        if: >-
+          ${{ !cancelled() && steps.install-deps.conclusion == 'success'
+          && !contains(github.ref_name, '$') && !contains(github.ref_name, '`')
+          && !contains(github.ref_name, '"') && !contains(github.ref_name, '\') }}
         uses: actions/upload-code-coverage@1c15be36fc3733ba839b1dd643bd9556e4426dc1  # v1.4.1
         with:
           file: coverage.xml
@@ -175,6 +187,9 @@ jobs:
       code-quality: write  # upload coverage to GitHub Code Quality
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # PR head (not the merge commit) so Go coverage maps to head.sha (see pytest-tests note).
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
@@ -195,7 +210,9 @@ jobs:
         working-directory: scripts/buildinputs
 
       - name: Convert Go coverage to Cobertura XML
+        id: go-cobertura
         if: ${{ !cancelled() }}
+        continue-on-error: true  # optional coverage tooling must not fail the go-tests job
         # upload-code-coverage only accepts Cobertura; Codecov reads the native .out directly.
         # GitHub's documented Go recipe (see the "set-up-code-coverage" guide, language table):
         #   go test -coverprofile=cover.out && gocover-cobertura < cover.out > coverage.xml
@@ -216,8 +233,12 @@ jobs:
           flags: go
           fail_ci_if_error: false
 
+      # SECURITY: see the ref_name-guard note on the Python upload above (same upstream injection).
       - name: Upload Go coverage to GitHub Code Quality
-        if: ${{ !cancelled() }}
+        if: >-
+          ${{ !cancelled() && steps.go-cobertura.outcome == 'success'
+          && !contains(github.ref_name, '$') && !contains(github.ref_name, '`')
+          && !contains(github.ref_name, '"') && !contains(github.ref_name, '\') }}
         uses: actions/upload-code-coverage@1c15be36fc3733ba839b1dd643bd9556e4426dc1  # v1.4.1
         with:
           file: scripts/buildinputs/coverage-go.xml
