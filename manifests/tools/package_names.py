@@ -32,7 +32,6 @@ MANIFEST_LOWER_NAMES: frozenset[str] = frozenset(
         "JupyterLab",
         "Kafka-Python-ng",
         "Kfp",
-        "Kubeflow-Training",
         "Matplotlib",
         "MLflow",
         "Numpy",

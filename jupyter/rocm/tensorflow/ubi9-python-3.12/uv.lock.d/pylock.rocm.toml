@@ -830,12 +830,6 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9-test/kubeflow_kale-2.1.1-12-py3-none-any.whl", upload-time = 2026-07-20T15:42:04Z, size = 368239, hashes = { sha256 = "777f0e38453734c078726744d5d5d4c4e18a53ad549c74c5e5bf426dbc594c6e" } }]
 
 [[packages]]
-name = "kubeflow-training"
-version = "1.9.3"
-marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9-test/kubeflow_training-1.9.3-12-py3-none-any.whl", upload-time = 2026-07-20T15:42:04Z, size = 115251, hashes = { sha256 = "1c8112ac5ded4b20fa926a057fae6c9b6f8f1fb9aa84d199cbf892832cf8be2f" } }]
-
-[[packages]]
 name = "kubernetes"
 version = "35.0.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -1525,12 +1519,6 @@ name = "requests-toolbelt"
 version = "1.0.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9-test/requests_toolbelt-1.0.0-12-py2.py3-none-any.whl", upload-time = 2026-07-20T15:42:04Z, size = 53489, hashes = { sha256 = "0285bca48741093d36234ebaf11141d3794b54120f8f4acee4b464522bcbdb82" } }]
-
-[[packages]]
-name = "retrying"
-version = "1.4.2"
-marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9-test/retrying-1.4.2-12-py3-none-any.whl", upload-time = 2026-07-20T15:42:04Z, size = 12523, hashes = { sha256 = "20e0e90bde06c1465d79eaf5bde75a65de5c25eaa657c627281786bc543a9b45" } }]
 
 [[packages]]
 name = "rfc3339-validator"
