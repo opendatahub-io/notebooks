@@ -158,3 +158,5 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
   fi
   "$SCRIPTS_PATH/helpers/hermeto-fetch-rpm.sh" "${HERMETO_ARGS[@]}"
 fi
+
+# ci-retrigger 20260806T191253Z
