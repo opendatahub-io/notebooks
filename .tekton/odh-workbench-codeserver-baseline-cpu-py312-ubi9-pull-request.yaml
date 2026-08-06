@@ -45,6 +45,9 @@ spec:
   - name: build-platforms
     value:
     - linux-d160-m4xlarge/amd64
+    - linux-d160-m4xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
   - name: dockerfile
     value: codeserver-baseline/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: path-context
