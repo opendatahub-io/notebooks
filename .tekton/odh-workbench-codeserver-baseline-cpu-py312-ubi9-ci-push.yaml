@@ -18,7 +18,7 @@ metadata:
       )
   labels:
     appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-workbench-codeserver-baseline-cpu-py312-ubi9-ci
+    appstudio.openshift.io/component: odh-workbench-codeserver-baseline-cpu-py312-c9s-ci
     pipelines.appstudio.openshift.io/type: build
   name: odh-workbench-codeserver-baseline-cpu-py312-ubi9-ci-on-push
   namespace: open-data-hub-tenant
@@ -103,7 +103,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-workbench-codeserver-baseline-cpu-py312-ubi9
+    serviceAccountName: build-pipeline-odh-workbench-codeserver-baseline-cpu-py312-c9s-ci
   workspaces:
   - name: git-auth
     secret:
