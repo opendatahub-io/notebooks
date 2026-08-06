@@ -97,6 +97,67 @@ class S390xImages(enum.Enum):
     ONLY = "only"
 
 
+def filter_rhel_images(targets: list[str], rhel_images: RhelImages) -> list[str]:
+    if rhel_images == RhelImages.INCLUDE:
+        return targets
+    elif rhel_images == RhelImages.EXCLUDE:
+        return [target for target in targets if "rhel" not in target]
+    elif rhel_images == RhelImages.INCLUDE_ONLY:
+        return [target for target in targets if "rhel" in target]
+    else:
+        raise Exception(f"Unknown value for --rhel-images: {rhel_images}")
+
+
+def assign_platforms(
+    targets: list[str],
+    *,
+    arm64_images: Arm64Images,
+    ppc64le_images: Ppc64leImages,
+    s390x_images: S390xImages,
+) -> list[tuple[str, str]]:
+    targets_with_platform: list[tuple[str, str]] = []
+    for target in targets:
+        if s390x_images != S390xImages.ONLY and arm64_images != Arm64Images.ONLY:
+            targets_with_platform.append((target, "linux/amd64"))
+        if arm64_images != Arm64Images.EXCLUDE and s390x_images != S390xImages.ONLY:
+            if target in ARM64_COMPATIBLE:
+                targets_with_platform.append((target, "linux/arm64"))
+        if (
+            ppc64le_images != Ppc64leImages.EXCLUDE
+            and arm64_images != Arm64Images.ONLY
+            and s390x_images != S390xImages.ONLY
+        ):
+            if target in PPC64LE_COMPATIBLE:
+                targets_with_platform.append((target, "linux/ppc64le"))
+        if s390x_images != S390xImages.EXCLUDE and arm64_images != Arm64Images.ONLY:
+            # NOTE: hardcode the list of s390x-compatible Makefile targets in S390X_COMPATIBLE
+            if target in S390X_COMPATIBLE:
+                targets_with_platform.append((target, "linux/s390x"))
+    return targets_with_platform
+
+
+def build_matrix_output(targets_with_platform: list[tuple[str, str]]) -> list[str]:
+    # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
+    return [
+        "matrix="
+        + json.dumps(
+            {
+                "include": [
+                    {
+                        "target": target,
+                        "python": "3.12",
+                        "platform": platform,
+                        "subscription": "rhel" in target,
+                    }
+                    for (target, platform) in targets_with_platform
+                ],
+            },
+            separators=(",", ":"),
+        ),
+        "has_jobs=" + json.dumps(len(targets_with_platform) > 0, separators=(",", ":")),
+    ]
+
+
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -152,49 +213,16 @@ def main() -> None:
         changed_files = gha_pr_changed_files.list_changed_files(args.from_ref, args.to_ref)
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
 
-    if args.rhel_images == RhelImages.INCLUDE:
-        pass
-    elif args.rhel_images == RhelImages.EXCLUDE:
-        targets = [target for target in targets if "rhel" not in target]
-    elif args.rhel_images == RhelImages.INCLUDE_ONLY:
-        targets = [target for target in targets if "rhel" in target]
-    else:
-        raise Exception(f"Unknown value for --rhel-images: {args.rhel_images}")
+    targets = filter_rhel_images(targets, args.rhel_images)
 
-    targets_with_platform: list[tuple[str, str]] = []
-    for target in targets:
-        if args.s390x_images != S390xImages.ONLY or args.arm64_images != Arm64Images.ONLY:
-            targets_with_platform.append((target, "linux/amd64"))
-        if args.arm64_images != Arm64Images.EXCLUDE and args.s390x_images != S390xImages.ONLY:
-            if target in ARM64_COMPATIBLE:
-                targets_with_platform.append((target, "linux/arm64"))
-        if args.ppc64le_images != Ppc64leImages.EXCLUDE:
-            if target in PPC64LE_COMPATIBLE:
-                targets_with_platform.append((target, "linux/ppc64le"))
-        if args.s390x_images != S390xImages.EXCLUDE and args.arm64_images != Arm64Images.ONLY:
-            # NOTE: hardcode the list of s390x-compatible Makefile targets in S390X_COMPATIBLE
-            if target in S390X_COMPATIBLE:
-                targets_with_platform.append((target, "linux/s390x"))
+    targets_with_platform = assign_platforms(
+        targets,
+        arm64_images=args.arm64_images,
+        ppc64le_images=args.ppc64le_images,
+        s390x_images=args.s390x_images,
+    )
 
-    # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
-    output = [
-        "matrix="
-        + json.dumps(
-            {
-                "include": [
-                    {
-                        "target": target,
-                        "python": "3.12",
-                        "platform": platform,
-                        "subscription": "rhel" in target,
-                    }
-                    for (target, platform) in targets_with_platform
-                ],
-            },
-            separators=(",", ":"),
-        ),
-        "has_jobs=" + json.dumps(len(targets_with_platform) > 0, separators=(",", ":")),
-    ]
+    output = build_matrix_output(targets_with_platform)
 
     print("targets", targets_with_platform)
     print(*output, sep="\n")
