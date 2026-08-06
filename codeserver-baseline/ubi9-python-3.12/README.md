@@ -33,7 +33,7 @@ Then build from the repository root:
 
 ```bash
 uv sync --locked
-make codeserver-baseline-pypi-3.12
+make codeserver-baseline-ubi9-python-3.12
 ```
 
 For ODH local builds, `build-args/cpu.conf` supplies the baseline ODH settings.

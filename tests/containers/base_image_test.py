@@ -18,9 +18,9 @@ import testcontainers.core.container
 import ntb
 from tests import index_config_utils
 from tests.containers import docker_utils
+from tests.public_index_image_utils import is_public_index_image
 
 LOGGER = logging.getLogger(__name__)
-PUBLIC_INDEX_IMAGE_NAME_FRAGMENTS = ("-pypi-",)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -280,9 +280,9 @@ class TestBaseImage:
         C++ ABI that AIPCC builds. Crashes range from core dumps to random
         garbage results.
 
-        Public-index images are the explicit exception. Their published image
-        reference includes ``-pypi-`` and they must not advertise the AIPCC
-        config-file contract.
+        Public-index images are the explicit exception. The
+        ``codeserver-baseline-ubi9-python-*`` image family is public-index
+        backed and must not advertise the AIPCC config-file contract.
 
         ODH-derived images usually also export PIP_INDEX_URL / UV_INDEX_URL.
         RHOAI/AIPCC base images configure the index via pip.conf and uv.toml,
@@ -295,7 +295,7 @@ class TestBaseImage:
           https://redhat-internal.slack.com/archives/C0987K24BNV/p1761159166691689
         - Customer docs: https://access.redhat.com/articles/7137881
         """
-        public_index_image = any(fragment in image for fragment in PUBLIC_INDEX_IMAGE_NAME_FRAGMENTS)
+        public_index_image = is_public_index_image(image)
 
         with docker_utils.running_container(image=image) as container:
 

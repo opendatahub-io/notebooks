@@ -129,7 +129,7 @@ def _query_build(make_target: str, query: str, env: dict[str, str] | None = None
 
 
 def _python_version_for_target(target: str) -> str:
-    if match := re.search(r"(?:python|pypi)-(?P<version>3\.\d+)$", target):
+    if match := re.search(r"python-(?P<version>3\.\d+)$", target):
         return match["version"]
     return "invalid-python-version"
 
@@ -240,7 +240,7 @@ class TestSelf(unittest.TestCase):
 
     def test_python_version_for_target(self):
         assert _python_version_for_target("rocm-jupyter-pytorch-ubi9-python-3.12") == "3.12"
-        assert _python_version_for_target("codeserver-baseline-pypi-3.12") == "3.12"
+        assert _python_version_for_target("codeserver-baseline-ubi9-python-3.12") == "3.12"
         assert _python_version_for_target("not-a-python-target") == "invalid-python-version"
 
     def test_should_build_target(self):

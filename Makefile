@@ -261,8 +261,8 @@ rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
 
 ####################################### Buildchain for Baseline Images (Codeserver, Jupyter, Runtime) using PYPI #######################################
 
-.PHONY: codeserver-baseline-pypi-$(RELEASE_PYTHON_VERSION)
-codeserver-baseline-pypi-$(RELEASE_PYTHON_VERSION):
+.PHONY: codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)
+codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,codeserver-baseline/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
 
@@ -291,9 +291,10 @@ endif
 
 .PHONY: deploy9
 deploy9-%: bin/kubectl bin/yq
-	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
+	$(eval TARGET := $(shell echo $* | sed -E 's/-ubi9-python-.*//'))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed -E 's/.*-python-//'))
+	$(eval TARGET_PATH := $(if $(filter codeserver-baseline,$(TARGET)),codeserver-baseline,$(subst -,/,$(subst cuda-,,$(TARGET)))))
+	$(eval NOTEBOOK_DIR := $(TARGET_PATH)/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
 endif
@@ -304,9 +305,10 @@ endif
 
 .PHONY: undeploy9
 undeploy9-%: bin/kubectl
-	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
+	$(eval TARGET := $(shell echo $* | sed -E 's/-ubi9-python-.*//'))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed -E 's/.*-python-//'))
+	$(eval TARGET_PATH := $(if $(filter codeserver-baseline,$(TARGET)),codeserver-baseline,$(subst -,/,$(subst cuda-,,$(TARGET)))))
+	$(eval NOTEBOOK_DIR := $(TARGET_PATH)/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
@@ -623,7 +625,7 @@ all-images: \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	codeserver-baseline-pypi-$(RELEASE_PYTHON_VERSION)
+	codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)
 else
 	$(error Invalid Python version $(RELEASE_PYTHON_VERSION))
 endif

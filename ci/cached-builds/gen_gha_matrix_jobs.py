@@ -43,7 +43,7 @@ S390X_COMPATIBLE = {
 # Targets that need the GHA "Add subscriptions" step even though their make
 # target names do not contain the historical "rhel" marker.
 SUBSCRIPTION_BACKED_TARGETS = {
-    "codeserver-baseline-pypi-3.12",
+    "codeserver-baseline-ubi9-python-3.12",
 }
 
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
 
 class TestSelf(unittest.TestCase):
     def test_target_needs_subscription(self):
-        assert target_needs_subscription("codeserver-baseline-pypi-3.12") is True
+        assert target_needs_subscription("codeserver-baseline-ubi9-python-3.12") is True
         assert target_needs_subscription("cuda-jupyter-minimal-ubi9-python-3.12") is False
         assert target_needs_subscription("runtime-rhel-cuda-tensorflow-ubi9-python-3.12") is True
 

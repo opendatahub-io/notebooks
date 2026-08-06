@@ -2,8 +2,10 @@
 import argparse
 import contextlib
 import functools
+import pathlib
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -16,6 +18,9 @@ import unittest.mock
 The make commands this runs are intended to reproduce the commands we define in our OpenShift CI config at
 https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-io/notebooks/opendatahub-io-notebooks-main.yaml#L1485
 """
+
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]
+MAKE = shutil.which("gmake") or shutil.which("make") or "make"
 
 
 class Args(argparse.Namespace):
@@ -137,6 +142,10 @@ def execute(executor: typing.Callable, args: tuple, kwargs: dict) -> int:
     return result
 
 
+def _make_just_print(target: str) -> str:
+    return subprocess.check_output([MAKE, target, "--just-print"], encoding="utf-8", cwd=PROJECT_ROOT)
+
+
 # Heavy images (e.g. datascience, trustyai) need more time to become Ready on constrained nodes.
 _HEAVY_TARGETS = ("jupyter-datascience", "jupyter-trustyai")
 
@@ -201,6 +210,16 @@ class TestMakeTest(unittest.TestCase):
         assert "make deploy9-codeserver-ubi9-python-3.11" in commands
         assert "make validate-codeserver-image image=codeserver-ubi9-python-3.11" in commands
         assert "make undeploy9-codeserver-ubi9-python-3.11" in commands
+
+    def test_make_deploy_codeserver_baseline_resolves_baseline_kustomize_dir(self) -> None:
+        output = _make_just_print("deploy9-codeserver-baseline-ubi9-python-3.12")
+        assert (
+            "codeserver-baseline/ubi9-python-3.12/kustomize/base/kustomization.yaml" in output
+        ), output
+
+    def test_make_undeploy_codeserver_baseline_resolves_baseline_kustomize_dir(self) -> None:
+        output = _make_just_print("undeploy9-codeserver-baseline-ubi9-python-3.12")
+        assert "codeserver-baseline/ubi9-python-3.12/kustomize/base" in output, output
 
     @unittest.mock.patch(target)
     def test_make_commands_runtime(self, mock_execute: unittest.mock.Mock) -> None:
