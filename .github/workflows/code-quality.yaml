@@ -156,16 +156,12 @@ jobs:
       # Setup guide:    https://docs.github.com/en/code-security/how-tos/maintain-quality-code/set-up-code-coverage
       # Enable feature: https://docs.github.com/en/code-security/how-tos/maintain-quality-code/enable-code-quality
       # Upload action:  https://github.com/actions/upload-code-coverage
-      # SECURITY: the ref_name guards below work around a script injection in upstream
-      # actions/upload-code-coverage -- on push it interpolates github.ref_name/github.ref
-      # into a shell `run:` block, so a branch named e.g. rhoai-$(...) would execute code.
-      # `if:` is a GHA-expression (non-shell) context, so we safely skip the upload when the
-      # branch name contains a shell metacharacter ($ ` " \). Drop once upstream injects via env.
+      # NOTE: on push/workflow_dispatch this action interpolates github.ref_name/github.ref into a
+      # shell run: (upstream script injection: https://github.com/actions/upload-code-coverage/issues/26).
+      # Only reachable with write access (which already grants CI code execution), so no marginal
+      # risk here; the fix belongs upstream (pass those values via env:).
       - name: Upload Python coverage to GitHub Code Quality
-        if: >-
-          ${{ !cancelled() && steps.install-deps.conclusion == 'success'
-          && !contains(github.ref_name, '$') && !contains(github.ref_name, '`')
-          && !contains(github.ref_name, '"') && !contains(github.ref_name, '\') }}
+        if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
         uses: actions/upload-code-coverage@1c15be36fc3733ba839b1dd643bd9556e4426dc1  # v1.4.1
         with:
           file: coverage.xml
@@ -233,12 +229,9 @@ jobs:
           flags: go
           fail_ci_if_error: false
 
-      # SECURITY: see the ref_name-guard note on the Python upload above (same upstream injection).
+      # See the upstream-injection note on the Python upload above (github.com/actions/upload-code-coverage/issues/26).
       - name: Upload Go coverage to GitHub Code Quality
-        if: >-
-          ${{ !cancelled() && steps.go-cobertura.outcome == 'success'
-          && !contains(github.ref_name, '$') && !contains(github.ref_name, '`')
-          && !contains(github.ref_name, '"') && !contains(github.ref_name, '\') }}
+        if: ${{ !cancelled() && steps.go-cobertura.outcome == 'success' }}
         uses: actions/upload-code-coverage@1c15be36fc3733ba839b1dd643bd9556e4426dc1  # v1.4.1
         with:
           file: scripts/buildinputs/coverage-go.xml
