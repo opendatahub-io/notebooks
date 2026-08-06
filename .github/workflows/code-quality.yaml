@@ -184,6 +184,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          persist-credentials: false  # don't leave the (code-quality:write) token in .git/config for PR code
           # PR head (not the merge commit) so Go coverage maps to head.sha (see pytest-tests note).
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
