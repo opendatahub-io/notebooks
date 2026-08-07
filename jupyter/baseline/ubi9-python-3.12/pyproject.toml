@@ -1,38 +1,21 @@
+# Phase 1: baseline build resolves Python packages from PyPI using `pylock.toml`.
+# Hermetic Python input generation stays deferred to phase 2.
+
 [project]
-name = "datascience-notebook"
+name = "jupyter-baseline-notebook"
 version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    # Hermetic cpu-base: prefetched with the rest of the stack (see repo-root prefetch-input/ and jupyter/minimal pyproject)
+    # Installer/tooling used in Docker/CI
     "uv",
     "micropipenv[toml]",
 
-    # Datascience and useful extensions
-    "skl2onnx",
-    # Core Data Science Libraries
-    "numpy",
-    "pandas",
-    "scikit-learn",
-    "scipy",
-    "matplotlib",
-    "plotly",
+    # Base packages
+    "wheel",
+    "setuptools",
 
-    # ML/MLOps Tools
-    "kfp",
-    "mlflow",
-
-    # NOTE: skl2onnx is added directly in consuming pyproject.toml files
-    # because codeserver needs s390x exclusion marker while jupyter notebooks don't
-    "onnxconverter-common",
-
-    # Cloud/Infrastructure
-    "boto3",
-    "kafka-python-ng",
-
-    # Workbench extensions
-    "codeflare-sdk; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "feast",
+    # JupyterLab core (odh-notebooks-meta-jupyterlab-deps)
     "jupyterlab",
     "jupyter-server",
     "jupyter-server-proxy",
@@ -41,13 +24,17 @@ dependencies = [
     "nbdime",
     "nbgitpuller",
     "odh-jupyter-trash-cleanup",
-    "setuptools",
     # PDF export (nbconvert); RHAIENG-5765 / AIPCC-7795
-    "pandoc-rhai",
+    "pandoc",
 
-    # Base packages
-    "wheel",
-    "setuptools",
+    # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
+    # heavy workbench/db-connector Python stack.
+    "odh-elyra",
+    "kubeflow-kale[jupyter]",
+    "jupyter-bokeh",
+    "jupyterlab-lsp",
+    "jupyterlab-widgets",
+    "jupyter-resource-usage",
 ]
 
 [tool.uv]

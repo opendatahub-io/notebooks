@@ -219,6 +219,14 @@ class TestMakeTest(unittest.TestCase):
         output = _make_just_print("undeploy9-codeserver-baseline-ubi9-python-3.12")
         assert "codeserver-baseline/ubi9-python-3.12/kustomize/base" in output, output
 
+    def test_make_deploy_jupyter_baseline_resolves_baseline_kustomize_dir(self) -> None:
+        output = _make_just_print("deploy9-jupyter-baseline-ubi9-python-3.12")
+        assert "jupyter/baseline/ubi9-python-3.12/kustomize/base/kustomization.yaml" in output, output
+
+    def test_make_undeploy_jupyter_baseline_resolves_baseline_kustomize_dir(self) -> None:
+        output = _make_just_print("undeploy9-jupyter-baseline-ubi9-python-3.12")
+        assert "jupyter/baseline/ubi9-python-3.12/kustomize/base" in output, output
+
     @unittest.mock.patch(target)
     def test_make_commands_runtime(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
