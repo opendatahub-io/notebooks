@@ -97,7 +97,9 @@ def _install_culling_stack(container: WorkbenchContainer, codeserver_image: conf
     wrapped = container.get_wrapped_container()
     docker_utils.container_cp(wrapped, str(access_cgi_path), "/opt/app-root/api/kernels", user=1001, group=0)
     docker_utils.container_cp(wrapped, str(httpd_conf_path), "/etc/httpd/conf", user=1001, group=0)
-    docker_utils.container_cp(wrapped, str(proxy_template_path), "/opt/app-root/etc/nginx.default.d", user=1001, group=0)
+    docker_utils.container_cp(
+        wrapped, str(proxy_template_path), "/opt/app-root/etc/nginx.default.d", user=1001, group=0
+    )
     docker_utils.container_cp(
         wrapped, str(proxy_template_nbprefix_path), "/opt/app-root/etc/nginx.default.d", user=1001, group=0
     )
