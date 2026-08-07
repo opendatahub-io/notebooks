@@ -1,0 +1,72 @@
+[project]
+name = "datascience-notebook"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Hermetic cpu-base: prefetched with the rest of the stack (see repo-root prefetch-input/ and jupyter/minimal pyproject)
+    "uv",
+    "micropipenv[toml]",
+
+    # Datascience and useful extensions
+    "skl2onnx",
+    # Core Data Science Libraries
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "matplotlib",
+    "plotly",
+
+    # ML/MLOps Tools
+    "kfp",
+    "mlflow",
+
+    # NOTE: skl2onnx is added directly in consuming pyproject.toml files
+    # because codeserver needs s390x exclusion marker while jupyter notebooks don't
+    "onnxconverter-common",
+
+    # Cloud/Infrastructure
+    "boto3",
+    "kafka-python-ng",
+
+    # Workbench extensions
+    "codeflare-sdk; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "feast",
+    "jupyterlab",
+    "jupyter-server",
+    "jupyter-server-proxy",
+    "jupyter-server-terminals",
+    "jupyterlab-git",
+    "nbdime",
+    "nbgitpuller",
+    "odh-jupyter-trash-cleanup",
+    "setuptools",
+    # PDF export (nbconvert); RHAIENG-5765 / AIPCC-7795
+    "pandoc-rhai",
+
+    # Base packages
+    "wheel",
+    "setuptools",
+]
+
+[tool.uv]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+]
+
+override-dependencies = [
+    # odh-elyra pins jupyter-resource-usage<1.2.dev0, but 1.1.1 needs psutil<6 while
+    # ipython 9.14+ on the RH index needs psutil>=7. Index ships 1.2.1.
+    "jupyter-resource-usage>=1.2.1,<1.3",
+    # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
+    # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
+    "urllib3>=2.7.0",
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
+]
+
+[tool.uv.sources]
