@@ -261,6 +261,13 @@ function _create_test_versions_source_of_truth()
 
     local version_filename='expected_versions.json'
 
+    # Phase-1 jupyter/baseline has no imagestream yet; papermill tests soft-skip
+    # version asserts when this file is empty/missing keys.
+    if [ "${notebook_id}" = "${jupyter_baseline_notebook_id}" ]; then
+        "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c 'printf "%s\n" "{}" > "${1}"' -- "${version_filename}"
+        return 0
+    fi
+
     local test_version_truth_filepath=
     test_version_truth_filepath="$( _get_source_of_truth_filepath "${notebook_id}" )" || true
     if ! [ -e "${test_version_truth_filepath}" ]; then
@@ -440,6 +447,9 @@ function _get_notebook_id() {
         *${jupyter_minimal_notebook_id}-*)
             notebook_id="${jupyter_minimal_notebook_id}"
             ;;
+        *${jupyter_baseline_notebook_id}-*)
+            notebook_id="${jupyter_baseline_notebook_id}"
+            ;;
         *${jupyter_datascience_notebook_id}-*)
             notebook_id="${jupyter_datascience_notebook_id}"
             ;;
@@ -492,6 +502,7 @@ test_target="${1:-}"
 
 # Hard-coded list of supported "notebook_id" values - based on notebooks/ repo Makefile
 jupyter_minimal_notebook_id='minimal'
+jupyter_baseline_notebook_id='baseline'
 jupyter_datascience_notebook_id='datascience'
 jupyter_trustyai_notebook_id='trustyai'
 jupyter_pytorch_notebook_id='pytorch'
