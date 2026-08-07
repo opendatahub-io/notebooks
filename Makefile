@@ -258,6 +258,14 @@ rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
 
+
+####################################### Buildchain for Baseline Images (Codeserver, Jupyter, Runtime) using PYPI #######################################
+
+.PHONY: codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)
+codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,codeserver-baseline/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
+
+
 ####################################### Deployments #######################################
 
 # Download kubectl binary
@@ -281,11 +289,16 @@ ifeq (,$(wildcard $(YQ_BIN)))
 	@chmod +x $(YQ_BIN)
 endif
 
+target_and_python_from_stem = $(subst -ubi9-python-, ,$1)
+target_from_stem = $(word 1,$(call target_and_python_from_stem,$1))
+python_version_from_stem = $(word 2,$(call target_and_python_from_stem,$1))
+
 .PHONY: deploy9
 deploy9-%: bin/kubectl bin/yq
-	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
+	$(eval TARGET := $(call target_from_stem,$*))
+	$(eval PYTHON_VERSION := $(call python_version_from_stem,$*))
+	$(eval TARGET_PATH := $(if $(filter codeserver-baseline,$(TARGET)),codeserver-baseline,$(subst -,/,$(subst cuda-,,$(TARGET)))))
+	$(eval NOTEBOOK_DIR := $(TARGET_PATH)/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
 endif
@@ -296,9 +309,10 @@ endif
 
 .PHONY: undeploy9
 undeploy9-%: bin/kubectl
-	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
+	$(eval TARGET := $(call target_from_stem,$*))
+	$(eval PYTHON_VERSION := $(call python_version_from_stem,$*))
+	$(eval TARGET_PATH := $(if $(filter codeserver-baseline,$(TARGET)),codeserver-baseline,$(subst -,/,$(subst cuda-,,$(TARGET)))))
+	$(eval NOTEBOOK_DIR := $(TARGET_PATH)/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
@@ -614,7 +628,8 @@ all-images: \
  	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)
 else
 	$(error Invalid Python version $(RELEASE_PYTHON_VERSION))
 endif

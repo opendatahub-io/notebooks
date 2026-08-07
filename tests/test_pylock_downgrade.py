@@ -35,7 +35,6 @@ _TRACKED_PYPI_RAW: tuple[str, ...] = (
     "jupyterlab",
     "kafka-python-ng",
     "kfp",
-    "kubeflow-training",
     "matplotlib",
     "mlflow",
     "numpy",

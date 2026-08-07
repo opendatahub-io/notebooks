@@ -584,7 +584,6 @@ def _compare_manifest_vs_actual(
             "nvidia-cuda-runtime-cu12",  # never listed in older manifests
             "boto3",  # ROCm images historically didn't list it
             "kfp",  # ROCm and code-server historically didn't list it
-            "kubeflow-training",  # rocm-tensorflow omission
             "accelerate",  # transitive dep of llmcompressor
             "datasets",  # transitive dep of llmcompressor
             "transformers",  # transitive dep of llmcompressor
