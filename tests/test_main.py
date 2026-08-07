@@ -185,10 +185,9 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
         logging.info(file)
         with subtests.test(msg="checking pyproject.toml", pipfile=file):
             directory = file.parent  # "ubi9-python-3.11"
-            try:
-                _ubi, _lang, python = directory.name.split("-")
-            except ValueError:
+            if not is_image_directory(directory):
                 pytest.skip(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
+            _ubi, _lang, python = directory.name.split("-")
 
             pyproject = tomllib.loads(file.read_text())
             with subtests.test(msg="checking pyproject.toml", pyproject=file):
@@ -852,7 +851,7 @@ def is_subproject_metapackage(package_name: str) -> bool:
 
 
 def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bool:
-    unimplemented_dirs = ()
+    unimplemented_dirs = ("codeserver-baseline/ubi9-python-3.12",)
     for d in unimplemented_dirs:
         if is_suffix(directory.parts, pathlib.Path(d).parts):
             if call_skip:
@@ -864,11 +863,23 @@ def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bo
 
 def is_image_directory(directory: pathlib.Path) -> bool:
     """image directory e.g. "ubi9-python-3.11"""
-    try:
-        _ubi, _lang, _python = directory.name.split("-")
-        return True
-    except ValueError:
+    if re.fullmatch(r"ubi9-python-\d+\.\d+", directory.name) is None:
         return False
+    return (directory / "build-args").is_dir()
+
+
+def test_is_image_directory_accepts_expected_pattern(tmp_path: pathlib.Path) -> None:
+    directory = tmp_path / "ubi9-python-3.12"
+    (directory / "build-args").mkdir(parents=True)
+
+    assert is_image_directory(directory)
+
+
+def test_is_image_directory_rejects_lookalike_three_token_name(tmp_path: pathlib.Path) -> None:
+    directory = tmp_path / "foo-bar-baz"
+    (directory / "build-args").mkdir(parents=True)
+
+    assert not is_image_directory(directory)
 
 
 def is_dependencies_directory(file: pathlib.Path) -> bool:

@@ -128,6 +128,12 @@ def _query_build(make_target: str, query: str, env: dict[str, str] | None = None
     return results[0]
 
 
+def _python_version_for_target(target: str) -> str:
+    if match := re.search(r"python-(?P<version>3\.\d+)$", target):
+        return match["version"]
+    return "invalid-python-version"
+
+
 def get_build_directory(make_target, env: dict[str, str] | None = None) -> str:
     return _query_build(make_target, "Image build directory", env=env)
 
@@ -184,9 +190,7 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
 def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[str]:
     changed = []
     for target in targets:
-        python_version = (
-            "3.11" if "-python-3.11" in target else "3.12" if "-python-3.12" in target else "invalid-python-version"
-        )
+        python_version = _python_version_for_target(target)
         build_directory = get_build_directory(target, env={"RELEASE_PYTHON_VERSION": python_version})
         if reason := should_build_target(changed_files, build_directory):
             logging.info(f"✅ Will build {target} because file {reason} has been changed")
@@ -233,6 +237,11 @@ class TestSelf(unittest.TestCase):
     def test_get_build_dockerfile(self):
         dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.12")
         assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm"
+
+    def test_python_version_for_target(self):
+        assert _python_version_for_target("rocm-jupyter-pytorch-ubi9-python-3.12") == "3.12"
+        assert _python_version_for_target("codeserver-baseline-ubi9-python-3.12") == "3.12"
+        assert _python_version_for_target("not-a-python-target") == "invalid-python-version"
 
     def test_should_build_target(self):
         current_module = sys.modules[__name__]

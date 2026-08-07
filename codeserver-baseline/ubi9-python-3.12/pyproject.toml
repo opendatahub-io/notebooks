@@ -1,0 +1,40 @@
+# Phase 1: baseline build resolves Python packages from PyPI using `pylock.toml`.
+# Hermetic Python input generation stays deferred to phase 2.
+
+[project]
+name = "notebooks"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Installer/tooling used in Docker/CI
+    "uv",
+    "micropipenv[toml]",
+
+    # Base packages
+    "wheel",
+    "setuptools",
+
+    # RHAIENG-6157: VS Code Jupyter extension requires these
+    #  ipykernel: raw-kernel gate
+    #  jupyter+notebook: Jupyter-Server gate (s390x/ppc64le, no built-in native zeromq for nodejs)
+    "ipykernel",
+    "jupyter",
+    "notebook",
+    "debugpy",
+    # Used to replace static VS Code ripgrep binaries with a dynamically-linked one.
+    "ripgrep",
+]
+
+[tool.uv]
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+]
+
+override-dependencies = [
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
+]
+
+[tool.uv.sources]
