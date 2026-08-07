@@ -24,8 +24,9 @@ dependencies = [
     "nbdime",
     "nbgitpuller",
     "odh-jupyter-trash-cleanup",
-    # PDF export (nbconvert); RHAIENG-5765 / AIPCC-7795
-    "pandoc",
+    # PDF export needs a real pandoc binary on PATH. Hermetic images use
+    # pandoc-rhai from the RHAI index; phase-1 public-index installs the EPEL
+    # pandoc RPM in the Dockerfile instead (PyPI "pandoc" is only a wrapper).
 
     # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
     # heavy workbench/db-connector Python stack.
