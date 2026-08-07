@@ -15,13 +15,12 @@ from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pytest import Subtests
 
-CODESERVER_ROOT = PROJECT_ROOT / "codeserver/ubi9-python-3.12"
-ACCESS_CGI_PATH = CODESERVER_ROOT / "nginx/api/kernels/access.cgi"
-HTTPD_CONF_PATH = CODESERVER_ROOT / "httpd/httpd.conf"
-PROXY_TEMPLATE_PATH = CODESERVER_ROOT / "nginx/serverconf/proxy.conf.template"
-PROXY_TEMPLATE_NBPREFIX_PATH = CODESERVER_ROOT / "nginx/serverconf/proxy.conf.template_nbprefix"
+CODESERVER_WORKSPACE_ROOT = PROJECT_ROOT / "codeserver/ubi9-python-3.12"
+CODESERVER_BASELINE_WORKSPACE_ROOT = PROJECT_ROOT / "codeserver-baseline/ubi9-python-3.12"
 
 # date -Iseconds output: 2026-03-18T01:23:45+00:00
 RFC3339_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$")
@@ -78,19 +77,29 @@ def _fetch_healthz(container: WorkbenchContainer, *, nb_prefix: str | None = Non
     return json.loads(output.decode())
 
 
-def _install_culling_stack(container: WorkbenchContainer) -> None:
+def _codeserver_workspace_root(codeserver_image: conftest.Image) -> Path:
+    image_refs = " ".join((codeserver_image.name, codeserver_image.labels.get("name", "")))
+    if "codeserver-baseline" in image_refs:
+        return CODESERVER_BASELINE_WORKSPACE_ROOT
+    return CODESERVER_WORKSPACE_ROOT
+
+
+def _install_culling_stack(container: WorkbenchContainer, codeserver_image: conftest.Image) -> None:
     """Install workspace CGI + httpd + nginx proxy templates and reload the serving stack.
 
     Baked images may lag workspace; tests must exercise current routing, not only CGI bash logic.
     """
+    codeserver_root = _codeserver_workspace_root(codeserver_image)
+    access_cgi_path = codeserver_root / "nginx/api/kernels/access.cgi"
+    httpd_conf_path = codeserver_root / "httpd/httpd.conf"
+    proxy_template_path = codeserver_root / "nginx/serverconf/proxy.conf.template"
+    proxy_template_nbprefix_path = codeserver_root / "nginx/serverconf/proxy.conf.template_nbprefix"
     wrapped = container.get_wrapped_container()
-    docker_utils.container_cp(wrapped, str(ACCESS_CGI_PATH), "/opt/app-root/api/kernels", user=1001, group=0)
-    docker_utils.container_cp(wrapped, str(HTTPD_CONF_PATH), "/etc/httpd/conf", user=1001, group=0)
+    docker_utils.container_cp(wrapped, str(access_cgi_path), "/opt/app-root/api/kernels", user=1001, group=0)
+    docker_utils.container_cp(wrapped, str(httpd_conf_path), "/etc/httpd/conf", user=1001, group=0)
+    docker_utils.container_cp(wrapped, str(proxy_template_path), "/opt/app-root/etc/nginx.default.d", user=1001, group=0)
     docker_utils.container_cp(
-        wrapped, str(PROXY_TEMPLATE_PATH), "/opt/app-root/etc/nginx.default.d", user=1001, group=0
-    )
-    docker_utils.container_cp(
-        wrapped, str(PROXY_TEMPLATE_NBPREFIX_PATH), "/opt/app-root/etc/nginx.default.d", user=1001, group=0
+        wrapped, str(proxy_template_nbprefix_path), "/opt/app-root/etc/nginx.default.d", user=1001, group=0
     )
 
     # Mirror run-nginx.sh template selection, then reload nginx and httpd.
@@ -214,7 +223,7 @@ class TestCullingApi:
                 container.with_env(key, value)
             container.start(wait_for_readiness=False)
             _wait_for_healthz(container, nb_prefix=nb_prefix)
-            _install_culling_stack(container)
+            _install_culling_stack(container, codeserver_image)
 
             healthz = _fetch_healthz(container, nb_prefix=nb_prefix)
             status, kernels = _get_kernels_via_http(container, kernels_path=f"{nb_prefix}/api/kernels/")
@@ -258,7 +267,7 @@ class TestCullingApi:
                         container.with_env(key, value)
                     container.start(wait_for_readiness=False)
                     _wait_for_healthz(container, nb_prefix=nb_prefix or None)
-                    _install_culling_stack(container)
+                    _install_culling_stack(container, codeserver_image)
 
                     healthz = _fetch_healthz(container, nb_prefix=nb_prefix or None)
                     assert healthz.get("lastHeartbeat") == 0, f"expected fresh-pod lastHeartbeat 0, got {healthz!r}"
@@ -276,9 +285,10 @@ class TestCullingApi:
             # Controlled healthz stub cannot be injected through httpd's CGI child PATH.
             with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
                 container.start(wait_for_readiness=False)
+                access_cgi_path = _codeserver_workspace_root(codeserver_image) / "nginx/api/kernels/access.cgi"
                 docker_utils.container_cp(
                     container.get_wrapped_container(),
-                    str(ACCESS_CGI_PATH),
+                    str(access_cgi_path),
                     "/opt/app-root/api/kernels",
                     user=1001,
                     group=0,
@@ -298,7 +308,7 @@ class TestCullingApi:
         with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
             container.start(wait_for_readiness=False)
             _wait_for_healthz(container)
-            _install_culling_stack(container)
+            _install_culling_stack(container, codeserver_image)
 
             status, kernels = _get_kernels_via_http(container, kernels_path="/api/kernels/")
             assert status == 200, f"expected 200 for legacy kernels URL, got {status}"
