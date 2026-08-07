@@ -97,6 +97,7 @@ REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
 # Produces root pylock.toml (not uv.lock.d/pylock.<flavor>.toml) — same layout as jupyter/rocm/tensorflow.
 PUBLIC_INDEX_PROJECTS=(
   "codeserver-baseline/ubi9-python-3.12"
+  "jupyter/baseline/ubi9-python-3.12"
 )
 
 PYLOCKS_MODE="rh-index"

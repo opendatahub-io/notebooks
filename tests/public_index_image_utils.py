@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 
 TAG_ENCODED_IMAGE_REPOSITORIES = {"workbench-images"}
-PUBLIC_INDEX_IMAGE_NAME_PATTERN = re.compile(r"^codeserver-baseline-ubi9-python-\d+\.\d+$")
-PUBLIC_INDEX_IMAGE_TAG_PATTERN = re.compile(r"^codeserver-baseline-ubi9-python-\d+\.\d+(?:[-_].*|$)")
+PUBLIC_INDEX_IMAGE_NAME_PATTERN = re.compile(r"^(codeserver|jupyter)-baseline-ubi9-python-\d+\.\d+$")
+PUBLIC_INDEX_IMAGE_TAG_PATTERN = re.compile(r"^(codeserver|jupyter)-baseline-ubi9-python-\d+\.\d+(?:[-_].*|$)")
 
 
 def _image_name_and_tag(image: str) -> tuple[str, str | None]:

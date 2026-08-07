@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: notebook
-          image: quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.12
+          image: quay.io/opendatahub/workbench-images:jupyter-baseline-ubi9-python-3.12
           imagePullPolicy: Always
           workingDir: /opt/app-root/src
           env:
@@ -33,7 +33,7 @@ spec:
               protocol: TCP
               containerPort: 8888
           # Generous delays for slow or constrained nodes (e.g. ppc64le in CI).
-          # Liveness must allow Jupyter + datascience deps to bind before first check (avoids restart loops).
+          # Liveness must allow Jupyter + baseline deps to bind before first check (avoids restart loops).
           livenessProbe:
             tcpSocket:
               port: notebook-port
@@ -50,7 +50,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 6
-          # Jupyter + papermill share the pod cgroup; keep headroom for datascience tests on ppc64le CI.
+          # Jupyter + papermill share the pod cgroup; keep headroom for baseline tests on ppc64le CI.
           resources:
             limits:
               cpu: 500m
