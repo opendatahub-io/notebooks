@@ -90,8 +90,16 @@ RUN ./utils/install_pdf_deps.sh
 
 ### END Dependencies for PDF export
 
-# Drop the EPEL release package so the final image does not keep the extra repo.
-RUN dnf remove -y epel-release || true
+# Real pandoc binary for nbconvert (PyPI has no pandoc-rhai equivalent).
+# Install while EPEL is still enabled, then drop the release package.
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y pandoc
+dnf remove -y epel-release || true
+dnf clean all
+rm -rf /var/cache/dnf
+pandoc --version
+EOF
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 RUN chmod 755 ./start-notebook.sh
