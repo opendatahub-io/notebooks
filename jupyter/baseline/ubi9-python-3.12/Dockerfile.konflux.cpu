@@ -77,16 +77,21 @@ COPY --chown=1001:0 ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# texlive-tcolorbox (and related PDF export RPMs) come from CodeReady Builder.
-# Hermetic Jupyter images get these via cachi2 prefetch; phase-1 online builds
-# must enable the EUS CRB repo explicitly (same pattern as codeserver-baseline).
-RUN basearch="$(rpm --eval '%{_arch}')" && \
-    subscription-manager repos --enable="codeready-builder-for-rhel-9-${basearch}-eus-rpms"
+# texlive-tcolorbox is not in AppStream/CRB. Hermetic builds pull it via cachi2
+# (EPEL for ODH, rhelai for RHDS). Phase-1 online builds enable EPEL instead.
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
+EOF
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
 
 ### END Dependencies for PDF export
+
+# Drop the EPEL release package so the final image does not keep the extra repo.
+RUN dnf remove -y epel-release || true
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 RUN chmod 755 ./start-notebook.sh
