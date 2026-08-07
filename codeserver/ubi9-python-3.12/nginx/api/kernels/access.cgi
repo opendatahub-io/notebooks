@@ -14,13 +14,14 @@ echo "Content-type: application/json"
 echo
 
 # --- Fetch code-server heartbeat ---
-# Poll through nginx on 8888 using the same probe path as notebook-controller:
-#   ${NB_PREFIX}/api  ->  ${NB_PREFIX}/codeserver/healthz/
-# A bare /codeserver/healthz curl fails when NB_PREFIX is set because nginx only
-# routes prefixed /codeserver/* to code-server. -L follows the probe redirect chain.
-NB_PREFIX="${NB_PREFIX:-}"
-HEALTHZ=$(curl -sLf --max-time 5 "http://localhost:8888${NB_PREFIX}/api")
+# Talk to code-server directly on its bind address (nginx upstream workbench_server).
+# Do NOT go through nginx:8888 — that path is NB_PREFIX-routed for external probes
+# and CGI does not need (or reliably have) NB_PREFIX.
 # Example HEALTHZ JSON: {"status":"alive","lastHeartbeat":1742345025123}
+HEALTHZ=$(curl -sLf --max-time 5 "http://127.0.0.1:8787/healthz") || true
+if [ -z "$HEALTHZ" ]; then
+    echo "access.cgi: healthz fetch failed (http://127.0.0.1:8787/healthz)" >&2
+fi
 
 # --- Derive last_activity (RFC3339 / ISO 8601) ---
 # lastHeartbeat is milliseconds since epoch. The culler expects seconds in ISO format.
