@@ -85,9 +85,7 @@ def test_local_buildinputs(monkeypatch, tmp_path):
 
 def test_buildinputs_dispatches_to_container_in_ci(monkeypatch):
     monkeypatch.setenv("CI", "true")
-    monkeypatch.setattr(
-        buildinputs_runner, "containarized_buildinputs", lambda *a, **kw: '["a.txt"]\n'
-    )
+    monkeypatch.setattr(buildinputs_runner, "containarized_buildinputs", lambda *a, **kw: '["a.txt"]\n')
 
     result = buildinputs_runner.buildinputs("Dockerfile")
     assert result == [pathlib.Path("a.txt")]
@@ -95,9 +93,7 @@ def test_buildinputs_dispatches_to_container_in_ci(monkeypatch):
 
 def test_buildinputs_dispatches_to_local_outside_ci(monkeypatch):
     monkeypatch.delenv("CI", raising=False)
-    monkeypatch.setattr(
-        buildinputs_runner, "local_buildinputs", lambda *a, **kw: '["b.txt"]\n'
-    )
+    monkeypatch.setattr(buildinputs_runner, "local_buildinputs", lambda *a, **kw: '["b.txt"]\n')
 
     result = buildinputs_runner.buildinputs("Dockerfile")
     assert result == [pathlib.Path("b.txt")]

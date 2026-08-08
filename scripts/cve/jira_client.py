@@ -16,6 +16,7 @@ from scripts.cve.jira_auth import (
 
 try:
     import requests
+
     HAS_REQUESTS = True
 except ImportError:
     import urllib.request
@@ -28,9 +29,17 @@ _SSL_CONTEXT = create_ssl_context() if not HAS_REQUESTS else None
 JIRA_DEFAULT_URL = "https://redhat.atlassian.net"
 
 # Keys set explicitly by create_issue(); extra_fields may not override these.
-_CREATE_ISSUE_PROTECTED_FIELD_KEYS = frozenset({
-    "project", "summary", "issuetype", "description", "labels", "components", "security",
-})
+_CREATE_ISSUE_PROTECTED_FIELD_KEYS = frozenset(
+    {
+        "project",
+        "summary",
+        "issuetype",
+        "description",
+        "labels",
+        "components",
+        "security",
+    }
+)
 
 
 class JiraClient:
@@ -95,18 +104,17 @@ class JiraClient:
             query_string = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in params.items())
             url = f"{url}?{query_string}"
 
-        req = urllib.request.Request(url, headers=self.headers, method=method)
+        req = urllib.request.Request(url, headers=self.headers, method=method)  # ruff: ignore[suspicious-url-open-usage]
         if data:
             req.data = json.dumps(data).encode("utf-8")
 
-        with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=30) as resp:
+        with urllib.request.urlopen(req, context=_SSL_CONTEXT, timeout=30) as resp:  # ruff: ignore[suspicious-url-open-usage]
             content = resp.read().decode()
             if content:
                 return json.loads(content)
             return {}
 
-    def search_issues(self, jql: str, fields: str,
-                      max_results: int = 500) -> list[dict]:
+    def search_issues(self, jql: str, fields: str, max_results: int = 500) -> list[dict]:
         """Search for issues using JQL (API v3, token-based pagination)."""
         all_issues: list[dict] = []
         next_page_token: str | None = None
@@ -138,11 +146,17 @@ class JiraClient:
         params = {"fields": fields}
         return self._request("GET", f"/rest/api/3/issue/{issue_key}", params=params)
 
-    def create_issue(self, project_key: str, summary: str, issue_type: str,
-                     description: dict | None = None, labels: list[str] | None = None,
-                     components: list[str] | None = None,
-                     security_level: str | None = None,
-                     extra_fields: dict[str, Any] | None = None) -> dict:
+    def create_issue(
+        self,
+        project_key: str,
+        summary: str,
+        issue_type: str,
+        description: dict | None = None,
+        labels: list[str] | None = None,
+        components: list[str] | None = None,
+        security_level: str | None = None,
+        extra_fields: dict[str, Any] | None = None,
+    ) -> dict:
         """Create a new Jira issue (API v3, ADF description).
 
         ``extra_fields`` are merged into the REST ``fields`` object for custom
@@ -168,11 +182,7 @@ class JiraClient:
             fields["security"] = {"name": security_level}
 
         if extra_fields:
-            fields.update({
-                k: v
-                for k, v in extra_fields.items()
-                if k not in _CREATE_ISSUE_PROTECTED_FIELD_KEYS
-            })
+            fields.update({k: v for k, v in extra_fields.items() if k not in _CREATE_ISSUE_PROTECTED_FIELD_KEYS})
 
         data = {"fields": fields}
         return self._request("POST", "/rest/api/3/issue", data=data)

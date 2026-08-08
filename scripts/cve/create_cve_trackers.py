@@ -59,8 +59,7 @@ EMBARGOED_SECURITY_LEVEL = "Embargoed Security Issue"
 DEFAULT_SECURITY_LEVEL = "Red Hat Employee"
 
 SEARCH_FIELDS = (
-    f"key,summary,status,labels,security,issuelinks,"
-    f"{RHAIENG_TEAM_CUSTOM_FIELD},{RHAIENG_CONTRIBUTORS_FIELD}"
+    f"key,summary,status,labels,security,issuelinks,{RHAIENG_TEAM_CUSTOM_FIELD},{RHAIENG_CONTRIBUTORS_FIELD}"
 )
 
 
@@ -82,6 +81,7 @@ def build_tracker_team_extra_fields() -> dict[str, str]:
 @dataclass
 class CVEInfo:
     """Information about a CVE for a specific version."""
+
     cve_id: str
     version: str = ""
     description: str = ""
@@ -181,8 +181,7 @@ def build_tracker_summary(cve_info: CVEInfo) -> str:
     if len(summary) > 250:
         max_desc_len = 250 - len(prefix) - len(cve_info.cve_id) - len(cve_info.version_suffix) - 5
         summary = (
-            f"{prefix}{cve_info.cve_id} {cve_info.description[:max_desc_len]}... "
-            f"{cve_info.version_suffix}"
+            f"{prefix}{cve_info.cve_id} {cve_info.description[:max_desc_len]}... {cve_info.version_suffix}"
         ).strip()
 
     return summary
@@ -230,48 +229,57 @@ def build_description(cve_info: CVEInfo, base_url: str = JIRA_DEFAULT_URL, track
     child_keys = sorted(issue["key"] for issue in cve_info.issues)
     count = len(child_keys)
 
-    content: list[dict] = [_adf_paragraph(
-        _adf_text(
-            f"Tracker for {cve_info.cve_id} - {cve_info.description} "
-            f"affecting Notebooks Images components."
+    content: list[dict] = [
+        _adf_paragraph(
+            _adf_text(f"Tracker for {cve_info.cve_id} - {cve_info.description} affecting Notebooks Images components.")
         )
-    )]
+    ]
 
     branch_suffix = f" (branch: {cve_info.version})" if cve_info.version else " (on the respective release branch)"
-    content.append(_adf_paragraph(
-        _adf_text("Fix should be applied to: "),
-        _adf_link(
-            "https://github.com/red-hat-data-services/notebooks",
-            "https://github.com/red-hat-data-services/notebooks",
-        ),
-        _adf_text(branch_suffix),
-    ))
+    content.append(
+        _adf_paragraph(
+            _adf_text("Fix should be applied to: "),
+            _adf_link(
+                "https://github.com/red-hat-data-services/notebooks",
+                "https://github.com/red-hat-data-services/notebooks",
+            ),
+            _adf_text(branch_suffix),
+        )
+    )
 
     if child_keys:
-        content.append(_adf_paragraph(
-            _adf_text(f"Blocked Issues ({count}): ", marks=[{"type": "strong"}]),
-            _adf_text(", ".join(child_keys)),
-        ))
+        content.append(
+            _adf_paragraph(
+                _adf_text(f"Blocked Issues ({count}): ", marks=[{"type": "strong"}]),
+                _adf_text(", ".join(child_keys)),
+            )
+        )
 
         keys_csv = ", ".join(child_keys)
         static_jql = f"key in ({keys_csv}) ORDER BY key ASC"
         static_url = f"{base_url}/issues/?jql={urllib.parse.quote(static_jql)}"
 
-        content.append(_adf_paragraph(
-            _adf_text("JQL Query to View All Blocked Issues: ", marks=[{"type": "strong"}]),
-        ))
-        content.append(_adf_paragraph(
-            _adf_link(f"View all {count} blocked issues", static_url),
-        ))
+        content.append(
+            _adf_paragraph(
+                _adf_text("JQL Query to View All Blocked Issues: ", marks=[{"type": "strong"}]),
+            )
+        )
+        content.append(
+            _adf_paragraph(
+                _adf_link(f"View all {count} blocked issues", static_url),
+            )
+        )
 
     if tracker_key and child_keys:
         dynamic_jql = f'issue in linkedIssues({tracker_key}, "blocks") ORDER BY key ASC'
         dynamic_url = f"{base_url}/issues/?jql={urllib.parse.quote(dynamic_jql)}"
 
         content.append(_adf_code_block(dynamic_jql))
-        content.append(_adf_paragraph(
-            _adf_link("View blocked issues (dynamic)", dynamic_url),
-        ))
+        content.append(
+            _adf_paragraph(
+                _adf_link("View blocked issues (dynamic)", dynamic_url),
+            )
+        )
 
     return {"version": 1, "type": "doc", "content": content}
 
@@ -279,6 +287,7 @@ def build_description(cve_info: CVEInfo, base_url: str = JIRA_DEFAULT_URL, track
 @dataclass
 class OrphanCVEsResult:
     """Result of finding orphan CVEs in RHOAIENG."""
+
     orphans: dict[tuple[str, str], CVEInfo]
     issues: list[dict]
 
@@ -306,8 +315,8 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> OrphanCVEsR
 
     # Get all RHOAIENG CVE issues
     jql = (
-        'project = RHOAIENG AND issuetype in (Bug, Vulnerability, Weakness) '
-        'AND resolution = Unresolved AND labels = SecurityTracking '
+        "project = RHOAIENG AND issuetype in (Bug, Vulnerability, Weakness) "
+        "AND resolution = Unresolved AND labels = SecurityTracking "
         'AND component = "Notebooks Images" ORDER BY created DESC'
     )
     issues = client.search_issues(jql, fields=SEARCH_FIELDS, max_results=max_results)
@@ -361,11 +370,13 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> OrphanCVEsR
 
         info.contributor_account_ids |= extract_contributor_account_ids(fields)
 
-        info.issues.append({
-            "key": key,
-            "summary": summary,
-            "has_parent": has_rhaieng_blocker,
-        })
+        info.issues.append(
+            {
+                "key": key,
+                "summary": summary,
+                "has_parent": has_rhaieng_blocker,
+            }
+        )
 
         if has_rhaieng_blocker:
             info.has_tracker = True
@@ -542,17 +553,13 @@ Environment variables:
                             added to tracker Contributors (union with children)
   JIRA_RUNNER_ACCOUNT_ID    Optional. Override accountId for authenticated user
                             (default: resolved via /rest/api/3/myself)
-"""
+""",
     )
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be created without making changes")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be created without making changes")
     parser.add_argument("--cve", help="Create tracker for specific CVE ID only")
-    parser.add_argument("--list-only", action="store_true",
-                        help="List orphan CVEs without creating trackers")
-    parser.add_argument("--max-results", type=int, default=1000,
-                        help="Maximum issues to fetch (default: 1000)")
-    parser.add_argument("--no-link", action="store_true",
-                        help="Create trackers but don't link to child issues")
+    parser.add_argument("--list-only", action="store_true", help="List orphan CVEs without creating trackers")
+    parser.add_argument("--max-results", type=int, default=1000, help="Maximum issues to fetch (default: 1000)")
+    parser.add_argument("--no-link", action="store_true", help="Create trackers but don't link to child issues")
     return parser.parse_args()
 
 

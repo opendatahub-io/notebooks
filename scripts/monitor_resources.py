@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
-import signal
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -40,6 +40,7 @@ def get_memory_usage() -> dict[str, str]:
         result = subprocess.run(
             ["free", "-h"],
             capture_output=True,
+            check=False,
             text=True,
             timeout=5,
         )
