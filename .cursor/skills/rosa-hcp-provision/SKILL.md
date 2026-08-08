@@ -1,9 +1,39 @@
 ---
 name: rosa-hcp-provision
-description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, and full teardown (deprovision.md). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
+description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — spot instances, sizing, Kyverno request-shrinking), and installing a released RHOAI version (install-rhoai.md). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
 ---
 
 # ROSA HCP Cluster Provisioning
+
+Need a quick disposable ROSA/OCP cluster with zero setup (no `kinit`/SAML) instead? See [cluster-bot](../cluster-bot/SKILL.md)'s `rosa create <version> <duration>` — has **built-in auto-teardown** (no risk of a forgotten cluster accruing cost) but no GPU pools or instance-type control. Given spot instances currently don't work via the manual path here anyway (see [cost-optimization.md](cost-optimization.md) item 3), `cluster-bot` is the better default when you don't specifically need a custom instance type, GPU pool, or the request-shrinking Kyverno experiment — come back here for that.
+
+## Timing — is a real cluster worth it?
+
+Measured end-to-end on a real ROSA HCP cluster (2026-08-08), RHOAI 2.25.9
+with `dashboard`+`workbenches` only:
+
+| Phase | Duration |
+|---|---:|
+| `rosa create cluster` → cluster `ready` | ~10-12 min |
+| → compute nodes `Ready` | +~4-5 min |
+| → all cluster operators `Available` | +~4 min |
+| **Cluster fully usable** | **~19-20 min** |
+| RHOAI operator Subscription → CSV `Succeeded` | ~1-2 min |
+| DSCI/DSC apply → dashboard pods `Running` | ~1-2 min |
+| **RHOAI (dashboard+workbenches only) install** | **~2-4 min** |
+| **Combined, clean path** | **~22-24 min** |
+| `rosa delete cluster` → fully gone | ~14-15 min (2 independent measurements) |
+
+Getting the compute architecture wrong (defaulting to this skill's
+GPU-oriented `m6g.2xlarge`/arm64 for a RHOAI/notebook workload — see
+`## GPU Machine Pools` below and [cost-optimization.md](cost-optimization.md)
+item 12) costs an *additional* ~20-25 min to swap to x86_64 after the
+fact. Pass an explicit x86_64 `--compute-machine-type` up front to avoid
+this entirely.
+
+Budget **~40 min minimum** for a full create-install-delete cycle before
+deciding a real cluster is the right tool versus local `kind` or
+`cluster-bot`.
 
 ## Prerequisites
 
@@ -64,9 +94,20 @@ If you never received the 7081269 invite, request in **#rhoai-devtestops-request
 
 ## Cluster Creation
 
+**`m6g.2xlarge` below is aarch64/Graviton — this is the right default for
+the GPU workflow this skill was written for (pairs with G5g GPU pools,
+see `## GPU Machine Pools`), but is the WRONG default for RHOAI/notebook
+testing.** RHOAI 2.25's default notebook images are x86_64-only; arm64
+nodes produce `exec container process: Exec format error` on every
+notebook spawn (confirmed 2026-08-08, cost ~20-25 min to recover from by
+swapping pools after the fact). **For RHOAI work, use an x86_64 type
+(e.g. `m5.2xlarge`) here instead** — see
+[cost-optimization.md](cost-optimization.md) item 12 for why this is
+version-specific (RHOAI 3.3+ may not have this restriction).
+
 ```bash
 export CLUSTER_NAME=<unique-name>    # MAX 15 chars! (longer triggers interactive prompt)
-export MACHINE_POOL_TYPE=m6g.2xlarge # aarch64 CPU workers
+export MACHINE_POOL_TYPE=m6g.2xlarge # aarch64 — for GPU work. RHOAI/notebook testing: use m5.2xlarge (x86_64) instead.
 
 # Shared infra constants
 OIDC=23c734st3pn7l167mq97d0ot8848lgrl
@@ -85,6 +126,8 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa create cluster --yes --sts \
   --subnet-ids="$PRIVATE,$PUBLIC" --compute-machine-type="$MACHINE_POOL_TYPE" \
   --role-arn=$INSTALLER --support-role-arn=$SUPPORT --worker-iam-role=$WORKER \
   --version 4.21.0
+  # --worker-disk-size 100GiB    # optional: default is 300GiB; a test cluster
+                                  # rarely needs that much — see cost-optimization.md item 6
 ```
 
 States: `waiting → validating → installing → ready` (~10 min total).
@@ -246,6 +289,11 @@ For DTK vs precompiled drivers, build-once-pull workflows, and aarch64 timing no
 
 ## Pre-Release Images (Pull Secret)
 
+**Installing an already-released RHOAI version instead?** You likely don't
+need any of this — see [install-rhoai.md](install-rhoai.md) for the
+simpler GA OperatorHub-channel path (no Kyverno, no custom pull-secret).
+The rest of this section is for pre-release builds specifically.
+
 ROSA-hosted rewrites the global pull-secret — `quay.io/rhoai` is **not** in the default cluster secret.
 
 ### Option A — Kyverno (full RHOAI install testing)
@@ -253,6 +301,12 @@ ROSA-hosted rewrites the global pull-secret — `quay.io/rhoai` is **not** in th
 Use when installing RHOAI pre-release on the cluster:
 - [Installing RHOAI pre-release on ROSA-hosted](https://docs.google.com/document/d/12FoMt1_djxEkhuAsRjU40aIxnlo-0SATK-E4qihYQdQ)
 - `helm install kyverno kyverno/kyverno -n kyverno --create-namespace` + ClusterPolicies
+- Kyverno is also useful beyond pull-secrets — see
+  [cost-optimization.md](cost-optimization.md) item 5 for a mutate policy
+  that shrinks RHOAI's own over-requested CPU/memory on test clusters
+  (verified working; install via
+  `kubectl apply --server-side -k "https://github.com/kyverno/kyverno/releases/download/v1.14.4/install.yaml"`
+  if you don't already have it, no Helm needed).
 
 ### Option B — Namespace secret (bare GPU Pod testing)
 
@@ -273,7 +327,15 @@ Reference `imagePullSecrets: [rhoai-pull]` in GPU test Pods (see arm64 skill scr
 
 ## Teardown
 
-Full procedure, timings, and troubleshooting: **[deprovision.md](deprovision.md)** (validated on `jd-arm64-ea1`, Jul 2026).
+Full procedure, timings, and troubleshooting: **[deprovision.md](deprovision.md)** (validated on `jd-arm64-ea1`, Jul 2026; deletion timing re-confirmed at 14m28s and 15m23s on two separate clusters, Aug 2026).
+
+Considered hibernating instead of deleting to preserve cost between runs —
+**not possible**: `rosa hibernate cluster`/`rosa resume cluster` both
+reject HCP clusters outright (`"Hibernating a cluster is not supported for
+hosted clusters"` / resume requires a `Hibernating` state that HCP clusters
+can never reach). Full deletion is the only way to stop the cost; see
+[cost-optimization.md](cost-optimization.md) for the actual $/hr this
+represents and cheaper configurations for next time.
 
 Quick sequence:
 
@@ -307,7 +369,11 @@ Machine pools (CPU + GPU) are removed with the cluster — no separate `delete m
 | `export: not valid in this context` | Don't paste shell comments with special chars (e.g. `≤`) |
 | `rh-aws-saml-login` not found | `pipx install rh-aws-saml-login` (needs valid `kinit` first) |
 | 500 error on create | Check subnet vars: `echo $PRIVATE_SUBNET` — must not be empty |
+| `Expected a valid value for subnet for a hosted machine pool` | `rosa create machinepool` prompts interactively when multiple subnets exist in the AZ; pass `--subnet <id>` explicitly in non-interactive/scripted shells |
+| `A hosted cluster requires at least 2 replicas` | HCP hard floor — `--replicas`/machinepool size can never go below 2, no single-node HCP option exists |
 | Duplicate cluster name | Cluster already exists in org; `rosa list clusters` to check |
+| `--use-spot-instances` seems to have no effect | It currently doesn't — verified via `rosa --debug`, the spot field never reaches the API request even on the latest CLI (`v1.2.64` as of Aug 2026). Confirm with `aws ec2 describe-instances --query "...InstanceLifecycle"`; see [cost-optimization.md](cost-optimization.md) item 3 |
+| `exec container process: Exec format error` on notebook spawn | arm64/x86_64 mismatch — RHOAI 2.25's default images are x86_64-only; recreate the machinepool with an x86_64 `--compute-machine-type` (see `## Cluster Creation` above) |
 | ClusterPolicy `spec{}` invalid | v25.3+ requires all fields; extract default from `csv alm-examples` |
 | GPU pods Pending after ClusterPolicy | Driver compiles first; other pods cascade after driver **2/2 Ready** |
 | Driver compile 60+ min, logs stuck on `make nv-linux.o` | Node `MemoryPressure=True`, DTK pod ~6+ GiB — create `g5g.2xlarge` pool, delete xlarge pool |
