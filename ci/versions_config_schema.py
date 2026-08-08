@@ -72,6 +72,19 @@ AccVersion = Annotated[
         examples=["13.0", "7.14"],
     ),
 ]
+AIPCC_WHEEL_INDEX_STREAM_PATTERN = r"^[0-9]+\.[0-9]+(-EA[0-9]+)?$"
+AipccWheelIndexStream = Annotated[
+    str,
+    StringConstraints(pattern=AIPCC_WHEEL_INDEX_STREAM_PATTERN),
+    Field(
+        title="AIPCC wheel index stream",
+        description=(
+            "AIPCC public-rhai rhoai path segment for base-images INDEX_URL "
+            '(for example "3.5-EA2" or "3.5"). Independent of release.full_version.'
+        ),
+        examples=["3.5-EA2", "3.6-EA1", "3.5"],
+    ),
+]
 OdhOrigin = Literal["in-house", "midstream"]
 SchemaVersion = Literal[1]
 
@@ -80,6 +93,16 @@ class StrictModel(BaseModel):
     """Strict structural shapes for operator-edited YAML (feeds JSON Schema)."""
 
     model_config = STRICT_CONFIG
+
+
+class AipccWheelIndex(StrictModel):
+    """AIPCC wheel index stream baked into ODH base-images INDEX_URL build-args."""
+
+    stream: AipccWheelIndexStream
+    use_test: bool = Field(
+        title="Use test index",
+        description='When true, use *-ubi9-test simple indexes; when false, use prod *-ubi9 indexes.',
+    )
 
 
 class Release(StrictModel):
@@ -92,6 +115,13 @@ class Release(StrictModel):
     )
     rhds_os_base: RhdsOsBase
     python_version: PythonVersion
+    aipcc_wheel_index: AipccWheelIndex = Field(
+        title="AIPCC wheel index",
+        description=(
+            "Operator input for base-images/build-args/*.conf INDEX_URL. "
+            "Synced by make sync-build-args-from-versions."
+        ),
+    )
 
 
 class RhdsFastCpuPolicy(StrictModel):
@@ -226,6 +256,7 @@ def build_json_schema() -> dict[str, Any]:
             "full_version": "3.5.0",
             "rhds_os_base": "el9.6",
             "python_version": "3.12",
+            "aipcc_wheel_index": {"stream": "3.5-EA2", "use_test": True},
         },
         "artifacts": {
             "base_image": {

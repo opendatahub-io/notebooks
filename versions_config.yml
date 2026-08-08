@@ -16,6 +16,10 @@ release:
   full_version: "3.6.0"
   rhds_os_base: "el9.6"
   python_version: "3.12"
+  # AIPCC public-rhai stream for ODH base-images INDEX_URL (independent of full_version).
+  aipcc_wheel_index:
+    stream: "3.6-EA1"
+    use_test: true
 
 artifacts:
   base_image:

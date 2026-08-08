@@ -199,8 +199,11 @@ def write_versions_config(
     full_version: str = "3.6.0",
     rhds_os_base: str = "el9.6",
     python_version: str = "3.12",
+    aipcc_wheel_index_stream: str = "3.5-EA2",
+    aipcc_wheel_index_use_test: bool = True,
     replacements: list[tuple[str, str]] | None = None,
 ) -> None:
+    use_test_yaml = "true" if aipcc_wheel_index_use_test else "false"
     text = textwrap.dedent(
         f"""\
         schema_version: {schema_version}
@@ -209,6 +212,9 @@ def write_versions_config(
           full_version: "{full_version}"
           rhds_os_base: "{rhds_os_base}"
           python_version: "{python_version}"
+          aipcc_wheel_index:
+            stream: "{aipcc_wheel_index_stream}"
+            use_test: {use_test_yaml}
 
         artifacts:
           base_image:
@@ -296,6 +302,9 @@ def test_load_versions_config_rejects_unexpected_keys(tmp_path: Path) -> None:
               full_version: "3.5.0"
               rhds_os_base: "el9.6"
               python_version: "3.12"
+              aipcc_wheel_index:
+                stream: "3.5-EA2"
+                use_test: true
 
             artifacts:
               base_image:
@@ -356,6 +365,8 @@ def test_load_versions_config_accepts_schema_version_one(tmp_path: Path) -> None
 
     assert loaded.release.full_version == "3.6.0"
     assert loaded.release.python_version == "3.12"
+    assert loaded.release.aipcc_wheel_index.stream == "3.5-EA2"
+    assert loaded.release.aipcc_wheel_index.use_test is True
 
 
 def test_load_versions_config_accepts_shared_gpu_acc_version_layout(tmp_path: Path) -> None:
@@ -407,7 +418,12 @@ def test_load_versions_config_rejects_schema_version_two(tmp_path: Path) -> None
 
 def test_resolve_version_uses_full_version_placeholder() -> None:
     updater = load_updater()
-    release = updater.ReleaseConfig(full_version="3.6.0", rhds_os_base="el9.6", python_version="3.12")
+    release = updater.ReleaseConfig(
+        full_version="3.6.0",
+        rhds_os_base="el9.6",
+        python_version="3.12",
+        aipcc_wheel_index=updater.AipccWheelIndexConfig(stream="3.5-EA2", use_test=True),
+    )
 
     assert updater.resolve_version("<full_version>", release) == "3.6.0"
 
@@ -442,6 +458,9 @@ def test_load_versions_config_rejects_non_scalar_cpu_version(tmp_path: Path) -> 
               full_version: "3.5.0"
               rhds_os_base: "el9.6"
               python_version: "3.12"
+              aipcc_wheel_index:
+                stream: "3.5-EA2"
+                use_test: true
 
             artifacts:
               base_image:
@@ -848,7 +867,12 @@ def test_select_latest_matching_rhds_tag_prefers_highest_build_in_same_family() 
 
 def test_build_rhds_pinned_tag_targets_ga_family_on_rollback() -> None:
     updater = load_updater()
-    release = updater.ReleaseConfig(full_version="3.4.0", rhds_os_base="el9.6", python_version="3.12")
+    release = updater.ReleaseConfig(
+        full_version="3.4.0",
+        rhds_os_base="el9.6",
+        python_version="3.12",
+        aipcc_wheel_index=updater.AipccWheelIndexConfig(stream="3.5-EA2", use_test=True),
+    )
 
     tag = updater.build_rhds_pinned_tag("3.5.0-ea.2-1777919771", release.full_version)
 
@@ -2186,3 +2210,97 @@ def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
         "PYLOCK_FLAVOR=cuda",
         "RELEASE=3.5",
     ]
+
+
+def _write_base_images_index_confs(root: Path, *, index_url_by_conf: dict[str, str] | None = None) -> dict[str, Path]:
+    build_args = root / "base-images" / "build-args"
+    build_args.mkdir(parents=True)
+    defaults = {
+        "cpu.conf": "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/",
+        "cuda12.9.conf": "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cuda12.9-ubi9-test/simple/",
+        "cuda13.0.conf": "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cuda13.0-ubi9-test/simple/",
+        "rocm7.14.conf": "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/rocm7.14-ubi9/simple/",
+    }
+    urls = index_url_by_conf or defaults
+    paths: dict[str, Path] = {}
+    for name, url in urls.items():
+        path = build_args / name
+        path.write_text(f"INDEX_URL={url}\n", encoding="utf-8")
+        paths[name] = path
+    return paths
+
+
+def test_plan_base_images_index_updates_rewrites_index_urls(tmp_path: Path) -> None:
+    updater = load_updater()
+    config_path = tmp_path / "versions_config.yml"
+    write_versions_config(
+        config_path,
+        aipcc_wheel_index_stream="3.6-EA1",
+        aipcc_wheel_index_use_test=True,
+    )
+    paths = _write_base_images_index_confs(tmp_path)
+    config = updater.load_versions_config(config_path)
+
+    updates = updater.plan_base_images_index_updates(tmp_path, config)
+    by_name = {update.path.name: update for update in updates}
+
+    assert set(by_name) == set(updater.BASE_IMAGES_INDEX_CONFS)
+    for conf_name, accelerator in updater.BASE_IMAGES_INDEX_CONFS.items():
+        expected = updater.build_rhoai_test_index_url(release="3.6-EA1", accelerator=accelerator)
+        assert f"INDEX_URL={expected}" in by_name[conf_name].updated_text
+        assert by_name[conf_name].original_text == paths[conf_name].read_text(encoding="utf-8")
+
+
+def test_plan_base_images_index_updates_supports_prod_indexes(tmp_path: Path) -> None:
+    updater = load_updater()
+    config_path = tmp_path / "versions_config.yml"
+    write_versions_config(
+        config_path,
+        aipcc_wheel_index_stream="3.5",
+        aipcc_wheel_index_use_test=False,
+    )
+    _write_base_images_index_confs(tmp_path)
+    config = updater.load_versions_config(config_path)
+
+    updates = updater.plan_base_images_index_updates(tmp_path, config)
+    cpu_update = next(update for update in updates if update.path.name == "cpu.conf")
+    assert (
+        "INDEX_URL=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/"
+        in cpu_update.updated_text
+    )
+
+
+def test_plan_base_images_index_updates_rejects_unexpected_conf(tmp_path: Path) -> None:
+    updater = load_updater()
+    config_path = tmp_path / "versions_config.yml"
+    write_versions_config(config_path)
+    _write_base_images_index_confs(tmp_path)
+    (tmp_path / "base-images" / "build-args" / "extra.conf").write_text(
+        "INDEX_URL=https://example.invalid/simple/\n",
+        encoding="utf-8",
+    )
+    config = updater.load_versions_config(config_path)
+
+    with pytest.raises(ValueError, match="Unexpected base-images/build-args"):
+        updater.plan_base_images_index_updates(tmp_path, config)
+
+
+def test_plan_base_images_index_updates_rejects_missing_conf(tmp_path: Path) -> None:
+    updater = load_updater()
+    config_path = tmp_path / "versions_config.yml"
+    write_versions_config(config_path)
+    paths = _write_base_images_index_confs(tmp_path)
+    paths["rocm7.14.conf"].unlink()
+    config = updater.load_versions_config(config_path)
+
+    with pytest.raises(ValueError, match="Missing base-images/build-args"):
+        updater.plan_base_images_index_updates(tmp_path, config)
+
+
+def test_load_versions_config_rejects_invalid_aipcc_stream(tmp_path: Path) -> None:
+    updater = load_updater()
+    config = tmp_path / "versions_config.yml"
+    write_versions_config(config, aipcc_wheel_index_stream="not-a-stream")
+
+    with pytest.raises(ValueError, match="aipcc_wheel_index.stream"):
+        updater.load_versions_config(config)

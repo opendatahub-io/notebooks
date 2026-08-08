@@ -30,7 +30,7 @@ Tag bumps for `quay.io/centos/centos` are blocked by `allowedVersions` in
 | `cpu/` | CPU-only base image |
 | `cuda/` | NVIDIA CUDA (12.9, 13.0) |
 | `rocm/` | AMD ROCm (6.4, 7.1) |
-| `build-args/` | `.conf` files with `INDEX_URL` per variant |
+| `build-args/` | `.conf` files with `INDEX_URL` per variant (managed by `versions_config.yml` → `make sync-build-args-from-versions`) |
 | `utils/` | Shared scripts: `aipcc.sh`, `dnf-helper.sh`, `fix-permissions`, `pip.conf.in`, `uv.toml.in` |
 | `copr/` | Tool to rebuild Fedora SRPMs for EL9 ([README](copr/README.md)) |
 
@@ -89,5 +89,7 @@ Steps:
 1. Copy an existing version directory (e.g. `cuda/12.9/` -> `cuda/13.1/`)
 2. Update the Dockerfile stages from the upstream vendor Dockerfiles for the new SDK version
 3. Update `cuda-repos/` repo files if needed (GPG keys, baseurls)
-4. Create `build-args/<variant>.conf` with the correct `INDEX_URL`
+4. Set `release.aipcc_wheel_index` in `versions_config.yml` and run
+   `make sync-build-args-from-versions` so `build-args/<variant>.conf` gets the
+   correct `INDEX_URL` (do not hand-edit those confs)
 5. Add Tekton pipeline YAMLs in `.tekton/`
