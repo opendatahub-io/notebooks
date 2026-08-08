@@ -107,7 +107,7 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
 
 
 def get_image_metadata(image: str) -> Image:
-    client = testcontainers.core.container.DockerClient()
+    client = testcontainers.core.docker_client.DockerClient()
     try:
         # docker inspect
         image_metadata = client.client.images.get(image)
