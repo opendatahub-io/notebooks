@@ -145,7 +145,7 @@ class TestGPULibraryLoading:
 
             # Test torchaudio if present
             try:
-                import torchaudio  # noqa: F401  # type: ignore[reportMissingImports]  # container-only package
+                import torchaudio  # ruff: ignore[unused-import]  # type: ignore[reportMissingImports]  # container-only package
 
                 results["imports"]["torchaudio"] = True
             except ImportError:
@@ -162,7 +162,7 @@ class TestGPULibraryLoading:
 
             # Test nn.functional operations (triggers various backends)
             try:
-                import torch.nn.functional as F  # noqa: N812  # type: ignore[reportMissingImports]  # container-only package
+                import torch.nn.functional as F  # ruff: ignore[lowercase-imported-as-non-lowercase]  # type: ignore[reportMissingImports]  # container-only package
 
                 x = torch.randn(1, 3, 32, 32)
                 weight = torch.randn(16, 3, 3, 3)
@@ -290,7 +290,7 @@ class TestGPULibraryLoading:
                 results["errors"].append(f"cpu_matmul: {e}")
 
             try:
-                import torch.nn.functional as F  # noqa: N812  # type: ignore[reportMissingImports]  # container-only package
+                import torch.nn.functional as F  # ruff: ignore[lowercase-imported-as-non-lowercase]  # type: ignore[reportMissingImports]  # container-only package
 
                 x = torch.randn(1, 3, 32, 32)
                 weight = torch.randn(16, 3, 3, 3)
