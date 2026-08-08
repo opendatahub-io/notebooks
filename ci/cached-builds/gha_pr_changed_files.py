@@ -16,7 +16,7 @@ from typing import Literal, cast
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.buildinputs_runner import Platform, buildinputs  # noqa: E402
+from scripts.buildinputs_runner import Platform, buildinputs  # ruff: ignore[module-import-not-at-top-of-file]
 
 MAKE = shutil.which("gmake") or shutil.which("make") or "make"
 

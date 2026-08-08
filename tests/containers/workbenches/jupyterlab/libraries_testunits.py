@@ -10,7 +10,7 @@ os.environ["KMP_WARNINGS"] = "0"
 os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "upb")
 
 
-# ruff: noqa: PLC0415 `import` should be at the top-level of a file
+# ruff: file-ignore[import-outside-top-level] `import` should be at the top-level of a file
 class TestDataScienceLibs(unittest.TestCase):
     """A test suite to verify the basic functionality of key data science libraries."""
 
@@ -111,7 +111,7 @@ class TestDataScienceLibs(unittest.TestCase):
         if "-pytorch-" not in self.image:
             self.skipTest("Not a Torch image")
         try:
-            import torchaudio  # pyright: ignore[reportMissingImports]  # noqa: F401
+            import torchaudio  # pyright: ignore[reportMissingImports]  # ruff: ignore[unused-import]
         except ImportError:
             self.skipTest("Torchaudio is not installed.")
 

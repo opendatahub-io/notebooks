@@ -81,7 +81,7 @@ def main() -> None:
 
     try:
         with (
-            urlopen(tarball_request(repository, head_sha, github_credential), timeout=180) as response,  # noqa: S310
+            urlopen(tarball_request(repository, head_sha, github_credential), timeout=180) as response,  # ruff: ignore[suspicious-url-open-usage]
             open(temp_path, "wb") as out_file,
         ):
             shutil.copyfileobj(response, out_file)

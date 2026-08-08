@@ -66,7 +66,7 @@ class TestMakefile:
     MINIMAL_IMAGE = "jupyter-minimal-ubi9-python-3.12"
 
     def test_makefile__build_image__konflux(self):
-        import ntb  # noqa: PLC0415 `import` should be at the top-level of a file
+        import ntb  # ruff: ignore[import-outside-top-level] `import` should be at the top-level of a file
 
         minimal_image_dir = "jupyter/minimal/ubi9-python-3.12/"
 

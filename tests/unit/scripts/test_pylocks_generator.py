@@ -13,8 +13,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 # if str(_SCRIPTS) not in sys.path:
 #     sys.path.insert(0, str(_SCRIPTS))
 
-import scripts.index_url_resolver as resolver  # noqa: E402
-import scripts.pylocks_generator as pg  # noqa: E402
+import scripts.index_url_resolver as resolver  # ruff: ignore[module-import-not-at-top-of-file]
+import scripts.pylocks_generator as pg  # ruff: ignore[module-import-not-at-top-of-file]
 
 
 @pytest.fixture
