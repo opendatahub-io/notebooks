@@ -28,17 +28,27 @@ The sync flow manages:
 - `RELEASE` in managed `build-args/*.conf` files when that key is already present
 - root `Makefile` `RELEASE`
 - root `Makefile` `RELEASE_PYTHON_VERSION`
+- `INDEX_URL` in `base-images/build-args/{cpu,cuda12.9,cuda13.0,rocm7.14}.conf`
+  from `release.aipcc_wheel_index`
 
 It does not update unrelated files or regenerate lock files. If the image update
 also requires Python lock refreshes, run `make refresh-lock-files` separately.
 
-The script only manages known build-args filenames:
+The script only manages known build-args filenames under notebook trees:
 
 - `cpu.conf`, `cuda.conf`, `rocm.conf`
 - `konflux.cpu.conf`, `konflux.cuda.conf`, `konflux.rocm.conf`
 
-If an unexpected `build-args` filename appears in a managed tree, the sync fails
-early instead of guessing.
+For ODH base images it manages exactly these `INDEX_URL` conf files:
+
+- `base-images/build-args/cpu.conf`
+- `base-images/build-args/cuda12.9.conf`
+- `base-images/build-args/cuda13.0.conf`
+- `base-images/build-args/rocm7.14.conf`
+
+If an unexpected `build-args` filename appears in a managed tree (or an unexpected
+or missing file under `base-images/build-args/`), the sync fails early instead of
+guessing.
 
 ## Prerequisites
 
@@ -98,6 +108,9 @@ release:
   full_version: "3.5.0"
   rhds_os_base: "el9.6"
   python_version: "3.12"
+  aipcc_wheel_index:
+    stream: "3.5-EA2"
+    use_test: true
 
 artifacts:
   base_image:
@@ -126,6 +139,11 @@ artifacts:
   `el9.6`
 - `release.python_version` selects the managed `RELEASE_PYTHON_VERSION` value and
   drives CPU ODH repository naming
+- `release.aipcc_wheel_index.stream` is the AIPCC `public-rhai/rhoai/<stream>/…`
+  path segment for ODH base-image `INDEX_URL` values (independent of
+  `full_version`; for example `3.5-EA2` or `3.6-EA1`)
+- `release.aipcc_wheel_index.use_test` selects `*-ubi9-test` indexes when true,
+  otherwise prod `*-ubi9` indexes
 
 ### Policy Keys
 
