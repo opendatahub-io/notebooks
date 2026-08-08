@@ -51,7 +51,7 @@ _CALLBACK_PORT = 8080
 
 # Atlassian OAuth 2.0 endpoints and defaults
 _ATLASSIAN_AUTH_URL = "https://auth.atlassian.com/authorize"
-_ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"  # noqa: S105
+_ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"  # ruff: ignore[hardcoded-password-string]
 _ATLASSIAN_RESOURCES_URL = "https://api.atlassian.com/oauth/token/accessible-resources"
 _ATLASSIAN_SCOPES = "read:jira-work write:jira-work read:me offline_access"
 _DEFAULT_CLIENT_ID = "Vy2kiBP7sPj6HfgxCXam8iGutRps5Xsu"

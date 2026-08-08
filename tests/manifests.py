@@ -276,7 +276,7 @@ class TestManifests:
     def get_targets() -> Generator[tuple[str, Path]]:
         # TODO(jdanek): should systematize import paths to avoid this hack
         sys.path.insert(0, str(ROOT_DIR / "ci/cached-builds"))
-        from ci.cached_builds import gen_gha_matrix_jobs  # noqa: PLC0415
+        from ci.cached_builds import gen_gha_matrix_jobs  # ruff: ignore[import-outside-top-level]
 
         python_312 = gen_gha_matrix_jobs.extract_image_targets(ROOT_DIR, env={"RELEASE_PYTHON_VERSION": "3.12"})
         targets = python_312

@@ -50,10 +50,10 @@ class TestSomething:
 
     def test_something(self):
         """Individual tests are methods in this class, and they are named test_* as usual."""
-        assert True is not False  # noqa: PLR0133 Two constants compared in a comparison
+        assert True is not False  # ruff: ignore[comparison-of-constant] Two constants compared in a comparison
 
 
-import unittest  # noqa: E402 Module level import not at top of file
+import unittest  # ruff: ignore[module-import-not-at-top-of-file] Module level import not at top of file
 
 
 class LegacyThing(unittest.TestCase):
