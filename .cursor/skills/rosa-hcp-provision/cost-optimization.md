@@ -3,7 +3,9 @@
 Findings from validating `red-hat-data-services/ods-ci#3027` end-to-end on
 two real ROSA HCP clusters (2026-08-08). Every number here was measured or
 directly queried during that session — treat the *methods* as durable,
-the *numbers* (spot prices especially) as drifting and worth re-checking.
+the *numbers* as drifting and worth re-checking. Spot instances have
+their own document, [spot-instances.md](spot-instances.md) — not covered
+here since they aren't usable today regardless of the other levers below.
 
 ## 1. Baseline cost — the config actually used
 
@@ -42,105 +44,31 @@ jq -r '.terms.OnDemand.<SKU> | to_entries[].value.priceDimensions
 
 Same pattern works for EBS (`productFamily=="Storage"`).
 
-## 2. Real spot prices observed (method, not eternal truth)
+## 2. Spot instances — not usable yet, see [spot-instances.md](spot-instances.md)
 
-```bash
-aws ec2 describe-spot-price-history --region us-east-1 \
-  --instance-types m5.2xlarge m5.xlarge m5.large m6i.large \
-  --product-descriptions "Linux/UNIX" --availability-zone us-east-1a \
-  --start-time "$(date -u -v-1H +%Y-%m-%dT%H:%M:%S)"
-```
+Originally expected to be the top cost lever here (~50% off EC2 at the
+same instance size). **It isn't usable today, on either the client or
+the service side** — this turned out substantial enough (JIRA/Slack
+trail, upstream design doc, interruption-notification mechanics, a
+verified `rosa --debug` repro) to warrant its own document rather than
+bulking up this one with content that isn't currently actionable for
+provisioning. Short version: `rosa create machinepool
+--use-spot-instances` is a silent no-op on `rosa` 1.2.64 (verified), the
+live OCM service doesn't expose the field yet either, and there's a
+service-enforced minimum OCP version (4.22) on top of that. Tracked
+upstream as [`ROSA-26`](https://redhat.atlassian.net/browse/ROSA-26),
+CLI ETA ~`1.2.65`/2026-08-19. Full detail, retest checklist, and the
+Simple-vs-Enhanced-mode interruption-notification writeup are in
+[spot-instances.md](spot-instances.md).
 
-Observed 2026-08-08, `us-east-1a`: `m5.2xlarge` $0.192/hr, `m5.xlarge`
-$0.065/hr, `m5.large` $0.0439/hr, `m6i.large` $0.0384/hr. Always re-query
-before relying on a number — spot prices fluctuate.
-
-## 3. Spot instances DO NOT currently work via `rosa create machinepool` — not a bug, an unreleased feature (JIRA ROSA-26, ETA ~2026-08-19)
-
-**This is the single most important finding in this document.** `rosa
-create machinepool --use-spot-instances [--spot-max-price N]` is accepted
-with **no error or warning**, but the resulting machine pool has no spot
-configuration at all — the instances launch as regular on-demand. Anyone
-trusting this flag would silently pay full price while believing they're
-saving ~50%.
-
-**Root cause, confirmed via internal JIRA/Slack (2026-08-08): this is a
-known, actively-tracked gap, not a bug to file upstream.**
-[`ROSA-26`](https://redhat.atlassian.net/browse/ROSA-26) "Support and
-expose Spot instances on ROSA HCP" is `In Progress`/Blocker priority.
-Backend support is done (`ROSAENG-61032`, OCM API/SDK changes — Closed),
-but the **CLI-side epic (`ROSAENG-63392`, "[ROSA CLI] Epic for ROSA-904 -
-Spot Instance simple & enhanced") was still `New`/To-Do as of
-2026-08-03** — 5 days before we tested. Per the release-timeline post in
-Slack `#wg-rosa26-aws-spot-market-options`:
-
-> ROSA CLI: `rosa_cli_1.2.65` — target **8/19**
-> Terraform provider: `tf-provider-1.7.8` — target 9/02
-> Terraform HCP module: `tf-hcp-module-1.7.5` — target 9/09
-> *(dates may still shift if a release cuts before then)*
-
-We tested on `rosa` **1.2.64** — the version immediately before the one
-slated to add this. That matches the observed behavior exactly: the
-backend already accepts `spot_market_options`, but the 1.2.64 CLI simply
-has no code yet to populate it in the request. **Action for next time:
-check `rosa version` first — if it's ≥ `1.2.65` (released on/after
-~2026-08-19), retest before assuming this is still broken.** There's also
-an approved design doc (`rosa-enhancements` PR #59) confirming the
-CLI/Terraform client contract, so the eventual flag/UX shouldn't be a
-surprise once it ships.
-
-**Verified 3 times** with `rosa --debug`, inspecting the actual HTTP
-request body sent to the OCM API — `spot_market_options` (or any
-spot-related field) is **absent from the request** regardless of whether
-`--spot-max-price` is also passed:
-
-```json
-{
-  "kind": "NodePool",
-  "id": "workers-spot3",
-  "aws_node_pool": {
-    "kind": "AWSNodePool",
-    "ec2_metadata_http_tokens": "optional",
-    "instance_type": "m5.2xlarge"
-  },
-  "auto_repair": true,
-  "labels": {},
-  "replicas": 2,
-  "subnet": "subnet-...",
-  "taints": []
-}
-```
-
-No `spot_market_options` key anywhere. Also tried a raw `ocm patch` to an
-*existing* pool with `{"aws_node_pool":{"spot_market_options":{}}}` —
-had no effect either (though this doesn't fully rule out "immutable after
-creation" as a separate, expected restriction).
-
-**Not a stale-CLI issue in the "outdated install" sense**: `rosa version`
-reported `1.2.64`, which matches the latest GitHub release tag
-(`v1.2.64`) at time of testing, so `brew upgrade rosa-cli` wouldn't have
-fixed it. It *is* a stale-CLI issue in the "the feature hasn't shipped
-yet" sense — see the ROSA-26 timeline above.
-
-**Action for next time**: don't assume `--use-spot-instances` worked just
-because the command exited 0. Verify via:
-```bash
-aws ec2 describe-instances --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
-  --query "Reservations[].Instances[].InstanceLifecycle"
-# should print "spot" for each — if it prints nothing/null, you're on-demand
-```
-Check `rosa version` against the `1.2.65`/~2026-08-19 target above before
-re-testing — no need to file an upstream issue, `ROSA-26`/`ROSAENG-63392`
-already track this.
-
-## 4. The requests-vs-usage distinction (critical for any sizing decision)
+## 3. The requests-vs-usage distinction (critical for any sizing decision)
 
 Idle cluster-wide **requests** were ~7.14 vCPU/19.4 GiB, while idle
 **actual usage** (`oc adm top`) was ~0.4 vCPU/6.8 GiB — a >15x gap on CPU.
 **The scheduler places pods based on `requests`, never on `oc adm top`.**
 An earlier pass at this analysis used `oc adm top` and wrongly concluded
 the cluster could shrink to a 4 vCPU/16 GiB node — it can't, on CPU alone,
-without also addressing RHOAI's own request defaults (item 5).
+without also addressing RHOAI's own request defaults (item 4).
 
 Always compute real floors via:
 ```bash
@@ -163,7 +91,7 @@ print(f"{tc:.3f} vCPU, {tm/1024**3:.2f} GiB")
 '
 ```
 
-## 5. Verified: a Kyverno mutate policy CAN shrink RHOAI's own inflated requests
+## 4. Verified: a Kyverno mutate policy CAN shrink RHOAI's own inflated requests
 
 RHOAI's own baseline (dashboard ×2 replicas × 3 containers @ 500m/1Gi each
 — `rhods-dashboard`, `oauth-proxy`, `model-registry-ui` — plus operator ×3
@@ -235,7 +163,7 @@ viable with caution, not unconditionally proven** — the missing step for
 full confidence is an actual notebook spawn on real `m5.xlarge` nodes with
 the policy live.
 
-## 6. "Already optimal, and why" — don't just say keep-as-is, justify it
+## 5. "Already optimal, and why" — don't just say keep-as-is, justify it
 
 - **Region `us-east-1`**: wins on two axes simultaneously, not a
   tradeoff — it's the cheapest-or-tied-cheapest AWS region for EC2 in
@@ -253,12 +181,12 @@ the policy live.
   specifically, not a general rule — a model-serving validation run needs
   `kserve`, etc. Re-justify per test target.
 - **ROSA HCP's AWS-account footprint is minimal by architecture**:
-  verified via tag-filtered queries (item 7) — zero NAT gateways, load
+  verified via tag-filtered queries (item 6) — zero NAT gateways, load
   balancers, or Elastic IPs in the customer account for either cluster
   tested. Those live on Red Hat's side of the HCP split. The entire
   customer-account bill is worker EC2 + their EBS volumes, nothing else.
 
-## 7. Verification methodology — audit exactly what a cluster costs
+## 6. Verification methodology — audit exactly what a cluster costs
 
 ```bash
 aws ec2 describe-instances --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
@@ -271,9 +199,10 @@ aws ec2 describe-addresses --filters "Name=tag:api.openshift.com/name,Values=<cl
 ```
 Run this *before* deciding a cluster's cost is fully accounted for — don't
 rely on memory of what was created. Also useful for confirming spot
-lifecycle (item 3) and catching orphaned volumes (item 9).
+lifecycle (see [spot-instances.md](spot-instances.md)) and catching
+orphaned volumes (item 7).
 
-## 8. IAM permission gap on the shared role
+## 7. IAM permission gap on the shared role
 
 `585132637328-rhoai-dev` (via `rh-aws-saml-login iaps-rhods-odh-dev`) has
 **neither `pricing:GetProducts` nor `ce:GetCostAndUsage`**. This means
@@ -285,7 +214,7 @@ software fee is actually waived on this account, per item 1's open
 question), request `ce:GetCostAndUsage` added to this role — this is a
 fixable gap, not a permanent limitation to route around forever.
 
-## 9. Cost-leak gotcha: orphaned EBS volumes can survive `oc delete pvc`
+## 8. Cost-leak gotcha: orphaned EBS volumes can survive `oc delete pvc`
 
 Found a stray unattached 20GiB gp3 volume (tagged with a `CSIVolumeName`
 from an already-deleted PVC) still silently billing after a routine `oc
@@ -299,7 +228,7 @@ aws ec2 describe-volumes --filters "Name=status,Values=available" \
   "Name=tag:api.openshift.com/name,Values=<cluster>"
 ```
 
-## 10. Bring-up and teardown timing — see `SKILL.md`'s "Timing" section
+## 9. Bring-up and teardown timing — see `SKILL.md`'s "Timing" section
 
 Full breakdown lives in `SKILL.md` near `## Prerequisites` since it's a
 decision input (is a real cluster worth it?), not just a cost line item.
@@ -307,7 +236,7 @@ Two independent deletion timings this session: **14m28s** and **15m23s**
 — both consistent with `deprovision.md`'s existing "~15-20 min observed"
 estimate.
 
-## 11. Alternative: `cluster-bot` for when you don't need custom sizing
+## 10. Alternative: `cluster-bot` for when you don't need custom sizing
 
 The [`cluster-bot`](../cluster-bot/SKILL.md) skill's `rosa create
 <version> <duration>` provisions a real ROSA HCP cluster via Slack with
@@ -315,15 +244,15 @@ The [`cluster-bot`](../cluster-bot/SKILL.md) skill's `rosa create
 risk of forgetting to delete a cluster and accruing cost indefinitely, the
 exact risk this whole document is otherwise mitigating. Trade-off: **no
 instance-type or disk-size control**, so the sizing/Kyverno work in this
-doc doesn't apply there. Given spot instances turned out not to work via
-the manual CLI path anyway (item 3), `cluster-bot`'s lack of instance-type
-control costs less than it might first appear — **worth defaulting to
-`cluster-bot` for validation runs that don't need a specific instance
-type, GPU pool, or the Kyverno request-shrinking experiment**, and
-reserving the manual `rosa create cluster` path in this skill for when
-that control is actually needed.
+doc doesn't apply there. Given spot instances aren't usable yet regardless
+of path (see [spot-instances.md](spot-instances.md)), `cluster-bot`'s
+lack of instance-type control costs less than it might first appear —
+**worth defaulting to `cluster-bot` for validation runs that don't need a
+specific instance type, GPU pool, or the Kyverno request-shrinking
+experiment**, and reserving the manual `rosa create cluster` path in this
+skill for when that control is actually needed.
 
-## 12. RHOAI's x86_64-only image constraint is version-specific — don't assume it's permanent
+## 11. RHOAI's x86_64-only image constraint is version-specific — don't assume it's permanent
 
 True for **RHOAI 2.25** (tested here — arm64 nodes produce `exec container
 process: Exec format error` on every notebook spawn). **RHOAI 3.3** already
@@ -334,18 +263,18 @@ viability when validating RHOAI 3.3+** rather than inheriting this
 document's 2.25-era x86_64-only conclusion — real savings are on the
 table once the target RHOAI version supports it.
 
-## 13. Verify-before-trusting checklist (the meta-lesson)
+## 12. Verify-before-trusting checklist (the meta-lesson)
 
 - Sizing: sum `requests` via `oc get pods -A -o json`, never eyeball `oc
   adm top`.
-- Spot: check `InstanceLifecycle` on actual EC2 instances, never trust
-  `rosa create machinepool --use-spot-instances` exiting 0. Check
-  `rosa version` against the `1.2.65`/~2026-08-19 target in item 3
-  (JIRA `ROSA-26`) first — this may already be fixed by the time you read
-  this.
+- Spot: see the retest checklist in
+  [spot-instances.md](spot-instances.md) — don't trust `rosa create
+  machinepool --use-spot-instances` exiting 0, and don't assume it's
+  still unusable without re-checking (both `rosa` CLI version and the
+  cluster's OCP version matter).
 - Region/AZ "optimal" claims: re-derive (quick price comparison + confirm
   quay.io's origin region), don't assume they hold indefinitely.
 - arm64 viability: re-test per RHOAI version, don't inherit this
   document's 2.25 conclusion.
-- Cluster cost is "done": run the tag-filtered AWS queries in item 7,
+- Cluster cost is "done": run the tag-filtered AWS queries in item 6,
   don't rely on memory of what was created.

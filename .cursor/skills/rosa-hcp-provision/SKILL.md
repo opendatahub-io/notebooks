@@ -1,11 +1,11 @@
 ---
 name: rosa-hcp-provision
-description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — spot instances, sizing, Kyverno request-shrinking), and installing a released RHOAI version (install-rhoai.md). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
+description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — sizing, Kyverno request-shrinking; spot-instances.md — spot instance status/blockers, not usable yet), and installing a released RHOAI version (install-rhoai.md). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
 ---
 
 # ROSA HCP Cluster Provisioning
 
-Need a quick disposable ROSA/OCP cluster with zero setup (no `kinit`/SAML) instead? See [cluster-bot](../cluster-bot/SKILL.md)'s `rosa create <version> <duration>` — has **built-in auto-teardown** (no risk of a forgotten cluster accruing cost) but no GPU pools or instance-type control. Given spot instances don't yet work via the manual path here (unreleased feature, ETA `rosa` 1.2.65 ~2026-08-19 — see [cost-optimization.md](cost-optimization.md) item 3), `cluster-bot` is the better default when you don't specifically need a custom instance type, GPU pool, or the request-shrinking Kyverno experiment — come back here for that.
+Need a quick disposable ROSA/OCP cluster with zero setup (no `kinit`/SAML) instead? See [cluster-bot](../cluster-bot/SKILL.md)'s `rosa create <version> <duration>` — has **built-in auto-teardown** (no risk of a forgotten cluster accruing cost) but no GPU pools or instance-type control. Given spot instances aren't usable yet regardless of path (not just a CLI gap — see [spot-instances.md](spot-instances.md)), `cluster-bot` is the better default when you don't specifically need a custom instance type, GPU pool, or the request-shrinking Kyverno experiment — come back here for that.
 
 ## Timing — is a real cluster worth it?
 
@@ -372,7 +372,7 @@ Machine pools (CPU + GPU) are removed with the cluster — no separate `delete m
 | `Expected a valid value for subnet for a hosted machine pool` | `rosa create machinepool` prompts interactively when multiple subnets exist in the AZ; pass `--subnet <id>` explicitly in non-interactive/scripted shells |
 | `A hosted cluster requires at least 2 replicas` | HCP hard floor — `--replicas`/machinepool size can never go below 2, no single-node HCP option exists |
 | Duplicate cluster name | Cluster already exists in org; `rosa list clusters` to check |
-| `--use-spot-instances` seems to have no effect | It currently doesn't — verified via `rosa --debug`, the spot field never reaches the API request on `v1.2.64` (Aug 2026). Not a bug: CLI-side support (`ROSAENG-63392`) was still unreleased at test time, targeted for `rosa` 1.2.65 (~2026-08-19, JIRA `ROSA-26`). Check `rosa version` before assuming it's still broken. Confirm with `aws ec2 describe-instances --query "...InstanceLifecycle"`; see [cost-optimization.md](cost-optimization.md) item 3 |
+| `--use-spot-instances` seems to have no effect | It currently doesn't — not a bug, spot isn't usable yet on ROSA HCP at all (CLI *and* service-side gaps, plus a minimum OCP 4.22 requirement). Full detail, JIRA tracking, and a retest checklist: [spot-instances.md](spot-instances.md) |
 | `exec container process: Exec format error` on notebook spawn | arm64/x86_64 mismatch — RHOAI 2.25's default images are x86_64-only; recreate the machinepool with an x86_64 `--compute-machine-type` (see `## Cluster Creation` above) |
 | ClusterPolicy `spec{}` invalid | v25.3+ requires all fields; extract default from `csv alm-examples` |
 | GPU pods Pending after ClusterPolicy | Driver compiles first; other pods cascade after driver **2/2 Ready** |
