@@ -19,7 +19,10 @@ See jira_auth.spec.md for the full requirements document.
 
 from __future__ import annotations
 
+import argparse
 import base64
+import contextlib
+import getpass
 import hashlib
 import json
 import os
@@ -31,7 +34,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
@@ -48,7 +51,7 @@ _CALLBACK_PORT = 8080
 
 # Atlassian OAuth 2.0 endpoints and defaults
 _ATLASSIAN_AUTH_URL = "https://auth.atlassian.com/authorize"
-_ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"
+_ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"  # noqa: S105
 _ATLASSIAN_RESOURCES_URL = "https://api.atlassian.com/oauth/token/accessible-resources"
 _ATLASSIAN_SCOPES = "read:jira-work write:jira-work read:me offline_access"
 _DEFAULT_CLIENT_ID = "Vy2kiBP7sPj6HfgxCXam8iGutRps5Xsu"
@@ -61,6 +64,7 @@ class JiraAuthError(RuntimeError):
 # ---------------------------------------------------------------------------
 # Public entry points
 # ---------------------------------------------------------------------------
+
 
 def get_auth_headers(jira_url: str) -> dict[str, str]:
     """Return HTTP headers sufficient to authenticate against *jira_url*.
@@ -80,9 +84,7 @@ def get_auth_headers(jira_url: str) -> dict[str, str]:
     # --- Method 1a: API token from env vars ---
     if email or api_token:
         if not (email and api_token):
-            raise JiraAuthError(
-                "Set both JIRA_EMAIL and JIRA_API_TOKEN together, or unset both to use keyring/OAuth."
-            )
+            raise JiraAuthError("Set both JIRA_EMAIL and JIRA_API_TOKEN together, or unset both to use keyring/OAuth.")
         return _basic_auth_header(email, api_token)
 
     # --- Method 1b: API token from keyring ---
@@ -128,21 +130,19 @@ def get_auth_headers(jira_url: str) -> dict[str, str]:
 
 def _basic_auth_header(email: str, api_token: str) -> dict[str, str]:
     """Build a Basic auth header from email and API token."""
-    raw = f"{email}:{api_token}".encode("utf-8")
+    raw = f"{email}:{api_token}".encode()
     encoded = base64.b64encode(raw).decode("ascii")
     return {"Authorization": f"Basic {encoded}"}
 
 
 def _load_api_token() -> dict[str, str] | None:
     """Load stored API token from keyring, returning None if unavailable."""
-    try:
+    with contextlib.suppress(Exception):
         raw = keyring.get_password(_KEYRING_SERVICE, "api-token")
         if raw:
             data = json.loads(raw)
             if data.get("email") and data.get("api_token"):
                 return data
-    except Exception:
-        pass
     return None
 
 
@@ -186,22 +186,15 @@ def resolve_cloud_base_url(access_token: str, jira_url: str) -> str:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:  # ruff: ignore[suspicious-url-open-usage]
             sites = json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        raise JiraAuthError(
-            f"Failed to resolve cloud ID: HTTP {e.code} from {_ATLASSIAN_RESOURCES_URL}"
-        ) from e
+        raise JiraAuthError(f"Failed to resolve cloud ID: HTTP {e.code} from {_ATLASSIAN_RESOURCES_URL}") from e
     except Exception as e:
-        raise JiraAuthError(
-            f"Failed to resolve cloud ID from {_ATLASSIAN_RESOURCES_URL}: {e}"
-        ) from e
+        raise JiraAuthError(f"Failed to resolve cloud ID from {_ATLASSIAN_RESOURCES_URL}: {e}") from e
 
     if not sites:
-        raise JiraAuthError(
-            "No accessible Atlassian sites found. "
-            "Ensure your OAuth app has site access granted."
-        )
+        raise JiraAuthError("No accessible Atlassian sites found. Ensure your OAuth app has site access granted.")
 
     jira_url_stripped = jira_url.rstrip("/")
     cloud_id = None
@@ -213,10 +206,7 @@ def resolve_cloud_base_url(access_token: str, jira_url: str) -> str:
 
     if not cloud_id:
         available = ", ".join(s.get("url", "?") for s in sites)
-        raise JiraAuthError(
-            f"No Atlassian site matching {jira_url} found. "
-            f"Available sites: {available}"
-        )
+        raise JiraAuthError(f"No Atlassian site matching {jira_url} found. Available sites: {available}")
 
     return f"https://api.atlassian.com/ex/jira/{cloud_id}"
 
@@ -224,6 +214,7 @@ def resolve_cloud_base_url(access_token: str, jira_url: str) -> str:
 # ---------------------------------------------------------------------------
 # OAuth 2.0 browser redirect flow with PKCE
 # ---------------------------------------------------------------------------
+
 
 def _get_oauth_token(client_id: str, client_secret: str, jira_url: str) -> str:
     """Return a valid OAuth access token, using cache if possible."""
@@ -291,7 +282,7 @@ def _do_oauth_flow(client_id: str, client_secret: str) -> dict[str, Any]:
     event = threading.Event()
 
     class _CallbackHandler(BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802
+        def do_GET(self):
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path != "/callback":
                 self.send_response(404)
@@ -332,18 +323,14 @@ def _do_oauth_flow(client_id: str, client_secret: str) -> dict[str, Any]:
         opened = webbrowser.open(auth_url)
         if not opened:
             print(
-                "\nCould not open browser automatically. Visit this URL to authenticate:\n"
-                f"  {auth_url}\n",
+                f"\nCould not open browser automatically. Visit this URL to authenticate:\n  {auth_url}\n",
                 flush=True,
             )
         else:
             print("Opening browser for Jira authentication...", flush=True)
 
         if not event.wait(timeout=_OAUTH_TIMEOUT_S):
-            raise JiraAuthError(
-                f"OAuth flow timed out after {_OAUTH_TIMEOUT_S} seconds. "
-                "Please try again."
-            )
+            raise JiraAuthError(f"OAuth flow timed out after {_OAUTH_TIMEOUT_S} seconds. Please try again.")
     finally:
         server.shutdown()
         server.server_close()
@@ -362,28 +349,36 @@ def _do_oauth_flow(client_id: str, client_secret: str) -> dict[str, Any]:
 
 
 def _exchange_code(
-    client_id: str, client_secret: str, code: str, redirect_uri: str, code_verifier: str,
+    client_id: str,
+    client_secret: str,
+    code: str,
+    redirect_uri: str,
+    code_verifier: str,
 ) -> dict[str, Any]:
     """Exchange an authorization code for tokens."""
-    payload = json.dumps({
-        "grant_type": "authorization_code",
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "code": code,
-        "redirect_uri": redirect_uri,
-        "code_verifier": code_verifier,
-    }).encode("utf-8")
+    payload = json.dumps(
+        {
+            "grant_type": "authorization_code",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "code_verifier": code_verifier,
+        }
+    ).encode("utf-8")
     return _post_token_endpoint(payload)
 
 
 def _refresh_oauth_token(client_id: str, client_secret: str, refresh_token: str) -> dict[str, Any]:
     """Exchange a refresh token for a new access token."""
-    payload = json.dumps({
-        "grant_type": "refresh_token",
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "refresh_token": refresh_token,
-    }).encode("utf-8")
+    payload = json.dumps(
+        {
+            "grant_type": "refresh_token",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "refresh_token": refresh_token,
+        }
+    ).encode("utf-8")
     return _post_token_endpoint(payload)
 
 
@@ -395,7 +390,7 @@ def _post_token_endpoint(payload: bytes) -> dict[str, Any]:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # ruff: ignore[suspicious-url-open-usage]
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode()
@@ -412,7 +407,7 @@ def _post_token_endpoint(payload: bytes) -> dict[str, Any]:
     except (TypeError, ValueError) as e:
         raise JiraAuthError(f"Token exchange failed: invalid expires_in={data.get('expires_in')!r}") from e
 
-    expires_at = datetime.now(tz=timezone.utc).replace(microsecond=0) + timedelta(seconds=expires_in)
+    expires_at = datetime.now(tz=UTC).replace(microsecond=0) + timedelta(seconds=expires_in)
 
     return {
         "access_token": access_token,
@@ -424,6 +419,7 @@ def _post_token_endpoint(payload: bytes) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Token storage — keyring with file fallback
 # ---------------------------------------------------------------------------
+
 
 def _load_token(jira_url: str) -> dict[str, Any] | None:
     """Load cached OAuth token data, returning None if unavailable/invalid."""
@@ -445,7 +441,7 @@ def _load_token(jira_url: str) -> dict[str, Any] | None:
         if not isinstance(data, dict) or "access_token" not in data:
             return None
         return data
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return None
 
 
@@ -505,13 +501,14 @@ def _write_token_file(jira_url: str, raw: str) -> None:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_expires_at(value: str) -> datetime | None:
     if not value:
         return None
     try:
         dt = datetime.fromisoformat(value)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return dt
     except ValueError:
         return None
@@ -519,7 +516,7 @@ def _parse_expires_at(value: str) -> datetime | None:
 
 def _not_expired(expires_at: datetime) -> bool:
     """Return True if the token is still valid with the expiry buffer."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     return expires_at > now + timedelta(seconds=_TOKEN_EXPIRY_BUFFER_S)
 
 
@@ -535,9 +532,8 @@ def get_cached_api_base_url(jira_url: str) -> str | None:
 # CLI entry point: python -m scripts.cve.jira_auth store-token
 # ---------------------------------------------------------------------------
 
-def _cli() -> None:
-    import argparse
 
+def _cli() -> None:
     parser = argparse.ArgumentParser(
         prog="python -m scripts.cve.jira_auth",
         description="Manage Jira API tokens in the OS keychain",
@@ -558,8 +554,9 @@ def _cli() -> None:
         if args.token:
             api_token = args.token
         else:
-            import getpass
-            api_token = getpass.getpass("API token (from https://id.atlassian.com/manage-profile/security/api-tokens): ")
+            api_token = getpass.getpass(
+                "API token (from https://id.atlassian.com/manage-profile/security/api-tokens): "
+            )
         store_api_token(email, api_token.strip())
 
     elif args.command == "clear-token":
@@ -571,7 +568,7 @@ def _cli() -> None:
 
         if os.environ.get("JIRA_EMAIL") and os.environ.get("JIRA_API_TOKEN"):
             print("Auth: API token (from env vars JIRA_EMAIL + JIRA_API_TOKEN)")
-        elif (stored := _load_api_token()):
+        elif stored := _load_api_token():
             print(f"Auth: API token (from keychain, email={stored['email']})")
         elif os.environ.get("JIRA_TOKEN"):
             print("Auth: Legacy Bearer token (from env var JIRA_TOKEN)")

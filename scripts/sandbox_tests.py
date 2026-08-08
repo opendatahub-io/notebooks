@@ -6,8 +6,8 @@ import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
-from ci.logging_config import configure_logging
 
+from ci.logging_config import configure_logging
 from scripts.sandbox import _copy_tree, _ignored_dir_names, _load_dockerignore, setup_sandbox
 
 if TYPE_CHECKING:

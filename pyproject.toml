@@ -139,7 +139,15 @@ reportAttributeAccessIssue = "none"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
-include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py", "base-images/**/*.py", "jupyter/**/*.ipynb"]
+include = [
+    "pyproject.toml",
+    "ci/**/*.py",
+    "ntb/**/*.py",
+    "scripts/**/*.py",
+    "tests/**/*.py",
+    "base-images/**/*.py",
+    "jupyter/**/*.ipynb",
+]
 exclude = [ ]
 target-version = "py314"
 line-length = 120

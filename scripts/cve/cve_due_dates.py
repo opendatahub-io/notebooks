@@ -31,7 +31,7 @@ Requires:
 import argparse
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import date, datetime
 
 from scripts.cve import extract_cve_id
 from scripts.cve.jira_auth import JiraAuthError
@@ -41,6 +41,7 @@ from scripts.cve.jira_client import JiraClient
 @dataclass
 class TrackerInfo:
     """Information about a CVE tracker and its linked issues."""
+
     key: str
     summary: str
     cve_id: str | None = None
@@ -66,7 +67,6 @@ class TrackerInfo:
     def needs_due_date_sync(self) -> bool:
         """True if tracker has no due date but linked issues do."""
         return self.due_date is None and self.earliest_child_due_date is not None
-
 
 
 def parse_date(date_str: str | None) -> date | None:
@@ -147,7 +147,7 @@ def fetch_child_due_dates(client: JiraClient, trackers: list[TrackerInfo]) -> No
     batch_size = 50
 
     for i in range(0, len(keys_list), batch_size):
-        batch_keys = keys_list[i:i + batch_size]
+        batch_keys = keys_list[i : i + batch_size]
         jql = f"key in ({','.join(batch_keys)})"
         issues = client.search_issues(jql, fields="key,duedate", max_results=len(batch_keys))
 
@@ -160,7 +160,7 @@ def fetch_child_due_dates(client: JiraClient, trackers: list[TrackerInfo]) -> No
     for tracker in trackers:
         child_dates = []
         for child_key in tracker.linked_issues:
-            if child_key in child_due_dates and child_due_dates[child_key]:
+            if child_due_dates.get(child_key):
                 child_dates.append(child_due_dates[child_key])
 
         if child_dates:
@@ -286,20 +286,16 @@ Environment variables:
   JIRA_API_TOKEN          Atlassian API token (recommended for scripts/CI)
   JIRA_TOKEN              Legacy Bearer token (issues.redhat.com PAT)
   JIRA_OAUTH_CLIENT_SECRET  OAuth 2.0 client secret (interactive browser flow)
-"""
+""",
     )
-    parser.add_argument("--list-overdue", action="store_true",
-                        help="List trackers that are past their due date")
-    parser.add_argument("--list-missing-dates", action="store_true",
-                        help="List trackers missing due dates but with child due dates")
-    parser.add_argument("--sync-dates", action="store_true",
-                        help="Sync due dates from child issues to trackers")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be done without making changes")
-    parser.add_argument("--summary", action="store_true",
-                        help="Show summary statistics")
-    parser.add_argument("--max-results", type=int, default=500,
-                        help="Maximum trackers to fetch (default: 500)")
+    parser.add_argument("--list-overdue", action="store_true", help="List trackers that are past their due date")
+    parser.add_argument(
+        "--list-missing-dates", action="store_true", help="List trackers missing due dates but with child due dates"
+    )
+    parser.add_argument("--sync-dates", action="store_true", help="Sync due dates from child issues to trackers")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without making changes")
+    parser.add_argument("--summary", action="store_true", help="Show summary statistics")
+    parser.add_argument("--max-results", type=int, default=500, help="Maximum trackers to fetch (default: 500)")
     return parser.parse_args()
 
 

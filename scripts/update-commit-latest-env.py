@@ -53,6 +53,7 @@ import urllib.parse
 import urllib.request
 
 import structlog
+
 from ci.logging_config import configure_logging
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent

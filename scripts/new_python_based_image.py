@@ -9,6 +9,7 @@ import sys
 from dataclasses import dataclass
 
 import structlog
+
 from ci.logging_config import configure_logging
 
 LOGGER = structlog.get_logger()

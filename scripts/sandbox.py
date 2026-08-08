@@ -11,8 +11,8 @@ import tempfile
 from typing import Literal, cast
 
 import structlog
-from ci.logging_config import configure_logging
 
+from ci.logging_config import configure_logging
 from scripts.buildinputs_runner import buildinputs
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent

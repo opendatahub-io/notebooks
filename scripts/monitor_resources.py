@@ -7,6 +7,7 @@ import sys
 import time
 
 import structlog
+
 from ci.logging_config import configure_logging
 
 configure_logging()

@@ -32,7 +32,6 @@ import argparse
 import json
 import re
 import sys
-from pathlib import Path
 from typing import Any
 
 
@@ -229,15 +228,15 @@ def print_package_results(results: list[dict], package_name: str) -> None:
     for r in results:
         print(f"  {r['name']}@{r['version']}")
         print(f"    Type: {r['type']}")
-        if r.get('foundBy'):
+        if r.get("foundBy"):
             print(f"    Found by: {r['foundBy']}")
-        if r.get('locations'):
+        if r.get("locations"):
             print("    Locations:")
-            for loc in r['locations']:
+            for loc in r["locations"]:
                 print(f"      - {loc}")
-        if r.get('sourceInfo'):
+        if r.get("sourceInfo"):
             print(f"    Source: {r['sourceInfo']}")
-        if r.get('purl'):
+        if r.get("purl"):
             print(f"    PURL: {r['purl']}")
         print()
 
@@ -251,10 +250,10 @@ def print_path_results(results: list[dict], path_pattern: str) -> None:
     print(f"  Found {len(results)} package(s) at path matching '{path_pattern}':\n")
     for r in results:
         print(f"  {r['name']}@{r['version']} ({r['type']})")
-        if r.get('locations'):
-            for loc in r['locations']:
+        if r.get("locations"):
+            for loc in r["locations"]:
                 print(f"    - {loc}")
-        elif r.get('sourceInfo'):
+        elif r.get("sourceInfo"):
             print(f"    Source: {r['sourceInfo']}")
 
 
