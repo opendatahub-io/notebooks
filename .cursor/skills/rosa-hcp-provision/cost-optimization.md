@@ -55,7 +55,7 @@ Observed 2026-08-08, `us-east-1a`: `m5.2xlarge` $0.192/hr, `m5.xlarge`
 $0.065/hr, `m5.large` $0.0439/hr, `m6i.large` $0.0384/hr. Always re-query
 before relying on a number — spot prices fluctuate.
 
-## 3. Spot instances DO NOT currently work via `rosa create machinepool` — verified, reproducible
+## 3. Spot instances DO NOT currently work via `rosa create machinepool` — not a bug, an unreleased feature (JIRA ROSA-26, ETA ~2026-08-19)
 
 **This is the single most important finding in this document.** `rosa
 create machinepool --use-spot-instances [--spot-max-price N]` is accepted
@@ -63,6 +63,31 @@ with **no error or warning**, but the resulting machine pool has no spot
 configuration at all — the instances launch as regular on-demand. Anyone
 trusting this flag would silently pay full price while believing they're
 saving ~50%.
+
+**Root cause, confirmed via internal JIRA/Slack (2026-08-08): this is a
+known, actively-tracked gap, not a bug to file upstream.**
+[`ROSA-26`](https://redhat.atlassian.net/browse/ROSA-26) "Support and
+expose Spot instances on ROSA HCP" is `In Progress`/Blocker priority.
+Backend support is done (`ROSAENG-61032`, OCM API/SDK changes — Closed),
+but the **CLI-side epic (`ROSAENG-63392`, "[ROSA CLI] Epic for ROSA-904 -
+Spot Instance simple & enhanced") was still `New`/To-Do as of
+2026-08-03** — 5 days before we tested. Per the release-timeline post in
+Slack `#wg-rosa26-aws-spot-market-options`:
+
+> ROSA CLI: `rosa_cli_1.2.65` — target **8/19**
+> Terraform provider: `tf-provider-1.7.8` — target 9/02
+> Terraform HCP module: `tf-hcp-module-1.7.5` — target 9/09
+> *(dates may still shift if a release cuts before then)*
+
+We tested on `rosa` **1.2.64** — the version immediately before the one
+slated to add this. That matches the observed behavior exactly: the
+backend already accepts `spot_market_options`, but the 1.2.64 CLI simply
+has no code yet to populate it in the request. **Action for next time:
+check `rosa version` first — if it's ≥ `1.2.65` (released on/after
+~2026-08-19), retest before assuming this is still broken.** There's also
+an approved design doc (`rosa-enhancements` PR #59) confirming the
+CLI/Terraform client contract, so the eventual flag/UX shouldn't be a
+surprise once it ships.
 
 **Verified 3 times** with `rosa --debug`, inspecting the actual HTTP
 request body sent to the OCM API — `spot_market_options` (or any
@@ -91,9 +116,11 @@ No `spot_market_options` key anywhere. Also tried a raw `ocm patch` to an
 had no effect either (though this doesn't fully rule out "immutable after
 creation" as a separate, expected restriction).
 
-**Not a stale-CLI issue**: `rosa version` reported `1.2.64`, which matches
-the latest GitHub release tag (`v1.2.64`) at time of testing — this is
-current, not something `brew upgrade rosa-cli` fixes today.
+**Not a stale-CLI issue in the "outdated install" sense**: `rosa version`
+reported `1.2.64`, which matches the latest GitHub release tag
+(`v1.2.64`) at time of testing, so `brew upgrade rosa-cli` wouldn't have
+fixed it. It *is* a stale-CLI issue in the "the feature hasn't shipped
+yet" sense — see the ROSA-26 timeline above.
 
 **Action for next time**: don't assume `--use-spot-instances` worked just
 because the command exited 0. Verify via:
@@ -102,8 +129,9 @@ aws ec2 describe-instances --filters "Name=tag:api.openshift.com/name,Values=<cl
   --query "Reservations[].Instances[].InstanceLifecycle"
 # should print "spot" for each — if it prints nothing/null, you're on-demand
 ```
-Re-test this after any `rosa` CLI upgrade; file an issue against
-`openshift/rosa` if it's still broken and none exists yet.
+Check `rosa version` against the `1.2.65`/~2026-08-19 target above before
+re-testing — no need to file an upstream issue, `ROSA-26`/`ROSAENG-63392`
+already track this.
 
 ## 4. The requests-vs-usage distinction (critical for any sizing decision)
 
@@ -311,7 +339,10 @@ table once the target RHOAI version supports it.
 - Sizing: sum `requests` via `oc get pods -A -o json`, never eyeball `oc
   adm top`.
 - Spot: check `InstanceLifecycle` on actual EC2 instances, never trust
-  `rosa create machinepool --use-spot-instances` exiting 0.
+  `rosa create machinepool --use-spot-instances` exiting 0. Check
+  `rosa version` against the `1.2.65`/~2026-08-19 target in item 3
+  (JIRA `ROSA-26`) first — this may already be fixed by the time you read
+  this.
 - Region/AZ "optimal" claims: re-derive (quick price comparison + confirm
   quay.io's origin region), don't assume they hold indefinitely.
 - arm64 viability: re-test per RHOAI version, don't inherit this

@@ -5,7 +5,7 @@ description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS
 
 # ROSA HCP Cluster Provisioning
 
-Need a quick disposable ROSA/OCP cluster with zero setup (no `kinit`/SAML) instead? See [cluster-bot](../cluster-bot/SKILL.md)'s `rosa create <version> <duration>` — has **built-in auto-teardown** (no risk of a forgotten cluster accruing cost) but no GPU pools or instance-type control. Given spot instances currently don't work via the manual path here anyway (see [cost-optimization.md](cost-optimization.md) item 3), `cluster-bot` is the better default when you don't specifically need a custom instance type, GPU pool, or the request-shrinking Kyverno experiment — come back here for that.
+Need a quick disposable ROSA/OCP cluster with zero setup (no `kinit`/SAML) instead? See [cluster-bot](../cluster-bot/SKILL.md)'s `rosa create <version> <duration>` — has **built-in auto-teardown** (no risk of a forgotten cluster accruing cost) but no GPU pools or instance-type control. Given spot instances don't yet work via the manual path here (unreleased feature, ETA `rosa` 1.2.65 ~2026-08-19 — see [cost-optimization.md](cost-optimization.md) item 3), `cluster-bot` is the better default when you don't specifically need a custom instance type, GPU pool, or the request-shrinking Kyverno experiment — come back here for that.
 
 ## Timing — is a real cluster worth it?
 
@@ -372,7 +372,7 @@ Machine pools (CPU + GPU) are removed with the cluster — no separate `delete m
 | `Expected a valid value for subnet for a hosted machine pool` | `rosa create machinepool` prompts interactively when multiple subnets exist in the AZ; pass `--subnet <id>` explicitly in non-interactive/scripted shells |
 | `A hosted cluster requires at least 2 replicas` | HCP hard floor — `--replicas`/machinepool size can never go below 2, no single-node HCP option exists |
 | Duplicate cluster name | Cluster already exists in org; `rosa list clusters` to check |
-| `--use-spot-instances` seems to have no effect | It currently doesn't — verified via `rosa --debug`, the spot field never reaches the API request even on the latest CLI (`v1.2.64` as of Aug 2026). Confirm with `aws ec2 describe-instances --query "...InstanceLifecycle"`; see [cost-optimization.md](cost-optimization.md) item 3 |
+| `--use-spot-instances` seems to have no effect | It currently doesn't — verified via `rosa --debug`, the spot field never reaches the API request on `v1.2.64` (Aug 2026). Not a bug: CLI-side support (`ROSAENG-63392`) was still unreleased at test time, targeted for `rosa` 1.2.65 (~2026-08-19, JIRA `ROSA-26`). Check `rosa version` before assuming it's still broken. Confirm with `aws ec2 describe-instances --query "...InstanceLifecycle"`; see [cost-optimization.md](cost-optimization.md) item 3 |
 | `exec container process: Exec format error` on notebook spawn | arm64/x86_64 mismatch — RHOAI 2.25's default images are x86_64-only; recreate the machinepool with an x86_64 `--compute-machine-type` (see `## Cluster Creation` above) |
 | ClusterPolicy `spec{}` invalid | v25.3+ requires all fields; extract default from `csv alm-examples` |
 | GPU pods Pending after ClusterPolicy | Driver compiles first; other pods cascade after driver **2/2 Ready** |
