@@ -101,7 +101,7 @@ class AipccWheelIndex(StrictModel):
     stream: AipccWheelIndexStream
     use_test: bool = Field(
         title="Use test index",
-        description='When true, use *-ubi9-test simple indexes; when false, use prod *-ubi9 indexes.',
+        description="When true, use *-ubi9-test simple indexes; when false, use prod *-ubi9 indexes.",
     )
 
 
@@ -118,8 +118,7 @@ class Release(StrictModel):
     aipcc_wheel_index: AipccWheelIndex = Field(
         title="AIPCC wheel index",
         description=(
-            "Operator input for base-images/build-args/*.conf INDEX_URL. "
-            "Synced by make sync-build-args-from-versions."
+            "Operator input for base-images/build-args/*.conf INDEX_URL. Synced by make sync-build-args-from-versions."
         ),
     )
 

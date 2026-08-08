@@ -2302,5 +2302,5 @@ def test_load_versions_config_rejects_invalid_aipcc_stream(tmp_path: Path) -> No
     config = tmp_path / "versions_config.yml"
     write_versions_config(config, aipcc_wheel_index_stream="not-a-stream")
 
-    with pytest.raises(ValueError, match="aipcc_wheel_index.stream"):
+    with pytest.raises(ValueError, match=r"aipcc_wheel_index\.stream"):
         updater.load_versions_config(config)
