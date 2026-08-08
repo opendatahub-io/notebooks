@@ -37,6 +37,7 @@ Output format:
     If index-url is provided, it is emitted as the first line:
         --index-url https://...
 """
+
 import re
 import sys
 import tomllib
@@ -71,8 +72,7 @@ def extract_default_index_from_pylock(pylock_path: Path) -> str:
 
 def main():
     if len(sys.argv) < 3:
-        print(f"Usage: {sys.argv[0]} <pylock.toml> <requirements.txt> [index-url]",
-              file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} <pylock.toml> <requirements.txt> [index-url]", file=sys.stderr)
         sys.exit(1)
 
     pylock_path = Path(sys.argv[1])
@@ -101,10 +101,7 @@ def main():
         archive = pkg.get("archive")
         if isinstance(archive, dict) and (archive_url := (archive.get("url") or "").strip()):
             # Direct URL (not on PyPI): PEP 508 "name @ URL" so prefetchers fetch this file.
-            hashes = [
-                f"--hash={algo}:{digest}"
-                for algo, digest in archive.get("hashes", {}).items()
-            ]
+            hashes = [f"--hash={algo}:{digest}" for algo, digest in archive.get("hashes", {}).items()]
             entry = f"{name} @ {archive_url}"
             if marker:
                 entry += f" ; {marker}"

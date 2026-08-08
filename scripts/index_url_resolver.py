@@ -253,9 +253,9 @@ def validated_index_probe_url(index_url: str) -> str:
 
 @cache
 def index_url_exists(index_url: str) -> bool:
-    request = Request(validated_index_probe_url(index_url), method="HEAD")  # noqa: S310
+    request = Request(validated_index_probe_url(index_url), method="HEAD")  # ruff: ignore[suspicious-url-open-usage]
     try:
-        with urlopen(request, timeout=INDEX_CHECK_TIMEOUT_SECONDS) as response:  # noqa: S310
+        with urlopen(request, timeout=INDEX_CHECK_TIMEOUT_SECONDS) as response:  # ruff: ignore[suspicious-url-open-usage]
             return 200 <= response.status < 400
     except HTTPError:
         return False
@@ -329,8 +329,7 @@ def _resolve_from_base_image_ref(
         release = parse_release_override(release_override, conf_file)
     else:
         raise IndexResolutionError(
-            f"Digest-pinned BASE_IMAGE in {conf_file} requires RELEASE for index "
-            f"resolution fallback: {base_image}"
+            f"Digest-pinned BASE_IMAGE in {conf_file} requires RELEASE for index resolution fallback: {base_image}"
         )
     release_candidates = [release]
     if accelerator.startswith("rocm"):
