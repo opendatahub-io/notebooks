@@ -256,7 +256,7 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         super().start()
         container_id = self.get_wrapped_container().id
         assert container_id is not None
-        docker_client = testcontainers.core.container.DockerClient().client
+        docker_client = testcontainers.core.docker_client.DockerClient().client
         logging.debug(docker_client.api.inspect_container(container_id)["HostConfig"])
         if wait_for_readiness:
             self._connect()
