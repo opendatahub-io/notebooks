@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import cast, Literal
+from typing import Literal, cast
 
 import structlog
 
@@ -29,19 +29,19 @@ class Args(argparse.Namespace):
 def main() -> int:
     p = argparse.ArgumentParser(allow_abbrev=False)
     p.add_argument("--dockerfile", type=pathlib.Path, required=True)
-    p.add_argument("--platform", type=str,
-                   choices=["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"],
-                   required=True)
-    p.add_argument('remaining', nargs=argparse.REMAINDER)
+    p.add_argument(
+        "--platform", type=str, choices=["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"], required=True
+    )
+    p.add_argument("remaining", nargs=argparse.REMAINDER)
 
-    args = cast(Args, p.parse_args())
+    args = cast("Args", p.parse_args())
 
     print(f"{__file__=} started with {args=}")
 
     if not args.remaining or args.remaining[0] != "--":
         print("must specify command to execute after double dashes at the end, such as `-- command --args ...`")
         return 1
-    if not "{};" in args.remaining:
+    if "{};" not in args.remaining:
         print("must give a `{};` parameter that will be replaced with new build context")
         return 1
 
@@ -113,11 +113,11 @@ def _ignored_dir_names(root: pathlib.Path) -> tuple[set[str], set[str]]:
 
 
 def _ignore_dirname(
-        dirname: str,
-        *,
-        root_only_ignore: set[str],
-        any_depth_ignore: set[str],
-        parent_at_repo_root: bool,
+    dirname: str,
+    *,
+    root_only_ignore: set[str],
+    any_depth_ignore: set[str],
+    parent_at_repo_root: bool,
 ) -> bool:
     if dirname in any_depth_ignore:
         return True
@@ -125,12 +125,12 @@ def _ignore_dirname(
 
 
 def _copy_tree(
-        src: pathlib.Path,
-        dst: pathlib.Path,
-        *,
-        repo_base_rel: pathlib.Path | None = None,
-        root_only_ignore: set[str] | None = None,
-        any_depth_ignore: set[str] | None = None,
+    src: pathlib.Path,
+    dst: pathlib.Path,
+    *,
+    repo_base_rel: pathlib.Path | None = None,
+    root_only_ignore: set[str] | None = None,
+    any_depth_ignore: set[str] | None = None,
 ):
     """Copy a directory tree, copying only file content (no metadata/xattrs).
 
@@ -164,13 +164,13 @@ def _copy_tree(
 
 
 def _copy_tree_dir(
-        src_dir: pathlib.Path,
-        dst_dir: pathlib.Path,
-        rel: pathlib.Path,
-        repo_base_rel: pathlib.Path,
-        root_only_ignore: set[str],
-        any_depth_ignore: set[str],
-        ancestor_realpaths: frozenset[str],
+    src_dir: pathlib.Path,
+    dst_dir: pathlib.Path,
+    rel: pathlib.Path,
+    repo_base_rel: pathlib.Path,
+    root_only_ignore: set[str],
+    any_depth_ignore: set[str],
+    ancestor_realpaths: frozenset[str],
 ) -> None:
     real_dir = os.path.realpath(src_dir)
     if real_dir in ancestor_realpaths:
@@ -232,7 +232,7 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
         # The buildinputs tool emits these patterns verbatim from COPY/ADD directives,
         # so we must expand them here before the existence check — a literal path like
         # "patches/*.patch" does not exist on disk and would otherwise trigger sys.exit(1).
-        if any(c in str(dep) for c in ('*', '?', '[')):
+        if any(c in str(dep) for c in ("*", "?", "[")):
             matched = sorted(glob.glob(str(dep)))
             if not matched:
                 log.warning(f"glob pattern matched no files: {dep}")
@@ -253,7 +253,9 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
             continue
 
         if not dep.exists():
-            log.error(f"File or directory '{dep}' referenced in the Dockerfile was not found on disk. Please ensure the file exists.")
+            log.error(
+                f"File or directory '{dep}' referenced in the Dockerfile was not found on disk. Please ensure the file exists."
+            )
             sys.exit(1)
 
         if dep.is_dir():
@@ -269,6 +271,6 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
             shutil.copy(dep, tmpdir / dep.parent)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     configure_logging()
     sys.exit(main())

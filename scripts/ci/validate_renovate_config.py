@@ -183,8 +183,7 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
         (
             rule
             for rule in package_rules
-            if isinstance(rule, dict)
-            and rule.get("description", "").startswith(CENTOS_STREAM_RULE_DESCRIPTION)
+            if isinstance(rule, dict) and rule.get("description", "").startswith(CENTOS_STREAM_RULE_DESCRIPTION)
         ),
         None,
     )

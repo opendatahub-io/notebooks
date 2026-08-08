@@ -34,9 +34,7 @@ def extract_playwright_version(manifest: Path) -> str:
     text = manifest.read_text(encoding="utf-8")
     match = _VERSION_RE.search(text)
     if match is None:
-        raise ValueError(
-            f"Failed to extract valid @playwright/test version from {manifest}"
-        )
+        raise ValueError(f"Failed to extract valid @playwright/test version from {manifest}")
     return match.group(1)
 
 

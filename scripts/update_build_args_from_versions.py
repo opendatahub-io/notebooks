@@ -74,8 +74,8 @@ MAKEFILE_ASSIGNMENT_RE = re.compile(r"^(?P<prefix>\s*(?P<key>[A-Za-z_][A-Za-z0-9
 
 BASE_IMAGE_SCHEMA = {
     "cpu": CPU_BASE_IMAGE_SCHEMA,
-    "cuda": {flavor: None for flavor in GPU_FLAVORS["cuda"]},
-    "rocm": {flavor: None for flavor in GPU_FLAVORS["rocm"]},
+    "cuda": dict.fromkeys(GPU_FLAVORS["cuda"]),
+    "rocm": dict.fromkeys(GPU_FLAVORS["rocm"]),
 }
 
 ROOT_SCHEMA = {
@@ -148,7 +148,7 @@ class VersionsConfig:
             raise ValueError("CPU does not use acc_version")
         if flavor is None:
             raise ValueError(f"Flavor is required for accelerator '{accelerator}'")
-        return self.gpu_acc_versions[(accelerator, flavor)]
+        return self.gpu_acc_versions[accelerator, flavor]
 
 
 @dataclass(frozen=True)
@@ -533,7 +533,7 @@ def normalize_base_image_config(
                 release=release,
             )
             normalized_base_image[accelerator][flavor] = normalized_flavor
-            gpu_acc_versions[(accelerator, flavor)] = shared_version
+            gpu_acc_versions[accelerator, flavor] = shared_version
 
     return normalized_base_image, gpu_acc_versions
 
@@ -868,7 +868,7 @@ def inspect_image_config(image: str, *, warning_color: str | None = None) -> dic
     return payload
 
 
-def inspect_rhds_stable_acc_version(image: str, accelerator: str) -> str | None | object:
+def inspect_rhds_stable_acc_version(image: str, accelerator: str) -> str | object | None:
     config_payload = inspect_image_config(image, warning_color="red")
     if config_payload is None:
         return _STABLE_ACC_VERSION_INSPECT_FAILED
@@ -909,8 +909,8 @@ def inspect_rhds_stable_acc_version(image: str, accelerator: str) -> str | None 
 def cached_rhds_stable_acc_version(
     image: str,
     accelerator: str,
-    stable_acc_version_cache: dict[tuple[str, str], str | None | object],
-) -> str | None | object:
+    stable_acc_version_cache: dict[tuple[str, str], str | object | None],
+) -> str | object | None:
     cache_key = (image, accelerator)
     if cache_key not in stable_acc_version_cache:
         stable_acc_version_cache[cache_key] = inspect_rhds_stable_acc_version(image, accelerator)
@@ -944,7 +944,7 @@ def resolve_matching_published_rhds_stable_image(
     accelerator: str,
     configured_acc_version: str,
     tag_cache: dict[str, tuple[str, ...]] | None,
-    stable_acc_version_cache: dict[tuple[str, str], str | None | object],
+    stable_acc_version_cache: dict[tuple[str, str], str | object | None],
 ) -> str:
     configured_normalized = normalize_stream_version(configured_acc_version)
     candidates = sorted(
@@ -1298,7 +1298,7 @@ def resolve_rhds_base_image(
     state: TargetState,
     release: ReleaseConfig,
     tag_cache: dict[str, tuple[str, ...]],
-    stable_acc_version_cache: dict[tuple[str, str], str | None | object],
+    stable_acc_version_cache: dict[tuple[str, str], str | object | None],
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
     stable_repo_overrides: dict[str, str] | None = None,
@@ -1351,7 +1351,8 @@ def resolve_rhds_base_image(
         candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, bundle_seed_phase)}"
     elif treat_as_rhds_stable_tag(current_base_image, current_tag):
         stable_match = RHDS_STABLE_TAG_RE.fullmatch(current_tag)
-        assert stable_match is not None
+        if stable_match is None:
+            raise ValueError(f"stable tag did not match expected pattern: {current_tag}")
         current_version = parse_release_version(stable_match.group("version"))
         target_version = parse_release_version(target_release_version)
         if current_version > target_version:
@@ -1426,7 +1427,7 @@ def build_target_base_image(
     state: TargetState,
     release: ReleaseConfig,
     tag_cache: dict[str, tuple[str, ...]],
-    stable_acc_version_cache: dict[tuple[str, str], str | None | object],
+    stable_acc_version_cache: dict[tuple[str, str], str | object | None],
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
     stable_repo_overrides: dict[str, str] | None = None,
@@ -1535,7 +1536,7 @@ def plan_updates(
 ) -> list[PlannedUpdate]:
     states: list[TargetState] = []
     tag_cache: dict[str, tuple[str, ...]] = {}
-    stable_acc_version_cache: dict[tuple[str, str], str | None | object] = {}
+    stable_acc_version_cache: dict[tuple[str, str], str | object | None] = {}
     source_tag_by_digest: dict[str, str] = {}
     digest_cache: dict[str, str] = {}
     digest_to_tag_by_repository: dict[str, dict[str, str]] = {}

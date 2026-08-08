@@ -38,6 +38,7 @@ Usage (run from the repo root):
   # Both variants at once:
   ./uv run scripts/update-commit-latest-env.py --variant both
 """
+
 from __future__ import annotations
 
 import argparse
@@ -179,9 +180,9 @@ def write_commit_env(entries: list[tuple[str, str]], dest: pathlib.Path) -> None
 
 
 def _fetch_quay_json(url: str) -> dict:
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    request = urllib.request.Request(url, headers={"Accept": "application/json"})  # ruff: ignore[suspicious-url-open-usage]
     try:
-        with urllib.request.urlopen(request, timeout=SKOPEO_TIMEOUT_SEC) as response:
+        with urllib.request.urlopen(request, timeout=SKOPEO_TIMEOUT_SEC) as response:  # ruff: ignore[suspicious-url-open-usage]
             payload = json.loads(response.read().decode())
     except (urllib.error.URLError, TimeoutError) as exc:
         msg = f"Quay API request failed for {url}: {exc}"
@@ -203,8 +204,7 @@ async def quay_list_matching_tags(repository: str, pattern: re.Pattern) -> list[
 
     while page <= MAX_QUAY_PAGES:
         url = (
-            f"{QUAY_API_BASE}/repository/{namespace}/{repo}/tag/"
-            f"?limit={QUAY_PAGE_SIZE}&page={page}&onlyActiveTags=true"
+            f"{QUAY_API_BASE}/repository/{namespace}/{repo}/tag/?limit={QUAY_PAGE_SIZE}&page={page}&onlyActiveTags=true"
         )
         try:
             payload = await asyncio.to_thread(_fetch_quay_json, url)
@@ -283,9 +283,12 @@ async def skopeo_inspect_config(
 ) -> tuple[str, dict | None]:
     """Return (image_url, config) from skopeo inspect --config, or (image_url, None) on failure."""
     cmd = [
-        "skopeo", "inspect",
-        "--override-os=linux", "--override-arch=amd64",
-        "--retry-times=3", "--config",
+        "skopeo",
+        "inspect",
+        "--override-os=linux",
+        "--override-arch=amd64",
+        "--retry-times=3",
+        "--config",
         f"docker://{image_url}",
     ]
     try:
@@ -311,7 +314,7 @@ async def skopeo_inspect_config(
         log.error("failed to parse skopeo JSON", image=image_url)
         return image_url, None
     except Exception:
-        log.error("unexpected error", image=image_url, exc_info=True)
+        log.exception("unexpected error", image=image_url)
         return image_url, None
 
 
@@ -328,9 +331,9 @@ async def find_latest_tag_by_skopeo_created(
         return None
 
     log.info("found candidate tags via skopeo", image=image, count=len(matching))
-    inspected = await asyncio.gather(*[
-        skopeo_inspect_config(f"{image}:{tag}", semaphore, log_failure=False) for tag in matching
-    ])
+    inspected = await asyncio.gather(
+        *[skopeo_inspect_config(f"{image}:{tag}", semaphore, log_failure=False) for tag in matching]
+    )
 
     best_tag: str | None = None
     best_created = ""
@@ -410,9 +413,7 @@ async def find_latest_rhoai_tag_by_created(
         return None
 
     log.info("found RHOAI candidate tags", image=image, count=len(matching))
-    inspected = await asyncio.gather(*[
-        skopeo_inspect_config(f"{image}:{tag}", semaphore) for tag in matching
-    ])
+    inspected = await asyncio.gather(*[skopeo_inspect_config(f"{image}:{tag}", semaphore) for tag in matching])
 
     best_tag: str | None = None
     best_created = ""
@@ -443,9 +444,7 @@ async def collect_odh_entries(
             return None
         return commit_env_key(variable), vcs_ref
 
-    results = await asyncio.gather(*[
-        process_one(variable, odh_url) for variable, odh_url in workbench_images
-    ])
+    results = await asyncio.gather(*[process_one(variable, odh_url) for variable, odh_url in workbench_images])
     if any(result is None for result in results):
         return None
     return list(results)
@@ -494,9 +493,7 @@ async def collect_rhoai_entries(
             return None
         return commit_env_key(variable), vcs_ref[:7]
 
-    results = await asyncio.gather(*[
-        process_one(variable, odh_url) for variable, odh_url in workbench_images
-    ])
+    results = await asyncio.gather(*[process_one(variable, odh_url) for variable, odh_url in workbench_images])
     if any(result is None for result in results):
         return None
     entries = [entry for entry in results if entry and entry[0]]

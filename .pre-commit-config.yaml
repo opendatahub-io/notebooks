@@ -35,10 +35,10 @@ repos:
       - id: ruff-check
         types_or: [python, pyi, jupyter]
         args: [--fix]
-        files: '^((ci|tests|ntb|base-images)/.*\.(py|pyi)|jupyter/.*\.ipynb)$'
+        files: '^((ci|tests|ntb|base-images|scripts)/.*\.(py|pyi)|jupyter/.*\.ipynb)$'
       - id: ruff-format
         types_or: [python, pyi]
-        files: '^(ci|tests|ntb|base-images)/.*\.(py|pyi)$'
+        files: '^(ci|tests|ntb|base-images|scripts)/.*\.(py|pyi)$'
   # https://github.com/gitleaks/gitleaks
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1

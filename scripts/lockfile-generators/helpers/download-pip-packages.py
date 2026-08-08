@@ -18,6 +18,7 @@ Supports two index backends:
 Usage:
   python3 download-pip-packages.py [--arch ARCH] [-o OUTPUT_DIR] requirements.txt
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,6 +26,7 @@ import concurrent.futures
 import hashlib
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -32,7 +34,7 @@ import urllib.request
 from pathlib import Path, PurePosixPath
 from urllib.parse import urljoin
 
-from packaging.markers import Marker
+from packaging.markers import Marker, default_environment
 
 OUT_DIR = Path("cachi2/output/deps/pip")
 PYPI_JSON = "https://pypi.org/pypi/{name}/{version}/json"
@@ -64,9 +66,15 @@ def get_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("requirements", type=Path, help="Path to requirements.txt")
     parser.add_argument("-o", "--output-dir", type=Path, default=OUT_DIR, help=f"Output directory (default: {OUT_DIR})")
-    parser.add_argument("--arch", type=str, default=None, help="Target architecture (default: from BUILD_ARCH env or uname -m)")
-    parser.add_argument("--python-version", type=str, default=None,
-                        help="Target Python version, e.g. 3.12 (default: from RELEASE_PYTHON_VERSION env or current)")
+    parser.add_argument(
+        "--arch", type=str, default=None, help="Target architecture (default: from BUILD_ARCH env or uname -m)"
+    )
+    parser.add_argument(
+        "--python-version",
+        type=str,
+        default=None,
+        help="Target Python version, e.g. 3.12 (default: from RELEASE_PYTHON_VERSION env or current)",
+    )
     args = parser.parse_args()
 
     if args.arch is None:
@@ -75,11 +83,12 @@ def get_args():
             raw = build_arch.split("/")[-1]
             args.arch = {"amd64": "x86_64", "arm64": "aarch64"}.get(raw, raw)
         else:
-            import platform
             args.arch = platform.machine()
 
     if args.python_version is None:
-        args.python_version = os.environ.get("RELEASE_PYTHON_VERSION", f"{sys.version_info.major}.{sys.version_info.minor}")
+        args.python_version = os.environ.get(
+            "RELEASE_PYTHON_VERSION", f"{sys.version_info.major}.{sys.version_info.minor}"
+        )
 
     req_path = args.requirements.resolve()
     if not req_path.is_file():
@@ -104,7 +113,7 @@ def parse_requirements(req_path: Path) -> list[tuple[str, str, set[str], str]]:
     packages = []
     for line in text.split("\n"):
         line = line.strip()
-        if not line or line.startswith("#") or line.startswith("--"):
+        if not line or line.startswith(("#", "--")):
             continue
         hash_parts = line.split("--hash=")
         name_ver_marker = hash_parts[0].strip()
@@ -134,16 +143,15 @@ class _PoisonString(str):
         return obj
 
     def _boom(self, *args, **kwargs):
-        raise _UnexpectedKeyAccess(super().__getattribute__("_key_name"))
+        raise _UnexpectedKeyAccessError(super().__getattribute__("_key_name"))
 
 
-class _UnexpectedKeyAccess(Exception):
+class _UnexpectedKeyAccessError(Exception):
     pass
 
 
 # Poison all comparison/operator dunders so any use in marker evaluation explodes
-for _op in ("__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__",
-            "__contains__", "__hash__"):
+for _op in ("__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__", "__contains__", "__hash__"):
     setattr(_PoisonString, _op, _PoisonString._boom)
 
 
@@ -170,12 +178,11 @@ def should_skip_for_marker(marker: str, arch: str, python_version: str) -> bool:
         "sys_platform": "linux",
     }
     # Poison any key from default_environment() that we don't explicitly control
-    from packaging.markers import default_environment
     env = {k: _PoisonString(k) for k in default_environment()}
     env.update(controlled_env)
     try:
         return not Marker(marker).evaluate(env)
-    except _UnexpectedKeyAccess as e:
+    except _UnexpectedKeyAccessError as e:
         print(f"  WARN: marker touches uncontrolled key '{e}', not skipping: {marker}", file=sys.stderr)
         return False
     except Exception:
@@ -199,12 +206,14 @@ def should_keep_for_arch(filename: str, arch: str, skip_sdists: bool) -> bool:
     return any(a in platform_tag for a in ARCH_ALIASES.get(arch, [arch]))
 
 
-def fetch_simple_index_urls(index_url: str, name: str, version: str, wanted_hashes: set[str]) -> list[tuple[str, str, str]]:
+def fetch_simple_index_urls(
+    index_url: str, name: str, version: str, wanted_hashes: set[str]
+) -> list[tuple[str, str, str]]:
     normalized = re.sub(r"[-_.]+", "-", name).lower()
     page_url = f"{index_url.rstrip('/')}/{normalized}/"
     try:
-        req = urllib.request.Request(page_url, headers={"Accept": "text/html", "User-Agent": "prefetch/1.0"})
-        with urllib.request.urlopen(req, timeout=30) as r:
+        req = urllib.request.Request(page_url, headers={"Accept": "text/html", "User-Agent": "prefetch/1.0"})  # ruff: ignore[suspicious-url-open-usage]
+        with urllib.request.urlopen(req, timeout=30) as r:  # ruff: ignore[suspicious-url-open-usage]
             html = r.read().decode()
     except Exception as e:
         print(f"  WARN: failed to fetch index page for {name}: {e}", file=sys.stderr)
@@ -225,8 +234,8 @@ def fetch_simple_index_urls(index_url: str, name: str, version: str, wanted_hash
 def fetch_pypi_urls(name: str, version: str, wanted_hashes: set[str]) -> list[tuple[str, str, str]]:
     url = PYPI_JSON.format(name=name, version=version)
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "prefetch/1.0"})
-        with urllib.request.urlopen(req, timeout=30) as r:
+        req = urllib.request.Request(url, headers={"User-Agent": "prefetch/1.0"})  # ruff: ignore[suspicious-url-open-usage]
+        with urllib.request.urlopen(req, timeout=30) as r:  # ruff: ignore[suspicious-url-open-usage]
             data = json.loads(r.read().decode())
     except Exception as e:
         print(f"  WARN: failed to fetch PyPI metadata for {name}: {e}", file=sys.stderr)
@@ -272,13 +281,19 @@ def download_one(args: tuple) -> tuple[bool, str]:
     try:
         subprocess.run(
             [
-                "wget", "-q", "-O", str(dest_path),
-                "--tries=3", "--waitretry=2",
+                "wget",
+                "-q",
+                "-O",
+                str(dest_path),
+                "--tries=3",
+                "--waitretry=2",
                 f"--timeout={WGET_NETWORK_TIMEOUT_SECONDS}",
                 url,
             ],
-            check=True, timeout=DOWNLOAD_PROCESS_TIMEOUT_SECONDS,
-            capture_output=True, text=True,
+            check=True,
+            timeout=DOWNLOAD_PROCESS_TIMEOUT_SECONDS,
+            capture_output=True,
+            text=True,
         )
     except subprocess.TimeoutExpired:
         Path(dest_path).unlink(missing_ok=True)
@@ -315,7 +330,7 @@ def main():
     is_aipcc = index_url is not None and "packages.redhat.com/api/pypi/" in index_url
     skip_sdists = is_aipcc
 
-    print(f"=== download-pip-packages.py ===")
+    print("=== download-pip-packages.py ===")
     print(f"  requirements: {req_path}")
     print(f"  output:       {out_dir}")
     print(f"  arch:         {arch}")
@@ -383,14 +398,16 @@ def main():
         if pass_num == 1:
             print(f"\nPhase 5: Downloading {len(pending)} files ({workers} parallel)...")
         else:
-            print(f"\nPhase 5 (retry {pass_num - 1}/{DOWNLOAD_MAX_PASSES - 1}): "
-                  f"{len(pending)} failed download(s), retrying sequentially...")
+            print(
+                f"\nPhase 5 (retry {pass_num - 1}/{DOWNLOAD_MAX_PASSES - 1}): "
+                f"{len(pending)} failed download(s), retrying sequentially..."
+            )
 
         retry: list[tuple[str, Path, str]] = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             results = list(executor.map(download_one, pending))
 
-        for item, (ok, msg) in zip(pending, results):
+        for item, (ok, msg) in zip(pending, results, strict=True):
             if ok:
                 downloaded += 1
             else:
