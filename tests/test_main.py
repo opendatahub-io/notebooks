@@ -412,9 +412,9 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
         # ("package name", ("allowed version 1", "allowed version 2", ...))
         ("JupyterLab", ("4.5", "4.6")),
         ("Matplotlib", ("3.10", "3.11")),
-        ("MLflow", ("3.13", "3.14")),
+        ("MLflow", ("3.14", "3.15")),
         ("Kfp", ("2.15", "2.16")),
-        ("Feast", ("0.63", "0.64")),
+        ("Feast", ("0.63", "0.65")),  # codeserver still on 0.63; others refreshed to 0.65
         ("Scikit-learn", ("1.7", "1.6")),
         ("Scipy", ("1.16", "1.17")),
         ("Pandas", ("3.0", "2.3")),
@@ -422,9 +422,8 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
         (
             "Numpy",
             (
-                "2.1",  # for tensorflow rocm (numpy 2.1.x)
-                "2.4",  # older tags / llmcompressor
-                "2.5",  # this is our latest where possible
+                "2.4",  # llmcompressor
+                "2.5",  # latest where possible
             ),
         ),
         ("Tensorboard", ("2.19", "2.20")),
