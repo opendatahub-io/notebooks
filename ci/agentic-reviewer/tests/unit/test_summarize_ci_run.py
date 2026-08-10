@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from google.antigravity.types import BuiltinTools
+from google.antigravity.tools.tool_runner import ToolWithSchema
 from odh_ci_agent import ci_summary, summarize_ci_run
 
 if TYPE_CHECKING:
@@ -33,6 +33,7 @@ def test_should_enable_actions_fallback_accepts_error_contexts() -> None:
 def test_build_prompt_includes_mode_and_context() -> None:
     context = {
         "failed_jobs": [],
+        "github_repository": "owner/repo",
         "mode": "final",
         "pull_request": {"changed_files": [{"filename": "foo.py", "patch_excerpt": "@@ diff"}]},
         "progress": {"failed": 0},
@@ -45,6 +46,8 @@ def test_build_prompt_includes_mode_and_context() -> None:
     assert '"workflow_run_id": 123' in prompt
     assert "## Procedure" in prompt
     assert "Tool-use policy" in prompt
+    assert "Registered GitHub Actions tools" in prompt
+    assert "owner `owner`, repo `repo`" in prompt
     assert "Do not re-verify" in prompt
     assert "untrusted snapshot of PR code/data" in prompt
 
@@ -75,18 +78,37 @@ def test_build_config_enables_read_only_source_tools(monkeypatch) -> None:
     monkeypatch.setenv("AGY_TRAJECTORY_DIR", "/workspace/notebooks/agy-trajectory")
     monkeypatch.delenv("SOURCE_WORKSPACE", raising=False)
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-    context = {"failed_jobs": [{"log_excerpt": "grounded excerpt", "log_tail": ""}]}
+    context = {
+        "failed_jobs": [{"log_excerpt": "grounded excerpt", "log_tail": ""}],
+        "github_repository": "owner/repo",
+        "workflow_run_id": 123,
+    }
 
     config = summarize_ci_run.build_config(context)
 
     assert config.workspaces == ["/workspace/notebooks/unsafe-pr-source"]
     assert config.capabilities is not None
-    assert config.capabilities.enabled_tools == [
-        BuiltinTools.LIST_DIR,
-        BuiltinTools.SEARCH_DIR,
-        BuiltinTools.FIND_FILE,
-        BuiltinTools.VIEW_FILE,
-    ]
+    assert config.mcp_servers == []
+    assert config.tools == []
+
+
+def test_build_config_registers_local_actions_tools_when_logs_ungrounded(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/workspace/notebooks")
+    monkeypatch.setenv("AGY_TRAJECTORY_DIR", "/workspace/notebooks/agy-trajectory")
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.delenv("SOURCE_WORKSPACE", raising=False)
+    context = {
+        "failed_jobs": [{"log_excerpt": "", "log_tail": ""}],
+        "github_repository": "owner/repo",
+        "workflow_run_id": 123,
+    }
+
+    config = summarize_ci_run.build_config(context)
+
+    assert config.mcp_servers == []
+    assert len(config.tools) == 2
+    assert all(isinstance(tool, ToolWithSchema) for tool in config.tools)
+    assert {tool.fn.__name__ for tool in config.tools} == {"get_job_logs", "actions_get"}
 
 
 def test_summarize_progress_mode_writes_deterministic_body(tmp_path: Path) -> None:

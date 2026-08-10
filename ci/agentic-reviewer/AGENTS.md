@@ -16,7 +16,7 @@ PR review (`odh-ci-review-pr`) uses **in-process Python tools** registered on `L
 
 Tool JSON schemas are defined in `src/odh_ci_agent/github_review_tools.py` (aligned with GitHub MCP). Do not duplicate schemas in prompts.
 
-CI summary (`odh-ci-summarize-ci-run`) still uses read-only GitHub Actions MCP when local log context is insufficient.
+CI summary (`odh-ci-summarize-ci-run`) uses in-process Python tools for GitHub Actions log fallback (`get_job_logs`, `actions_get`) with MCP-aligned schemas and repository context pre-filled — same pattern as PR review. Remote GitHub Actions MCP is no longer used in CI summary.
 
 ## Commands
 

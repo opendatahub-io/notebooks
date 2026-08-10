@@ -45,6 +45,23 @@ def test_escape_markdown_table_cell_sanitizes_untrusted_text() -> None:
     assert ci_summary.escape_markdown_table_cell("line\r\nbreak") == "line break"
 
 
+def test_sanitize_agent_analysis_removes_harness_noise() -> None:
+    raw = (
+        "Error in MCP tool execution: missing required parameter: owner"
+        "### Likely root causes\n- SSL verification failed\n"
+    )
+
+    assert ci_summary.sanitize_agent_analysis(raw) == (
+        "### Likely root causes\n- SSL verification failed"
+    )
+
+
+def test_sanitize_agent_analysis_removes_view_file_noise() -> None:
+    raw = "Unable to view file at the requested position.### Likely root causes\n- build failed"
+
+    assert ci_summary.sanitize_agent_analysis(raw) == "### Likely root causes\n- build failed"
+
+
 def test_render_progress_comment_includes_failures_running_jobs_and_marker() -> None:
     context = {
         "failed_jobs": [
