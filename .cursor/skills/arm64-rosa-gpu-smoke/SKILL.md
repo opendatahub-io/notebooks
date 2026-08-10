@@ -1,6 +1,6 @@
 ---
 name: arm64-rosa-gpu-smoke
-description: Validate ARM64 CUDA notebook/runtime images end-to-end — Konflux manifest audit (skopeo arm64), testcontainers CPU smoke (podman --platform linux/arm64), GPU smoke on ROSA G5g/T4G or rdu2 GH200 Grace Hopper (Pod + oc exec), and ODH tests/manual GPU notebooks (nbconvert headless). Use for RHDS/RHOAI EA/GA multi-arch sign-off.
+description: Validate ARM64 CUDA notebook/runtime images end-to-end — Konflux manifest audit (skopeo arm64), testcontainers CPU smoke (podman --platform linux/arm64), GPU smoke on ROSA G5g/T4G or rdu2 GH200 Grace Hopper (Pod + oc exec), ODH tests/manual GPU notebooks (nbconvert headless), and the Elyra pipeline UI test (tests/manual/runtime_elyra — Pipeline Runtime images, browser automation, not headless). Use for RHDS/RHOAI EA/GA multi-arch sign-off.
 ---
 
 # ARM64 CUDA Image Validation
@@ -279,7 +279,7 @@ Source: [opendatahub-io/notebooks/tests/manual](https://github.com/opendatahub-i
 | `gpu-test-notebook.ipynb` | All CUDA workbench + runtime images with torch or TF |
 | `pytorch-test-notebook.ipynb` | pytorch-cuda, llmcompressor-cuda (+ runtime variants) |
 | `tensorflow-test.ipynb` | tensorflow-cuda (+ runtime variant) |
-| `runtime_elyra/` | **Not headless** — Elyra UI / S3 pipeline workflow |
+| `runtime_elyra/` | **Not headless** — Elyra UI / S3 pipeline workflow, see Phase 3c below |
 
 **Procedure:** spawn GPU Pod → **non-interactive exec** → default `python` → `jupyter nbconvert --execute`. Do **not** open Jupyter Lab.
 
@@ -369,6 +369,149 @@ Uses Kubernetes stream exec (equivalent to `oc exec -q`) if local `oc` hangs. Lo
 | FashionMNIST training | Pass | Pass |
 | TF MNIST training | Pass, >95% acc | Pass, >95% acc |
 | Manual notebooks | All applicable cells execute | All applicable cells execute |
+
+### Phase 3c — Elyra pipeline UI test (`tests/manual/runtime_elyra`)
+
+Verified end-to-end on ROSA HCP arm64 (`jd-arm64-36e1`, RHOAI 3.6.0-ea.1) via
+browser automation (`mcp__chrome-devtools__*` tools). This is a genuine UI
+test — Elyra's Pipeline Editor has no headless/CLI equivalent, unlike
+Phase 3b's `nbconvert` notebooks. It exercises **Pipeline Runtime images**
+(`odh-pipeline-runtime-*`), a different image tier from the CUDA workbench/
+runtime images Phases 1–3b cover — this test is CPU-only and validates the
+Elyra/Kubeflow-Pipelines execution path, not GPU compute.
+
+**Prerequisites:**
+
+1. **`aipipelines` DSC component must be `Managed`** — RHOAI 3.6-ea.1 renamed
+   `datasciencepipelines` to `aipipelines`; it's `Removed` by default on a
+   minimal DSC (see `install-rhoai.md`'s minimal component list). Enable it:
+   ```bash
+   oc --context "$CLUSTER_CONTEXT" patch dsc default-dsc --type merge \
+     -p '{"spec":{"components":{"aipipelines":{"managementState":"Managed"}}}}'
+   oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Ready \
+     dsc/default-dsc --timeout=120s
+   ```
+2. **An S3-compatible object storage backend** for the Data Science Pipelines
+   Application (DSPA) to store artifacts. No AWS credentials needed —
+   [rosa-hcp-provision/object_storage.md](../rosa-hcp-provision/object_storage.md)'s
+   Garage recipe works well for this (already verified with `restricted-v2`,
+   no `anyuid`). Create a dedicated bucket + key:
+   ```bash
+   oc --context "$CLUSTER_CONTEXT" exec garage-0 -n garage -c garage -- /garage bucket create elyra-pipelines
+   oc --context "$CLUSTER_CONTEXT" exec garage-0 -n garage -c garage -- /garage key create elyra-key
+   oc --context "$CLUSTER_CONTEXT" exec garage-0 -n garage -c garage -- /garage bucket allow \
+     --read --write --owner elyra-pipelines --key elyra-key
+   ```
+
+**Gotcha — Elyra's S3 client ignores the configured region (RHOAIENG-82579).**
+Elyra's `elyra/util/cos.py` `CosClient` builds its `minio.Minio()` client
+with **no `region` argument at all**, and the `kfp`-schema runtime-config
+metadata RHOAI auto-generates for the notebook (`~/.local/share/jupyter/
+metadata/runtimes/odh_dsp.json`) has no region field either. The `minio`
+client's own default resolves to `us-east-1` regardless of what region the
+DSPA/pipeline-server was actually configured with. Against a backend that
+enforces strict AWS SigV4 region-scope matching (Garage does), clicking
+*Run Pipeline* in the Pipeline Editor fails at the pre-flight connectivity
+check:
+```
+Error connecting to cloud storage: S3 operation failed; code: AuthorizationHeaderMalformed,
+message: Authorization header malformed, unexpected scope: '<date>/us-east-1/s3/aws4_request',
+expected: '<date>/<actual-region>/s3/aws4_request', ...
+```
+This happens even though the DSPA's own server-side pods (which use a
+different, region-aware S3 client) work fine — only the notebook-side
+Elyra pre-flight check breaks. **Fix**: set the object store's own region
+to literally `us-east-1` so it matches Elyra's implicit default, and keep
+the DSPA CR's `objectStorage.externalStorage.region` in sync with it
+(dashboard's "Configure pipeline server" won't let you edit region after
+creation — patch the DSPA CR directly instead):
+```bash
+# Garage: edit garage.s3.api.region in the Helm values, then restart to pick up the new ConfigMap
+helm --kube-context "$CLUSTER_CONTEXT" upgrade garage <chart-path> -n garage \
+  --reuse-values --set garage.s3.api.region=us-east-1
+oc --context "$CLUSTER_CONTEXT" rollout restart statefulset/garage -n garage
+# Keep the DSPA's region in sync (dashboard UI can't edit an existing pipeline server's config)
+oc --context "$CLUSTER_CONTEXT" patch dspa dspa -n "$TEST_NAMESPACE" --type merge \
+  -p '{"spec":{"objectStorage":{"externalStorage":{"region":"us-east-1"}}}}'
+```
+No upstream/RHOAIENG issue existed for this before — filed as
+[RHOAIENG-82579](https://redhat.atlassian.net/browse/RHOAIENG-82579).
+
+**Procedure** (dashboard + JupyterLab, via `mcp__chrome-devtools__*`):
+
+1. **Create an S3 connection** in the Data Science Project → Connections tab:
+   type "S3 compatible object storage - v1", endpoint
+   `http://garage.<namespace>.svc.cluster.local:3900`, region `us-east-1`
+   (per the gotcha above), the bucket/key from the prerequisites step.
+2. **Configure the pipeline server** (Pipelines tab → Configure pipeline
+   server), filling the same access key/secret/endpoint/region/bucket —
+   the "Autofill from connection" dropdown menu items don't render in an
+   accessibility-tree snapshot (see UI automation notes below), so fill
+   the fields directly instead of relying on that shortcut.
+3. **Create a workbench** with a Data-Science image (`Jupyter | Data
+   Science | CPU | Python 3.12` — has Elyra preinstalled; confirmed by the
+   Pipeline Editor / Runtimes / Runtime Images tabs appearing in the
+   JupyterLab left sidebar and the Launcher's "Elyra" section).
+4. **Clone the sample repo** via JupyterLab's Git Clone button:
+   `https://github.com/harshad16/data-science-pipeline-example`, open
+   `iris/iris-elyra.pipeline`.
+5. **Assign a Pipeline Runtime image to every node** (`create-dataset`,
+   `normalize-dataset`, `train-model`): click each node, open the Node
+   Properties panel ("Open Panel" toolbar button), set **Runtime Image**
+   from the dropdown — RHOAI populates this list from the cluster's
+   `runtime-*` ImageStreams (e.g. `Runtime | Datascience | CPU | Python
+   3.12 | Latest` → resolves to
+   `quay.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9`).
+6. **Save, then Run Pipeline** (toolbar). A "Job submission to Pipelines
+   succeeded" dialog confirms the Argo Workflow was created; verify actual
+   completion and arch on the cluster (dashboard/JupyterLab won't tell you
+   which node it landed on):
+   ```bash
+   oc --context "$CLUSTER_CONTEXT" get workflows -n "$TEST_NAMESPACE"
+   # once Succeeded, confirm arm64 + the expected runtime image per step pod:
+   oc --context "$CLUSTER_CONTEXT" get pod <container-impl-pod> -n "$TEST_NAMESPACE" \
+     -o jsonpath='{.spec.nodeName}{"\n"}{.spec.containers[*].image}{"\n"}'
+   oc --context "$CLUSTER_CONTEXT" get node <node-name> -L kubernetes.io/arch
+   ```
+
+**Verified this session:** `Runtime | Datascience | CPU | Python 3.12 |
+Latest` (`odh-pipeline-runtime-datascience-cpu-py312-rhel9`, confirmed
+multi-arch amd64/arm64/ppc64le/s390x via `skopeo` beforehand) ran all 3
+pipeline steps to completion (`Return code: 0` each) on an arm64 node,
+including S3 artifact upload/download through Garage and the
+`odh-data-science-pipelines-argo-argoexec-rhel9` sidecar (also confirmed
+multi-arch). **Not exercised this session**: the other Runtime Image
+options in the same dropdown (`Minimal`, `PyTorch CUDA`, `PyTorch LLM
+Compressor CUDA`, `TensorFlow CUDA`, plus their ROCm counterparts) —
+repeat steps 5–6 per image to extend coverage.
+
+**UI automation notes (`mcp__chrome-devtools__*`):**
+
+- **PatternFly `TypeaheadSelect`-style comboboxes don't expose their
+  options in an accessibility-tree snapshot while open** — confirmed via
+  direct DOM/ARIA inspection to be a real bug
+  ([RHOAIENG-76231](https://redhat.atlassian.net/browse/RHOAIENG-76231),
+  already tracked, in `Review`): the popper menu container has
+  `aria-hidden="true"` while visibly open, and the combobox lacks
+  `aria-controls`/`aria-activedescendant`. Hit this on "Create connection"
+  → Connection type, and "Configure pipeline server" → Autofill from
+  connection. **Workaround**: click the combobox, then `press_key`
+  `ArrowDown` + `Enter` instead of trying to click a listed option by uid.
+  Plain PatternFly `Select` "Options menu" dropdowns (e.g. workbench image
+  picker, pipeline Node Properties' Runtime Image field) don't have this
+  bug — their options *do* show up in a normal `take_snapshot` and can be
+  clicked directly by uid.
+- **The Pipeline Editor's Node Properties side panel shrinks the canvas**
+  and can push nodes further right off-screen. If a node's uid becomes
+  stale or a click doesn't land, close the panel ("Close Panel" toolbar
+  button) to get the full-width canvas back, click the node's label text
+  element (a plain `<span>`/`<div>`, not an accessible role) to select it,
+  then reopen the panel — the Node Properties form updates for the newly
+  selected node.
+- Elyra's "Run pipeline" confirmation dialog's Runtime Configuration
+  dropdown auto-selects the single RHOAI-provisioned option ("Pipeline")
+  with no action needed — this is a plain `<select>`-style combobox, not
+  the buggy typeahead variant.
 
 ### Teardown (when done billing)
 

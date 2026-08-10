@@ -191,6 +191,35 @@ spec:
 EOF
 ```
 
+**Component rename in RHOAI 3.6-ea.1+: `datasciencepipelines` → `aipipelines`.**
+The YAML above uses `datasciencepipelines`, correct for GA releases through
+3.5. On a 3.6-ea.1+ EA build the DSC schema instead expects `aipipelines`
+— check with `oc get dsc default-dsc -o json | jq '.spec.components | keys'`
+before assuming either name; applying the wrong key for your version is a
+silent no-op (the DSC just ignores an unrecognized component key), not an
+error. To enable pipelines post-install regardless of which key your
+version uses:
+```bash
+oc --context "$CLUSTER_CONTEXT" patch dsc default-dsc --type merge \
+  -p '{"spec":{"components":{"aipipelines":{"managementState":"Managed"}}}}'
+  # or datasciencepipelines: on GA releases through 3.5
+```
+
+**Gotcha: leaving pipelines `Removed` triggers a blocking Kale error popup
+in every workbench.** Any workbench image bundling the Kale/Elyra
+pipeline-editor extension (i.e. most of them) pings the Kubeflow Pipelines
+API every ~30s in the background (`kfp.ping()`) regardless of whether the
+user touches any pipeline feature. With pipelines `Removed`, the target
+service doesn't exist, DNS resolution fails, and Kale surfaces this as a
+recurring, unprompted, blocking "Error — You can find more information
+under /opt/app-root/src/kale.log" modal dialog in JupyterLab — cosmetic
+(doesn't affect IDE/spawn/clone testing) but confusing if you don't expect
+it. Filed as
+[RHOAIENG-82538](https://redhat.atlassian.net/browse/RHOAIENG-82538) — no
+workaround from the RHOAI side today short of enabling pipelines (see
+[arm64-rosa-gpu-smoke's Phase 3c](../arm64-rosa-gpu-smoke/SKILL.md) for a
+full pipelines-enabled setup, including an S3-compatible storage backend).
+
 **The operator auto-creates a default `DSCInitialization` on install** —
 applying your own `dsci.yaml` on top just patches the existing one. You'll
 see:

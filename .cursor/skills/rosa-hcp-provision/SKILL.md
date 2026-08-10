@@ -1,6 +1,6 @@
 ---
 name: rosa-hcp-provision
-description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — sizing, Kyverno request-shrinking; spot-instances.md — spot instance status/blockers, not usable yet), installing a released RHOAI version (install-rhoai.md), installing an EA/pre-release RHOAI build via custom CatalogSource + Kyverno + Gateway API/Service Mesh 3 (install-prerelease.md), and self-hosted S3-compatible object storage on arm64 (object_storage.md — Garage/RustFS/SeaweedFS/S4 compared, arm64 image + restricted-v2 SCC fixes verified). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
+description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — sizing, Kyverno request-shrinking; spot-instances.md — spot instance status/blockers, not usable yet), installing a released RHOAI version (install-rhoai.md), installing an EA/pre-release RHOAI build via custom CatalogSource + Kyverno + Gateway API/Service Mesh 3 (install-prerelease.md), self-hosted S3-compatible object storage on arm64 (object_storage.md — Garage/RustFS/SeaweedFS/S4 compared, arm64 image + restricted-v2 SCC fixes verified), and why arm64 workbenches crash with Exec format error on ROSA/ARO HCP — root cause + fix (arm64-imagestream-importmode.md — OpenShift ImageStream importMode=Legacy bug, not an RHOAI defect). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
 ---
 
 # ROSA HCP Cluster Provisioning
@@ -137,6 +137,20 @@ swapping pools after the fact). **For RHOAI work, use an x86_64 type
 (e.g. `m5.2xlarge`) here instead** — see
 [cost-optimization.md](cost-optimization.md) item 12 for why this is
 version-specific (RHOAI 3.3+ may not have this restriction).
+
+**Correction/caveat (2026-08-10 finding):** a *separate* investigation on
+RHOAI 3.5/3.6-ea.1 found the identical `Exec format error` symptom on
+arm64 ROSA HCP nodes caused not by a missing arm64 image variant, but by
+OpenShift's ImageStream `importMode` defaulting to `Legacy` and silently
+selecting the amd64 sub-manifest even when a real arm64 variant exists in
+the image's manifest list — see
+[arm64-imagestream-importmode.md](arm64-imagestream-importmode.md) for the
+full root cause and fix. That doc's images were 3.5/3.6, not 2.25, so this
+is not a confirmed retraction of the 2.25 x86_64-only conclusion above —
+but before assuming "RHOAI 2.25 has no arm64 images" again, it's worth
+checking `importPolicy.importMode` on the affected ImageStream first
+(`oc get imagestream <name> -o json | jq '.spec.tags[].importPolicy'`);
+the two symptoms are indistinguishable from the crash log alone.
 
 ```bash
 export CLUSTER_NAME=<unique-name>    # MAX 15 chars! (longer triggers interactive prompt)
@@ -484,6 +498,17 @@ exact chart overrides needed for arm64 images and `restricted-v2` SCC
 compliance, and two cross-cutting gotchas (CRI-O short-name resolution,
 Docker Hub anonymous pull rate limits) that hit more than one of them.
 
+## arm64 Workbenches: Exec format error
+
+Workbench/runtime pod scheduled on an arm64 worker but crash-looping with
+`exec container process ...: Exec format error`, despite the image
+genuinely having an arm64 variant? See
+[arm64-imagestream-importmode.md](arm64-imagestream-importmode.md) — this
+is a core OpenShift ImageStream `importMode` bug specific to ROSA/ARO
+Hosted Control Plane clusters (tracked upstream as OCPBUGS-73844/74567,
+not an RHOAI defect), with a live Kyverno-based fix and three lighter-weight
+customer-facing workaround tiers.
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -500,7 +525,7 @@ Docker Hub anonymous pull rate limits) that hit more than one of them.
 | `A hosted cluster requires at least 2 replicas` | HCP hard floor on the cluster's initial pool at create time — the cluster as a whole needs ≥2 replicas. Once that's satisfied, *additional* machine pools (e.g. GPU pools above) can use `--replicas 1` fine |
 | Duplicate cluster name | Cluster already exists in org; `rosa list clusters` to check |
 | `--use-spot-instances` seems to have no effect | It currently doesn't — not a bug, spot isn't usable yet on ROSA HCP at all (CLI *and* service-side gaps, plus a minimum OCP 4.22 requirement). Full detail, JIRA tracking, and a retest checklist: [spot-instances.md](spot-instances.md) |
-| `exec container process: Exec format error` on notebook spawn | arm64/x86_64 mismatch — RHOAI 2.25's default images are x86_64-only; recreate the cluster with an x86_64 `--compute-machine-type`, or create a replacement machine pool with x86_64 `--instance-type` (see `## Cluster Creation` above) |
+| `exec container process: Exec format error` on notebook spawn | Two possible causes, check both: (a) RHOAI 2.25's images may genuinely be x86_64-only — recreate with an x86_64 `--compute-machine-type`/`--instance-type`; (b) on RHOAI 3.5+/ROSA-ARO HCP, this is usually the ImageStream `importMode=Legacy` bug — check `oc get imagestream <name> -o json \| jq '.spec.tags[].importPolicy'` and see [arm64-imagestream-importmode.md](arm64-imagestream-importmode.md) for the real fix (keeps arm64, no need to recreate the cluster) |
 | ClusterPolicy `spec{}` invalid | v25.3+ requires all fields; extract default from `csv alm-examples` |
 | GPU pods Pending after ClusterPolicy | Driver compiles first; other pods cascade after driver **2/2 Ready** |
 | Driver compile 60+ min, logs stuck on `make nv-linux.o` | Node `MemoryPressure=True`, DTK pod ~6+ GiB — create `g5g.2xlarge` pool, delete xlarge pool |
