@@ -215,28 +215,86 @@ kind: ClusterPolicy
 metadata:
   name: replace-image-registry
 spec:
+  admission: true
+  background: false
+  failurePolicy: Ignore
+  validationFailureAction: Audit
   rules:
-  - name: rewrite-rhoai-images
+  - name: replace-image-registry-pod-containers
     match:
       any:
-      - resources:
-          kinds: ["Pod"]
-    preconditions:
-      any:
-      - key: "{{ request.object.spec.containers[?starts_with(image, 'registry.redhat.io/rhoai/')] | length(@) }}"
-        operator: GreaterThan
-        value: 0
+      - resources: {kinds: [Pod]}
+    skipBackgroundRequests: true
     mutate:
       foreach:
-      - list: "request.object.spec.containers"
+      - list: request.object.spec.containers
+        patchStrategicMerge:
+          metadata:
+            labels: {kyverno-replace-image-registry: was-here}
+          spec:
+            containers:
+            - name: '{{ element.name }}'
+              image: '{{ regex_replace_all_literal(''^registry\.redhat\.io/rhoai/'', ''{{element.image}}'', ''quay.io/rhoai/'' )}}'
+  - name: replace-image-registry-pod-initcontainers
+    match:
+      any:
+      - resources: {kinds: [Pod]}
+    preconditions:
+      all:
+      - key: '{{ request.object.spec.initContainers[] || `[]` | length(@) }}'
+        operator: GreaterThanOrEquals
+        value: 1
+    skipBackgroundRequests: true
+    mutate:
+      foreach:
+      - list: request.object.spec.initContainers
+        patchStrategicMerge:
+          metadata:
+            labels: {kyverno-replace-image-registry: was-here}
+          spec:
+            initContainers:
+            - name: '{{ element.name }}'
+              image: '{{ regex_replace_all_literal(''^registry\.redhat\.io/rhoai/'', ''{{element.image}}'', ''quay.io/rhoai/'' )}}'
+  - name: replace-image-registry-imagestream-tags
+    match:
+      any:
+      - resources: {kinds: [ImageStream]}
+    preconditions:
+      all:
+      - key: '{{ request.object.spec.tags[] || `[]` | length(@) }}'
+        operator: GreaterThanOrEquals
+        value: 1
+    skipBackgroundRequests: true
+    mutate:
+      foreach:
+      - list: request.object.spec.tags
+        preconditions:
+          all:
+          - key: '{{ element.from.kind || `""` }}'
+            operator: Equals
+            value: DockerImage
         patchesJson6902: |-
-          - path: "/spec/containers/{{elementIndex}}/image"
+          - path: "/spec/tags/{{elementIndex}}/from/name"
             op: replace
-            value: "{{ regex_replace_all_literal('^registry\.redhat\.io/rhoai/', element.image, 'quay.io/rhoai/') }}"
+            value: "{{ regex_replace_all_literal('^registry\.redhat\.io/rhoai/', element.from.name, 'quay.io/rhoai/') }}"
 EOF
 ```
 
-If a JSON-patch edit to an already-applied policy fails with a JMESPath
+Verified working live on the actual cluster (2026-08-10) — this is the
+exact deployed YAML, not a draft. Note the Pod rules use
+`patchStrategicMerge` (Kyverno knows Pod's `containers`/`initContainers`
+merge key, `name`) while the **ImageStream rule must use
+`patchesJson6902`** instead — **this is not a style choice, it's
+required**. `ImageStream` is an OpenShift-only aggregated API type;
+Kyverno has no built-in merge-key knowledge for it, so a
+`patchStrategicMerge` on `spec.tags` (a list-of-maps field) doesn't merge
+per-tag by `name` — it does a naive full-list replace on *every* foreach
+iteration. The last edit tried this and it silently corrupted an
+`ImageStream` from 4 tags down to 1 on the very first test. `patchesJson6902`
+with an explicit `/spec/tags/{{elementIndex}}/...` path sidesteps the
+merge-key problem entirely by never touching array semantics at all.
+
+If a JSON-patch edit to an *already-applied* policy fails with a JMESPath
 `SyntaxError: Unknown char: '^'` — this happened once this session, from
 escaping getting mangled through both JSON-patch and Kyverno's JMESPath
 template layers — don't fight the patch. Re-`oc apply -f -` the whole
@@ -249,6 +307,33 @@ check `oc get pods -n redhat-ods-applications`, then verify the
 against both its stated registry and any registry a Kyverno policy might
 have rewritten it to — don't assume an upstream image is actually
 missing before checking whether your own mutation broke it.
+
+**If a corrupted ImageStream slips through anyway** (wrong rule, or the
+merge-key trap above): just delete it. ImageStreams here have no
+`ownerReferences`, but the `workbenches` operator continuously reconciles
+them from its desired-state manifests — a deleted one reappears with the
+full, correct tag set within seconds, this time correctly mutated by
+whichever policy is live at the moment of recreation. Confirm recovery
+with:
+
+```bash
+oc get imagestream <name> -n redhat-ods-applications -o json | \
+  jq -r '.spec.tags[] | "\(.name) -> \(.from.name)"'
+```
+
+**ImageStream tag imports never self-retry once failed.** Unlike Pods
+(which get rescheduled and re-admitted, so a policy fix takes effect on
+the next natural restart), an `ImageStream` tag that already failed
+import (`status.tags[].conditions[] | ImportSuccess=False`) stays failed
+forever — OpenShift does not periodically re-attempt a digest-pinned tag
+import on its own. A policy fix alone does **not** heal already-broken
+tags; something has to trigger a fresh admission event on the object
+(the operator's own reconcile loop already does this routinely in
+practice — most existing ImageStreams in this session picked up the
+corrected mutation and re-imported successfully within the operator's
+normal ~10s reconcile cadence, with no manual action needed beyond fixing
+the policy. Only the one ImageStream this session's own mutate-rule bug
+had actively corrupted needed a manual delete to recover).
 
 ## 7. CatalogSource pointing at the EA build
 
@@ -424,16 +509,24 @@ pytorch workbench ships `[amd64, arm64]` (not just CPU images), and
 `odh-workbench-jupyter-datascience-cpu-py312-rhel9` ship
 `[amd64, arm64, ppc64le, s390x]`.
 
-**Known gap, not yet closed**: `WorkbenchesReady=True` came with 18
-ImageStream tag import warnings — those specific tags reference
+**Resolved, not just flagged**: `WorkbenchesReady=True` initially came
+with 18 ImageStream tag import warnings — those tags reference
 `registry.redhat.io/rhoai/*`, which isn't mirrored for EA content (same
 root cause as step 3's `odh-operator-bundle` pull failure). Step 6's
-scoped regex intentionally does *not* rewrite these (that's what caused
-the `dashboard-redirect` breakage it fixes) — so some notebook-image
-picker entries may be unpullable until this is resolved. Not fixed this
-session; flagging as an open tension rather than picking a side
-unilaterally (rewriting these would require re-broadening the very regex
-step 6 narrowed).
+`replace-image-registry-imagestream-tags` rule handles this directly (the
+"open tension" this used to describe — rewriting `ImageStream` tags vs.
+not re-broadening the Pod-container regex — doesn't actually exist:
+they're two independent rules in the same policy, scoped to different
+resource kinds, with no overlap). After the policy was live, nearly every
+existing `ImageStream` self-healed within the `workbenches` operator's
+normal ~10s reconcile cadence with zero manual action; the one exception
+was an `ImageStream` this session's *own* mutate-rule bug had actively
+corrupted (see step 6's `patchStrategicMerge`-vs-`patchesJson6902`
+gotcha), fixed with one `oc delete imagestream` to let the operator
+recreate it. Confirmed cluster-wide after: zero `spec.tags[].from.name`
+still on `registry.redhat.io/rhoai/*`, and every tag has a
+`status.tags[].items` entry (i.e. actually imported, not just silently
+unattempted).
 
 ## 12. Known gaps — explicitly not verified
 
