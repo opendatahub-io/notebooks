@@ -134,10 +134,13 @@ class TestJupyterLabImage:
     @allure.issue("RHOAIENG-24348")
     @allure.description("Check that custom-built (to be FIPS-compliant) mongocli binary runs.")
     def test_mongocli_binary_runs(self, jupyterlab_image: conftest.Image) -> None:
-        if "-minimal-" in jupyterlab_image.name and all(
-            accelerator not in jupyterlab_image.name for accelerator in ["-cuda-", "-rocm-"]
+        image_refs = f"{jupyterlab_image.name} {jupyterlab_image.labels.get('name', '')}"
+        if any(token in image_refs for token in ("-minimal-", "-baseline-")) and all(
+            accelerator not in image_refs for accelerator in ("-cuda-", "-rocm-")
         ):
-            pytest.skip("Skipping monglicli binary test for jupyter minimal image because it does not ship mongocli")
+            pytest.skip(
+                "Skipping mongocli binary test for jupyter minimal/baseline images because they do not ship mongocli"
+            )
         with WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0]) as container:
             container.start(wait_for_readiness=False)
             # https://github.com/opendatahub-io/notebooks/pull/1087#discussion_r2089094962
