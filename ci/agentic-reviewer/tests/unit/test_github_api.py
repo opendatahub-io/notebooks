@@ -116,6 +116,30 @@ def test_authenticated_user_login_reraises_non_forbidden_api_errors(monkeypatch:
         github_api.authenticated_user_login.cache_clear()
 
 
+def test_gh_job_log_requests_allow_escape_sequences() -> None:
+    with patch("odh_ci_agent.github_api.run_command") as mock_run_command:
+        mock_run_command.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="log line\n",
+            stderr="",
+        )
+        result = github_api.gh_job_log("owner/repo", 42)
+
+    assert result == "log line\n"
+    command = mock_run_command.call_args.args[0]
+    assert command == [
+        "gh",
+        "api",
+        "repos/owner/repo/actions/jobs/42/logs",
+        "--method",
+        "GET",
+        "-H",
+        "Accept: application/vnd.github+json",
+        "--allow-escape-sequences",
+    ]
+
+
 def test_authenticated_user_login_prefers_explicit_override(monkeypatch: pytest.MonkeyPatch) -> None:
     github_api.authenticated_user_login.cache_clear()
     monkeypatch.setenv("REVIEW_AUTHOR_LOGIN", "custom-bot[bot]")

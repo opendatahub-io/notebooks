@@ -220,6 +220,9 @@ def gh_job_log(repository: str, job_id: int, *, timeout: int = DEFAULT_TIMEOUT_S
             "GET",
             "-H",
             "Accept: application/vnd.github+json",
+            # CI logs often include FORCE_COLOR/pytest ANSI output; without this flag
+            # gh refuses to print the response and local log grounding fails.
+            "--allow-escape-sequences",
         ],
         timeout=timeout,
     )
