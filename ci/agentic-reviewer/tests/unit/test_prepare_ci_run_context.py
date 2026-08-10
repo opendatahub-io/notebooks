@@ -9,6 +9,12 @@ def test_strip_gh_log_prefix_removes_job_columns_and_timestamp() -> None:
     assert prepare.strip_gh_log_prefix(line) == "Error: FetchError: exception_name: ClientResponseError"
 
 
+def test_strip_gh_log_prefix_strips_ansi_color_codes() -> None:
+    line = "job\tUNKNOWN STEP\t2026-06-05T17:33:52.4163444Z \x1b[31mFAILED\x1b[0m tests/test_foo.py::test_bar"
+
+    assert prepare.strip_gh_log_prefix(line) == "FAILED tests/test_foo.py::test_bar"
+
+
 def test_failed_step_name_prefers_failed_step() -> None:
     job = {
         "steps": [

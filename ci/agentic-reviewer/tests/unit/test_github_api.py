@@ -40,6 +40,20 @@ def test_gh_api_json_returns_none_on_empty_stdout(monkeypatch: pytest.MonkeyPatc
     assert result is None
 
 
+def test_gh_api_bytes_returns_raw_stdout() -> None:
+    zip_bytes = b"PK\x03\x04"
+
+    with patch(
+        "odh_ci_agent.github_api.subprocess.run",
+        return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout=zip_bytes, stderr=b""),
+    ) as mock_run:
+        result = github_api.gh_api_bytes("repos/owner/repo/actions/artifacts/1/zip")
+
+    assert result == zip_bytes
+    mock_run.assert_called_once()
+    assert mock_run.call_args.kwargs["text"] is False
+
+
 def test_parse_positive_issue_number_accepts_canonical_values() -> None:
     assert github_api.parse_positive_issue_number("3806") == 3806
     assert github_api.parse_positive_issue_number(" 42 ") == 42
@@ -114,6 +128,30 @@ def test_authenticated_user_login_reraises_non_forbidden_api_errors(monkeypatch:
             assert exc_info.value is server_error
     finally:
         github_api.authenticated_user_login.cache_clear()
+
+
+def test_gh_job_log_requests_allow_escape_sequences() -> None:
+    with patch("odh_ci_agent.github_api.run_command") as mock_run_command:
+        mock_run_command.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="log line\n",
+            stderr="",
+        )
+        result = github_api.gh_job_log("owner/repo", 42)
+
+    assert result == "log line\n"
+    command = mock_run_command.call_args.args[0]
+    assert command == [
+        "gh",
+        "api",
+        "repos/owner/repo/actions/jobs/42/logs",
+        "--method",
+        "GET",
+        "-H",
+        "Accept: application/vnd.github+json",
+        "--allow-escape-sequences",
+    ]
 
 
 def test_authenticated_user_login_prefers_explicit_override(monkeypatch: pytest.MonkeyPatch) -> None:

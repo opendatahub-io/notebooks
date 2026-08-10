@@ -128,6 +128,33 @@ def gh_api_diff(path: str, *, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> str:
     return result.stdout
 
 
+def gh_api_bytes(
+    path: str,
+    *,
+    method: str = "GET",
+    query: Mapping[str, object] | None = None,
+    timeout: int = DEFAULT_TIMEOUT_SECONDS,
+) -> bytes:
+    """Fetch a GitHub API response as raw bytes (for ZIP and other binary payloads)."""
+
+    command = ["gh", "api", _query_path(path, query), "--method", method]
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=False,
+        check=False,
+        timeout=timeout,
+    )
+    if result.returncode != 0:
+        raise GitHubCommandError(
+            tuple(command),
+            result.returncode,
+            result.stdout.decode("utf-8", errors="replace"),
+            result.stderr.decode("utf-8", errors="replace"),
+        )
+    return result.stdout
+
+
 def gh_api_json(
     path: str,
     *,
@@ -220,6 +247,9 @@ def gh_job_log(repository: str, job_id: int, *, timeout: int = DEFAULT_TIMEOUT_S
             "GET",
             "-H",
             "Accept: application/vnd.github+json",
+            # CI logs often include FORCE_COLOR/pytest ANSI output; without this flag
+            # gh refuses to print the response and local log grounding fails.
+            "--allow-escape-sequences",
         ],
         timeout=timeout,
     )
