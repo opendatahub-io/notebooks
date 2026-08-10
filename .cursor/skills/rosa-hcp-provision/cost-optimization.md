@@ -74,22 +74,41 @@ Always compute real floors via:
 ```bash
 oc get pods -A -o json | python3 -c '
 import json, sys
-from collections import defaultdict
-def cpu(v): return 0 if v is None else float(v[:-1])/1000 if v.endswith("m") else float(v)
+def cpu(v):
+    if v is None: return 0
+    if v.endswith("u"): return float(v[:-1]) / 1_000_000
+    if v.endswith("m"): return float(v[:-1]) / 1000
+    return float(v)
 def mem(v):
     if v is None: return 0
     for s,m in {"Ki":1024,"Mi":1024**2,"Gi":1024**3}.items():
         if v.endswith(s): return float(v[:-len(s)])*m
     return float(v)
-d = json.load(sys.stdin); tc=tm=0
-for p in d["items"]:
-    if p["status"].get("phase") in ("Succeeded","Failed"): continue
-    for c in p["spec"].get("containers",[]):
-        r = c.get("resources",{}).get("requests",{})
+def sum_requests(containers):
+    tc = tm = 0
+    for c in containers:
+        r = c.get("resources", {}).get("requests", {})
         tc += cpu(r.get("cpu")); tm += mem(r.get("memory"))
+    return tc, tm
+def max_requests(containers):
+    tc = tm = 0
+    for c in containers:
+        r = c.get("resources", {}).get("requests", {})
+        tc = max(tc, cpu(r.get("cpu"))); tm = max(tm, mem(r.get("memory")))
+    return tc, tm
+d = json.load(sys.stdin); tc = tm = 0
+for p in d["items"]:
+    if p["status"].get("phase") in ("Succeeded", "Failed"): continue
+    c_cpu, c_mem = sum_requests(p["spec"].get("containers", []))
+    i_cpu, i_mem = max_requests(p["spec"].get("initContainers", []))
+    overhead = p["spec"].get("overhead") or {}
+    tc += max(c_cpu, i_cpu) + cpu(overhead.get("cpu"))
+    tm += max(c_mem, i_mem) + mem(overhead.get("memory"))
 print(f"{tc:.3f} vCPU, {tm/1024**3:.2f} GiB")
 '
 ```
+
+(This follows real Kubernetes Pod-level accounting: `max(sum(app-container requests), max(init-container request)) + overhead` per pod, and handles the `u` micro-CPU suffix alongside `m`.)
 
 ## 4. Verified: a Kyverno mutate policy CAN shrink RHOAI's own inflated requests
 
@@ -104,7 +123,9 @@ on this OCP 4.21 bundle — enabling it requires flipping the cluster to
 `rhoai-in-kind` repo, `components/02-kyverno`):
 
 ```bash
-kubectl apply --server-side -k "https://github.com/kyverno/kyverno/releases/download/v1.14.4/install.yaml"
+curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/v1.14.4/install.yaml"
+# review it first — it creates cluster-scoped CRDs/RBAC/webhooks with your privileges
+kubectl apply --server-side -f /tmp/kyverno-install.yaml
 kubectl wait --for=condition=Ready pod -l app.kubernetes.io/part-of=kyverno -n kyverno --timeout=120s
 ```
 
@@ -124,6 +145,11 @@ spec:
     mutate:
       foreach:
       - list: "request.object.spec.containers"
+        preconditions:
+          all:
+          - key: "{{ element.name }}"
+            operator: AnyIn
+            value: ["rhods-dashboard", "oauth-proxy", "model-registry-ui", "manager"]
         patchStrategicMerge:
           spec:
             containers:
@@ -133,6 +159,11 @@ spec:
                   cpu: "20m"
                   memory: "256Mi"
 ```
+
+The `preconditions` restricts the patch to the specific sidecar/operator
+container names this doc actually measured (item 4) — without it, the
+rule would mutate *any* container ever added to these two namespaces,
+including future workloads that may need their real requests.
 
 **Do not touch `rhods-notebooks`** — the notebook's own 1 CPU/8Gi request
 reflects real workload need, not sidecar boilerplate; shrinking it risks
@@ -181,26 +212,32 @@ the policy live.
   specifically, not a general rule — a model-serving validation run needs
   `kserve`, etc. Re-justify per test target.
 - **ROSA HCP's AWS-account footprint is minimal by architecture**:
-  verified via tag-filtered queries (item 6) — zero NAT gateways, load
-  balancers, or Elastic IPs in the customer account for either cluster
-  tested. Those live on Red Hat's side of the HCP split. The entire
-  customer-account bill is worker EC2 + their EBS volumes, nothing else.
+  among the resources observed by the item 6 queries (region-scoped,
+  tag- or name-filtered — not an account-wide inventory) — zero NAT
+  gateways, load balancers, or Elastic IPs in the customer account for
+  either cluster tested. Those live on Red Hat's side of the HCP split.
+  Worker EC2 + their EBS volumes were the only cost sources *these
+  specific queries* turned up — don't treat this as a verified total
+  account bill without running an actual account-wide inventory/billing
+  check.
 
 ## 6. Verification methodology — audit exactly what a cluster costs
 
 ```bash
-aws ec2 describe-instances --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
+AWS_REGION="${AWS_REGION:-us-east-1}"
+aws ec2 describe-instances --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
   --query "Reservations[].Instances[].{ID:InstanceId,Type:InstanceType,Lifecycle:InstanceLifecycle,State:State.Name}"
-aws ec2 describe-volumes --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
+aws ec2 describe-volumes --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
   --query "Volumes[].{ID:VolumeId,Size:Size,State:State}"
-aws ec2 describe-nat-gateways --filter "Name=tag:api.openshift.com/name,Values=<cluster>"
-aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(LoadBalancerName,'<cluster>')]"
-aws ec2 describe-addresses --filters "Name=tag:api.openshift.com/name,Values=<cluster>"
+aws ec2 describe-nat-gateways --region "$AWS_REGION" --filter "Name=tag:api.openshift.com/name,Values=<cluster>"
+aws elbv2 describe-load-balancers --region "$AWS_REGION" --query "LoadBalancers[?contains(LoadBalancerName,'<cluster>')]"
+aws ec2 describe-addresses --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>"
 ```
 Run this *before* deciding a cluster's cost is fully accounted for — don't
-rely on memory of what was created. Also useful for confirming spot
-lifecycle (see [spot-instances.md](spot-instances.md)) and catching
-orphaned volumes (item 7).
+rely on memory of what was created, and pass `--region` explicitly (these
+queries only cover the region you point them at). Also useful for
+confirming spot lifecycle (see [spot-instances.md](spot-instances.md)) and
+catching orphaned volumes (item 7).
 
 ## 7. IAM permission gap on the shared role
 
@@ -224,7 +261,7 @@ after `rosa delete cluster` on both test clusters) — but don't assume
 that's guaranteed for volumes detached well before cluster teardown. Check
 explicitly:
 ```bash
-aws ec2 describe-volumes --filters "Name=status,Values=available" \
+aws ec2 describe-volumes --region "${AWS_REGION:-us-east-1}" --filters "Name=status,Values=available" \
   "Name=tag:api.openshift.com/name,Values=<cluster>"
 ```
 

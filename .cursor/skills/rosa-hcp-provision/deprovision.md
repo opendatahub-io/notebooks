@@ -15,6 +15,8 @@ Full delete stops **~$2.45/hr** (EC2 + ROSA fees for 2× m6g.2xlarge + 1× g5g.2
 ## Prerequisites
 
 ```bash
+export CLUSTER_NAME=<name>   # must be set before any command below
+
 # macOS — refresh Kerberos if rh-aws-saml-login fails with CLIENT_NOT_FOUND
 kinit --keychain <user>@IPA.REDHAT.COM
 
@@ -33,6 +35,8 @@ Deletes **all machine pools** (CPU + GPU) and the hosted control plane subscript
 
 ```bash
 export CLUSTER_NAME=jd-arm64-ea1   # max 15 chars at create time
+# ⚠️ copy this verbatim from YOUR cluster's `rosa delete cluster` output —
+# never reuse the example value below, it deletes another cluster's IAM roles
 export OPERATOR_PREFIX=jd-arm64-ea1-w7f2   # from create / delete output
 
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete cluster \
@@ -56,7 +60,15 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa logs uninstall -c "$CLUSTER_NAME" -
 Poll until the cluster disappears from OCM (observed **~15–20 min** for `jd-arm64-ea1`):
 
 ```bash
-rh-aws-saml-login iaps-rhods-odh-dev -- rosa list clusters | grep "$CLUSTER_NAME" || echo "gone"
+if ! clusters="$(rh-aws-saml-login iaps-rhods-odh-dev -- rosa list clusters)"; then
+  echo "Unable to query cluster state — retry, don't assume it's gone" >&2
+else
+  if printf '%s\n' "$clusters" | grep -Fq "$CLUSTER_NAME"; then
+    echo "still present"
+  else
+    echo "gone"
+  fi
+fi
 ```
 
 State may show `uninstalling` then drop from the list entirely.
@@ -64,6 +76,11 @@ State may show `uninstalling` then drop from the list entirely.
 ### 3. Delete operator IAM roles
 
 **Must pass `--mode auto`** in non-interactive environments — otherwise `rosa` prompts `auto|manual` and fails with `invalid mode: EOF`.
+
+**Double-check `$OPERATOR_PREFIX` before running this** — it's paired with
+`--yes` and deletes IAM roles unconditionally. Confirm it matches *this*
+cluster's prefix (from step 1's output), not a value copied from an
+example or a different cluster.
 
 ```bash
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete operator-roles \
@@ -92,10 +109,12 @@ Shared RHOAI dev account OIDC: `23c734st3pn7l167mq97d0ot8848lgrl` — used by ma
 
 ### 5. Local cleanup (optional)
 
-Remove stale kubeconfig context so `oc` does not hang:
+Remove stale kubeconfig context so `oc` does not hang (the domain suffix
+after `${CLUSTER_NAME}` is cluster-specific, so discover it instead of
+hardcoding it):
 
 ```bash
-kubectl config delete-context "default/api-${CLUSTER_NAME}-n953-p3-openshiftapps-com:443/admin"
+kubectl config get-contexts -o name | grep "$CLUSTER_NAME" | xargs -r -n1 kubectl config delete-context
 ```
 
 Validation artifacts (logs, matrices) live in the repo under `.cursor-tmp-artifact/` — not on the cluster; deprovision does not remove them.

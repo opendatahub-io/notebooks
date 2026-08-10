@@ -13,6 +13,11 @@ run() {
   rh-aws-saml-login iaps-rhods-odh-dev -- "$@"
 }
 
+if [ "$OLD_POOL" = "$NEW_POOL" ]; then
+  echo "ERROR: OLD_POOL and NEW_POOL must differ (both are '$OLD_POOL')" >&2
+  exit 1
+fi
+
 echo "==> Preflight"
 run rosa whoami | rg 'OCM Organization ID' | rg -q '1pwwsfazToamNegaehP6eaDg80K'
 run aws sts get-caller-identity | jq -e '.Account == "585132637328"'
@@ -20,12 +25,18 @@ run aws sts get-caller-identity | jq -e '.Account == "585132637328"'
 echo "==> Current machine pools"
 run rosa list machinepools -c "$CLUSTER_NAME"
 
-if run rosa describe machinepool "$NEW_POOL" -c "$CLUSTER_NAME" >/dev/null 2>&1; then
+describe_output=$(run rosa describe machinepool "$NEW_POOL" -c "$CLUSTER_NAME" 2>&1)
+describe_status=$?
+if [ "$describe_status" -eq 0 ]; then
   echo "Pool $NEW_POOL already exists; skipping create"
-else
+elif echo "$describe_output" | grep -qi 'not found'; then
   echo "==> Creating $NEW_POOL ($INSTANCE_TYPE)"
   run rosa create machinepool --cluster "$CLUSTER_NAME" --name "$NEW_POOL" \
     --instance-type "$INSTANCE_TYPE" --replicas 1 --subnet "$PRIVATE_SUBNET" --yes
+else
+  echo "ERROR: could not determine state of pool $NEW_POOL:" >&2
+  echo "$describe_output" >&2
+  exit 1
 fi
 
 echo "==> Wait for new GPU node Ready:"

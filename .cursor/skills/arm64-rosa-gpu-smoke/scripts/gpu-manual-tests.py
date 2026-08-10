@@ -17,8 +17,15 @@ from pathlib import Path
 from kubernetes import client, config, watch
 from kubernetes.stream import stream
 
+NOTEBOOK_REV = os.environ.get("NOTEBOOK_REV", "main")
+if NOTEBOOK_REV == "main":
+    print(
+        "WARNING: pulling tests/manual notebooks from mutable 'main' "
+        "(set NOTEBOOK_REV to a commit SHA to pin)",
+        flush=True,
+    )
 NOTEBOOK_BASE = (
-    "https://raw.githubusercontent.com/opendatahub-io/notebooks/main/tests/manual"
+    f"https://raw.githubusercontent.com/opendatahub-io/notebooks/{NOTEBOOK_REV}/tests/manual"
 )
 NS = os.environ.get("TEST_NAMESPACE", "jdanek")
 PULL_SECRET = os.environ.get("PULL_SECRET", "rhoai-pull")
@@ -262,7 +269,7 @@ def validate_output(nb: str, allow_errors: bool, combined: str) -> None:
         lower = combined.lower()
         if "gpu" not in lower and "device" not in lower:
             raise AssertionError("tensorflow-test: expected GPU/device in notebook output")
-        if "traceback" in lower and "nb_prefix" not in lower and "tensorboard" not in lower:
+        if "traceback" in lower and not ("nb_prefix" in lower and "tensorboard" in lower):
             raise AssertionError("tensorflow-test: traceback in notebook output")
         # MNIST training cell must complete
         if "epoch" not in lower and "fit" not in lower and "loss" not in lower:
@@ -287,9 +294,9 @@ def run_image(v1: client.CoreV1Api, gpu_node: str, spec: ImageSpec) -> list[tupl
             print(f"  -> {nb}.ipynb", flush=True)
             allow_err = (spec.allow_errors and nb == "gpu-test-notebook") or nb == "tensorflow-test"
             code, log = run_notebook(v1, name, nb, allow_err)
-            cell_text = notebook_cell_text(v1, name, nb) if code == 0 or allow_err else ""
+            cell_text = notebook_cell_text(v1, name, nb) if code == 0 else ""
             combined = log + "\n" + cell_text
-            ok = code == 0 or (allow_err and nb == "tensorflow-test")
+            ok = code == 0
             if ok and cell_text:
                 try:
                     validate_output(nb, allow_err, combined)
@@ -325,6 +332,8 @@ def main() -> int:
             specs = tuple(s for s in IMAGES if s.label == args.image)
         else:
             specs = tuple(s for s in IMAGES if args.image in s.label)
+        if not specs:
+            parser.error(f"No image specification matches: {args.image}")
 
     all_results: list[tuple[str, str, bool, str]] = []
     for spec in specs:

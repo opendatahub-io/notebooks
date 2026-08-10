@@ -20,7 +20,7 @@ Compilation runs **on every GPU node** for each distinct kernel version. There i
 
 Other GPU Operator pods stay `Init:0/1` or `Pending` until the driver pod is Ready:
 
-```
+```text
 nvidia-driver-daemonset (compiling)
   → nvidia-container-toolkit-daemonset
     → nvidia-device-plugin-daemonset
@@ -89,7 +89,12 @@ spec:
     usePrecompiled: true
     repository: quay.io/<your-org>
     image: nvidia-gpu-driver
-    version: "580"   # driver branch; must match operator expectations
+    # must match the tag actually produced below:
+    # ${DRIVER_VERSION}-${KERNEL_VERSION}-<os-tag>, e.g.
+    # "580.82.07-5.14.0-570.78.1.el9_6.aarch64-rhel9.6" — see "Image tag
+    # format" below. A bare branch like "580" won't match.
+    version: "580.82.07-5.14.0-570.78.1.el9_6.aarch64-rhel9.6"
+    imagePullSecrets: [<pull-secret-name>]   # required if `repository` is private
 ```
 
 Driver daemonset pod names include the **kernel version** (e.g. `nvidia-driver-daemonset-5.14.0-570.78.1.el9_6.aarch64-…`) instead of the DTK-style `openshift-driver-toolkit` sidecar layout.
@@ -100,17 +105,21 @@ Procedure (summarized from NVIDIA docs):
 
 ```bash
 git clone https://github.com/NVIDIA/gpu-driver-container.git
-cd gpu-driver-container/rhel9/precompiled   # RHEL 9 / RHCOS 4.13+
+cd gpu-driver-container
+git checkout <tag>   # pin to the release tag matching your driver branch —
+                      # don't build off whatever main currently is
+cd rhel9/precompiled   # RHEL 9 / RHCOS 4.13+
 
 export OPENSHIFT_VERSION="4.21.0"
 export TARGET_ARCH="aarch64"              # not arm64
+export PULL_SECRET_FILE="${PULL_SECRET_FILE:-$HOME/.docker/config.json}"
 
 # DTK image for this OCP release + arch
 export DRIVER_TOOLKIT_IMAGE=$(oc adm release info \
-  --image-for=driver-toolkit \
+  --image-for=driver-toolkit -a "$PULL_SECRET_FILE" \
   quay.io/openshift-release-dev/ocp-release:${OPENSHIFT_VERSION}-${TARGET_ARCH})
 
-export KERNEL_VERSION=$(podman run --rm -ti ${DRIVER_TOOLKIT_IMAGE} \
+export KERNEL_VERSION=$(podman run --rm -ti --authfile "$PULL_SECRET_FILE" ${DRIVER_TOOLKIT_IMAGE} \
   cat /etc/driver-toolkit-release.json | jq -r '.KERNEL_VERSION')
 
 export DRIVER_VERSION=580.82.07             # match ClusterPolicy / operator

@@ -34,7 +34,7 @@ a pinned validation run.
 A scoped `OperatorGroup` (`targetNamespaces: [redhat-ods-operator]`) fails
 with this exact error, reproduced verbatim so it's searchable:
 
-```
+```text
 OwnNamespace InstallModeType not supported, cannot configure to watch own namespace
 UnsupportedOperatorGroup
 ```
@@ -64,7 +64,17 @@ spec:
   name: rhods-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  installPlanApproval: Automatic
+  startingCSV: rhods-operator.2.25.9   # pin to the CSV discovered in step 1
+  installPlanApproval: Manual
+```
+
+Manual approval means OLM won't silently install a newer CSV pushed to
+`stable-2.25` after you pinned this. Approve the pinned InstallPlan before
+waiting for `Succeeded`:
+
+```bash
+INSTALLPLAN=$(oc get installplan -n redhat-ods-operator -o name | tail -1)
+oc patch "$INSTALLPLAN" -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
 ```
 
 **If a `Subscription`/CSV was already created against the wrong
@@ -142,7 +152,7 @@ spec:
 applying your own `dsci.yaml` on top just patches the existing one. You'll
 see:
 
-```
+```text
 Warning: resource dscinitializations/default-dsci is missing the
 kubectl.kubernetes.io/last-applied-configuration annotation which is
 required by oc apply.
@@ -166,7 +176,11 @@ constructing URLs by hand (e.g. for `test-variables.yml`).
 ## htpasswd auth for testing (if not already done)
 
 See [SKILL.md](SKILL.md)'s `## Post-Create Setup` — `rosa create idp
---type htpasswd` + `rosa grant user cluster-admin`. One user works fine
-for both `TEST_USER` and `OCP_ADMIN_USER` roles in ods-ci-style
-`test-variables.yml` files; there's no need for two separate accounts
-unless you specifically want non-admin permission testing.
+--type htpasswd` + `rosa grant user cluster-admin`. If the goal is
+admin-level testing (as in this doc), one user reused for both
+`TEST_USER` and `OCP_ADMIN_USER` in ods-ci-style `test-variables.yml`
+files is fine. If the goal is testing **non-admin** permission behavior,
+create a separate least-privileged `TEST_USER` (`rosa create idp` a
+second htpasswd entry, no `cluster-admin` grant) and keep `cluster-admin`
+scoped to `OCP_ADMIN_USER` only — reusing the admin account there would
+mask any RBAC defects the test is meant to catch.

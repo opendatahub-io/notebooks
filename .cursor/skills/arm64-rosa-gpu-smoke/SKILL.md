@@ -147,19 +147,24 @@ Two environments available:
 **Access:**
 
 ```bash
-oc login --web --insecure-skip-tls-verify https://api.ocp2.sys.eng.rdu2.dc.redhat.com:6443
+oc login --web "https://<api-server>:6443"
 ```
+
+(The real rdu2 API server hostname is internal-only — get it from whoever
+grants you cluster access. Don't use `--insecure-skip-tls-verify`; it
+disables certificate validation for all subsequent API calls.)
 
 **Important:** RHOAI 3.5 images on this cluster are **amd64-only** (`registry.redhat.io`). To test arm64 EA images, create a pull secret for `quay.io/rhoai` (copy from ROSA cluster or personal auth):
 
 ```bash
 oc create ns jdanek 2>/dev/null || true
 # Get auth from ROSA cluster context (or personal docker config)
+SECRET_FILE=$(umask 077 && mktemp)
+trap 'rm -f "$SECRET_FILE"' EXIT
 oc get secret rhoai-pull -n jdanek --context="<ROSA-context>" \
-  -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d > /tmp/rhoai-pull.json
+  -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d > "$SECRET_FILE"
 oc create secret docker-registry rhoai-pull -n jdanek \
-  --from-file=.dockerconfigjson=/tmp/rhoai-pull.json
-rm /tmp/rhoai-pull.json
+  --from-file=.dockerconfigjson="$SECRET_FILE"
 ```
 
 Then deploy pods with `imagePullSecrets: [{name: rhoai-pull}]` and `nodeName: nvd-srv-18.nvidia.eng.rdu2.redhat.com`.
@@ -203,13 +208,16 @@ See [rosa-hcp-provision skill](../rosa-hcp-provision/SKILL.md):
 ```bash
 export TEST_NAMESPACE=jdanek
 oc create ns "$TEST_NAMESPACE" 2>/dev/null || true
-jq -n --arg auth "$(jq -r '.auths["quay.io"].auth' ~/.docker/config.json)" \
-  '{"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}' > /tmp/rhoai-dockerconfig.json
+SECRET_FILE=$(umask 077 && mktemp)
+trap 'rm -f "$SECRET_FILE"' EXIT
+QUAY_AUTH="$(jq -r '.auths["quay.io"].auth // empty' ~/.docker/config.json)"
+[ -n "$QUAY_AUTH" ] || { echo "No quay.io credential in ~/.docker/config.json" >&2; exit 1; }
+jq -n --arg auth "$QUAY_AUTH" \
+  '{"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}' > "$SECRET_FILE"
 oc create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
-  --from-file=.dockerconfigjson=/tmp/rhoai-dockerconfig.json \
+  --from-file=.dockerconfigjson="$SECRET_FILE" \
   --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
 oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline --overwrite
-rm -f /tmp/rhoai-dockerconfig.json
 ```
 
 Verify GPU ready:
@@ -260,13 +268,14 @@ Source: [opendatahub-io/notebooks/tests/manual](https://github.com/opendatahub-i
 Example:
 
 ```bash
-oc exec -q -n jdanek "$POD" -c smoke -- bash -lc '
+export NOTEBOOK_REV=main   # set to a commit SHA to pin instead of tracking main
+oc exec -q -n jdanek "$POD" -c smoke -- bash -lc "
   curl -fsSL -o /tmp/gpu-test.ipynb \
-    https://raw.githubusercontent.com/opendatahub-io/notebooks/main/tests/manual/gpu-test-notebook.ipynb
+    https://raw.githubusercontent.com/opendatahub-io/notebooks/${NOTEBOOK_REV}/tests/manual/gpu-test-notebook.ipynb
   cd /opt/app-root/src
   python -m jupyter nbconvert --ExecutePreprocessor.timeout=1800 \
     --to notebook --execute /tmp/gpu-test.ipynb --output /tmp/out.ipynb
-'
+"
 ```
 
 **Batch all 7 ARM CUDA images:**

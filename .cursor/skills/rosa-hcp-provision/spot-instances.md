@@ -176,8 +176,9 @@ heads-up before reclamation — the same as any other AWS spot consumer.
 ROSA HCP doesn't get more warning than that from AWS itself.
 
 What differs by mode:
-- **Simple mode (the only mode possible today, since no client exposes
-  the queue flag yet)**: **zero proactive warning**. Nothing in-cluster
+- **Simple mode (the only mode planned initially, once basic Spot support
+  ships — nothing is usable today, see above)**: **zero proactive
+  warning**. Nothing in-cluster
   consumes the interruption event; `MachineHealthCheck` only replaces the
   node *after* AWS has already killed it.
 - **Enhanced mode (planned, not yet available)**: the AWS Node
@@ -211,10 +212,11 @@ For when spot does become usable — the pricing side already works via
 the standard AWS API, only the ROSA HCP provisioning path is blocked:
 
 ```bash
+START_TIME="$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-1H +%Y-%m-%dT%H:%M:%S)"
 aws ec2 describe-spot-price-history --region us-east-1 \
   --instance-types m5.2xlarge m5.xlarge m5.large m6i.large \
   --product-descriptions "Linux/UNIX" --availability-zone us-east-1a \
-  --start-time "$(date -u -v-1H +%Y-%m-%dT%H:%M:%S)"
+  --start-time "$START_TIME"
 ```
 
 Observed 2026-08-08, `us-east-1a`: `m5.2xlarge` $0.192/hr (vs. $0.384/hr

@@ -51,7 +51,7 @@ On macOS with credentials in Keychain: `kinit --keychain <user>@IPA.REDHAT.COM` 
 
 ## Critical: SAML wrapper pattern
 
-All `rosa`/`aws` commands MUST use `--` to separate SAML wrapper flags from the wrapped command:
+All AWS-account-backed `rosa`/`aws` commands MUST use `--` to separate SAML wrapper flags from the wrapped command. This does not apply to the initial browser-based `rosa login --use-auth-code` (see `## Authentication` below) — that's a personal SSO step, not an AWS-account operation, and runs unwrapped.
 
 ```bash
 rh-aws-saml-login iaps-rhods-odh-dev -- <command> [flags...]
@@ -164,8 +164,8 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa create machinepool \
 
 | Instance | vCPU / RAM | GPU | SM | DTK driver compile (observed) |
 |----------|------------|-----|-----|-------------------------------|
-| `g5g.xlarge` | 4 / ~16 GiB | 1× T4G (16 GB) | 7.5 | **60+ min stall** — node ~104% memory, DTK ~6.3 GiB, logs frozen on `make -s -j … nv-linux.o` |
-| `g5g.2xlarge` | 8 / ~32 GiB | 1× T4G (16 GB) | 7.5 | **~30 min to 2/2 Ready** — node ~29% memory, DTK ~1–4 GiB during compile, gcc warnings in logs |
+| `g5g.xlarge` | 4 / 8 GiB | 1× T4G (16 GB) | 7.5 | **60+ min stall** — node ~104% memory, DTK ~6.3 GiB, logs frozen on `make -s -j … nv-linux.o` |
+| `g5g.2xlarge` | 8 / 16 GiB | 1× T4G (16 GB) | 7.5 | **~30 min to 2/2 Ready** — node ~29% memory, DTK ~1–4 GiB during compile, gcc warnings in logs |
 
 ### AWS ARM64 GPU landscape (as of Jul 2026)
 
@@ -267,8 +267,13 @@ spec: {targetNamespaces: [nvidia-gpu-operator]}
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata: {name: gpu-operator-certified, namespace: nvidia-gpu-operator}
-spec: {channel: v25.3, name: gpu-operator-certified, source: certified-operators, sourceNamespace: openshift-marketplace}
+spec: {channel: v25.3, name: gpu-operator-certified, source: certified-operators, sourceNamespace: openshift-marketplace, startingCSV: gpu-operator-certified.v25.3.4, installPlanApproval: Manual}
 EOF
+
+# Approve the InstallPlan pinned to the CSV above (Manual approval prevents an
+# unreviewed newer CSV in the v25.3 channel from installing silently)
+INSTALLPLAN=$(oc get installplan -n nvidia-gpu-operator -o name | tail -1)
+oc patch "$INSTALLPLAN" -n nvidia-gpu-operator --type merge -p '{"spec":{"approved":true}}'
 oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -n nvidia-gpu-operator -l operators.coreos.com/gpu-operator-certified.nvidia-gpu-operator --timeout=180s
 
 # ClusterPolicy — extract default from CSV alm-examples (empty spec{} is invalid in v25.3+)
@@ -304,9 +309,12 @@ Use when installing RHOAI pre-release on the cluster:
 - Kyverno is also useful beyond pull-secrets — see
   [cost-optimization.md](cost-optimization.md) item 5 for a mutate policy
   that shrinks RHOAI's own over-requested CPU/memory on test clusters
-  (verified working; install via
-  `kubectl apply --server-side -k "https://github.com/kyverno/kyverno/releases/download/v1.14.4/install.yaml"`
-  if you don't already have it, no Helm needed).
+  (verified working; if you don't already have Kyverno, download and
+  review the manifest before applying it — it creates cluster-scoped
+  RBAC and admission webhooks:
+  `curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/v1.14.4/install.yaml"`
+  then `kubectl apply --server-side -f /tmp/kyverno-install.yaml`, no Helm
+  needed).
 
 ### Option B — Namespace secret (bare GPU Pod testing)
 
@@ -315,10 +323,14 @@ Sufficient for [arm64 GPU smoke](../arm64-rosa-gpu-smoke/SKILL.md) without RHOAI
 ```bash
 export TEST_NAMESPACE=jdanek
 oc create ns "$TEST_NAMESPACE" 2>/dev/null || true
-jq -n --arg auth "$(jq -r '.auths["quay.io"].auth' ~/.docker/config.json)" \
-  '{"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}' > /tmp/rhoai-dockerconfig.json
+SECRET_FILE=$(umask 077 && mktemp)
+trap 'rm -f "$SECRET_FILE"' EXIT
+QUAY_AUTH="$(jq -r '.auths["quay.io"].auth // empty' ~/.docker/config.json)"
+[ -n "$QUAY_AUTH" ] || { echo "No quay.io credential in ~/.docker/config.json" >&2; exit 1; }
+jq -n --arg auth "$QUAY_AUTH" \
+  '{"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}' > "$SECRET_FILE"
 oc create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
-  --from-file=.dockerconfigjson=/tmp/rhoai-dockerconfig.json \
+  --from-file=.dockerconfigjson="$SECRET_FILE" \
   --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
 oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline --overwrite
 ```
@@ -368,12 +380,12 @@ Machine pools (CPU + GPU) are removed with the cluster — no separate `delete m
 | `rosa version` outdated errors | `brew upgrade rosa-cli` or download latest from GitHub |
 | `export: not valid in this context` | Don't paste shell comments with special chars (e.g. `≤`) |
 | `rh-aws-saml-login` not found | `pipx install rh-aws-saml-login` (needs valid `kinit` first) |
-| 500 error on create | Check subnet vars: `echo $PRIVATE_SUBNET` — must not be empty |
+| 500 error on create | Check subnet vars: `echo $PRIVATE` — must not be empty |
 | `Expected a valid value for subnet for a hosted machine pool` | `rosa create machinepool` prompts interactively when multiple subnets exist in the AZ; pass `--subnet <id>` explicitly in non-interactive/scripted shells |
-| `A hosted cluster requires at least 2 replicas` | HCP hard floor — `--replicas`/machinepool size can never go below 2, no single-node HCP option exists |
+| `A hosted cluster requires at least 2 replicas` | HCP hard floor on the cluster's initial pool at create time — the cluster as a whole needs ≥2 replicas. Once that's satisfied, *additional* machine pools (e.g. GPU pools above) can use `--replicas 1` fine |
 | Duplicate cluster name | Cluster already exists in org; `rosa list clusters` to check |
 | `--use-spot-instances` seems to have no effect | It currently doesn't — not a bug, spot isn't usable yet on ROSA HCP at all (CLI *and* service-side gaps, plus a minimum OCP 4.22 requirement). Full detail, JIRA tracking, and a retest checklist: [spot-instances.md](spot-instances.md) |
-| `exec container process: Exec format error` on notebook spawn | arm64/x86_64 mismatch — RHOAI 2.25's default images are x86_64-only; recreate the machinepool with an x86_64 `--compute-machine-type` (see `## Cluster Creation` above) |
+| `exec container process: Exec format error` on notebook spawn | arm64/x86_64 mismatch — RHOAI 2.25's default images are x86_64-only; recreate the cluster with an x86_64 `--compute-machine-type`, or create a replacement machine pool with x86_64 `--instance-type` (see `## Cluster Creation` above) |
 | ClusterPolicy `spec{}` invalid | v25.3+ requires all fields; extract default from `csv alm-examples` |
 | GPU pods Pending after ClusterPolicy | Driver compiles first; other pods cascade after driver **2/2 Ready** |
 | Driver compile 60+ min, logs stuck on `make nv-linux.o` | Node `MemoryPressure=True`, DTK pod ~6+ GiB — create `g5g.2xlarge` pool, delete xlarge pool |
