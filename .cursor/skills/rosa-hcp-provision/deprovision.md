@@ -57,18 +57,21 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa logs uninstall -c "$CLUSTER_NAME" -
 
 ### 2. Wait until cluster is gone
 
-Poll until the cluster disappears from OCM (observed **~15–20 min** for `jd-arm64-ea1`):
+Poll until the cluster disappears from OCM (observed **~15–20 min** for `jd-arm64-ea1`) — a bounded retry loop, not a single check, and fail closed if the cluster is still present (or unqueryable) once the budget runs out:
 
 ```bash
-if ! clusters="$(rh-aws-saml-login iaps-rhods-odh-dev -- rosa list clusters)"; then
-  echo "Unable to query cluster state — retry, don't assume it's gone" >&2
-else
-  if printf '%s\n' "$clusters" | grep -Fq "$CLUSTER_NAME"; then
-    echo "still present"
-  else
-    echo "gone"
+CLUSTER_GONE=false
+for i in $(seq 1 30); do
+  if clusters="$(rh-aws-saml-login iaps-rhods-odh-dev -- rosa list clusters)" \
+     && ! printf '%s\n' "$clusters" | grep -Fq "$CLUSTER_NAME"; then
+    CLUSTER_GONE=true
+    break
   fi
-fi
+  echo "still present or query failed (attempt $i/30), waiting 60s..." >&2
+  sleep 60
+done
+[ "$CLUSTER_GONE" = true ] || { echo "ERROR: cluster still present after 30 attempts (~30 min) — do not proceed to step 3" >&2; exit 1; }
+echo "gone"
 ```
 
 State may show `uninstalling` then drop from the list entirely.
@@ -114,7 +117,9 @@ after `${CLUSTER_NAME}` is cluster-specific, so discover it instead of
 hardcoding it):
 
 ```bash
-kubectl config get-contexts -o name | grep "$CLUSTER_NAME" | xargs -r -n1 kubectl config delete-context
+kubectl config get-contexts -o name | grep -F -- "$CLUSTER_NAME"
+# review the candidates above, then delete only the matching context(s):
+kubectl config get-contexts -o name | grep -F -- "$CLUSTER_NAME" | xargs -r -n1 kubectl config delete-context
 ```
 
 Validation artifacts (logs, matrices) live in the repo under `.cursor-tmp-artifact/` — not on the cluster; deprovision does not remove them.

@@ -80,9 +80,11 @@ stale-CLI issue in the "the feature hasn't shipped yet" sense.
 **Action for next time**: don't assume `--use-spot-instances` worked just
 because the command exited 0. Verify via:
 ```bash
-aws ec2 describe-instances --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
+aws ec2 describe-instances --region us-east-1 --filters "Name=tag:api.openshift.com/name,Values=<cluster>" "Name=instance-state-name,Values=running" \
   --query "Reservations[].Instances[].InstanceLifecycle"
-# should print "spot" for each — if it prints nothing/null, you're on-demand
+# should print "spot" for each — if it prints nothing/null, first confirm the
+# instance list itself isn't empty (wrong region/tag/cluster-name), THEN
+# treat a genuinely non-empty null/absent result as on-demand
 ```
 
 ## The JIRA/Slack trail — this is tracked, not a bug to file upstream
@@ -209,7 +211,9 @@ in Enhanced mode.
 ## Real spot prices observed (method, not eternal truth)
 
 For when spot does become usable — the pricing side already works via
-the standard AWS API, only the ROSA HCP provisioning path is blocked:
+the standard AWS API, only the ROSA HCP provisioning path is blocked.
+**x86_64 example below** (`m5`/`m6i` — this repo's RHOAI worker types);
+for ARM64 pools substitute `m6g`/`g5g` instance types:
 
 ```bash
 START_TIME="$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-1H +%Y-%m-%dT%H:%M:%S)"
@@ -236,7 +240,9 @@ above.
 - [ ] If both gates clear: retry the `rosa --debug` repro above and
       confirm `spot_market_options` now appears in the request, then
       confirm `InstanceLifecycle` on the actual EC2 instances
-- [ ] Only after that: consider whether Simple mode (no warning, no
-      graceful drain) is acceptable for a throwaway test cluster, or
+- [ ] Only after that: consider whether Simple mode (no proactive
+      *interruption* notification — Simple mode does show an informational
+      warning at NodePool *creation* time — and no graceful drain) is
+      acceptable for a throwaway test cluster, or
       whether Enhanced mode's manual SQS/EventBridge setup is worth it
       for the specific run

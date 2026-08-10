@@ -8,11 +8,8 @@ set -euo pipefail
 : "${TIMEOUT:=900}"
 
 IMG="${1:?usage: $0 <full-image-ref>}"
-SHORT="${IMG##*/}"
-SHORT="${SHORT//:/-}"
-SHORT="${SHORT//\//-}"
-POD="gpu-smoke-${SHORT}-$(date +%s | tail -c 5)"
-GPU_NODE=$(oc get nodes -l nvidia.com/gpu.present=true -o jsonpath='{.items[0].metadata.name}')
+hash_cmd() { command -v sha256sum >/dev/null 2>&1 && sha256sum || shasum -a 256; }
+POD="gpu-smoke-$(printf '%s' "$IMG" | hash_cmd | cut -c1-16)-${RANDOM}${RANDOM}"
 
 if [[ "$IMG" == *"-runtime-"* ]]; then
   IS_RUNTIME=1
@@ -49,7 +46,6 @@ metadata:
   name: $POD
   namespace: $NS
 spec:
-  nodeName: $GPU_NODE
   restartPolicy: Never
   imagePullSecrets:
   - name: $PULL_SECRET
@@ -81,12 +77,14 @@ fi)
     emptyDir: {}
 EOF
 
-echo "==> Waiting for pod $POD on $GPU_NODE (image pull may take several minutes)..."
+echo "==> Waiting for pod $POD (image pull may take several minutes)..."
 if ! oc wait --for=condition=Ready "pod/$POD" -n "$NS" --timeout="${TIMEOUT}s"; then
   echo "FAIL: pod not ready" >&2
   oc describe pod "$POD" -n "$NS" | tail -20
   exit 1
 fi
+SCHEDULED_NODE=$(oc get pod "$POD" -n "$NS" -o jsonpath='{.spec.nodeName}')
+echo "==> Scheduled on node: $SCHEDULED_NODE"
 
 case "$LIB" in
   torch)
@@ -106,6 +104,11 @@ assert platform.machine() == "aarch64", platform.machine()
 gpus = tf.config.list_physical_devices("GPU")
 print("gpus:", gpus)
 assert gpus, "no GPU devices"
+tf.config.set_soft_device_placement(False)
+with tf.device("/GPU:0"):
+    x = tf.random.uniform([1024, 1024])
+    result = tf.matmul(x, x)
+assert "GPU" in result.device, result.device
 print("SMOKE_PASS")'
     ;;
   minimal)
@@ -119,5 +122,5 @@ print("SMOKE_PASS")'
 esac
 
 echo "==> Running GPU check ($LIB)..."
-oc exec -n "$NS" "$POD" -c smoke -- python -c "$PY"
+timeout "${EXEC_TIMEOUT:-$TIMEOUT}s" oc exec -n "$NS" "$POD" -c smoke -- python -c "$PY"
 echo "==> PASS $IMG"

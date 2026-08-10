@@ -126,9 +126,13 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa create cluster --yes --sts \
   --subnet-ids="$PRIVATE,$PUBLIC" --compute-machine-type="$MACHINE_POOL_TYPE" \
   --role-arn=$INSTALLER --support-role-arn=$SUPPORT --worker-iam-role=$WORKER \
   --version 4.21.0
-  # --worker-disk-size 100GiB    # optional: default is 300GiB; a test cluster
-                                  # rarely needs that much — see cost-optimization.md item 6
 ```
+
+Optional: shrink the default 300GiB worker disk (a test cluster rarely
+needs that much — see [cost-optimization.md](cost-optimization.md) item
+6). Add `--worker-disk-size 100GiB` to the command above — don't paste it
+as a trailing line on its own, the command above already ends at
+`--version 4.21.0`.
 
 States: `waiting → validating → installing → ready` (~10 min total).
 
@@ -271,9 +275,14 @@ spec: {channel: v25.3, name: gpu-operator-certified, source: certified-operators
 EOF
 
 # Approve the InstallPlan pinned to the CSV above (Manual approval prevents an
-# unreviewed newer CSV in the v25.3 channel from installing silently)
-INSTALLPLAN=$(oc get installplan -n nvidia-gpu-operator -o name | tail -1)
-oc patch "$INSTALLPLAN" -n nvidia-gpu-operator --type merge -p '{"spec":{"approved":true}}'
+# unreviewed newer CSV in the v25.3 channel from installing silently).
+# Select by exact CSV match, not output order — a namespace can have more
+# than one InstallPlan and "last one" isn't necessarily "the one we pinned".
+CSV_NAME=gpu-operator-certified.v25.3.4
+INSTALLPLAN=$(oc get installplan -n nvidia-gpu-operator -o json | \
+  jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
+[ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one InstallPlan for $CSV_NAME, found: $INSTALLPLAN" >&2; exit 1; }
+oc patch installplan "$INSTALLPLAN" -n nvidia-gpu-operator --type merge -p '{"spec":{"approved":true}}'
 oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -n nvidia-gpu-operator -l operators.coreos.com/gpu-operator-certified.nvidia-gpu-operator --timeout=180s
 
 # ClusterPolicy — extract default from CSV alm-examples (empty spec{} is invalid in v25.3+)
@@ -309,12 +318,20 @@ Use when installing RHOAI pre-release on the cluster:
 - Kyverno is also useful beyond pull-secrets — see
   [cost-optimization.md](cost-optimization.md) item 5 for a mutate policy
   that shrinks RHOAI's own over-requested CPU/memory on test clusters
-  (verified working; if you don't already have Kyverno, download and
-  review the manifest before applying it — it creates cluster-scoped
-  RBAC and admission webhooks:
-  `curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/v1.14.4/install.yaml"`
-  then `kubectl apply --server-side -f /tmp/kyverno-install.yaml`, no Helm
-  needed).
+  (verified working; if you don't already have Kyverno, verify the
+  manifest's checksum before applying it — it creates cluster-scoped RBAC
+  and admission webhooks:
+  ```bash
+  KYVERNO_VERSION=v1.14.4
+  curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
+  curl -fsSL -o /tmp/kyverno-checksums.txt "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/checksums.txt"
+  (cd /tmp && grep 'install.yaml$' kyverno-checksums.txt | { command -v sha256sum >/dev/null 2>&1 && sha256sum -c - || shasum -a 256 -c -; }) \
+    || { echo "ERROR: checksum verification failed, do not apply" >&2; exit 1; }
+  kubectl apply --server-side -f /tmp/kyverno-install.yaml
+  ```
+  If a future release stops publishing `checksums.txt`, vendor the
+  manifest into the repo instead of fetching it unverified, no Helm
+  needed either way).
 
 ### Option B — Namespace secret (bare GPU Pod testing)
 
@@ -325,10 +342,11 @@ export TEST_NAMESPACE=jdanek
 oc create ns "$TEST_NAMESPACE" 2>/dev/null || true
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
-QUAY_AUTH="$(jq -r '.auths["quay.io"].auth // empty' ~/.docker/config.json)"
-[ -n "$QUAY_AUTH" ] || { echo "No quay.io credential in ~/.docker/config.json" >&2; exit 1; }
-jq -n --arg auth "$QUAY_AUTH" \
-  '{"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}' > "$SECRET_FILE"
+jq -n --slurpfile cfg ~/.docker/config.json '
+  ($cfg[0].auths["quay.io"].auth // "") as $auth
+  | if $auth == "" then error("No quay.io credential in ~/.docker/config.json") else . end
+  | {"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}
+' > "$SECRET_FILE" || exit 1
 oc create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
   --from-file=.dockerconfigjson="$SECRET_FILE" \
   --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
@@ -391,7 +409,7 @@ Machine pools (CPU + GPU) are removed with the cluster — no separate `delete m
 | Driver compile 60+ min, logs stuck on `make nv-linux.o` | Node `MemoryPressure=True`, DTK pod ~6+ GiB — create `g5g.2xlarge` pool, delete xlarge pool |
 | `oc exec` into driver toolkit hangs | Same memory pressure on `g5g.xlarge`; check `oc adm top node` |
 | `oc wait` driver Ready timeout at 600s | Normal on xlarge; extend to 1800s or upsize pool first |
-| `ErrImagePull` for `quay.io/rhoai/*` | Create namespace `rhoai-pull` secret (Option B above) |
+| `ErrImagePull` for `quay.io/rhoai/*` | Create the `rhoai-pull` Secret in the test namespace (Option B above) |
 | `oc exec` hangs locally | Use Python kubernetes client — see arm64 skill `gpu-manual-tests.py` |
 | `CLIENT_NOT_FOUND` from kinit | Use `kinit --keychain user@IPA.REDHAT.COM` on macOS |
 | `rh-aws-saml-login` output format | Use `--output env` for shell eval, or wrap command with `-- cmd args` |

@@ -32,13 +32,15 @@ curl -s -o /tmp/ec2-pricing.json \
   "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.json"
 # ~460MB, one-time download
 
-# Find the exact SKU for an instance type/config
-jq -r '.products | to_entries[] | select(.value.attributes.instanceType=="m5.2xlarge"
+# Find the exact SKU for an instance type/config — filtered enough to match exactly one
+SKU=$(jq -r '.products | to_entries[] | select(.value.attributes.instanceType=="m5.2xlarge"
   and .value.attributes.operatingSystem=="Linux" and .value.attributes.tenancy=="Shared"
-  and .value.attributes.capacitystatus=="Used") | .key' /tmp/ec2-pricing.json
+  and .value.attributes.capacitystatus=="Used" and .value.attributes.preInstalledSw=="NA"
+  and .value.attributes.location=="US East (N. Virginia)") | .key' /tmp/ec2-pricing.json)
+[ "$(echo "$SKU" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one SKU match, got: $SKU" >&2; exit 1; }
 
-# Look up that SKU's on-demand price
-jq -r '.terms.OnDemand.<SKU> | to_entries[].value.priceDimensions
+# Look up that SKU's on-demand price (bracket notation — SKU/term IDs are dynamic keys, not valid jq field syntax)
+jq -r --arg sku "$SKU" '.terms.OnDemand[$sku] | to_entries[].value.priceDimensions
   | to_entries[].value | "\(.pricePerUnit.USD) USD per \(.unit)"' /tmp/ec2-pricing.json
 ```
 
@@ -74,16 +76,16 @@ Always compute real floors via:
 ```bash
 oc get pods -A -o json | python3 -c '
 import json, sys
-def cpu(v):
-    if v is None: return 0
-    if v.endswith("u"): return float(v[:-1]) / 1_000_000
-    if v.endswith("m"): return float(v[:-1]) / 1000
-    return float(v)
-def mem(v):
-    if v is None: return 0
-    for s,m in {"Ki":1024,"Mi":1024**2,"Gi":1024**3}.items():
-        if v.endswith(s): return float(v[:-len(s)])*m
-    return float(v)
+SUFFIXES = {"n":1e-9,"u":1e-6,"m":1e-3,"k":1e3,"K":1e3,"M":1e6,"G":1e9,
+            "T":1e12,"P":1e15,"E":1e18,"Ki":2**10,"Mi":2**20,"Gi":2**30,
+            "Ti":2**40,"Pi":2**50,"Ei":2**60}
+def parse_quantity(v):
+    if v is None: return 0.0
+    v = str(v)
+    for suf in sorted(SUFFIXES, key=len, reverse=True):
+        if v.endswith(suf): return float(v[:-len(suf)]) * SUFFIXES[suf]
+    return float(v)  # bare number, incl. exponent forms like "1e3"
+cpu = mem = parse_quantity
 def sum_requests(containers):
     tc = tm = 0
     for c in containers:
@@ -108,7 +110,7 @@ print(f"{tc:.3f} vCPU, {tm/1024**3:.2f} GiB")
 '
 ```
 
-(This follows real Kubernetes Pod-level accounting: `max(sum(app-container requests), max(init-container request)) + overhead` per pod, and handles the `u` micro-CPU suffix alongside `m`.)
+(This follows real Kubernetes Pod-level accounting: `max(sum(app-container requests), max(init-container request)) + overhead` per pod. `parse_quantity` handles the full suffix set Kubernetes actually emits for either CPU or memory — `n`/`u`/`m`/bare/`k`/`M`/`G`/`T`/`P`/`E` and `Ki`/`Mi`/`Gi`/`Ti`/`Pi`/`Ei` — since the suffix grammar is unit-agnostic in the API.)
 
 ## 4. Verified: a Kyverno mutate policy CAN shrink RHOAI's own inflated requests
 
@@ -123,11 +125,18 @@ on this OCP 4.21 bundle — enabling it requires flipping the cluster to
 `rhoai-in-kind` repo, `components/02-kyverno`):
 
 ```bash
-curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/v1.14.4/install.yaml"
-# review it first — it creates cluster-scoped CRDs/RBAC/webhooks with your privileges
+KYVERNO_VERSION=v1.14.4
+curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
+curl -fsSL -o /tmp/kyverno-checksums.txt "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/checksums.txt"
+# verify before applying — it creates cluster-scoped CRDs/RBAC/webhooks with your privileges
+(cd /tmp && grep 'install.yaml$' kyverno-checksums.txt | { command -v sha256sum >/dev/null 2>&1 && sha256sum -c - || shasum -a 256 -c -; }) \
+  || { echo "ERROR: checksum verification failed, do not apply" >&2; exit 1; }
 kubectl apply --server-side -f /tmp/kyverno-install.yaml
 kubectl wait --for=condition=Ready pod -l app.kubernetes.io/part-of=kyverno -n kyverno --timeout=120s
 ```
+
+(If a future release stops publishing `checksums.txt`, vendor the manifest
+into the repo instead of fetching it unverified.)
 
 ```yaml
 apiVersion: kyverno.io/v1
@@ -196,12 +205,12 @@ the policy live.
 
 ## 5. "Already optimal, and why" — don't just say keep-as-is, justify it
 
-- **Region `us-east-1`**: wins on two axes simultaneously, not a
-  tradeoff — it's the cheapest-or-tied-cheapest AWS region for EC2 in
-  most families, **and** quay.io (the backend behind
-  `registry.redhat.io`, serving every RHOAI notebook image) has its
-  origin here, fronted by CloudFront. Picking `us-east-1` means lowest
-  compute price *and* shortest path to the image origin at once.
+- **Region `us-east-1`**: the cheapest-or-tied-cheapest AWS region for EC2
+  in most families — that half stands on its own. The additional claim
+  that it's *also* shortest-path to the notebook image registry
+  (`quay.io`/`registry.redhat.io` origin + CDN routing) is unsourced here
+  and should be re-verified (check the registry's current origin/CDN setup)
+  before leaning on it — don't treat it as a settled second reason.
 - **Single-AZ (`us-east-1a`)**: the cheapest *valid* topology, not just
   "an" option — the 2-replica HCP floor is satisfiable within one AZ, so
   spreading across AZs would only add cross-AZ data-transfer charges
@@ -248,8 +257,10 @@ Cost Explorer numbers — only the public Bulk API workaround (item 1) is
 available, which gives *list* prices, not actual billed amounts. If real
 billed-cost verification is ever needed (e.g. confirming whether the ROSA
 software fee is actually waived on this account, per item 1's open
-question), request `ce:GetCostAndUsage` added to this role — this is a
-fixable gap, not a permanent limitation to route around forever.
+question), request a **separate, read-only billing/Cost-Explorer role or
+permission set** — don't broaden this shared cluster-operations role with
+account-wide cost visibility, since `ce:GetCostAndUsage` can expose spend
+across every workload sharing the account, not just this one.
 
 ## 8. Cost-leak gotcha: orphaned EBS volumes can survive `oc delete pvc`
 
@@ -259,10 +270,13 @@ delete pvc --all` between test iterations. Full cluster deletion **did**
 clean it up automatically this session (confirmed zero volumes remained
 after `rosa delete cluster` on both test clusters) — but don't assume
 that's guaranteed for volumes detached well before cluster teardown. Check
-explicitly:
+explicitly — list **all** available volumes in the region rather than
+filtering by the cluster tag, since an orphaned volume may not carry it
+(only its `CSIVolumeName`/PVC-derived tags survive), then correlate by
+that tag and creation time:
 ```bash
 aws ec2 describe-volumes --region "${AWS_REGION:-us-east-1}" --filters "Name=status,Values=available" \
-  "Name=tag:api.openshift.com/name,Values=<cluster>"
+  --query "Volumes[].{ID:VolumeId,Size:Size,CSIVolumeName:Tags[?Key=='CSIVolumeName']|[0].Value,Created:CreateTime}"
 ```
 
 ## 9. Bring-up and teardown timing — see `SKILL.md`'s "Timing" section
@@ -277,9 +291,12 @@ estimate.
 
 The [`cluster-bot`](../cluster-bot/SKILL.md) skill's `rosa create
 <version> <duration>` provisions a real ROSA HCP cluster via Slack with
-**built-in auto-teardown** (`1h`/`3h`/`24h`/`48h`) — meaning there's no
-risk of forgetting to delete a cluster and accruing cost indefinitely, the
-exact risk this whole document is otherwise mitigating. Trade-off: **no
+**built-in auto-teardown** (`1h`/`3h`/`24h`/`48h`) — meaning **reduced**
+risk of forgetting to delete a cluster and accruing cost indefinitely (not
+zero risk: Slack, OCM, or AWS-side failures can still delay or prevent the
+teardown, so verify no resources remain past the TTL rather than assuming
+it always fires) — the exact risk this whole document is otherwise
+mitigating. Trade-off: **no
 instance-type or disk-size control**, so the sizing/Kyverno work in this
 doc doesn't apply there. Given spot instances aren't usable yet regardless
 of path (see [spot-instances.md](spot-instances.md)), `cluster-bot`'s

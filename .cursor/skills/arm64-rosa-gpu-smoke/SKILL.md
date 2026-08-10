@@ -15,7 +15,9 @@ Verify multi-arch index includes `linux/arm64` for all in-scope images.
 
 ```bash
 IMG=quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:rhoai-3.6-ea.1
-skopeo inspect --raw docker://$IMG | jq '.manifests[] | {arch: .platform.architecture, digest: .digest}'
+skopeo inspect --raw docker://$IMG | jq '.manifests[] | {arch: .platform.architecture, os: .platform.os, digest: .digest}'
+# Scripted check: assert linux/arm64 is actually present, not just "arm64" under any os
+skopeo inspect --raw docker://$IMG | jq -e '[.manifests[] | select(.platform.architecture=="arm64" and .platform.os=="linux")] | length > 0'
 ```
 
 ### In-scope images (RHOAI 3.6 EA1 example)
@@ -48,8 +50,8 @@ ROCm images should be amd64-only (confirms exclusion is intentional):
 
 ```bash
 IMG=quay.io/rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9:rhoai-3.6-ea.1
-skopeo inspect --raw docker://$IMG | jq '[.manifests[].platform.architecture] | unique'
-# Expect: ["amd64"]
+skopeo inspect --raw docker://$IMG | jq '[.manifests[] | {arch: .platform.architecture, os: .platform.os}] | unique'
+# Expect: [{"arch":"amd64","os":"linux"}]
 ```
 
 ## Phase 2: CPU Testcontainers Smoke
@@ -86,7 +88,7 @@ These are **expected on CPU-only hosts**. Skip the ldd test:
 ```bash
 uv run pytest tests/containers \
   -m 'not openshift and not cuda and not rocm and not manifest_validation' \
-  --ignore=tests/containers/base_image_test.py \
+  --deselect=tests/containers/base_image_test.py::test_elf_files_can_link_runtime_libs \
   --image="$IMG" -v
 ```
 
@@ -115,7 +117,7 @@ IMG=quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:rhoai-3.6-ea.1
 podman pull --platform linux/arm64 "$IMG"
 uv run pytest tests/containers \
   -m 'not openshift and not cuda and not rocm and not manifest_validation' \
-  --ignore=tests/containers/base_image_test.py \
+  --deselect=tests/containers/base_image_test.py::test_elf_files_can_link_runtime_libs \
   --image="$IMG" -q
 REMOTE
 ```
@@ -125,7 +127,7 @@ REMOTE
 Key points for a batch testcontainers script:
 - Pull with `podman pull --platform linux/arm64` (requires `podman machine start` on macOS)
 - Set `TESTCONTAINERS_RYUK_DISABLED=true`
-- Skip `base_image_test.py` for `*cuda*` images
+- Deselect `base_image_test.py::test_elf_files_can_link_runtime_libs` for `*cuda*` images (not the whole file — other tests in it still apply)
 - Never edit the script while it's running (mid-run edits cause shell parse errors)
 - Output per-image log + TSV summary
 
@@ -210,10 +212,11 @@ export TEST_NAMESPACE=jdanek
 oc create ns "$TEST_NAMESPACE" 2>/dev/null || true
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
-QUAY_AUTH="$(jq -r '.auths["quay.io"].auth // empty' ~/.docker/config.json)"
-[ -n "$QUAY_AUTH" ] || { echo "No quay.io credential in ~/.docker/config.json" >&2; exit 1; }
-jq -n --arg auth "$QUAY_AUTH" \
-  '{"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}' > "$SECRET_FILE"
+jq -n --slurpfile cfg ~/.docker/config.json '
+  ($cfg[0].auths["quay.io"].auth // "") as $auth
+  | if $auth == "" then error("No quay.io credential in ~/.docker/config.json") else . end
+  | {"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}
+' > "$SECRET_FILE" || exit 1
 oc create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
   --from-file=.dockerconfigjson="$SECRET_FILE" \
   --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
@@ -233,9 +236,11 @@ oc get node -l nvidia.com/gpu.present=true \
 One Pod per image, pinned to GPU node, sequential (single GPU).
 
 ```bash
+cd <notebooks-repo>
 export TAG=rhoai-3.6-ea.1
 export NS=jdanek
-scripts/gpu-smoke-pod.sh quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:$TAG
+.cursor/skills/arm64-rosa-gpu-smoke/scripts/gpu-smoke-pod.sh \
+  quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:$TAG
 ```
 
 | Image type | Check |
@@ -268,7 +273,7 @@ Source: [opendatahub-io/notebooks/tests/manual](https://github.com/opendatahub-i
 Example:
 
 ```bash
-export NOTEBOOK_REV=main   # set to a commit SHA to pin instead of tracking main
+export NOTEBOOK_REV=<full-40-char-commit-sha>   # pin the reviewed tests/manual revision — required, not "main"
 oc exec -q -n jdanek "$POD" -c smoke -- bash -lc "
   curl -fsSL -o /tmp/gpu-test.ipynb \
     https://raw.githubusercontent.com/opendatahub-io/notebooks/${NOTEBOOK_REV}/tests/manual/gpu-test-notebook.ipynb
@@ -285,9 +290,10 @@ cd <notebooks-repo>
 export TAG=rhoai-3.6-ea.1
 export TEST_NAMESPACE=jdanek
 export KUBECONFIG_CONTEXT='default/api-<cluster>-n953-p3-openshiftapps-com:443/admin'
+export NOTEBOOK_REV=<full-40-char-commit-sha>   # required — see Phase 3b example above
 uv run .cursor/skills/arm64-rosa-gpu-smoke/scripts/gpu-manual-tests.py
 # Single image:
-uv run .../gpu-manual-tests.py --image "pytorch-cuda workbench" --exact
+uv run .cursor/skills/arm64-rosa-gpu-smoke/scripts/gpu-manual-tests.py --image "pytorch-cuda workbench" --exact
 ```
 
 Uses Kubernetes stream exec (equivalent to `oc exec -q`) if local `oc` hangs. Log: `gpu-manual-tests.log`.

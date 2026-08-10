@@ -17,12 +17,12 @@ from pathlib import Path
 from kubernetes import client, config, watch
 from kubernetes.stream import stream
 
-NOTEBOOK_REV = os.environ.get("NOTEBOOK_REV", "main")
-if NOTEBOOK_REV == "main":
-    print(
-        "WARNING: pulling tests/manual notebooks from mutable 'main' "
-        "(set NOTEBOOK_REV to a commit SHA to pin)",
-        flush=True,
+NOTEBOOK_REV = os.environ.get("NOTEBOOK_REV")
+if not NOTEBOOK_REV or not re.fullmatch(r"[0-9a-f]{40}", NOTEBOOK_REV):
+    sys.exit(
+        "NOTEBOOK_REV must be set to a full 40-character commit SHA "
+        "(this tool validates image sign-off; pin the exact tests/manual "
+        "revision instead of tracking a mutable branch)"
     )
 NOTEBOOK_BASE = (
     f"https://raw.githubusercontent.com/opendatahub-io/notebooks/{NOTEBOOK_REV}/tests/manual"
@@ -196,6 +196,7 @@ def create_pod(v1: client.CoreV1Api, name: str, image: str, gpu_node: str, runti
         spec=client.V1PodSpec(
             node_name=gpu_node,
             restart_policy="Never",
+            automount_service_account_token=False,
             image_pull_secrets=[client.V1LocalObjectReference(name=PULL_SECRET)],
             containers=[container],
             volumes=[client.V1Volume(name="workspace", empty_dir=client.V1EmptyDirVolumeSource())],
@@ -216,7 +217,7 @@ def run_notebook(v1: client.CoreV1Api, pod: str, nb: str, allow_errors: bool) ->
 set -euo pipefail
 {extra_env}
 mkdir -p /tmp/manual-tests
-curl -fsSL '{NOTEBOOK_BASE}/{nb}.ipynb' -o '/tmp/manual-tests/{nb}.ipynb'
+curl -fsSL --connect-timeout 30 --max-time 300 '{NOTEBOOK_BASE}/{nb}.ipynb' -o '/tmp/manual-tests/{nb}.ipynb'
 cd /opt/app-root/src
 python -m jupyter nbconvert \
   --ExecutePreprocessor.timeout={NB_TIMEOUT} {allow} \
@@ -297,13 +298,17 @@ def run_image(v1: client.CoreV1Api, gpu_node: str, spec: ImageSpec) -> list[tupl
             cell_text = notebook_cell_text(v1, name, nb) if code == 0 else ""
             combined = log + "\n" + cell_text
             ok = code == 0
-            if ok and cell_text:
-                try:
-                    validate_output(nb, allow_err, combined)
-                except AssertionError as e:
+            if ok:
+                if not cell_text:
                     ok = False
-                    combined += f"\nVALIDATION: {e}"
-            elif not ok:
+                    combined += "\nVALIDATION: executed notebook produced no output"
+                else:
+                    try:
+                        validate_output(nb, allow_err, combined)
+                    except AssertionError as e:
+                        ok = False
+                        combined += f"\nVALIDATION: {e}"
+            else:
                 combined += "\n(no executed notebook output — nbconvert failed)"
             status = "PASS" if ok else "FAIL"
             print(f"     {status} (exit={code})", flush=True)

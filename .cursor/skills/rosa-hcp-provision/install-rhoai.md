@@ -23,6 +23,15 @@ oc get packagemanifest rhods-operator -o json | \
 # rhods-operator.2.25.9
 ```
 
+`currentCSV` is always the **channel head** — if you need a specific
+earlier patch that's still present in the channel, select it explicitly
+from `.entries[]` instead:
+
+```bash
+oc get packagemanifest rhods-operator -o json | \
+  jq -r '.status.channels[] | select(.name=="stable-2.25") | .entries[] | select(.name=="rhods-operator.2.25.9") | .name'
+```
+
 `eus-X.Y` channels track Extended Update Support releases; `stable-X.Y`
 pins to a specific minor without EUS commitments. Pick whichever matches
 what you're actually validating against — don't default to the bare
@@ -70,11 +79,15 @@ spec:
 
 Manual approval means OLM won't silently install a newer CSV pushed to
 `stable-2.25` after you pinned this. Approve the pinned InstallPlan before
-waiting for `Succeeded`:
+waiting for `Succeeded` — select it by exact CSV match, not output order,
+since a namespace can have more than one InstallPlan:
 
 ```bash
-INSTALLPLAN=$(oc get installplan -n redhat-ods-operator -o name | tail -1)
-oc patch "$INSTALLPLAN" -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
+CSV_NAME=rhods-operator.2.25.9
+INSTALLPLAN=$(oc get installplan -n redhat-ods-operator -o json | \
+  jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
+[ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one InstallPlan for $CSV_NAME, found: $INSTALLPLAN" >&2; exit 1; }
+oc patch installplan "$INSTALLPLAN" -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
 ```
 
 **If a `Subscription`/CSV was already created against the wrong
@@ -88,10 +101,11 @@ oc delete installplan -n redhat-ods-operator --all
 # then re-apply the Subscription above
 ```
 
-Wait for `Succeeded`:
+Wait for `Succeeded` (`-w` only streams — it neither blocks until the
+condition nor times out, so use `oc wait` for anything scripted):
 
 ```bash
-oc get csv -n redhat-ods-operator -w
+oc wait --for=jsonpath='{.status.phase}'=Succeeded csv/rhods-operator.2.25.9 -n redhat-ods-operator --timeout=300s
 ```
 
 ## 3. Minimal DSC/DSCI for IDE/spawn/clone-focused testing

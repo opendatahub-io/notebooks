@@ -36,9 +36,9 @@ Same kernel and driver branch; only instance size differed.
 
 | Signal | `g5g.xlarge` (failed path) | `g5g.2xlarge` (success path) |
 |--------|---------------------------|------------------------------|
-| Time to driver **2/2 Ready** | **70+ min**, still 1/2 | **~30 min** |
+| Driver daemonset status at 70+ min | **not reached — still 1/2** | reached **2/2 Ready at ~30 min** |
 | Last log line | Stuck on `make -s -j … nv-linux.o nv-modeset-linux.o` (40+ min unchanged) | gcc warnings (e.g. `os_dbg_breakpoint` aarch64), then progress |
-| Node CPU during compile | ~4000m (**114%** of 3500m allocatable) | ~4000m (**63%** of 8 vCPU) |
+| Node CPU during compile | ~4000m (**114%** of 3500m allocatable) | ~4000m (**50%** of 8 vCPU) |
 | DTK pod RAM | **~6.3 GiB** | **~1–4 GiB** during compile, ~1 GiB after Ready |
 | Node memory | **104%**, `MemoryPressure=True` | **26–29%**, no memory pressure |
 | `oc exec` into DTK | Hangs | Works |
@@ -89,11 +89,10 @@ spec:
     usePrecompiled: true
     repository: quay.io/<your-org>
     image: nvidia-gpu-driver
-    # must match the tag actually produced below:
-    # ${DRIVER_VERSION}-${KERNEL_VERSION}-<os-tag>, e.g.
-    # "580.82.07-5.14.0-570.78.1.el9_6.aarch64-rhel9.6" — see "Image tag
-    # format" below. A bare branch like "580" won't match.
-    version: "580.82.07-5.14.0-570.78.1.el9_6.aarch64-rhel9.6"
+    # driver version only — the operator combines this with the node's
+    # own kernel/OS at runtime to look up the full image tag (see "Image
+    # tag format" below); don't put the kernel/OS suffix here.
+    version: "580.82.07"
     imagePullSecrets: [<pull-secret-name>]   # required if `repository` is private
 ```
 
@@ -125,9 +124,21 @@ export KERNEL_VERSION=$(podman run --rm -ti --authfile "$PULL_SECRET_FILE" ${DRI
 export DRIVER_VERSION=580.82.07             # match ClusterPolicy / operator
 export CUDA_VERSION=12.x.x                # base image tag selection
 export OS_TAG=...                         # see below
+export RHEL_VERSION=9.6                   # target RHEL minor matching the node's RHCOS base
+export RHSM_ORG_FILE=/path/to/rhsm-org               # Red Hat Subscription Manager org ID
+export RHSM_ACTIVATIONKEY_FILE=/path/to/rhsm-activationkey  # RHSM activation key for your org
+export DRIVER_EPOCH=1                     # bump if rebuilding the same DRIVER_VERSION with fixes
+export IMAGE_REGISTRY=quay.io/<your-org>  # must match ClusterPolicy spec.driver.repository
+export IMAGE_NAME=nvidia-gpu-driver       # must match ClusterPolicy spec.driver.image
 
 make image image-push
 ```
+
+`RHSM_ORG_FILE`/`RHSM_ACTIVATIONKEY_FILE` are required by the
+`gpu-driver-container` RHEL9 Makefile to register the build container with
+Red Hat Subscription Manager (the UBI9 base image needs RHEL package repos
+enabled to build kernel modules) — see the repo's own docs for how to
+obtain an activation key for your org.
 
 **Image tag format** must encode driver, kernel, and OS, e.g.:
 
