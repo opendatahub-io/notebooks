@@ -171,6 +171,10 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     # arrow/cpp/thirdparty/versions.txt for the pinned PYARROW_VERSION, or the bundled ORC build
     # fails a checksum mismatch.
     export ARROW_ORC_URL="https://archive.apache.org/dist/orc/orc-2.2.1/orc-2.2.1.tar.gz"
+ARROW_S3_FLAG="-DARROW_S3=OFF"
+if [ "$TARGETARCH" != "s390x" ]; then
+    ARROW_S3_FLAG="-DARROW_S3=ON"
+fi
     cmake -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr/local \
           -DARROW_PYTHON=ON \
@@ -184,6 +188,7 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
           -DARROW_WITH_LZ4=OFF \
           -DARROW_WITH_ZSTD=OFF \
           -DARROW_WITH_SNAPPY=OFF \
+${ARROW_S3_FLAG} \
           -DARROW_BUILD_TESTS=OFF \
           -DARROW_BUILD_BENCHMARKS=OFF \
           ..

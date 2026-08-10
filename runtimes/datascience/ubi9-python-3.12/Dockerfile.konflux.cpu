@@ -184,6 +184,7 @@ if [ "$TARGETARCH" = "s390x" ]; then
           -DARROW_WITH_LZ4=ON \
           -DARROW_WITH_ZSTD=ON \
           -DARROW_WITH_SNAPPY=OFF \
+          -DARROW_S3=OFF \
           -DARROW_WITH_BZ2=ON \
           -DARROW_WITH_ZLIB=ON \
           -DARROW_BUILD_TESTS=OFF \
