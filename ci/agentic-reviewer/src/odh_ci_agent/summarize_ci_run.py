@@ -24,8 +24,8 @@ from odh_ci_agent.ci_summary import (
 )
 from odh_ci_agent.env import bool_env, required_env
 from odh_ci_agent.github_actions_tools import actions_tool_policies, make_github_actions_tools
-from odh_ci_agent.mcp_github import GITHUB_ACTIONS_READ_TOOLS
 from odh_ci_agent.github_api import read_github_token, split_repository
+from odh_ci_agent.mcp_github import GITHUB_ACTIONS_READ_TOOLS
 from odh_ci_agent.run_statistics import format_usage_metadata, record_agent_run
 from odh_ci_agent.source_workspace import resolve_source_workspace
 

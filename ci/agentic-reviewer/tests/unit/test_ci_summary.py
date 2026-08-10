@@ -51,9 +51,7 @@ def test_sanitize_agent_analysis_removes_harness_noise() -> None:
         "### Likely root causes\n- SSL verification failed\n"
     )
 
-    assert ci_summary.sanitize_agent_analysis(raw) == (
-        "### Likely root causes\n- SSL verification failed"
-    )
+    assert ci_summary.sanitize_agent_analysis(raw) == ("### Likely root causes\n- SSL verification failed")
 
 
 def test_sanitize_agent_analysis_removes_view_file_noise() -> None:
