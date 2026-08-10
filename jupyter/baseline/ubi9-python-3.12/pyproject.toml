@@ -1,0 +1,60 @@
+# Phase 1: baseline build resolves Python packages from PyPI using `pylock.toml`.
+# Hermetic Python input generation stays deferred to phase 2.
+
+[project]
+name = "jupyter-baseline-notebook"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Installer/tooling used in Docker/CI
+    "uv",
+    "micropipenv[toml]",
+
+    # Base packages
+    "wheel",
+    "setuptools",
+
+    # JupyterLab core (odh-notebooks-meta-jupyterlab-deps)
+    "jupyterlab",
+    "jupyter-server",
+    "jupyter-server-proxy",
+    "jupyter-server-terminals",
+    "jupyterlab-git",
+    "nbdime",
+    "nbgitpuller",
+    "odh-jupyter-trash-cleanup",
+    # PDF export needs a real pandoc binary on PATH. Hermetic images use
+    # pandoc-rhai from the RHAI index; phase-1 public-index installs the EPEL
+    # pandoc RPM in the Dockerfile instead (PyPI "pandoc" is only a wrapper).
+
+    # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
+    # heavy workbench/db-connector Python stack.
+    "odh-elyra",
+    "kubeflow-kale[jupyter]",
+    "jupyter-bokeh",
+    "jupyterlab-lsp",
+    "jupyterlab-widgets",
+    "jupyter-resource-usage",
+]
+
+[tool.uv]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+]
+
+override-dependencies = [
+    # odh-elyra pins jupyter-resource-usage<1.2.dev0, but 1.1.1 needs psutil<6 while
+    # ipython 9.14+ on the RH index needs psutil>=7. Index ships 1.2.1.
+    "jupyter-resource-usage>=1.2.1,<1.3",
+    # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
+    # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
+    "urllib3>=2.7.0",
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
+]
+
+[tool.uv.sources]

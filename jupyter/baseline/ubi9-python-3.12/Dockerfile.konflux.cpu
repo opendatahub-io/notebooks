@@ -1,0 +1,200 @@
+############################################################################################
+# Phase 1 Dockerfile for jupyter/baseline/ubi9-python-3.12
+#
+# This baseline image intentionally uses a non-hermetic build path for phase 1:
+# - RPMs are resolved online during the image build
+# - Python packages are installed from the checked-in root pylock.toml via PyPI
+#
+# [PHASE 2 HERMETIC]
+# The copied jupyter/datascience Dockerfile used cachi2-managed RPM/pip inputs.
+# That logic is intentionally deferred for the later hermetic conversion of
+# jupyter/baseline.
+#
+# Multi-stage layout:
+#   cpu-base         -> installs OS packages + tools (oc client)
+#   jupyter-minimal  -> PDF export OS deps + Jupyter entrypoint
+#   jupyter-baseline -> final image (JupyterLab + Elyra/Kale + Python packages)
+############################################################################################
+
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
+############################################################################################
+# cpu-base: Runtime base image with OS packages, tools (oc)
+#
+# Phase 1 online runtime base.
+############################################################################################
+FROM ${BASE_IMAGE} AS cpu-base
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+ARG RHEL_VERSION=9.6
+
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+RUN subscription-manager release --set="${RHEL_VERSION}"
+
+# Runtime installs need the OpenShift layered-product repo for openshift-clients.
+RUN basearch="$(rpm --eval '%{_arch}')" && \
+    dnf config-manager --set-enabled "rhocp-4.16-for-rhel-9-${basearch}-rpms"
+
+# Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
+# compat-openssl11 provides libcrypto.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y tar perl mesa-libGL skopeo compat-openssl11 openshift-clients
+dnf clean all
+rm -rf /var/cache/dnf
+EOF
+
+# ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
+    dnf install -y openblas-threads
+    dnf clean all
+fi
+EOF
+
+USER 1001
+
+####################
+# jupyter-minimal  #
+####################
+FROM cpu-base AS jupyter-minimal
+
+ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
+ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
+
+WORKDIR /opt/app-root/bin
+
+COPY --chown=1001:0 ${JUPYTER_REUSABLE_UTILS} utils/
+
+USER 0
+
+# texlive-tcolorbox is not in AppStream/CRB. Hermetic builds pull it via cachi2
+# (EPEL for ODH, rhelai for RHDS). Phase-1 online builds enable EPEL instead.
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
+EOF
+
+### BEGIN Dependencies for PDF export
+RUN ./utils/install_pdf_deps.sh
+
+### END Dependencies for PDF export
+
+# Real pandoc binary for nbconvert (PyPI has no pandoc-rhai equivalent).
+# Install while EPEL is still enabled, then drop the release package.
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y pandoc
+dnf remove -y epel-release || true
+dnf clean all
+rm -rf /var/cache/dnf
+pandoc --version
+EOF
+
+COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+RUN chmod 755 ./start-notebook.sh
+
+USER 1001
+
+WORKDIR /opt/app-root/src
+
+ENTRYPOINT ["start-notebook.sh"]
+
+########################
+# jupyter-baseline     #
+########################
+FROM jupyter-minimal AS jupyter-baseline
+
+ARG BASELINE_SOURCE_CODE=jupyter/baseline/ubi9-python-3.12
+
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+ARG RELEASE
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
+      summary="Jupyter baseline notebook image for ODH notebooks" \
+      description="Jupyter baseline notebook image with Python 3.12 based on UBI9 for ODH notebooks" \
+      io.k8s.description="Jupyter baseline notebook image with Python 3.12 based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      version="${RELEASE}"
+
+WORKDIR /opt/app-root/bin
+
+USER 0
+
+# Runtime OS packages for JupyterLab / Elyra / Kale (no DB-connector stack in phase 1).
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+PACKAGES=(jq git-lfs libsndfile libxcrypt-compat protobuf)
+dnf install -y "${PACKAGES[@]}"
+dnf clean all
+rm -rf /var/cache/dnf
+EOF
+
+COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
+COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
+
+# The raw RHEL Python base does not bootstrap uv the way the AIPCC notebook
+# base does, so install it explicitly for the phase-1 online PyPI sync.
+ARG UV_VERSION=0.12.1
+RUN python3 -m pip install --no-cache-dir "uv==${UV_VERSION}"
+
+ENV SHELL=/bin/bash
+# Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
+ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
+
+# Phase 1 Python install: sync directly from the checked-in PyPI pylock.
+COPY ${BASELINE_SOURCE_CODE}/pylock.toml ./pylock.toml
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Installing software and packages"
+UV_DEFAULT_INDEX=https://pypi.org/simple \
+UV_NO_CACHE=true \
+UV_LINK_MODE=copy \
+uv pip sync ./pylock.toml \
+    --strict --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match
+
+pandoc --version
+
+mkdir -p /opt/app-root/runtimes
+mkdir -p /opt/app-root/pipeline-runtimes
+rm -f /opt/app-root/share/jupyter/metadata/runtime-images/*.json
+sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" \
+    /opt/app-root/share/jupyter/kernels/python3/kernel.json
+# copy jupyter configuration (install -m 0664 for OpenShift gid 0 g+w)
+install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
+  /opt/app-root/etc/jupyter/jupyter_server_config.py
+jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+chmod g+w /opt/app-root/etc/jupyter/labconfig
+/opt/app-root/bin/utils/addons/apply.sh
+/usr/local/bin/ensure-openshift-site-packages.sh
+
+# change ownership to default user (packages were installed as root)
+chown -R 1001:0 /opt/app-root
+EOF
+
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+
+USER 1001
+
+# Fix permissions to support pip in OpenShift environments
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
+
+WORKDIR /opt/app-root/src

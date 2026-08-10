@@ -228,9 +228,13 @@ def jupyterlab_image(image: str) -> Image:
 
 @pytest.fixture(scope="session")
 def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
-    if "-minimal-" in jupyterlab_image.labels["name"]:
+    name = jupyterlab_image.labels["name"]
+    # baseline is a lean JupyterLab workbench (Elyra/Kale/PDF) without the
+    # datascience / DB-connector Python stack covered by these tests.
+    if "-minimal-" in name or "-baseline-" in name:
         pytest.skip(
-            f"Image {jupyterlab_image.name} is not datascience image because it has '-minimal-' in {jupyterlab_image.labels['name']=}'"
+            f"Image {jupyterlab_image.name} is not datascience image because it has "
+            f"'-minimal-' or '-baseline-' in {name=}"
         )
 
     return jupyterlab_image
@@ -249,9 +253,11 @@ def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
 @pytest.fixture(scope="session")
 def datascience_image(image: str) -> Image:
     image_metadata = get_image_metadata(image)
-    if "-minimal-" in image_metadata.labels["name"]:
+    name = image_metadata.labels["name"]
+    if "-minimal-" in name or "-baseline-" in name:
         pytest.skip(
-            f"Image {image_metadata.name} is not datascience image because it has '-minimal-' in {image_metadata.labels['name']=}'"
+            f"Image {image_metadata.name} is not datascience image because it has "
+            f"'-minimal-' or '-baseline-' in {name=}"
         )
 
     return image_metadata
