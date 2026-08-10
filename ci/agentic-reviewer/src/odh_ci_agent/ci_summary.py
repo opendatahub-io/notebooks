@@ -17,6 +17,22 @@ TRIVY_PATTERNS = ("trivy", "vulnerability scanner")
 FIPS_PATTERNS = ("check-payload", "fips")
 PLAYWRIGHT_PATTERNS = ("playwright",)
 
+# Harness stderr that must never appear in posted PR comments.
+_HARNESS_ANALYSIS_NOISE_RE = re.compile(
+    r"(?:"
+    r"Error in MCP tool execution:[^\n#]*"
+    r"|Unable to view file at the requested position\.?\s*"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def sanitize_agent_analysis(analysis_markdown: str) -> str:
+    """Remove harness/tooling noise from LLM analysis before posting to GitHub."""
+
+    cleaned = _HARNESS_ANALYSIS_NOISE_RE.sub("", analysis_markdown)
+    return cleaned.strip()
+
 
 def utc_now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -296,7 +312,7 @@ def render_failure_comment(context: Mapping[str, object], analysis_markdown: str
     if running_section:
         lines.extend(["", *running_section])
 
-    analysis = analysis_markdown.strip()
+    analysis = sanitize_agent_analysis(analysis_markdown)
     if analysis:
         lines.extend(["", analysis])
 
