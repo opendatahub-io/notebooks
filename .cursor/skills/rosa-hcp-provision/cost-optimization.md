@@ -114,10 +114,17 @@ print(f"{tc:.3f} vCPU, {tm/1024**3:.2f} GiB")
 
 ## 4. Verified: a Kyverno mutate policy CAN shrink RHOAI's own inflated requests
 
-RHOAI's own baseline (dashboard ×2 replicas × 3 containers @ 500m/1Gi each
-— `rhods-dashboard`, `oauth-proxy`, `model-registry-ui` — plus operator ×3
-@ 500m) requested **5.5 of the 7.14 vCPU** at idle, far more than the
-~10-220m these containers actually use. `MutatingAdmissionPolicy` (native,
+RHOAI's own baseline requested **5.5 of the 7.14 vCPU** at idle (measured
+directly via the `oc get pods -A -o json` sum in item 3, not derived from
+the list below), far more than the ~10-220m these containers actually use.
+The dominant contributors: dashboard ×2 replicas × 3 containers @
+500m/1Gi each (`rhods-dashboard`, `oauth-proxy`, `model-registry-ui`) plus
+operator ×3 @ 500m — that itemized list alone sums to 4.5 vCPU, not the
+full 5.5; the remaining ~1 vCPU came from other pods in the same
+namespaces not itemized here (this list is illustrative of the biggest
+offenders, not an exhaustive per-container reconciliation — the cluster
+this was measured on is gone, so the exact remainder can't be re-attributed
+after the fact). `MutatingAdmissionPolicy` (native,
 CEL-based, no webhook pod) is **discoverable but disabled by default**
 on this OCP 4.21 bundle — enabling it requires flipping the cluster to
 `TechPreviewNoUpgrade`, an irreversible change, so don't use it for this.
@@ -126,17 +133,30 @@ on this OCP 4.21 bundle — enabling it requires flipping the cluster to
 
 ```bash
 KYVERNO_VERSION=v1.14.4
+# Unverified fetch, accepted as a known risk for this internal test runbook
+# — checked directly and this release's checksums.txt only covers the
+# kyverno-cli tarballs, not install.yaml, so a checksum check here would
+# either silently pass with nothing actually checked or always fail; either
+# way it wouldn't be real verification, and it applies cluster-scoped
+# CRDs/RBAC/webhooks with your privileges, so know what you're running.
 curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
-curl -fsSL -o /tmp/kyverno-checksums.txt "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/checksums.txt"
-# verify before applying — it creates cluster-scoped CRDs/RBAC/webhooks with your privileges
-(cd /tmp && grep 'install.yaml$' kyverno-checksums.txt | { command -v sha256sum >/dev/null 2>&1 && sha256sum -c - || shasum -a 256 -c -; }) \
-  || { echo "ERROR: checksum verification failed, do not apply" >&2; exit 1; }
 kubectl apply --server-side -f /tmp/kyverno-install.yaml
 kubectl wait --for=condition=Ready pod -l app.kubernetes.io/part-of=kyverno -n kyverno --timeout=120s
 ```
 
-(If a future release stops publishing `checksums.txt`, vendor the manifest
-into the repo instead of fetching it unverified.)
+**Alternative: install via OLM instead of a raw manifest.** OperatorHub.io's
+community catalog has a `kyverno-operator` package (channel `alpha`,
+latest bundled version `v1.13.6` — older than the `v1.14.4` above) that
+deploys the same official `ghcr.io/kyverno/kyverno` images. Two caveats:
+it's **not** in OpenShift's default catalog sources (confirmed absent from
+`redhat-openshift-ecosystem/community-operators-prod`; it's only in
+`k8s-operatorhub/community-operators`, consumed via a separate
+`quay.io/operatorhubio/catalog` CatalogSource you'd add yourself), and its
+CSV lists an individual third-party maintainer, not the Kyverno project
+itself — so it isn't a strictly more-trustworthy default, just a different
+tradeoff (OLM-managed install/upgrade lifecycle vs. a newer pinned
+version and one fewer moving part). Worth knowing about; not switched to
+here.
 
 ```yaml
 apiVersion: kyverno.io/v1
@@ -205,12 +225,16 @@ the policy live.
 
 ## 5. "Already optimal, and why" — don't just say keep-as-is, justify it
 
-- **Region `us-east-1`**: the cheapest-or-tied-cheapest AWS region for EC2
-  in most families — that half stands on its own. The additional claim
-  that it's *also* shortest-path to the notebook image registry
-  (`quay.io`/`registry.redhat.io` origin + CDN routing) is unsourced here
-  and should be re-verified (check the registry's current origin/CDN setup)
-  before leaning on it — don't treat it as a settled second reason.
+- **Region `us-east-1`**: the well-known cheapest-or-tied-cheapest AWS
+  region for EC2 in most families — but item 1's pricing method here only
+  ever queries `us-east-1` itself, so that's general AWS-pricing
+  reputation, not a cross-region comparison independently re-verified in
+  this session. The additional claim that it's *also* shortest-path to
+  the notebook image registry (`quay.io`/`registry.redhat.io` origin + CDN
+  routing) is likewise unsourced here and should be re-verified (check
+  the registry's current origin/CDN setup) before leaning on it — don't
+  treat either half as a settled, independently-confirmed reason without
+  actually running a cross-region price/latency comparison.
 - **Single-AZ (`us-east-1a`)**: the cheapest *valid* topology, not just
   "an" option — the 2-replica HCP floor is satisfiable within one AZ, so
   spreading across AZs would only add cross-AZ data-transfer charges

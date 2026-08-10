@@ -159,14 +159,15 @@ disables certificate validation for all subsequent API calls.)
 **Important:** RHOAI 3.5 images on this cluster are **amd64-only** (`registry.redhat.io`). To test arm64 EA images, create a pull secret for `quay.io/rhoai` (copy from ROSA cluster or personal auth):
 
 ```bash
-oc create ns jdanek 2>/dev/null || true
+oc create ns jdanek --dry-run=client -o yaml | oc apply -f -
 # Get auth from ROSA cluster context (or personal docker config)
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
 oc get secret rhoai-pull -n jdanek --context="<ROSA-context>" \
   -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d > "$SECRET_FILE"
-oc create secret docker-registry rhoai-pull -n jdanek \
-  --from-file=.dockerconfigjson="$SECRET_FILE"
+oc create secret generic rhoai-pull -n jdanek \
+  --from-file=.dockerconfigjson="$SECRET_FILE" \
+  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
 ```
 
 Then deploy pods with `imagePullSecrets: [{name: rhoai-pull}]` and `nodeName: nvd-srv-18.nvidia.eng.rdu2.redhat.com`.
@@ -208,19 +209,24 @@ See [rosa-hcp-provision skill](../rosa-hcp-provision/SKILL.md):
 3. **Pull secret** for `quay.io/rhoai` in test namespace (ROSA global pull-secret lacks rhoai)
 
 ```bash
-export TEST_NAMESPACE=jdanek
-oc create ns "$TEST_NAMESPACE" 2>/dev/null || true
-SECRET_FILE=$(umask 077 && mktemp)
-trap 'rm -f "$SECRET_FILE"' EXIT
-jq -n --slurpfile cfg ~/.docker/config.json '
-  ($cfg[0].auths["quay.io"].auth // "") as $auth
-  | if $auth == "" then error("No quay.io credential in ~/.docker/config.json") else . end
-  | {"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}
-' > "$SECRET_FILE" || exit 1
-oc create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
-  --from-file=.dockerconfigjson="$SECRET_FILE" \
-  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
-oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline --overwrite
+: "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, don't default to a personal name}"
+oc create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
+
+# This skill does NOT read your local ~/.docker/config.json automatically —
+# a skill executed by an agent that silently harvests a local registry
+# credential and pushes it into a cluster Secret is a real credential-theft
+# pattern, independently flagged in review. Create the pull-secret yourself:
+oc create secret docker-registry rhoai-pull -n "$TEST_NAMESPACE" \
+  --docker-server=quay.io \
+  --docker-username=<your-quay-username> \
+  --docker-password=<your-quay-token-or-password> \
+  --docker-email=unused@example.com
+# (or, if you already have a dockerconfigjson you trust from your own
+# secret-manager workflow — not your default Docker CLI config —
+# `oc create secret generic rhoai-pull -n "$TEST_NAMESPACE"
+# --from-file=.dockerconfigjson=<path-you-trust> --type=kubernetes.io/dockerconfigjson`)
+
+oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
 ```
 
 Verify GPU ready:
@@ -274,14 +280,31 @@ Example:
 
 ```bash
 export NOTEBOOK_REV=<full-40-char-commit-sha>   # pin the reviewed tests/manual revision — required, not "main"
-oc exec -q -n jdanek "$POD" -c smoke -- bash -lc "
-  curl -fsSL -o /tmp/gpu-test.ipynb \
-    https://raw.githubusercontent.com/opendatahub-io/notebooks/${NOTEBOOK_REV}/tests/manual/gpu-test-notebook.ipynb
+# set -e + a per-run mktemp path (not a fixed /tmp/gpu-test.ipynb): without
+# these, a failed curl leaves nbconvert executing stale content from a prior
+# run and reporting a result for the wrong revision. NOTEBOOK_REV is passed
+# as a quoted positional parameter, not interpolated into the script text.
+oc exec -q -n jdanek "$POD" -c smoke -- bash -lc '
+  set -euo pipefail
+  rev="$1"
+  tmp_nb=$(mktemp --suffix=.ipynb)
+  trap "rm -f \"$tmp_nb\"" EXIT
+  curl -fsSL -o "$tmp_nb" "https://raw.githubusercontent.com/opendatahub-io/notebooks/${rev}/tests/manual/gpu-test-notebook.ipynb"
   cd /opt/app-root/src
   python -m jupyter nbconvert --ExecutePreprocessor.timeout=1800 \
-    --to notebook --execute /tmp/gpu-test.ipynb --output /tmp/out.ipynb
-"
+    --to notebook --execute "$tmp_nb" --output /tmp/out.ipynb
+' -- "$NOTEBOOK_REV"
 ```
+
+**Accepted residual risk:** `NOTEBOOK_REV` is validated to be a full
+40-hex-character commit SHA (format only, not that it's an *approved*
+revision — a malicious SHA on some fork/branch would still pass this
+check). `tests/manual` is a fast-moving fixture directory with no
+release/signing process, and this is a personal, single-operator
+validation tool, not unattended automation — building and maintaining a
+signed-revision allowlist is disproportionate here. The SHA pin (no
+`main` fallback) plus the `set -e`/tempfile fix above are the
+proportionate mitigations; know what's pinned before running it.
 
 **Batch all 7 ARM CUDA images:**
 
@@ -338,7 +361,7 @@ Uses Kubernetes stream exec (equivalent to `oc exec -q`) if local `oc` hangs. Lo
 
 ```bash
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete machinepool \
-  --cluster $CLUSTER_NAME --name gpu-arm2 --yes
+  --cluster "$CLUSTER_NAME" gpu-arm2 --yes
 # Optional: delete cluster — see rosa-hcp-provision skill
 ```
 

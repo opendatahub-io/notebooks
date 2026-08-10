@@ -47,6 +47,12 @@ metadata:
   namespace: $NS
 spec:
   restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/arch: arm64
+  tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
   imagePullSecrets:
   - name: $PULL_SECRET
   containers:

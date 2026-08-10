@@ -144,9 +144,14 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa logs install -c $CLUSTER_NAME --wat
 ## Post-Create Setup
 
 ```bash
-# htpasswd IdP + cluster-admin
+# htpasswd IdP + cluster-admin — use --from-file, not an inline --password
+# (a literal password on the command line lands in shell history and is
+# visible to other processes via `ps` for the command's lifetime)
+HTPASSWD_FILE=$(umask 077 && mktemp)
+trap 'rm -f "$HTPASSWD_FILE"' EXIT
+htpasswd -c -B -b "$HTPASSWD_FILE" admin <pw>
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa create idp -c $CLUSTER_NAME \
-  --type htpasswd --name htpasswd --username admin --password <pw>
+  --type htpasswd --name htpasswd --from-file "$HTPASSWD_FILE"
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa grant user cluster-admin \
   --user admin --cluster $CLUSTER_NAME
 
@@ -194,13 +199,31 @@ G5g sizes available in `us-east-1` (verified via `aws ec2 describe-instance-type
 
 NVIDIA GPU Operator [platform support](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/25.3.5/platform-support.html) explicitly lists "AWS EC2 G5g instances" under supported ARM platforms.
 
+**Caveat (verified against the platform-support page directly):** GPU
+Operator 25.3.4/25.3.5's own support table lists Red Hat OpenShift only
+through **4.19** — this doc pins cluster creation to **4.21.0** (see
+`## Cluster Creation` above), which is past NVIDIA's stated support
+matrix. It demonstrably works in practice (this exact combination —
+25.3.4 + driver 580.82.07 — is what's validated throughout this doc); flag
+it rather than silently assume support, and if strict vendor support
+matters more than the specific 4.21 features this cluster needs, use OCP
+≤4.19 instead (untested here).
+
 ### Resize GPU pool (instance type is immutable)
 
 ROSA does **not** allow changing `--instance-type` on an existing machine pool. To upsize:
 
 1. Create a **new** pool with the desired type (use a new name, e.g. `gpu-arm2`).
-2. Wait for the new node `Ready` (~3–5 min).
-3. Delete the old pool — GPU Operator reschedules driver daemonset to the new node and recompiles.
+2. Wait for the new node `Ready` (~3–5 min) — **node `Ready` alone is not
+   enough**, the driver still needs ~30 min to compile on it (see
+   [nvidia-driver-compilation.md](nvidia-driver-compilation.md)).
+3. Wait for the **new pool's** driver daemonset pod to be `2/2 Ready` and
+   `nvidia.com/gpu` allocatable on that specific node — scope the check to
+   the new pool via its `hypershift.openshift.io/nodePool` label, not a
+   generic `nvidia.com/gpu.present=true` selector that could also match
+   the still-healthy *old* pool and give a false green light.
+4. Only then delete the old pool — GPU Operator reschedules driver
+   daemonset to the new node and recompiles.
 
 ```bash
 # Create bigger pool
@@ -210,6 +233,13 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa create machinepool \
 
 # Wait for node
 oc get nodes -l node.kubernetes.io/instance-type=g5g.2xlarge -w
+
+# Wait for the driver on the NEW pool specifically (not just any GPU node)
+NEW_NODE=$(oc get node -l hypershift.openshift.io/nodePool=gpu-arm2 -o json)
+[ "$(echo "$NEW_NODE" | jq '.items | length')" -eq 1 ] || { echo "ERROR: expected exactly one node in pool gpu-arm2" >&2; exit 1; }
+NEW_NODE_NAME=$(echo "$NEW_NODE" | jq -r '.items[0].metadata.name')
+oc wait --for=condition=Ready pod -l app=nvidia-driver-daemonset -n nvidia-gpu-operator --field-selector spec.nodeName="$NEW_NODE_NAME" --timeout=1800s
+oc get node "$NEW_NODE_NAME" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}{"\n"}'  # expect 1
 
 # Remove old pool (old node drains → SchedulingDisabled → gone)
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete machinepool \
@@ -223,10 +253,14 @@ On ROSA HCP the node pool label is `hypershift.openshift.io/nodePool=<pool-name>
 ### x86_64 GPU pools
 
 ```bash
-# A100 (8 GPUs, us-east-1d AZ required — see A100 doc)
+# A100 (8 GPUs, us-east-1d AZ required — see A100 doc). $PRIVATE is the
+# general cluster subnet and is NOT guaranteed to be in us-east-1d — verify
+# before use, don't assume:
+#   aws ec2 describe-subnets --subnet-ids "$A100_SUBNET" --query 'Subnets[0].AvailabilityZone'
+A100_SUBNET="${A100_SUBNET:?set to a subnet ID verified to be in us-east-1d}"
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa create machinepool \
   --cluster $CLUSTER_NAME --name gpu-x86 \
-  --instance-type p4d.24xlarge --replicas 1 --subnet $PRIVATE
+  --instance-type p4d.24xlarge --replicas 1 --subnet "$A100_SUBNET"
 ```
 
 ### After nodes join
@@ -278,21 +312,37 @@ EOF
 # unreviewed newer CSV in the v25.3 channel from installing silently).
 # Select by exact CSV match, not output order — a namespace can have more
 # than one InstallPlan and "last one" isn't necessarily "the one we pinned".
+# OLM creates the InstallPlan asynchronously after the Subscription is
+# applied, so poll for it rather than querying once.
 CSV_NAME=gpu-operator-certified.v25.3.4
-INSTALLPLAN=$(oc get installplan -n nvidia-gpu-operator -o json | \
-  jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
+INSTALLPLAN=""
+for i in $(seq 1 12); do
+  INSTALLPLAN=$(oc get installplan -n nvidia-gpu-operator -o json | \
+    jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
+  [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] && break
+  echo "waiting for InstallPlan referencing $CSV_NAME (attempt $i/12)..." >&2
+  sleep 5
+done
 [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one InstallPlan for $CSV_NAME, found: $INSTALLPLAN" >&2; exit 1; }
 oc patch installplan "$INSTALLPLAN" -n nvidia-gpu-operator --type merge -p '{"spec":{"approved":true}}'
 oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -n nvidia-gpu-operator -l operators.coreos.com/gpu-operator-certified.nvidia-gpu-operator --timeout=180s
 
 # ClusterPolicy — extract default from CSV alm-examples (empty spec{} is invalid in v25.3+)
-CSV=$(oc get csv -n nvidia-gpu-operator -o name | grep gpu-operator-certified)
-oc get $CSV -n nvidia-gpu-operator -ojsonpath='{.metadata.annotations.alm-examples}' | jq '.[0]' | oc apply -f -
+# Use $CSV_NAME directly (defined above), not a grep match — grep can hit an
+# older/replacing CSV on reruns. alm-examples can list more than one example;
+# select the ClusterPolicy one explicitly instead of blindly taking [0].
+oc get csv "$CSV_NAME" -n nvidia-gpu-operator \
+  -ojsonpath='{.metadata.annotations.alm-examples}' | \
+  jq -e '[.[] | select(.kind == "ClusterPolicy")] |
+    if length == 1 then .[0] else error("expected exactly one ClusterPolicy example, got \(length)") end' | \
+  oc apply -f -
 
 # Wait for driver to compile (builds kernel module via Driver Toolkit)
 # g5g.2xlarge: ~30 min; g5g.xlarge: often 60+ min or stall — use 1800s timeout
 oc wait --for=condition=Ready pod -l app=nvidia-driver-daemonset -n nvidia-gpu-operator --timeout=1800s
-oc get node -l nvidia.com/gpu.present=true -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}{"\n"}'  # expect 1
+GPU_NODES=$(oc get node -l nvidia.com/gpu.present=true -o json)
+[ "$(echo "$GPU_NODES" | jq '.items | length')" -gt 0 ] || { echo "ERROR: no node labeled nvidia.com/gpu.present=true" >&2; exit 1; }
+echo "$GPU_NODES" | jq -r '.items[] | "\(.metadata.name) gpu=\(.status.allocatable["nvidia.com/gpu"] // "MISSING")"'
 ```
 
 **Important:** On first deployment, the driver pod compiles NVIDIA kernel modules on the GPU node via Driver Toolkit. Docs say 5–10 min on large x86 nodes; **G5g aarch64 needs `g5g.2xlarge` in practice** (see [nvidia-driver-compilation.md](nvidia-driver-compilation.md)). Other GPU pods stay `Init:0/1` until driver is **2/2 Ready** — normal cascade. Success looks like: driver Running, `nvidia-cuda-validator` Completed, device-plugin/validator Running, `nvidia.com/gpu` allocatable.
@@ -318,39 +368,37 @@ Use when installing RHOAI pre-release on the cluster:
 - Kyverno is also useful beyond pull-secrets — see
   [cost-optimization.md](cost-optimization.md) item 5 for a mutate policy
   that shrinks RHOAI's own over-requested CPU/memory on test clusters
-  (verified working; if you don't already have Kyverno, verify the
-  manifest's checksum before applying it — it creates cluster-scoped RBAC
-  and admission webhooks:
-  ```bash
-  KYVERNO_VERSION=v1.14.4
-  curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
-  curl -fsSL -o /tmp/kyverno-checksums.txt "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/checksums.txt"
-  (cd /tmp && grep 'install.yaml$' kyverno-checksums.txt | { command -v sha256sum >/dev/null 2>&1 && sha256sum -c - || shasum -a 256 -c -; }) \
-    || { echo "ERROR: checksum verification failed, do not apply" >&2; exit 1; }
-  kubectl apply --server-side -f /tmp/kyverno-install.yaml
-  ```
-  If a future release stops publishing `checksums.txt`, vendor the
-  manifest into the repo instead of fetching it unverified, no Helm
-  needed either way).
+  (verified working; if you don't already have Kyverno, see
+  `cost-optimization.md` item 4 for the install command — an unverified
+  fetch, accepted as a known risk for this internal runbook (Kyverno's
+  `checksums.txt` doesn't cover `install.yaml`, so a checksum check here
+  wouldn't be real verification either way), plus an OLM-based
+  alternative via OperatorHub.io if you'd rather not fetch a raw
+  manifest at all — no Helm needed either way).
 
 ### Option B — Namespace secret (bare GPU Pod testing)
 
 Sufficient for [arm64 GPU smoke](../arm64-rosa-gpu-smoke/SKILL.md) without RHOAI/Kyverno:
 
 ```bash
-export TEST_NAMESPACE=jdanek
-oc create ns "$TEST_NAMESPACE" 2>/dev/null || true
-SECRET_FILE=$(umask 077 && mktemp)
-trap 'rm -f "$SECRET_FILE"' EXIT
-jq -n --slurpfile cfg ~/.docker/config.json '
-  ($cfg[0].auths["quay.io"].auth // "") as $auth
-  | if $auth == "" then error("No quay.io credential in ~/.docker/config.json") else . end
-  | {"auths":{"quay.io":{"auth":$auth},"quay.io/rhoai":{"auth":$auth}}}
-' > "$SECRET_FILE" || exit 1
-oc create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
-  --from-file=.dockerconfigjson="$SECRET_FILE" \
-  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
-oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline --overwrite
+: "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, don't default to a personal name}"
+oc create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
+
+# This skill does NOT read your local ~/.docker/config.json automatically —
+# a skill executed by an agent that silently harvests a local registry
+# credential and pushes it into a cluster Secret is a real credential-theft
+# pattern, independently flagged in review. Create the pull-secret yourself:
+oc create secret docker-registry rhoai-pull -n "$TEST_NAMESPACE" \
+  --docker-server=quay.io \
+  --docker-username=<your-quay-username> \
+  --docker-password=<your-quay-token-or-password> \
+  --docker-email=unused@example.com
+# (or, if you already have a dockerconfigjson you trust from your own
+# secret-manager workflow — not your default Docker CLI config —
+# `oc create secret generic rhoai-pull -n "$TEST_NAMESPACE"
+# --from-file=.dockerconfigjson=<path-you-trust> --type=kubernetes.io/dockerconfigjson`)
+
+oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
 ```
 
 Reference `imagePullSecrets: [rhoai-pull]` in GPU test Pods (see arm64 skill scripts).

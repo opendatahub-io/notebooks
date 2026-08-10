@@ -50,7 +50,8 @@ UnsupportedOperatorGroup
 
 The fix is an **empty `spec: {}`**:
 
-```yaml
+```bash
+cat <<EOF | oc apply -f -
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -75,17 +76,26 @@ spec:
   sourceNamespace: openshift-marketplace
   startingCSV: rhods-operator.2.25.9   # pin to the CSV discovered in step 1
   installPlanApproval: Manual
+EOF
 ```
 
 Manual approval means OLM won't silently install a newer CSV pushed to
 `stable-2.25` after you pinned this. Approve the pinned InstallPlan before
 waiting for `Succeeded` — select it by exact CSV match, not output order,
-since a namespace can have more than one InstallPlan:
+since a namespace can have more than one InstallPlan. OLM creates the
+InstallPlan asynchronously after the Subscription is applied, so poll for
+it rather than querying once:
 
 ```bash
 CSV_NAME=rhods-operator.2.25.9
-INSTALLPLAN=$(oc get installplan -n redhat-ods-operator -o json | \
-  jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
+INSTALLPLAN=""
+for i in $(seq 1 12); do
+  INSTALLPLAN=$(oc get installplan -n redhat-ods-operator -o json | \
+    jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
+  [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] && break
+  echo "waiting for InstallPlan referencing $CSV_NAME (attempt $i/12)..." >&2
+  sleep 5
+done
 [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one InstallPlan for $CSV_NAME, found: $INSTALLPLAN" >&2; exit 1; }
 oc patch installplan "$INSTALLPLAN" -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
 ```
@@ -116,7 +126,8 @@ exactly what produced the small idle resource footprint documented in
 components if your test target needs `kserve`, `datasciencepipelines`,
 etc.
 
-```yaml
+```bash
+cat <<EOF | oc apply -f -
 apiVersion: dscinitialization.opendatahub.io/v1
 kind: DSCInitialization
 metadata:
@@ -160,6 +171,7 @@ spec:
       managementState: Removed
     modelregistry:
       managementState: Removed
+EOF
 ```
 
 **The operator auto-creates a default `DSCInitialization` on install** —

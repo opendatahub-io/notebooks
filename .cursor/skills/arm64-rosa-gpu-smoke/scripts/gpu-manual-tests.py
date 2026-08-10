@@ -194,7 +194,15 @@ def create_pod(v1: client.CoreV1Api, name: str, image: str, gpu_node: str, runti
     body = client.V1Pod(
         metadata=client.V1ObjectMeta(name=name, namespace=NS),
         spec=client.V1PodSpec(
-            node_name=gpu_node,
+            # node_selector (not node_name) so the scheduler actually evaluates
+            # placement — a bare node_name assignment bypasses scheduler
+            # checks entirely, including any nvidia.com/gpu taint/toleration
+            # matching. Pinning to this specific node's hostname preserves the
+            # existing "run on this one GPU node" behavior.
+            node_selector={"kubernetes.io/hostname": gpu_node},
+            tolerations=[
+                client.V1Toleration(key="nvidia.com/gpu", operator="Exists", effect="NoSchedule"),
+            ],
             restart_policy="Never",
             automount_service_account_token=False,
             image_pull_secrets=[client.V1LocalObjectReference(name=PULL_SECRET)],
@@ -206,7 +214,11 @@ def create_pod(v1: client.CoreV1Api, name: str, image: str, gpu_node: str, runti
 
 
 def delete_pod(v1: client.CoreV1Api, name: str) -> None:
-    v1.delete_namespaced_pod(name, NS, grace_period_seconds=0, _request_timeout=30)
+    try:
+        v1.delete_namespaced_pod(name, NS, grace_period_seconds=0, _request_timeout=30)
+    except client.ApiException as e:
+        if e.status != 404:
+            raise
 
 
 def run_notebook(v1: client.CoreV1Api, pod: str, nb: str, allow_errors: bool) -> tuple[int, str]:
@@ -281,8 +293,14 @@ def run_image(v1: client.CoreV1Api, gpu_node: str, spec: ImageSpec) -> list[tupl
     name = pod_name(spec.label)
     results: list[tuple[str, str, bool, str]] = []
     print(f"\n=== {spec.label} ({spec.image}) pod={name} ===", flush=True)
-    create_pod(v1, name, spec.image, gpu_node, spec.runtime)
     try:
+        # create_pod is inside try/finally: if the client-side request times
+        # out after the server already persisted the Pod (a real race, not
+        # hypothetical), delete_pod in finally still runs instead of leaking
+        # a "sleep infinity" pod that holds a GPU indefinitely. delete_pod
+        # tolerates "doesn't exist" so a create_pod failure before the pod
+        # was ever persisted doesn't mask the original error either.
+        create_pod(v1, name, spec.image, gpu_node, spec.runtime)
         wait_ready(v1, name)
         if spec.minimal_gpu_only:
             print("  -> minimal gpu checks (nvidia-smi, nvcc)", flush=True)
