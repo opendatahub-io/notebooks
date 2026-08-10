@@ -16,6 +16,9 @@ from odh_ci_agent.mcp_github import GITHUB_ACTIONS_READ_TOOLS
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 DEFAULT_TAIL_LINES = 500
 MAX_TAIL_LINES = 2_000
+# CI summary artifact fallback is for small log bundles; reject larger ZIPs before
+# buffering raw bytes and an additional base64 representation in tool output.
+MAX_ARTIFACT_BYTES = 10 * 1024 * 1024
 
 ACTIONS_GET_METHODS = (
     "get_workflow",
@@ -105,6 +108,18 @@ def _workflow_run_id_from_payload(payload: object) -> int:
     if not isinstance(run_id, int):
         raise TypeError("Expected workflow run response to include integer id")
     return run_id
+
+
+def _artifact_size_in_bytes(artifact: dict[str, object]) -> int:
+    size = artifact.get("size_in_bytes")
+    if not isinstance(size, int) or size < 0:
+        raise TypeError("Expected workflow artifact response to include non-negative integer size_in_bytes")
+    return size
+
+
+def _reject_oversized_artifact(size_in_bytes: int) -> None:
+    if size_in_bytes > MAX_ARTIFACT_BYTES:
+        raise ValueError(f"Artifact size {size_in_bytes} bytes exceeds the {MAX_ARTIFACT_BYTES} byte limit")
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,13 +233,18 @@ class GitHubActionsClient:
             }
         """
 
-        self._artifact_in_current_run(artifact_id)
+        artifact = self._artifact_in_current_run(artifact_id)
+        declared_size = _artifact_size_in_bytes(artifact)
+        _reject_oversized_artifact(declared_size)
         zip_bytes = gh_api_bytes(f"{self._actions_base}/artifacts/{artifact_id}/zip")
+        actual_size = len(zip_bytes)
+        if actual_size > MAX_ARTIFACT_BYTES:
+            raise ValueError(f"Artifact download size {actual_size} bytes exceeds the {MAX_ARTIFACT_BYTES} byte limit")
         return {
             "artifact_id": artifact_id,
             "content_type": "application/zip",
             "encoding": "base64",
-            "size_bytes": len(zip_bytes),
+            "size_bytes": actual_size,
             "content_base64": base64.standard_b64encode(zip_bytes).decode("ascii"),
         }
 

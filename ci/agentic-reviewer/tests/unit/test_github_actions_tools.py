@@ -8,7 +8,7 @@ from google.antigravity.tools.tool_runner import ToolWithSchema
 from odh_ci_agent import github_actions_tools
 
 JOB_IN_CURRENT_RUN = {"id": 7, "name": "build", "run_id": 99}
-ARTIFACT_IN_CURRENT_RUN = {"id": 55, "workflow_run": {"id": 99}}
+ARTIFACT_IN_CURRENT_RUN = {"id": 55, "workflow_run": {"id": 99}, "size_in_bytes": 128}
 
 
 def _client() -> github_actions_tools.GitHubActionsClient:
@@ -135,10 +135,45 @@ def test_download_workflow_run_artifact_rejects_other_run() -> None:
 
     with patch(
         "odh_ci_agent.github_actions_tools.gh_api_json",
-        return_value={"id": 55, "workflow_run": {"id": 100}},
+        return_value={"id": 55, "workflow_run": {"id": 100}, "size_in_bytes": 128},
     ):
         with pytest.raises(ValueError, match="outside the current run"):
             client.actions_get(method="download_workflow_run_artifact", resource_id="55")
+
+
+def test_download_workflow_run_artifact_rejects_metadata_over_limit() -> None:
+    client = _client()
+    over_limit = github_actions_tools.MAX_ARTIFACT_BYTES + 1
+
+    with patch(
+        "odh_ci_agent.github_actions_tools.gh_api_json",
+        return_value={"id": 55, "workflow_run": {"id": 99}, "size_in_bytes": over_limit},
+    ):
+        with (
+            patch("odh_ci_agent.github_actions_tools.gh_api_bytes") as mock_bytes,
+            pytest.raises(ValueError, match=r"exceeds the .* byte limit"),
+        ):
+            client.actions_get(method="download_workflow_run_artifact", resource_id="55")
+
+    mock_bytes.assert_not_called()
+
+
+def test_download_workflow_run_artifact_rejects_actual_download_over_limit() -> None:
+    client = _client()
+    over_limit = b"x" * (github_actions_tools.MAX_ARTIFACT_BYTES + 1)
+
+    with (
+        patch(
+            "odh_ci_agent.github_actions_tools.gh_api_json",
+            return_value={"id": 55, "workflow_run": {"id": 99}, "size_in_bytes": 128},
+        ),
+        patch(
+            "odh_ci_agent.github_actions_tools.gh_api_bytes",
+            return_value=over_limit,
+        ),
+        pytest.raises(ValueError, match="Artifact download size"),
+    ):
+        client.actions_get(method="download_workflow_run_artifact", resource_id="55")
 
 
 def test_actions_get_rejects_unknown_method() -> None:
