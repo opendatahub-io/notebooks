@@ -1,6 +1,6 @@
 ---
 name: rosa-hcp-provision
-description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — sizing, Kyverno request-shrinking; spot-instances.md — spot instance status/blockers, not usable yet), installing a released RHOAI version (install-rhoai.md), and installing an EA/pre-release RHOAI build via custom CatalogSource + Kyverno + Gateway API/Service Mesh 3 (install-prerelease.md). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
+description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — sizing, Kyverno request-shrinking; spot-instances.md — spot instance status/blockers, not usable yet), installing a released RHOAI version (install-rhoai.md), installing an EA/pre-release RHOAI build via custom CatalogSource + Kyverno + Gateway API/Service Mesh 3 (install-prerelease.md), and self-hosted S3-compatible object storage on arm64 (object_storage.md — Garage/RustFS/SeaweedFS/S4 compared, arm64 image + restricted-v2 SCC fixes verified). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
 ---
 
 # ROSA HCP Cluster Provisioning
@@ -474,6 +474,15 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete operator-roles \
 ```
 
 Machine pools (CPU + GPU) are removed with the cluster — no separate `delete machinepool` needed for full teardown.
+
+## Object Storage
+
+Need a self-hosted S3-compatible store on the cluster (not RHOAI-related)?
+See [object_storage.md](object_storage.md) — Garage, RustFS, SeaweedFS, and
+S4 compared and verified on this cluster's arm64 workers, including the
+exact chart overrides needed for arm64 images and `restricted-v2` SCC
+compliance, and two cross-cutting gotchas (CRI-O short-name resolution,
+Docker Hub anonymous pull rate limits) that hit more than one of them.
 
 ## Troubleshooting
 
