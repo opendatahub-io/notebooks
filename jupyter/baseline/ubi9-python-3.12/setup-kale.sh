@@ -1,5 +1,7 @@
 #!/bin/bash
-set -euo pipefail
+# Sourced by start-notebook.sh — do not use `set -u` here (nounset leaks into the
+# parent shell and breaks optional NOTEBOOK_* env vars). Match datascience: set -x only.
+set -x
 
 # Runtime configuration for Kubeflow Kale JupyterLab extension
 # This script configures Kale to connect to KFP by reading Elyra runtime config

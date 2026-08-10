@@ -1,5 +1,7 @@
 #!/bin/bash
-set -euo pipefail
+# Sourced by start-notebook.sh — do not use `set -u` here (nounset leaks into the
+# parent shell and breaks optional NOTEBOOK_* env vars). Match datascience: set -x only.
+set -x
 
 # Set the elyra config on the right path
 # RHOAIENG-15626: Always copy our custom config to ensure it's up to date (install -D creates directory if needed)

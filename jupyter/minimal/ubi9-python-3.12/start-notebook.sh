@@ -15,18 +15,19 @@ fi
 # Initialize notebooks arguments array
 NOTEBOOK_PROGRAM_ARGS=()
 
-# Set default ServerApp.port value if NOTEBOOK_PORT variable is defined
-if [ -n "${NOTEBOOK_PORT}" ]; then
+# Set default ServerApp.port value if NOTEBOOK_PORT variable is defined.
+# Use ${VAR:-} so these checks stay safe if a sourced setup script enables nounset.
+if [ -n "${NOTEBOOK_PORT:-}" ]; then
     NOTEBOOK_PROGRAM_ARGS+=("--ServerApp.port=${NOTEBOOK_PORT}")
 fi
 
 # Set default ServerApp.base_url value if NOTEBOOK_BASE_URL variable is defined
-if [ -n "${NOTEBOOK_BASE_URL}" ]; then
+if [ -n "${NOTEBOOK_BASE_URL:-}" ]; then
     NOTEBOOK_PROGRAM_ARGS+=("--ServerApp.base_url=${NOTEBOOK_BASE_URL}")
 fi
 
 # Set default ServerApp.root_dir value if NOTEBOOK_ROOT_DIR variable is defined
-if [ -n "${NOTEBOOK_ROOT_DIR}" ]; then
+if [ -n "${NOTEBOOK_ROOT_DIR:-}" ]; then
     NOTEBOOK_PROGRAM_ARGS+=("--ServerApp.root_dir=${NOTEBOOK_ROOT_DIR}")
 else
     NOTEBOOK_PROGRAM_ARGS+=("--ServerApp.root_dir=${HOME}")
@@ -34,7 +35,7 @@ fi
 
 # Add additional arguments if NOTEBOOK_ARGS variable is defined
 # Word-splitting is intentional: NOTEBOOK_ARGS is newline- or space-separated (see kustomize statefulset.yaml)
-if [ -n "${NOTEBOOK_ARGS}" ]; then
+if [ -n "${NOTEBOOK_ARGS:-}" ]; then
     while IFS= read -r line || [ -n "${line}" ]; do
         if [ -n "${line}" ]; then
             read -ra _line_args <<< "${line}"
