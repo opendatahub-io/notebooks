@@ -54,7 +54,7 @@ printf '%s\n' "    oc get nodes -l hypershift.openshift.io/nodePool=$NEW_POOL -w
 printf '%s\n' "    NEW_NODE=\$(oc get node -l hypershift.openshift.io/nodePool=$NEW_POOL -o json)"
 printf '%s\n' "    [ \"\$(echo \"\$NEW_NODE\" | jq '.items | length')\" -eq 1 ] || { echo \"ERROR: expected exactly one node in pool $NEW_POOL\" >&2; exit 1; }"
 printf '%s\n' "    NEW_NODE_NAME=\$(echo \"\$NEW_NODE\" | jq -r '.items[0].metadata.name')"
-printf '%s\n' "    oc wait --for=condition=Ready pod -l app=nvidia-driver-daemonset -n nvidia-gpu-operator --field-selector spec.nodeName=\"\$NEW_NODE_NAME\" --timeout=1800s"
+printf '%s\n' "    oc wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --field-selector spec.nodeName=\"\$NEW_NODE_NAME\" --timeout=1800s"
 printf '%s\n' "    oc get node \"\$NEW_NODE_NAME\" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}{\"\n\"}'  # expect 1"
 printf '%s\n' ""
 printf '%s\n' "Only after nvidia.com/gpu is allocatable on that node, delete the old pool:"

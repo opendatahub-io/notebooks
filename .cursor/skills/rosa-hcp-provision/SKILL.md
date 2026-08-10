@@ -1,6 +1,6 @@
 ---
 name: rosa-hcp-provision
-description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — sizing, Kyverno request-shrinking; spot-instances.md — spot instance status/blockers, not usable yet), and installing a released RHOAI version (install-rhoai.md). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
+description: Provision and deprovision ROSA HCP clusters on the shared RHOAI AWS account (rh-aws-saml-login, org 7081269). Covers cluster create, G5g pools (prefer 2xlarge), GPU Operator, namespace pull-secret for quay.io/rhoai, pool resize, bring-up/teardown timing, cost optimization (cost-optimization.md — sizing, Kyverno request-shrinking; spot-instances.md — spot instance status/blockers, not usable yet), installing a released RHOAI version (install-rhoai.md), and installing an EA/pre-release RHOAI build via custom CatalogSource + Kyverno + Gateway API/Service Mesh 3 (install-prerelease.md). GPU image test procedure lives in arm64-rosa-gpu-smoke skill.
 ---
 
 # ROSA HCP Cluster Provisioning
@@ -44,6 +44,7 @@ deciding a real cluster is the right tool versus local `kind` or
 | `rh-aws-saml-login` | `pipx install rh-aws-saml-login` | STS creds via Kerberos+SAML |
 | `ocm` | `brew install ocm` | OCM org verification (optional) |
 | `oc` | [mirror](https://access.redhat.com/downloads/content/290) | Cluster interaction post-create |
+| `helm` | `brew install helm` | **Required for the Pre-Release Images (Kyverno) path only** — the raw `kubectl apply -f install.yaml` route hits `FailedCreate`/SCC errors on ROSA HCP (upstream manifest hardcodes `runAsUser: 65534`, outside the namespace's allowed UID range); Helm's `--set ...securityContext=null` flags (see Option A below) are the documented way around it. Without `helm`, the fallback is manually patching `runAsUser`/`runAsGroup` out of each Kyverno controller Deployment post-apply — works, but do this only if you can't install `helm`. |
 
 Valid Kerberos ticket required: `kinit <user>@IPA.REDHAT.COM`
 
@@ -238,7 +239,7 @@ oc get nodes -l node.kubernetes.io/instance-type=g5g.2xlarge -w
 NEW_NODE=$(oc get node -l hypershift.openshift.io/nodePool=gpu-arm2 -o json)
 [ "$(echo "$NEW_NODE" | jq '.items | length')" -eq 1 ] || { echo "ERROR: expected exactly one node in pool gpu-arm2" >&2; exit 1; }
 NEW_NODE_NAME=$(echo "$NEW_NODE" | jq -r '.items[0].metadata.name')
-oc wait --for=condition=Ready pod -l app=nvidia-driver-daemonset -n nvidia-gpu-operator --field-selector spec.nodeName="$NEW_NODE_NAME" --timeout=1800s
+oc wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --field-selector spec.nodeName="$NEW_NODE_NAME" --timeout=1800s
 oc get node "$NEW_NODE_NAME" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}{"\n"}'  # expect 1
 
 # Remove old pool (old node drains → SchedulingDisabled → gone)
@@ -339,7 +340,7 @@ oc get csv "$CSV_NAME" -n nvidia-gpu-operator \
 
 # Wait for driver to compile (builds kernel module via Driver Toolkit)
 # g5g.2xlarge: ~30 min; g5g.xlarge: often 60+ min or stall — use 1800s timeout
-oc wait --for=condition=Ready pod -l app=nvidia-driver-daemonset -n nvidia-gpu-operator --timeout=1800s
+oc wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
 GPU_NODES=$(oc get node -l nvidia.com/gpu.present=true -o json)
 [ "$(echo "$GPU_NODES" | jq '.items | length')" -gt 0 ] || { echo "ERROR: no node labeled nvidia.com/gpu.present=true" >&2; exit 1; }
 echo "$GPU_NODES" | jq -r '.items[] | "\(.metadata.name) gpu=\(.status.allocatable["nvidia.com/gpu"] // "MISSING")"'
@@ -360,21 +361,19 @@ The rest of this section is for pre-release builds specifically.
 
 ROSA-hosted rewrites the global pull-secret — `quay.io/rhoai` is **not** in the default cluster secret.
 
-### Option A — Kyverno (full RHOAI install testing)
+### Option A — full EA/pre-release install (Kyverno + Gateway API)
 
-Use when installing RHOAI pre-release on the cluster:
-- [Installing RHOAI pre-release on ROSA-hosted](https://docs.google.com/document/d/12FoMt1_djxEkhuAsRjU40aIxnlo-0SATK-E4qihYQdQ)
-- `helm install kyverno kyverno/kyverno -n kyverno --create-namespace` + ClusterPolicies
-- Kyverno is also useful beyond pull-secrets — see
-  [cost-optimization.md](cost-optimization.md) item 5 for a mutate policy
-  that shrinks RHOAI's own over-requested CPU/memory on test clusters
-  (verified working; if you don't already have Kyverno, see
-  `cost-optimization.md` item 4 for the install command — an unverified
-  fetch, accepted as a known risk for this internal runbook (Kyverno's
-  `checksums.txt` doesn't cover `install.yaml`, so a checksum check here
-  wouldn't be real verification either way), plus an OLM-based
-  alternative via OperatorHub.io if you'd rather not fetch a raw
-  manifest at all — no Helm needed either way).
+**See [install-prerelease.md](install-prerelease.md)** for the full,
+verified recipe: Kyverno install (SCC-compatible Helm flags), the
+`OCPBUGS-23901` pull-secret workaround, the 3 ClusterPolicies (with a
+correction to the source doc's over-broad `replace-image-registry`
+regex), custom `CatalogSource` gotchas, and — new for RHOAI 3.3+
+dashboard builds — installing Red Hat OpenShift Service Mesh 3 to provide
+the Gateway API controller the dashboard now depends on.
+
+Kyverno is also useful beyond pull-secrets — see
+[cost-optimization.md](cost-optimization.md) item 5 for a mutate policy
+that shrinks RHOAI's own over-requested CPU/memory on test clusters.
 
 ### Option B — Namespace secret (bare GPU Pod testing)
 

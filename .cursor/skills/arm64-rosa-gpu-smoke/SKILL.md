@@ -232,7 +232,7 @@ oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
 Verify GPU ready:
 
 ```bash
-oc wait --for=condition=Ready pod -l app=nvidia-driver-daemonset -n nvidia-gpu-operator --timeout=1800s
+oc wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
 oc get node -l nvidia.com/gpu.present=true \
   -o jsonpath='{.items[0].metadata.name}{" gpu="}{.items[0].status.allocatable.nvidia\.com/gpu}{" type="}{.items[0].metadata.labels.node\.kubernetes\.io/instance-type}{"\n"}'
 ```

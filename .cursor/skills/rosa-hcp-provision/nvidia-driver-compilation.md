@@ -46,6 +46,13 @@ Same kernel and driver branch; only instance size differed.
 
 `make -s -j` produces little log output while gcc runs — on **xlarge**, long silence + memory pressure usually means **stall**, not “almost done”. On **2xlarge**, occasional gcc warnings are a good sign compile is moving.
 
+**Another data point (2026-08-10, `g5g.2xlarge`, fresh cluster):** driver
+reached `2/2 Ready` in **~6 min**, well under the ~30 min figure above.
+Treat this as evidence the ~30 min number varies by image-layer cache
+state (this run may have hit a warm registry/layer cache), not as a
+replacement for it — plan for ~30 min, be pleasantly surprised if it's
+faster.
+
 **Quick mitigations (still compile on-node):**
 
 - **Default to `g5g.2xlarge`** for any G5g pool that will run DTK on first install

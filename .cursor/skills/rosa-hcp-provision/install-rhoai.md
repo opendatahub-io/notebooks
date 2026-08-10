@@ -1,10 +1,12 @@
 # Installing a released RHOAI version (GA OperatorHub channel)
 
 This covers installing an **already-released** RHOAI version via the
-standard `redhat-operators` OperatorHub catalog. If you need a
-**pre-release** build instead, see [SKILL.md](SKILL.md)'s
-`## Pre-Release Images (Pull Secret)` section — that path needs Kyverno
-and a namespace pull-secret for `quay.io/rhoai`; this one needs neither.
+standard `redhat-operators` OperatorHub catalog. If you need an
+**EA/pre-release** build instead (not yet on any GA channel), see
+[install-prerelease.md](install-prerelease.md) — that path needs Kyverno,
+a namespace pull-secret for `quay.io/rhoai`, a custom `CatalogSource`, and
+(for RHOAI 3.3+ dashboard builds) Red Hat OpenShift Service Mesh 3 for
+Gateway API; this doc needs none of that.
 
 Validated end-to-end on a real ROSA HCP cluster (2026-08-08): RHOAI 2.25.9,
 `dashboard`+`workbenches` only, from operator subscribe to dashboard pods
