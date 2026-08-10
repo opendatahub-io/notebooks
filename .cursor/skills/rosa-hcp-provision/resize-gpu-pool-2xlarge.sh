@@ -25,9 +25,7 @@ run aws sts get-caller-identity | jq -e '.Account == "585132637328"'
 echo "==> Current machine pools"
 run rosa list machinepools -c "$CLUSTER_NAME"
 
-describe_output=$(run rosa describe machinepool "$NEW_POOL" -c "$CLUSTER_NAME" 2>&1)
-describe_status=$?
-if [ "$describe_status" -eq 0 ]; then
+if describe_output=$(run rosa describe machinepool "$NEW_POOL" -c "$CLUSTER_NAME" 2>&1); then
   echo "Pool $NEW_POOL already exists; skipping create"
 elif echo "$describe_output" | grep -qi 'not found'; then
   echo "==> Creating $NEW_POOL ($INSTANCE_TYPE)"
