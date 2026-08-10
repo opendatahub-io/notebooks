@@ -31,7 +31,14 @@ NS = os.environ.get("TEST_NAMESPACE", "jdanek")
 PULL_SECRET = os.environ.get("PULL_SECRET", "rhoai-pull")
 CONTAINER = "smoke"
 TAG = os.environ.get("TAG", "rhoai-3.6-ea.1")
-CONTEXT = os.environ.get("KUBECONFIG_CONTEXT", None)
+CONTEXT = os.environ.get("CLUSTER_CONTEXT")
+if not CONTEXT:
+    sys.exit(
+        "CLUSTER_CONTEXT must be set to the exact kubeconfig context name "
+        "(e.g. $(oc config current-context) captured right after login) — "
+        "never fall back to the ambient current-context, which is shared, "
+        "mutable, machine-wide state another process can change mid-session"
+    )
 NB_TIMEOUT = 1800
 POD_TIMEOUT = 900
 
@@ -90,10 +97,7 @@ IMAGES: tuple[ImageSpec, ...] = (
 
 
 def load_client() -> tuple[client.CoreV1Api, str]:
-    kube_args = {"config_file": str(Path.home() / ".kube/config")}
-    if CONTEXT:
-        kube_args["context"] = CONTEXT
-    config.load_kube_config(**kube_args)
+    config.load_kube_config(config_file=str(Path.home() / ".kube/config"), context=CONTEXT)
     v1 = client.CoreV1Api()
     gpu_node = v1.list_node(
         label_selector="nvidia.com/gpu.present=true", _request_timeout=30

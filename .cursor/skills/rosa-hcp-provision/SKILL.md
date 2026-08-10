@@ -62,6 +62,38 @@ Without `--`, flags like `--sts` are consumed by `rh-aws-saml-login` itself (`No
 
 Static `~/.aws/credentials` keys are almost always stale. Never rely on them — always use the SAML wrapper.
 
+## Critical: always pass `--context`, never rely on the ambient current-context
+
+`~/.kube/config`'s `current-context` is global, mutable, shared-machine state —
+**not scoped to this skill's session**. A real incident this happened live: mid-session,
+`oc` silently started hitting a completely different cluster (a Konflux
+prod cluster, `stone-prod-p02`) because *something else* on the same
+machine changed `current-context` in between commands — commands
+returned `Forbidden` errors that looked like a permissions problem but
+were actually "wrong cluster entirely." Assume you are not the only
+process touching this machine's kubeconfig, ever — a parallel agent, a
+teammate's shell, or your own earlier `oc login` to a different cluster
+can all silently redirect a bare `oc` invocation.
+
+**The fix costs one extra flag per command and closes the entire failure
+class:** capture the exact context name once, right after login (see
+`## Post-Create Setup` below), then pass `--context "$CLUSTER_CONTEXT"`
+on **every single `oc` invocation** for the rest of the session — never a
+bare `oc get`/`apply`/`delete`/`patch`. Before any destructive or
+mutating sequence (deleting a Subscription, patching a CatalogSource,
+scaling a Deployment to 0, etc.), run a cheap verify-first check:
+
+```bash
+oc --context "$CLUSTER_CONTEXT" whoami --show-server
+# MUST print https://api.<your-cluster-domain>... — if it doesn't match
+# the cluster you think you're on, STOP before running anything else.
+```
+
+This mirrors the same discipline the `run-rhoai-in-kind` skill already
+uses for the local kind cluster (`--context kind-kind -n <ns>`, verify
+`server=127.0.0.1:6443` before mutating) — the principle is identical,
+just with a dynamically-named context here instead of a fixed one.
+
 ## Authentication
 
 ### Login sequence
@@ -158,6 +190,15 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa grant user cluster-admin \
 
 # oc login (get API URL from describe output)
 oc login -u admin https://api.<domain-prefix>.xxxx.p3.openshiftapps.com:443
+
+# Capture the exact context name NOW, right after login, before anything
+# else on this shared machine can change current-context out from under
+# you. Every oc command for the rest of this session — in this skill and
+# in your own shell — should pass --context "$CLUSTER_CONTEXT" explicitly
+# rather than relying on the ambient current-context (see
+# "## Critical: always pass --context" above for why this matters).
+export CLUSTER_CONTEXT=$(oc config current-context)
+oc --context "$CLUSTER_CONTEXT" whoami --show-server   # sanity check before proceeding
 ```
 
 ## GPU Machine Pools
@@ -233,14 +274,14 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa create machinepool \
   --instance-type g5g.2xlarge --replicas 1 --subnet $PRIVATE --yes
 
 # Wait for node
-oc get nodes -l node.kubernetes.io/instance-type=g5g.2xlarge -w
+oc --context "$CLUSTER_CONTEXT" get nodes -l node.kubernetes.io/instance-type=g5g.2xlarge -w
 
 # Wait for the driver on the NEW pool specifically (not just any GPU node)
-NEW_NODE=$(oc get node -l hypershift.openshift.io/nodePool=gpu-arm2 -o json)
+NEW_NODE=$(oc --context "$CLUSTER_CONTEXT" get node -l hypershift.openshift.io/nodePool=gpu-arm2 -o json)
 [ "$(echo "$NEW_NODE" | jq '.items | length')" -eq 1 ] || { echo "ERROR: expected exactly one node in pool gpu-arm2" >&2; exit 1; }
 NEW_NODE_NAME=$(echo "$NEW_NODE" | jq -r '.items[0].metadata.name')
-oc wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --field-selector spec.nodeName="$NEW_NODE_NAME" --timeout=1800s
-oc get node "$NEW_NODE_NAME" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}{"\n"}'  # expect 1
+oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --field-selector spec.nodeName="$NEW_NODE_NAME" --timeout=1800s
+oc --context "$CLUSTER_CONTEXT" get node "$NEW_NODE_NAME" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}{"\n"}'  # expect 1
 
 # Remove old pool (old node drains → SchedulingDisabled → gone)
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete machinepool \
@@ -275,8 +316,8 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa create machinepool \
 
 ```bash
 # NFD
-oc create ns openshift-nfd
-cat <<EOF | oc apply -f -
+oc --context "$CLUSTER_CONTEXT" create ns openshift-nfd
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata: {name: openshift-nfd, namespace: openshift-nfd}
@@ -287,8 +328,8 @@ kind: Subscription
 metadata: {name: nfd, namespace: openshift-nfd}
 spec: {channel: stable, name: nfd, source: redhat-operators, sourceNamespace: openshift-marketplace}
 EOF
-oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -n openshift-nfd -l operators.coreos.com/nfd.openshift-nfd --timeout=120s
-cat <<EOF | oc apply -f -
+oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded csv -n openshift-nfd -l operators.coreos.com/nfd.openshift-nfd --timeout=120s
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: nfd.openshift.io/v1
 kind: NodeFeatureDiscovery
 metadata: {name: nfd-instance, namespace: openshift-nfd}
@@ -296,8 +337,8 @@ spec: {operand: {servicePort: 12000}, workerConfig: {configData: ""}}
 EOF
 
 # NVIDIA GPU Operator
-oc create ns nvidia-gpu-operator
-cat <<EOF | oc apply -f -
+oc --context "$CLUSTER_CONTEXT" create ns nvidia-gpu-operator
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata: {name: nvidia-gpu-operator, namespace: nvidia-gpu-operator}
@@ -318,30 +359,30 @@ EOF
 CSV_NAME=gpu-operator-certified.v25.3.4
 INSTALLPLAN=""
 for i in $(seq 1 12); do
-  INSTALLPLAN=$(oc get installplan -n nvidia-gpu-operator -o json | \
+  INSTALLPLAN=$(oc --context "$CLUSTER_CONTEXT" get installplan -n nvidia-gpu-operator -o json | \
     jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
   [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] && break
   echo "waiting for InstallPlan referencing $CSV_NAME (attempt $i/12)..." >&2
   sleep 5
 done
 [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one InstallPlan for $CSV_NAME, found: $INSTALLPLAN" >&2; exit 1; }
-oc patch installplan "$INSTALLPLAN" -n nvidia-gpu-operator --type merge -p '{"spec":{"approved":true}}'
-oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -n nvidia-gpu-operator -l operators.coreos.com/gpu-operator-certified.nvidia-gpu-operator --timeout=180s
+oc --context "$CLUSTER_CONTEXT" patch installplan "$INSTALLPLAN" -n nvidia-gpu-operator --type merge -p '{"spec":{"approved":true}}'
+oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded csv -n nvidia-gpu-operator -l operators.coreos.com/gpu-operator-certified.nvidia-gpu-operator --timeout=180s
 
 # ClusterPolicy — extract default from CSV alm-examples (empty spec{} is invalid in v25.3+)
 # Use $CSV_NAME directly (defined above), not a grep match — grep can hit an
 # older/replacing CSV on reruns. alm-examples can list more than one example;
 # select the ClusterPolicy one explicitly instead of blindly taking [0].
-oc get csv "$CSV_NAME" -n nvidia-gpu-operator \
+oc --context "$CLUSTER_CONTEXT" get csv "$CSV_NAME" -n nvidia-gpu-operator \
   -ojsonpath='{.metadata.annotations.alm-examples}' | \
   jq -e '[.[] | select(.kind == "ClusterPolicy")] |
     if length == 1 then .[0] else error("expected exactly one ClusterPolicy example, got \(length)") end' | \
-  oc apply -f -
+  oc --context "$CLUSTER_CONTEXT" apply -f -
 
 # Wait for driver to compile (builds kernel module via Driver Toolkit)
 # g5g.2xlarge: ~30 min; g5g.xlarge: often 60+ min or stall — use 1800s timeout
-oc wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
-GPU_NODES=$(oc get node -l nvidia.com/gpu.present=true -o json)
+oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
+GPU_NODES=$(oc --context "$CLUSTER_CONTEXT" get node -l nvidia.com/gpu.present=true -o json)
 [ "$(echo "$GPU_NODES" | jq '.items | length')" -gt 0 ] || { echo "ERROR: no node labeled nvidia.com/gpu.present=true" >&2; exit 1; }
 echo "$GPU_NODES" | jq -r '.items[] | "\(.metadata.name) gpu=\(.status.allocatable["nvidia.com/gpu"] // "MISSING")"'
 ```
@@ -381,23 +422,23 @@ Sufficient for [arm64 GPU smoke](../arm64-rosa-gpu-smoke/SKILL.md) without RHOAI
 
 ```bash
 : "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, don't default to a personal name}"
-oc create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
+oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
 
 # This skill does NOT read your local ~/.docker/config.json automatically —
 # a skill executed by an agent that silently harvests a local registry
 # credential and pushes it into a cluster Secret is a real credential-theft
 # pattern, independently flagged in review. Create the pull-secret yourself:
-oc create secret docker-registry rhoai-pull -n "$TEST_NAMESPACE" \
+oc --context "$CLUSTER_CONTEXT" create secret docker-registry rhoai-pull -n "$TEST_NAMESPACE" \
   --docker-server=quay.io \
   --docker-username=<your-quay-username> \
   --docker-password=<your-quay-token-or-password> \
   --docker-email=unused@example.com
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
-# `oc create secret generic rhoai-pull -n "$TEST_NAMESPACE"
+# `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
 # --from-file=.dockerconfigjson=<path-you-trust> --type=kubernetes.io/dockerconfigjson`)
 
-oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
+oc --context "$CLUSTER_CONTEXT" label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
 ```
 
 Reference `imagePullSecrets: [rhoai-pull]` in GPU test Pods (see arm64 skill scripts).
@@ -462,6 +503,7 @@ Machine pools (CPU + GPU) are removed with the cluster — no separate `delete m
 | `rh-aws-saml-login` output format | Use `--output env` for shell eval, or wrap command with `-- cmd args` |
 | `delete operator-roles` prompts / `invalid mode: EOF` | Add `--mode auto --yes` — see [deprovision.md](deprovision.md) |
 | Cluster gone but IAM roles remain | `rosa delete operator-roles --prefix <prefix> --mode auto --yes` |
+| `oc` command returns `Forbidden`/unexpected resources that look like a permissions bug | Check `oc --context "$CLUSTER_CONTEXT" whoami --show-server` first — this is often "wrong cluster entirely" because something else on a shared machine changed kubeconfig's `current-context`, not an actual permissions problem. Always pass `--context "$CLUSTER_CONTEXT"` explicitly (see `## Critical: always pass --context` above) |
 
 ## Reference Docs (fetched via gws)
 

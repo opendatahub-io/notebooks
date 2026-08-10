@@ -150,24 +150,32 @@ Two environments available:
 
 ```bash
 oc login --web "https://<api-server>:6443"
+# Capture the exact context name immediately — this is a SECOND, DIFFERENT
+# cluster from the ROSA one used elsewhere in this doc. Never rely on
+# ambient current-context for either; always pass --context explicitly
+# (see rosa-hcp-provision/SKILL.md's "Critical: always pass --context"
+# section for why — a real incident had oc silently hit the wrong cluster
+# mid-session because something else on the same machine changed it).
+export RDU2_CONTEXT=$(oc config current-context)
+oc --context "$RDU2_CONTEXT" whoami --show-server   # sanity check
 ```
 
 (The real rdu2 API server hostname is internal-only — get it from whoever
 grants you cluster access. Don't use `--insecure-skip-tls-verify`; it
 disables certificate validation for all subsequent API calls.)
 
-**Important:** RHOAI 3.5 images on this cluster are **amd64-only** (`registry.redhat.io`). To test arm64 EA images, create a pull secret for `quay.io/rhoai` (copy from ROSA cluster or personal auth):
+**Important:** RHOAI 3.5 images on this cluster are **amd64-only** (`registry.redhat.io`). To test arm64 EA images, create a pull secret for `quay.io/rhoai` (copy from ROSA cluster or personal auth). `$CLUSTER_CONTEXT` here is the ROSA cluster's context captured in `## Cluster prerequisites` below — set that up first if you haven't:
 
 ```bash
-oc create ns jdanek --dry-run=client -o yaml | oc apply -f -
-# Get auth from ROSA cluster context (or personal docker config)
+oc --context "$RDU2_CONTEXT" create ns jdanek --dry-run=client -o yaml | oc --context "$RDU2_CONTEXT" apply -f -
+# Get auth from the ROSA cluster context (or personal docker config)
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
-oc get secret rhoai-pull -n jdanek --context="<ROSA-context>" \
+oc get secret rhoai-pull -n jdanek --context="$CLUSTER_CONTEXT" \
   -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d > "$SECRET_FILE"
-oc create secret generic rhoai-pull -n jdanek \
+oc --context "$RDU2_CONTEXT" create secret generic rhoai-pull -n jdanek \
   --from-file=.dockerconfigjson="$SECRET_FILE" \
-  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
+  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc --context "$RDU2_CONTEXT" apply -f -
 ```
 
 Then deploy pods with `imagePullSecrets: [{name: rhoai-pull}]` and `nodeName: nvd-srv-18.nvidia.eng.rdu2.redhat.com`.
@@ -209,31 +217,35 @@ See [rosa-hcp-provision skill](../rosa-hcp-provision/SKILL.md):
 3. **Pull secret** for `quay.io/rhoai` in test namespace (ROSA global pull-secret lacks rhoai)
 
 ```bash
+# CLUSTER_CONTEXT: this is the ROSA cluster from rosa-hcp-provision/SKILL.md
+# — capture it there right after login and reuse the same value here rather
+# than relying on ambient current-context.
+: "${CLUSTER_CONTEXT:?Set CLUSTER_CONTEXT to the ROSA cluster's exact kubeconfig context}"
 : "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, don't default to a personal name}"
-oc create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
+oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
 
 # This skill does NOT read your local ~/.docker/config.json automatically —
 # a skill executed by an agent that silently harvests a local registry
 # credential and pushes it into a cluster Secret is a real credential-theft
 # pattern, independently flagged in review. Create the pull-secret yourself:
-oc create secret docker-registry rhoai-pull -n "$TEST_NAMESPACE" \
+oc --context "$CLUSTER_CONTEXT" create secret docker-registry rhoai-pull -n "$TEST_NAMESPACE" \
   --docker-server=quay.io \
   --docker-username=<your-quay-username> \
   --docker-password=<your-quay-token-or-password> \
   --docker-email=unused@example.com
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
-# `oc create secret generic rhoai-pull -n "$TEST_NAMESPACE"
+# `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
 # --from-file=.dockerconfigjson=<path-you-trust> --type=kubernetes.io/dockerconfigjson`)
 
-oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
+oc --context "$CLUSTER_CONTEXT" label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
 ```
 
 Verify GPU ready:
 
 ```bash
-oc wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
-oc get node -l nvidia.com/gpu.present=true \
+oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
+oc --context "$CLUSTER_CONTEXT" get node -l nvidia.com/gpu.present=true \
   -o jsonpath='{.items[0].metadata.name}{" gpu="}{.items[0].status.allocatable.nvidia\.com/gpu}{" type="}{.items[0].metadata.labels.node\.kubernetes\.io/instance-type}{"\n"}'
 ```
 
@@ -245,6 +257,7 @@ One Pod per image, pinned to GPU node, sequential (single GPU).
 cd <notebooks-repo>
 export TAG=rhoai-3.6-ea.1
 export NS=jdanek
+export CLUSTER_CONTEXT   # already set above — the script requires it explicitly
 .cursor/skills/arm64-rosa-gpu-smoke/scripts/gpu-smoke-pod.sh \
   quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:$TAG
 ```
@@ -284,7 +297,7 @@ export NOTEBOOK_REV=<full-40-char-commit-sha>   # pin the reviewed tests/manual 
 # these, a failed curl leaves nbconvert executing stale content from a prior
 # run and reporting a result for the wrong revision. NOTEBOOK_REV is passed
 # as a quoted positional parameter, not interpolated into the script text.
-oc exec -q -n jdanek "$POD" -c smoke -- bash -lc '
+oc --context "$CLUSTER_CONTEXT" exec -q -n jdanek "$POD" -c smoke -- bash -lc '
   set -euo pipefail
   rev="$1"
   tmp_nb=$(mktemp --suffix=.ipynb)
@@ -312,7 +325,7 @@ proportionate mitigations; know what's pinned before running it.
 cd <notebooks-repo>
 export TAG=rhoai-3.6-ea.1
 export TEST_NAMESPACE=jdanek
-export KUBECONFIG_CONTEXT='default/api-<cluster>-n953-p3-openshiftapps-com:443/admin'
+export CLUSTER_CONTEXT   # already set (see "Cluster prerequisites" above) — required, no ambient fallback
 export NOTEBOOK_REV=<full-40-char-commit-sha>   # required — see Phase 3b example above
 uv run .cursor/skills/arm64-rosa-gpu-smoke/scripts/gpu-manual-tests.py
 # Single image:

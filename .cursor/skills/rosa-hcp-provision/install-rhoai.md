@@ -12,15 +12,30 @@ Validated end-to-end on a real ROSA HCP cluster (2026-08-08): RHOAI 2.25.9,
 `dashboard`+`workbenches` only, from operator subscribe to dashboard pods
 `Running` in ~2-4 minutes.
 
+## 0. Pin the cluster context — do this before anything else
+
+`~/.kube/config`'s `current-context` is shared, mutable, machine-wide
+state — never rely on it implicitly. Capture it once and pass it
+explicitly on every `oc` command below (see
+[SKILL.md](SKILL.md#critical-always-pass---context-never-rely-on-the-ambient-current-context)
+for why: a real incident had `oc` silently hit a different cluster
+mid-session because something else on the same machine changed
+`current-context`):
+
+```bash
+export CLUSTER_CONTEXT=$(oc config current-context)
+oc --context "$CLUSTER_CONTEXT" whoami --show-server   # sanity check
+```
+
 ## 1. Discover the exact channel/CSV for your target version
 
 ```bash
-oc get packagemanifest rhods-operator -o jsonpath='{.status.channels[*].name}'
+oc --context "$CLUSTER_CONTEXT" get packagemanifest rhods-operator -o jsonpath='{.status.channels[*].name}'
 # e.g.: stable stable-2.10 stable-2.13 stable-2.16 stable-2.19 stable-2.22
 #       stable-2.25 stable-3.3 stable-3.4 stable-3.x eus-2.16 eus-2.25 eus-2.8
 #       fast fast-3.x alpha beta ...
 
-oc get packagemanifest rhods-operator -o json | \
+oc --context "$CLUSTER_CONTEXT" get packagemanifest rhods-operator -o json | \
   jq -r '.status.channels[] | select(.name=="stable-2.25") | .currentCSV'
 # rhods-operator.2.25.9
 ```
@@ -30,7 +45,7 @@ earlier patch that's still present in the channel, select it explicitly
 from `.entries[]` instead:
 
 ```bash
-oc get packagemanifest rhods-operator -o json | \
+oc --context "$CLUSTER_CONTEXT" get packagemanifest rhods-operator -o json | \
   jq -r '.status.channels[] | select(.name=="stable-2.25") | .entries[] | select(.name=="rhods-operator.2.25.9") | .name'
 ```
 
@@ -53,7 +68,7 @@ UnsupportedOperatorGroup
 The fix is an **empty `spec: {}`**:
 
 ```bash
-cat <<EOF | oc apply -f -
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -92,14 +107,14 @@ it rather than querying once:
 CSV_NAME=rhods-operator.2.25.9
 INSTALLPLAN=""
 for i in $(seq 1 12); do
-  INSTALLPLAN=$(oc get installplan -n redhat-ods-operator -o json | \
+  INSTALLPLAN=$(oc --context "$CLUSTER_CONTEXT" get installplan -n redhat-ods-operator -o json | \
     jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
   [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] && break
   echo "waiting for InstallPlan referencing $CSV_NAME (attempt $i/12)..." >&2
   sleep 5
 done
 [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one InstallPlan for $CSV_NAME, found: $INSTALLPLAN" >&2; exit 1; }
-oc patch installplan "$INSTALLPLAN" -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
+oc --context "$CLUSTER_CONTEXT" patch installplan "$INSTALLPLAN" -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
 ```
 
 **If a `Subscription`/CSV was already created against the wrong
@@ -107,9 +122,9 @@ oc patch installplan "$INSTALLPLAN" -n redhat-ods-operator --type merge -p '{"sp
 doesn't retry a `Failed` CSV automatically. Delete and recreate:
 
 ```bash
-oc delete subscription rhods-operator -n redhat-ods-operator
-oc delete csv rhods-operator.<version> -n redhat-ods-operator
-oc delete installplan -n redhat-ods-operator --all
+oc --context "$CLUSTER_CONTEXT" delete subscription rhods-operator -n redhat-ods-operator
+oc --context "$CLUSTER_CONTEXT" delete csv rhods-operator.<version> -n redhat-ods-operator
+oc --context "$CLUSTER_CONTEXT" delete installplan -n redhat-ods-operator --all
 # then re-apply the Subscription above
 ```
 
@@ -117,7 +132,7 @@ Wait for `Succeeded` (`-w` only streams — it neither blocks until the
 condition nor times out, so use `oc wait` for anything scripted):
 
 ```bash
-oc wait --for=jsonpath='{.status.phase}'=Succeeded csv/rhods-operator.2.25.9 -n redhat-ods-operator --timeout=300s
+oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded csv/rhods-operator.2.25.9 -n redhat-ods-operator --timeout=300s
 ```
 
 ## 3. Minimal DSC/DSCI for IDE/spawn/clone-focused testing
@@ -129,7 +144,7 @@ components if your test target needs `kserve`, `datasciencepipelines`,
 etc.
 
 ```bash
-cat <<EOF | oc apply -f -
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: dscinitialization.opendatahub.io/v1
 kind: DSCInitialization
 metadata:
@@ -192,8 +207,8 @@ anything's wrong.
 ## 4. Confirm it's up
 
 ```bash
-oc get pods -n redhat-ods-applications
-oc get route -n redhat-ods-applications rhods-dashboard
+oc --context "$CLUSTER_CONTEXT" get pods -n redhat-ods-applications
+oc --context "$CLUSTER_CONTEXT" get route -n redhat-ods-applications rhods-dashboard
 ```
 
 Dashboard route host looks like

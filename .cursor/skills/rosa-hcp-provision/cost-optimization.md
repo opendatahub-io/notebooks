@@ -72,9 +72,11 @@ An earlier pass at this analysis used `oc adm top` and wrongly concluded
 the cluster could shrink to a 4 vCPU/16 GiB node — it can't, on CPU alone,
 without also addressing RHOAI's own request defaults (item 4).
 
-Always compute real floors via:
+Always compute real floors via (pass `--context "$CLUSTER_CONTEXT"` —
+see [SKILL.md](SKILL.md#critical-always-pass---context-never-rely-on-the-ambient-current-context)
+for why never to rely on the ambient current-context):
 ```bash
-oc get pods -A -o json | python3 -c '
+oc --context "$CLUSTER_CONTEXT" get pods -A -o json | python3 -c '
 import json, sys
 SUFFIXES = {"n":1e-9,"u":1e-6,"m":1e-3,"k":1e3,"K":1e3,"M":1e6,"G":1e9,
             "T":1e12,"P":1e15,"E":1e18,"Ki":2**10,"Mi":2**20,"Gi":2**30,
@@ -140,8 +142,8 @@ KYVERNO_VERSION=v1.14.4
 # way it wouldn't be real verification, and it applies cluster-scoped
 # CRDs/RBAC/webhooks with your privileges, so know what you're running.
 curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
-kubectl apply --server-side -f /tmp/kyverno-install.yaml
-kubectl wait --for=condition=Ready pod -l app.kubernetes.io/part-of=kyverno -n kyverno --timeout=120s
+kubectl --context "$CLUSTER_CONTEXT" apply --server-side -f /tmp/kyverno-install.yaml
+kubectl --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/part-of=kyverno -n kyverno --timeout=120s
 ```
 
 **Alternative: install via OLM instead of a raw manifest.** OperatorHub.io's

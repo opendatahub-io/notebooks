@@ -11,6 +11,21 @@ Validated end-to-end on a real ROSA HCP cluster (`jd-arm64-36e1`, OCP
 4.21.0, 2026-08-10): RHOAI 3.6.0-ea.1, `dashboard`+`workbenches`, arm64
 (`m6g.2xlarge`) workers + a `g5g.2xlarge` GPU pool.
 
+## 0. Pin the cluster context — do this before anything else
+
+`~/.kube/config`'s `current-context` is shared, mutable, machine-wide
+state — never rely on it implicitly. Capture it once and pass it
+explicitly on every `oc` command below (see
+[SKILL.md](SKILL.md#critical-always-pass---context-never-rely-on-the-ambient-current-context)
+for why — a real incident had `oc` silently hit a different cluster
+mid-session because something else on the same machine changed
+`current-context`):
+
+```bash
+export CLUSTER_CONTEXT=$(oc config current-context)
+oc --context "$CLUSTER_CONTEXT" whoami --show-server   # sanity check
+```
+
 ## 1. Finding the latest EA build
 
 Search Slack `#rhoai-build-notifications` for `"CI Build is available for
@@ -76,7 +91,7 @@ incompatible fields on all 4 controller Deployments
 `kyverno-cleanup-controller`, `kyverno-reports-controller`):
 
 ```bash
-oc patch deployment <name> -n kyverno --type=json -p='
+oc --context "$CLUSTER_CONTEXT" patch deployment <name> -n kyverno --type=json -p='
 [{"op":"remove","path":"/spec/template/spec/containers/0/securityContext/runAsUser"},
  {"op":"remove","path":"/spec/template/spec/containers/0/securityContext/runAsGroup"}]'
 ```
@@ -89,9 +104,9 @@ webhook — check events, don't just sleep blindly:
 
 ```bash
 for i in $(seq 1 30); do
-  n=$(oc get endpoints kyverno-svc -n kyverno -o jsonpath='{.subsets[*].addresses[*].ip}' | wc -w)
+  n=$(oc --context "$CLUSTER_CONTEXT" get endpoints kyverno-svc -n kyverno -o jsonpath='{.subsets[*].addresses[*].ip}' | wc -w)
   [ "$n" -gt 0 ] && break
-  oc get events -n kyverno --sort-by=.lastTimestamp | tail -5
+  oc --context "$CLUSTER_CONTEXT" get events -n kyverno --sort-by=.lastTimestamp | tail -5
   sleep 10
 done
 ```
@@ -103,7 +118,7 @@ get/list/watch/create/update/patch/delete `secrets` (needed by the
 `sync-secrets` policy below):
 
 ```bash
-cat <<EOF | oc apply -f -
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -137,9 +152,9 @@ jq -n --slurpfile cfg ~/.docker/config.json '
       "registry.redhat.io":{"auth":$redhat}
     }}
 ' > "$SECRET_FILE"
-oc create secret generic pull-secret-quay -n openshift-config \
+oc --context "$CLUSTER_CONTEXT" create secret generic pull-secret-quay -n openshift-config \
   --from-file=.dockerconfigjson="$SECRET_FILE" \
-  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc apply -f -
+  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc --context "$CLUSTER_CONTEXT" apply -f -
 ```
 
 **If the cached `quay.io/rhoai` robot credential is dead** (`"Could not
@@ -165,7 +180,7 @@ path. Confirmed via `skopeo inspect --raw` that the original
 `^registry\.redhat\.io/rhoai/` instead**:
 
 ```bash
-cat <<EOF | oc apply -f -
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -302,7 +317,7 @@ corrected YAML document instead; that's reliable.
 
 **If `dashboard-redirect` (or anything else pulling from
 `registry.redhat.io`) shows `ImagePullBackOff` after applying policies**:
-check `oc get pods -n redhat-ods-applications`, then verify the
+check `oc --context "$CLUSTER_CONTEXT" get pods -n redhat-ods-applications`, then verify the
 *original* (pre-mutation) image reference with `skopeo inspect --raw`
 against both its stated registry and any registry a Kyverno policy might
 have rewritten it to — don't assume an upstream image is actually
@@ -317,7 +332,7 @@ whichever policy is live at the moment of recreation. Confirm recovery
 with:
 
 ```bash
-oc get imagestream <name> -n redhat-ods-applications -o json | \
+oc --context "$CLUSTER_CONTEXT" get imagestream <name> -n redhat-ods-applications -o json | \
   jq -r '.spec.tags[] | "\(.name) -> \(.from.name)"'
 ```
 
@@ -338,7 +353,7 @@ had actively corrupted needed a manual delete to recover).
 ## 7. CatalogSource pointing at the EA build
 
 ```bash
-cat <<EOF | oc apply -f -
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -358,9 +373,9 @@ reliable path was patching the SA directly, then deleting the pod to pick
 it up:
 
 ```bash
-oc patch sa rhoai-fbc-fragment-3-6-ea-1 -n openshift-marketplace \
+oc --context "$CLUSTER_CONTEXT" patch sa rhoai-fbc-fragment-3-6-ea-1 -n openshift-marketplace \
   --type merge -p '{"imagePullSecrets":[{"name":"pull-secret-quay"}]}'
-oc delete pod -n openshift-marketplace -l olm.catalogSource=rhoai-fbc-fragment-3-6-ea-1
+oc --context "$CLUSTER_CONTEXT" delete pod -n openshift-marketplace -l olm.catalogSource=rhoai-fbc-fragment-3-6-ea-1
 ```
 
 **Channel/CSV discovery gotcha**: dump **all** channel entries, don't
@@ -368,7 +383,7 @@ trust `currentCSV` alone — a fresh CatalogSource's packagemanifest
 projection can lag and under-report the real head:
 
 ```bash
-oc get packagemanifest rhods-operator -o json | \
+oc --context "$CLUSTER_CONTEXT" get packagemanifest rhods-operator -o json | \
   jq '.status.channels[] | {channel: .name, entries: [.entries[]?.name]}'
 ```
 
@@ -389,8 +404,8 @@ does **not** self-retry — delete and recreate the Subscription (and any
 partial CSV) once the ClusterPolicies are confirmed `Ready`:
 
 ```bash
-oc delete subscription rhods-operator -n redhat-ods-operator
-oc delete csv rhods-operator.<version> -n redhat-ods-operator --ignore-not-found
+oc --context "$CLUSTER_CONTEXT" delete subscription rhods-operator -n redhat-ods-operator
+oc --context "$CLUSTER_CONTEXT" delete csv rhods-operator.<version> -n redhat-ods-operator --ignore-not-found
 # then re-apply the Subscription
 ```
 
@@ -421,7 +436,7 @@ how healthy `dashboard-redirect` is.
 - `TechPreviewNoUpgrade` is **not** the fix. The `GatewayAPI`/
   `GatewayAPIController` feature gates are already **enabled by default**
   on 4.21 — check with
-  `oc get featuregate cluster -o json | jq '.status.featureGates[] | select(.version=="4.21.0")'`
+  `oc --context "$CLUSTER_CONTEXT" get featuregate cluster -o json | jq '.status.featureGates[] | select(.version=="4.21.0")'`
   (not `.status.featureGates[0]`, which can silently pick the wrong
   version entry and make you think the gates are disabled when they
   aren't). Also, `FeatureGate` is locked on ROSA HCP guest clusters
@@ -441,7 +456,7 @@ isn't EA-specific either — it's a real prerequisite of RHOAI's newer
 Gateway-API-based dashboard architecture in general.
 
 ```bash
-cat <<EOF | oc apply -f -
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -454,7 +469,7 @@ spec:
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
 EOF
-oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -n openshift-operators -l operators.coreos.com/servicemeshoperator3.openshift-operators --timeout=300s
+oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded csv -n openshift-operators -l operators.coreos.com/servicemeshoperator3.openshift-operators --timeout=300s
 ```
 
 **Gotcha 1 — don't pin `startingCSV`.** A first attempt pinning
@@ -481,13 +496,13 @@ auto-creates an `Istio` CR (`sailoperator.io/v1`, name matching the
 shortly after, and:
 
 ```bash
-oc get dsc default-dsc -o jsonpath='{.status.phase}{"\n"}'   # Ready
+oc --context "$CLUSTER_CONTEXT" get dsc default-dsc -o jsonpath='{.status.phase}{"\n"}'   # Ready
 ```
 
 **Dashboard URL note**: the Gateway-fronted dashboard is served from a
 *different* hostname shape than the classic Route —
 `https://rh-ai.apps.<cluster-domain>` (read it from
-`oc get gatewayconfig default-gateway -o jsonpath='{.status.domain}'`),
+`oc --context "$CLUSTER_CONTEXT" get gatewayconfig default-gateway -o jsonpath='{.status.domain}'`),
 not the `https://rhods-dashboard-redhat-ods-applications.apps.<cluster-domain>`
 Route hostname `install-rhoai.md` documents for the GA/Route-based path.
 

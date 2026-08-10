@@ -6,6 +6,7 @@ set -euo pipefail
 : "${TAG:=rhoai-3.6-ea.1}"
 : "${PULL_SECRET:=rhoai-pull}"
 : "${TIMEOUT:=900}"
+: "${CLUSTER_CONTEXT:?Set CLUSTER_CONTEXT to the exact kubeconfig context (e.g. \$(oc config current-context) captured right after login) — never rely on the ambient current-context, which another process on this machine can change mid-session}"
 
 IMG="${1:?usage: $0 <full-image-ref>}"
 hash_cmd() { command -v sha256sum >/dev/null 2>&1 && sha256sum || shasum -a 256; }
@@ -29,7 +30,7 @@ else
 fi
 
 cleanup() {
-  oc delete pod "$POD" -n "$NS" --ignore-not-found --wait=true --timeout=30s >/dev/null 2>&1 || true
+  oc --context "$CLUSTER_CONTEXT" delete pod "$POD" -n "$NS" --ignore-not-found --wait=true --timeout=30s >/dev/null 2>&1 || true
   sleep 3
 }
 trap cleanup EXIT
@@ -39,7 +40,7 @@ if [[ "$IS_RUNTIME" -eq 0 ]]; then
   CMD='null'
 fi
 
-cat <<EOF | oc apply -f -
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: v1
 kind: Pod
 metadata:
@@ -84,12 +85,12 @@ fi)
 EOF
 
 echo "==> Waiting for pod $POD (image pull may take several minutes)..."
-if ! oc wait --for=condition=Ready "pod/$POD" -n "$NS" --timeout="${TIMEOUT}s"; then
+if ! oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready "pod/$POD" -n "$NS" --timeout="${TIMEOUT}s"; then
   echo "FAIL: pod not ready" >&2
-  oc describe pod "$POD" -n "$NS" | tail -20
+  oc --context "$CLUSTER_CONTEXT" describe pod "$POD" -n "$NS" | tail -20
   exit 1
 fi
-SCHEDULED_NODE=$(oc get pod "$POD" -n "$NS" -o jsonpath='{.spec.nodeName}')
+SCHEDULED_NODE=$(oc --context "$CLUSTER_CONTEXT" get pod "$POD" -n "$NS" -o jsonpath='{.spec.nodeName}')
 echo "==> Scheduled on node: $SCHEDULED_NODE"
 
 case "$LIB" in
@@ -128,5 +129,5 @@ print("SMOKE_PASS")'
 esac
 
 echo "==> Running GPU check ($LIB)..."
-timeout "${EXEC_TIMEOUT:-$TIMEOUT}s" oc exec -n "$NS" "$POD" -c smoke -- python -c "$PY"
+timeout "${EXEC_TIMEOUT:-$TIMEOUT}s" oc --context "$CLUSTER_CONTEXT" exec -n "$NS" "$POD" -c smoke -- python -c "$PY"
 echo "==> PASS $IMG"

@@ -120,8 +120,9 @@ export OPENSHIFT_VERSION="4.21.0"
 export TARGET_ARCH="aarch64"              # not arm64
 export PULL_SECRET_FILE="${PULL_SECRET_FILE:-$HOME/.docker/config.json}"
 
-# DTK image for this OCP release + arch
-export DRIVER_TOOLKIT_IMAGE=$(oc adm release info \
+# DTK image for this OCP release + arch (pass --context "$CLUSTER_CONTEXT" —
+# see SKILL.md's "Critical: always pass --context" section)
+export DRIVER_TOOLKIT_IMAGE=$(oc --context "$CLUSTER_CONTEXT" adm release info \
   --image-for=driver-toolkit -a "$PULL_SECRET_FILE" \
   quay.io/openshift-release-dev/ocp-release:${OPENSHIFT_VERSION}-${TARGET_ARCH})
 
