@@ -4,6 +4,7 @@ kind: Kustomization
 namePrefix: jupyter-baseline-ubi9-python-3-12-
 resources:
   - service.yaml
+  - serviceaccount.yaml
   - statefulset.yaml
 images:
   - name: quay.io/opendatahub/workbench-images

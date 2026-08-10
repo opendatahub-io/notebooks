@@ -15,6 +15,9 @@ spec:
     metadata:
       labels: {}
     spec:
+      serviceAccountName: notebook
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: notebook
           image: quay.io/opendatahub/workbench-images:jupyter-baseline-ubi9-python-3.12
