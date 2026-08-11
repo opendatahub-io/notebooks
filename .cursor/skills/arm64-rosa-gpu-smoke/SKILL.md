@@ -300,6 +300,11 @@ oc --context "$CLUSTER_CONTEXT" label namespace "$TEST_NAMESPACE" pod-security.k
 Verify GPU ready:
 
 ```bash
+# 1800s timeout, no early-exit on crash-loop — `oc wait --for=condition=Ready`
+# has no "give up early" concept, so a genuinely stuck/crash-looping driver
+# pod blocks this for the full 30 min before you see any signal. Tail
+# events in a second terminal if it seems to be taking too long:
+#   oc --context "$CLUSTER_CONTEXT" get events -n nvidia-gpu-operator -w
 oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
 GPU_NODE=$(oc --context "$CLUSTER_CONTEXT" get node -l nvidia.com/gpu.present=true,kubernetes.io/arch=arm64 -o json)
 [ "$(echo "$GPU_NODE" | jq '.items | length')" -gt 0 ] || { echo "ERROR: no arm64 GPU node found (mixed-arch cluster? check nodeSelector)" >&2; exit 1; }

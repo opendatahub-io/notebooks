@@ -48,5 +48,41 @@ fi
 
 oc --context "$CLUSTER_CONTEXT" patch installplan "$INSTALLPLAN" -n "$NAMESPACE" --type merge -p '{"spec":{"approved":true}}'
 
-oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded "csv/${CSV_NAME}" -n "$NAMESPACE" --timeout=300s
-echo "csv/${CSV_NAME} in ${NAMESPACE} reached Succeeded" >&2
+# Race Succeeded against Failed instead of a single `--for=Succeeded` wait.
+# A CSV has a well-known binary failure signal (status.phase can reach
+# "Failed", distinct from "Succeeded") — unlike most resources (e.g. a
+# Pod, which has no single "give up early" condition), so this doesn't
+# need a heuristic: whichever phase is reached first is authoritative, and
+# the other wait is killed instead of blocking for the rest of the
+# 300s timeout after the outcome is already known. Portable to macOS's
+# stock bash 3.2 (no `wait -n`, which needs bash 4.3+) via a small polling
+# loop over two flag files instead.
+RESULT_DIR=$(mktemp -d)
+trap 'rm -rf "$RESULT_DIR"; kill "$SUCCEEDED_PID" "$FAILED_PID" 2>/dev/null || true' EXIT
+
+(oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded "csv/${CSV_NAME}" -n "$NAMESPACE" --timeout=300s >/dev/null 2>&1 \
+  && touch "$RESULT_DIR/succeeded") &
+SUCCEEDED_PID=$!
+
+(oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Failed "csv/${CSV_NAME}" -n "$NAMESPACE" --timeout=300s >/dev/null 2>&1 \
+  && touch "$RESULT_DIR/failed") &
+FAILED_PID=$!
+
+while true; do
+  if [ -f "$RESULT_DIR/succeeded" ]; then
+    kill "$FAILED_PID" 2>/dev/null || true
+    echo "csv/${CSV_NAME} in ${NAMESPACE} reached Succeeded" >&2
+    exit 0
+  fi
+  if [ -f "$RESULT_DIR/failed" ]; then
+    kill "$SUCCEEDED_PID" 2>/dev/null || true
+    echo "ERROR: csv/${CSV_NAME} in ${NAMESPACE} reached Failed" >&2
+    oc --context "$CLUSTER_CONTEXT" get csv "$CSV_NAME" -n "$NAMESPACE" -o jsonpath='{.status.message}{"\n"}' >&2 || true
+    exit 1
+  fi
+  if ! kill -0 "$SUCCEEDED_PID" 2>/dev/null && ! kill -0 "$FAILED_PID" 2>/dev/null; then
+    echo "ERROR: csv/${CSV_NAME} in ${NAMESPACE} reached neither Succeeded nor Failed within 300s" >&2
+    exit 1
+  fi
+  sleep 2
+done

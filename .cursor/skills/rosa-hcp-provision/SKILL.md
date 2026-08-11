@@ -296,6 +296,9 @@ oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready node \
 NEW_NODE=$(oc --context "$CLUSTER_CONTEXT" get node -l hypershift.openshift.io/nodePool=gpu-arm2 -o json)
 [ "$(echo "$NEW_NODE" | jq '.items | length')" -eq 1 ] || { echo "ERROR: expected exactly one node in pool gpu-arm2" >&2; exit 1; }
 NEW_NODE_NAME=$(echo "$NEW_NODE" | jq -r '.items[0].metadata.name')
+# 1800s timeout, no early-exit on crash-loop — see the "no concept of give
+# up early" note under "After nodes join" below; tail events in a second
+# terminal if this seems to be taking too long.
 oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --field-selector spec.nodeName="$NEW_NODE_NAME" --timeout=1800s
 NEW_NODE_GPU=$(oc --context "$CLUSTER_CONTEXT" get node "$NEW_NODE_NAME" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}')
 [ "$NEW_NODE_GPU" = "1" ] || { echo "ERROR: $NEW_NODE_NAME has no usable GPU (allocatable=$NEW_NODE_GPU) — do not delete the old pool" >&2; exit 1; }
@@ -392,6 +395,20 @@ oc --context "$CLUSTER_CONTEXT" get csv "$CSV_NAME" -n nvidia-gpu-operator \
 
 # Wait for driver to compile (builds kernel module via Driver Toolkit)
 # g5g.2xlarge: ~30 min; g5g.xlarge: often 60+ min or stall — use 1800s timeout
+#
+# `oc wait --for=condition=Ready` has no concept of "give up early" — if the
+# driver pod crash-loops instead of becoming Ready, this blocks for the full
+# 1800s before you get any signal, not just until the failure is visible.
+# For a wait this long, tail events in a second terminal while it runs
+# instead of trusting a silent wait:
+#   oc --context "$CLUSTER_CONTEXT" get events -n nvidia-gpu-operator -w
+# A CrashLoopBackOff/ImagePullBackOff/FailedScheduling reason means the pod
+# won't recover on its own — kill the wait and go straight to `oc describe
+# pod` rather than burning the rest of the timeout. Not automating this
+# kill-on-failure: there's no single "failed" condition for a Pod the way a
+# CSV has status.phase=Failed (see wait-for-csv.sh's Ready-vs-Failed race
+# below), so a generic heuristic here risks false-positive-killing a wait
+# that would have recovered.
 oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
 GPU_NODES=$(oc --context "$CLUSTER_CONTEXT" get node -l nvidia.com/gpu.present=true -o json)
 [ "$(echo "$GPU_NODES" | jq '.items | length')" -gt 0 ] || { echo "ERROR: no node labeled nvidia.com/gpu.present=true" >&2; exit 1; }
