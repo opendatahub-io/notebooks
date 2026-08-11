@@ -8,6 +8,12 @@ import pytest
 from tests.containers import base_image_test, conftest, docker_utils
 
 
+def _is_lean_runtime_image(runtime_image: conftest.Image) -> bool:
+    """True for phase-1 baseline / minimal runtimes without the datascience stack."""
+    name = runtime_image.labels["name"]
+    return "-minimal-" in name or "-baseline-" in name
+
+
 class TestRuntimeImage:
     """Tests for runtime images in this repository."""
 
@@ -40,8 +46,8 @@ class TestRuntimeImage:
 
     @allure.description("Check that feast CLI works correctly (imports pyarrow._s3fs transitively).")
     def test_feast_version(self, runtime_image: conftest.Image) -> None:
-        if "-minimal-" in runtime_image.labels["name"]:
-            pytest.skip("Feast is not installed in minimal runtime images.")
+        if _is_lean_runtime_image(runtime_image):
+            pytest.skip("Feast is not installed in minimal/baseline runtime images.")
 
         with docker_utils.running_container(runtime_image.name) as container:
             exit_code, output_bytes = container.exec(["/bin/sh", "-c", "feast version"])
@@ -52,8 +58,8 @@ class TestRuntimeImage:
     @allure.issue("AIPCC-13675")
     @allure.description("Force UPB and run protobuf endian/packed roundtrips (catches silent s390x decode bugs).")
     def test_protobuf_upb_roundtrips(self, runtime_image: conftest.Image) -> None:
-        if "-minimal-" in runtime_image.labels["name"]:
-            pytest.skip("Protobuf/feast stack is not the focus of minimal runtime images.")
+        if _is_lean_runtime_image(runtime_image):
+            pytest.skip("Protobuf/feast stack is not the focus of minimal/baseline runtime images.")
 
         script = pathlib.Path(__file__).resolve().parents[1] / "workbenches" / "jupyterlab" / "protobuf_testunits.py"
         with docker_utils.running_container(runtime_image.name) as container:
@@ -72,8 +78,8 @@ class TestRuntimeImage:
 
     @allure.description("Check that MLflow module imports and core functions are available.")
     def test_mlflow_import(self, runtime_image: conftest.Image) -> None:
-        if "-minimal-" in runtime_image.labels["name"]:
-            pytest.skip("MLflow is not installed in minimal runtime images.")
+        if _is_lean_runtime_image(runtime_image):
+            pytest.skip("MLflow is not installed in minimal/baseline runtime images.")
 
         def check_mlflow():
             # ruff: noqa: PLC0415 `import` should be at the top-level of a file
