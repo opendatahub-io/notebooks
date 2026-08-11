@@ -38,7 +38,9 @@ NAMESPACE="$2"
 shift 2
 
 SECRET_FILE=$(umask 077 && mktemp)
-trap 'rm -f "$SECRET_FILE"' EXIT
+AUTH_FILE=""
+cleanup() { rm -f "$SECRET_FILE" "${AUTH_FILE:-}"; }
+trap cleanup EXIT
 
 AUTHS_JSON="{}"
 ANY_HOST_CONFIGURED=false

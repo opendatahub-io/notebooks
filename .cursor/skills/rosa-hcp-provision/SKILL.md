@@ -402,13 +402,17 @@ oc --context "$CLUSTER_CONTEXT" get csv "$CSV_NAME" -n nvidia-gpu-operator \
 # For a wait this long, tail events in a second terminal while it runs
 # instead of trusting a silent wait:
 #   oc --context "$CLUSTER_CONTEXT" get events -n nvidia-gpu-operator -w
-# A CrashLoopBackOff/ImagePullBackOff/FailedScheduling reason means the pod
-# won't recover on its own — kill the wait and go straight to `oc describe
-# pod` rather than burning the rest of the timeout. Not automating this
-# kill-on-failure: there's no single "failed" condition for a Pod the way a
-# CSV has status.phase=Failed (see wait-for-csv.sh's Ready-vs-Failed race
-# below), so a generic heuristic here risks false-positive-killing a wait
-# that would have recovered.
+# A CrashLoopBackOff/ImagePullBackOff/FailedScheduling reason is worth
+# investigating right away with `oc describe pod` and the events above —
+# but treat it as a signal to look, not a signal to kill the wait. These
+# reasons can clear on their own (backoff/retry, a transient registry
+# hiccup), so only abort early if the pattern looks genuinely stuck (e.g.
+# restart count climbing without bound, or a definitively unrecoverable
+# reason like a bad image reference). Not automating this decision: there's
+# no single "failed" condition for a Pod the way a CSV has
+# status.phase=Failed (see wait-for-csv.sh's Ready-vs-Failed race below),
+# so a generic kill-on-failure heuristic here risks false-positive-killing
+# a wait that would have recovered.
 oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
 GPU_NODES=$(oc --context "$CLUSTER_CONTEXT" get node -l nvidia.com/gpu.present=true -o json)
 [ "$(echo "$GPU_NODES" | jq '.items | length')" -gt 0 ] || { echo "ERROR: no node labeled nvidia.com/gpu.present=true" >&2; exit 1; }
@@ -499,8 +503,11 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete cluster --cluster "$CLUSTER_
 # step 2) rather than assuming --yes above already finished the job.
 CLUSTER_GONE=false
 for i in $(seq 1 30); do
-  if clusters="$(rh-aws-saml-login iaps-rhods-odh-dev -- rosa list clusters)" \
-     && ! printf '%s\n' "$clusters" | grep -Fq "$CLUSTER_NAME"; then
+  # Exact-name match via JSON, not `grep -F` (a substring match — a cluster
+  # named e.g. "foobar" would spuriously count as a match for CLUSTER_NAME
+  # "foo" and mask this one already being gone).
+  if clusters="$(rh-aws-saml-login iaps-rhods-odh-dev -- rosa list clusters --output json)" \
+     && ! printf '%s' "$clusters" | jq -e --arg name "$CLUSTER_NAME" 'any(.[]; .name == $name)' >/dev/null 2>&1; then
     CLUSTER_GONE=true
     break
   fi

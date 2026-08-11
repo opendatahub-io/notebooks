@@ -48,6 +48,25 @@ fi
 
 oc --context "$CLUSTER_CONTEXT" patch installplan "$INSTALLPLAN" -n "$NAMESPACE" --type merge -p '{"spec":{"approved":true}}'
 
+# OLM creates the CSV object asynchronously after the InstallPlan is
+# approved. Poll for it to exist before starting the Succeeded-vs-Failed
+# race below — some oc/kubectl client versions return NotFound immediately
+# for `oc wait` against a not-yet-existing resource instead of waiting for
+# it to appear, which would otherwise let the race start handicapped.
+CSV_EXISTS=false
+for i in $(seq 1 12); do
+  if oc --context "$CLUSTER_CONTEXT" get csv "$CSV_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+    CSV_EXISTS=true
+    break
+  fi
+  echo "Waiting for csv/${CSV_NAME} to be created (attempt ${i}/12)..." >&2
+  sleep 5
+done
+if [ "$CSV_EXISTS" != true ]; then
+  echo "ERROR: csv/${CSV_NAME} in ${NAMESPACE} was not created within 60s of InstallPlan approval" >&2
+  exit 1
+fi
+
 # Race Succeeded against Failed instead of a single `--for=Succeeded` wait.
 # A CSV has a well-known binary failure signal (status.phase can reach
 # "Failed", distinct from "Succeeded") — unlike most resources (e.g. a
@@ -58,6 +77,8 @@ oc --context "$CLUSTER_CONTEXT" patch installplan "$INSTALLPLAN" -n "$NAMESPACE"
 # stock bash 3.2 (no `wait -n`, which needs bash 4.3+) via a small polling
 # loop over two flag files instead.
 RESULT_DIR=$(mktemp -d)
+SUCCEEDED_PID=""
+FAILED_PID=""
 trap 'rm -rf "$RESULT_DIR"; kill "$SUCCEEDED_PID" "$FAILED_PID" 2>/dev/null || true' EXIT
 
 (oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded "csv/${CSV_NAME}" -n "$NAMESPACE" --timeout=300s >/dev/null 2>&1 \
