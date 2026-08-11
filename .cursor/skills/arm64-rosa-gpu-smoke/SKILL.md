@@ -215,7 +215,11 @@ Do **not** use V100 (sm_70) for torch 2.7+ / cu128 validation — minimum SM is 
 
 See [rosa-hcp-provision skill](../rosa-hcp-provision/SKILL.md):
 
-1. ROSA HCP cluster + **`g5g.2xlarge`** pool (`gpu-arm2`)
+1. ROSA HCP cluster + **`g5g.2xlarge`** pool — `gpu-arm` by default (the
+   primary pool from `rosa-hcp-provision/SKILL.md`'s "GPU Machine Pools"
+   section), or `gpu-arm2` if you resized per that skill's "Resize GPU
+   pool" section instead of creating `g5g.2xlarge` directly. Whichever
+   pool is actually GPU-ready is `$GPU_POOL_NAME` below.
 2. NFD + NVIDIA GPU Operator; driver **2/2 Ready**, `nvidia.com/gpu: 1`
 3. **Pull secret** for `quay.io/rhoai` in test namespace (ROSA global pull-secret lacks rhoai)
 
@@ -529,8 +533,11 @@ repeat steps 5–6 per image to extend coverage.
 ### Teardown (when done billing)
 
 ```bash
+# GPU_POOL_NAME must match whichever pool you actually created/GPU-tested
+# above ("gpu-arm" by default, "gpu-arm2" only if you resized) — a
+# mismatch here silently leaves the real GPU pool running and billing.
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete machinepool \
-  --cluster "$CLUSTER_NAME" gpu-arm2 --yes
+  --cluster "$CLUSTER_NAME" "${GPU_POOL_NAME:?Set GPU_POOL_NAME to the pool you actually created (gpu-arm by default, gpu-arm2 if resized)}" --yes
 # Optional: delete cluster — see rosa-hcp-provision skill
 ```
 

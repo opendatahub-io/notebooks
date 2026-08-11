@@ -80,7 +80,7 @@ stale-CLI issue in the "the feature hasn't shipped yet" sense.
 **Action for next time**: don't assume `--use-spot-instances` worked just
 because the command exited 0. Verify via:
 ```bash
-aws ec2 describe-instances --region us-east-1 --filters "Name=tag:api.openshift.com/name,Values=<cluster>" "Name=instance-state-name,Values=running" \
+rh-aws-saml-login iaps-rhods-odh-dev -- aws ec2 describe-instances --region us-east-1 --filters "Name=tag:api.openshift.com/name,Values=<cluster>" "Name=instance-state-name,Values=running" \
   --query "Reservations[].Instances[].InstanceLifecycle"
 # should print "spot" for each — if it prints nothing/null, first confirm the
 # instance list itself isn't empty (wrong region/tag/cluster-name), THEN

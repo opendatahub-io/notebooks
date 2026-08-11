@@ -200,9 +200,12 @@ silent no-op (the DSC just ignores an unrecognized component key), not an
 error. To enable pipelines post-install regardless of which key your
 version uses:
 ```bash
+# Select the key the DSC actually supports — patching the wrong one is a
+# silent no-op (see above), so don't hardcode either name.
+COMPONENT_KEY=$(oc --context "$CLUSTER_CONTEXT" get dsc default-dsc -o json | \
+  jq -r 'if .spec.components | has("aipipelines") then "aipipelines" else "datasciencepipelines" end')
 oc --context "$CLUSTER_CONTEXT" patch dsc default-dsc --type merge \
-  -p '{"spec":{"components":{"aipipelines":{"managementState":"Managed"}}}}'
-  # or datasciencepipelines: on GA releases through 3.5
+  -p "{\"spec\":{\"components\":{\"$COMPONENT_KEY\":{\"managementState\":\"Managed\"}}}}"
 ```
 
 **Gotcha: leaving pipelines `Removed` triggers a blocking Kale error popup

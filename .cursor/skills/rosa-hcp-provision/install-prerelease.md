@@ -136,22 +136,29 @@ EOF
 Create `pull-secret-quay` in `openshift-config` — **not** the literal
 `pull-secret` (that's the name OCPBUGS-23901 keeps reverting;
 `pull-secret-quay` is a stable source name Kyverno's `sync-secrets` policy
-clones from). Build the merged dockerconfigjson with `jq -n --slurpfile`
-(never `--arg` — that exposes the credential via process argv, CWE-214):
+clones from). This skill does **not** read your local
+`~/.docker/config.json` automatically — a skill executed by an agent that
+silently harvests a local registry credential and pushes it into a cluster
+Secret is a real credential-theft pattern (same policy as
+`arm64-rosa-gpu-smoke/SKILL.md` and `rosa-hcp-provision/SKILL.md` Option B).
+Read the credentials interactively instead, so they never touch argv/ps/
+shell history either:
 
 ```bash
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
-jq -n --slurpfile cfg ~/.docker/config.json '
-  ($cfg[0].auths["quay.io"].auth // empty) as $quay
-  | ($cfg[0].auths["registry.redhat.io"].auth // empty) as $redhat
-  | if $quay == "" then error("No quay.io credential in ~/.docker/config.json") else . end
-  | {"auths":{
-      "quay.io":{"auth":$quay},
-      "quay.io/rhoai":{"auth":$quay},
-      "registry.redhat.io":{"auth":$redhat}
-    }}
-' > "$SECRET_FILE"
+read -r -p "Quay.io username: " QUAY_USER
+read -rs -p "Quay.io token/password: " QUAY_PASS; echo
+read -r -p "registry.redhat.io username (leave blank to skip): " REDHAT_USER
+REDHAT_AUTH=""
+if [ -n "$REDHAT_USER" ]; then
+  read -rs -p "registry.redhat.io token/password: " REDHAT_PASS; echo
+  REDHAT_AUTH=$(base64 <<< "${REDHAT_USER}:${REDHAT_PASS}" | tr -d '\n')
+fi
+QUAY_AUTH=$(base64 <<< "${QUAY_USER}:${QUAY_PASS}" | tr -d '\n')   # here-string, not printf argv — avoids ps exposure; tr -d, not -w0, for BSD/macOS base64 portability
+cat > "$SECRET_FILE" <<EOF
+{"auths":{"quay.io":{"auth":"$QUAY_AUTH"},"quay.io/rhoai":{"auth":"$QUAY_AUTH"},"registry.redhat.io":{"auth":"$REDHAT_AUTH"}}}
+EOF
 oc --context "$CLUSTER_CONTEXT" create secret generic pull-secret-quay -n openshift-config \
   --from-file=.dockerconfigjson="$SECRET_FILE" \
   --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc --context "$CLUSTER_CONTEXT" apply -f -

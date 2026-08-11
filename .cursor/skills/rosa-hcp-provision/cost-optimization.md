@@ -265,13 +265,13 @@ the policy live.
 
 ```bash
 AWS_REGION="${AWS_REGION:-us-east-1}"
-aws ec2 describe-instances --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
+rh-aws-saml-login iaps-rhods-odh-dev -- aws ec2 describe-instances --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
   --query "Reservations[].Instances[].{ID:InstanceId,Type:InstanceType,Lifecycle:InstanceLifecycle,State:State.Name}"
-aws ec2 describe-volumes --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
+rh-aws-saml-login iaps-rhods-odh-dev -- aws ec2 describe-volumes --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
   --query "Volumes[].{ID:VolumeId,Size:Size,Iops:Iops,Throughput:Throughput,State:State}"
-aws ec2 describe-nat-gateways --region "$AWS_REGION" --filter "Name=tag:api.openshift.com/name,Values=<cluster>"
-aws elbv2 describe-load-balancers --region "$AWS_REGION" --query "LoadBalancers[?contains(LoadBalancerName,'<cluster>')]"
-aws ec2 describe-addresses --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>"
+rh-aws-saml-login iaps-rhods-odh-dev -- aws ec2 describe-nat-gateways --region "$AWS_REGION" --filter "Name=tag:api.openshift.com/name,Values=<cluster>"
+rh-aws-saml-login iaps-rhods-odh-dev -- aws elbv2 describe-load-balancers --region "$AWS_REGION" --query "LoadBalancers[?contains(LoadBalancerName,'<cluster>')]"
+rh-aws-saml-login iaps-rhods-odh-dev -- aws ec2 describe-addresses --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>"
 ```
 Run this *before* deciding a cluster's cost is fully accounted for — don't
 rely on memory of what was created, and pass `--region` explicitly (these
@@ -306,7 +306,7 @@ filtering by the cluster tag, since an orphaned volume may not carry it
 (only its `CSIVolumeName`/PVC-derived tags survive), then correlate by
 that tag and creation time:
 ```bash
-aws ec2 describe-volumes --region "${AWS_REGION:-us-east-1}" --filters "Name=status,Values=available" \
+rh-aws-saml-login iaps-rhods-odh-dev -- aws ec2 describe-volumes --region "${AWS_REGION:-us-east-1}" --filters "Name=status,Values=available" \
   --query "Volumes[].{ID:VolumeId,Size:Size,CSIVolumeName:Tags[?Key=='CSIVolumeName']|[0].Value,Created:CreateTime}"
 ```
 

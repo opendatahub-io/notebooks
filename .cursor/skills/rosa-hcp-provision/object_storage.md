@@ -88,11 +88,18 @@ quota. Options, in order of effort:
    Access Token (Account Settings → Security → Personal access tokens,
    *not* your account password), then create a pull secret and attach it:
    ```bash
-   oc --context "$CLUSTER_CONTEXT" create secret docker-registry dockerhub-pull \
-     -n <namespace> \
-     --docker-server=docker.io \
-     --docker-username=<your-dockerhub-username> \
-     --docker-password=<your-PAT>
+   # Read interactively — a literal --docker-password on the command line
+   # exposes the PAT via shell history and `ps` for the command's lifetime.
+   read -r -p "Docker Hub username: " DOCKERHUB_USER
+   read -rs -p "Docker Hub PAT: " DOCKERHUB_PAT; echo
+   SECRET_FILE=$(umask 077 && mktemp)
+   trap 'rm -f "$SECRET_FILE"' EXIT
+   AUTH=$(base64 <<< "${DOCKERHUB_USER}:${DOCKERHUB_PAT}" | tr -d '\n')
+   cat > "$SECRET_FILE" <<EOF
+   {"auths":{"https://index.docker.io/v1/":{"auth":"$AUTH"}}}
+   EOF
+   oc --context "$CLUSTER_CONTEXT" create secret generic dockerhub-pull -n <namespace> \
+     --from-file=.dockerconfigjson="$SECRET_FILE" --type=kubernetes.io/dockerconfigjson
    oc --context "$CLUSTER_CONTEXT" patch sa default -n <namespace> \
      --type merge -p '{"imagePullSecrets":[{"name":"dockerhub-pull"}]}'
    ```
@@ -344,11 +351,17 @@ anything else in this doc):
 ```bash
 git clone https://github.com/rh-aiservices-bu/s4.git
 oc --context "$CLUSTER_CONTEXT" new-project s4
+# Read the password without echo and pass it via --set-file, not --set —
+# a literal --set auth.password=... exposes it via shell history and `ps`.
+read -rs -p "S4 admin password: " S4_PASSWORD; echo
+PASSWORD_FILE=$(umask 077 && mktemp)
+trap 'rm -f "$PASSWORD_FILE"' EXIT
+printf '%s' "$S4_PASSWORD" > "$PASSWORD_FILE"
 helm --kube-context "$CLUSTER_CONTEXT" install s4 s4/charts/s4 \
   --namespace s4 \
   --set route.enabled=true \
   --set auth.username=admin \
-  --set auth.password=<your-password>
+  --set-file auth.password="$PASSWORD_FILE"
 ```
 
 Result: `CrashLoopBackOff`,
