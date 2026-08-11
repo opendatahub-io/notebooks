@@ -45,6 +45,7 @@ S390X_COMPATIBLE = {
 SUBSCRIPTION_BACKED_TARGETS = {
     "jupyter-baseline-ubi9-python-3.12",
     "codeserver-baseline-ubi9-python-3.12",
+    "runtime-baseline-ubi9-python-3.12",
 }
 
 
@@ -229,6 +230,7 @@ class TestSelf(unittest.TestCase):
     def test_target_needs_subscription(self):
         assert target_needs_subscription("jupyter-baseline-ubi9-python-3.12") is True
         assert target_needs_subscription("codeserver-baseline-ubi9-python-3.12") is True
+        assert target_needs_subscription("runtime-baseline-ubi9-python-3.12") is True
         assert target_needs_subscription("cuda-jupyter-minimal-ubi9-python-3.12") is False
         assert target_needs_subscription("runtime-rhel-cuda-tensorflow-ubi9-python-3.12") is True
 
@@ -236,6 +238,7 @@ class TestSelf(unittest.TestCase):
         targets = [
             "jupyter-baseline-ubi9-python-3.12",
             "codeserver-baseline-ubi9-python-3.12",
+            "runtime-baseline-ubi9-python-3.12",
             "jupyter-minimal-ubi9-python-3.12",
             "runtime-rhel-cuda-tensorflow-ubi9-python-3.12",
         ]
@@ -246,6 +249,7 @@ class TestSelf(unittest.TestCase):
         targets = [
             "jupyter-baseline-ubi9-python-3.12",
             "codeserver-baseline-ubi9-python-3.12",
+            "runtime-baseline-ubi9-python-3.12",
             "jupyter-minimal-ubi9-python-3.12",
             "runtime-rhel-cuda-tensorflow-ubi9-python-3.12",
         ]
@@ -253,6 +257,7 @@ class TestSelf(unittest.TestCase):
         assert filter_rhel_targets(targets, RhelImages.INCLUDE_ONLY) == [
             "jupyter-baseline-ubi9-python-3.12",
             "codeserver-baseline-ubi9-python-3.12",
+            "runtime-baseline-ubi9-python-3.12",
             "runtime-rhel-cuda-tensorflow-ubi9-python-3.12",
         ]
 

@@ -1,0 +1,37 @@
+# Phase 1: baseline build resolves Python packages from PyPI using `pylock.toml`.
+# Hermetic Python input generation stays deferred to phase 2.
+
+[project]
+name = "runtime-baseline-notebook"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Elyra / Kale execution deps only (no datascience or DB-connector stack).
+    "odh-notebooks-meta-runtime-elyra-deps",
+    "odh-notebooks-meta-runtime-kale-deps",
+
+    # Base packages
+    "setuptools",
+    "wheel",
+
+    # Installer/tooling used in Docker/CI
+    "micropipenv[toml]",
+    "uv",
+]
+
+[tool.uv]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+]
+override-dependencies = [
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
+]
+
+[tool.uv.sources]
+odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
+odh-notebooks-meta-runtime-kale-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-kale-deps" }

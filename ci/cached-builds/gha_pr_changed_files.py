@@ -242,6 +242,7 @@ class TestSelf(unittest.TestCase):
         assert _python_version_for_target("rocm-jupyter-pytorch-ubi9-python-3.12") == "3.12"
         assert _python_version_for_target("jupyter-baseline-ubi9-python-3.12") == "3.12"
         assert _python_version_for_target("codeserver-baseline-ubi9-python-3.12") == "3.12"
+        assert _python_version_for_target("runtime-baseline-ubi9-python-3.12") == "3.12"
         assert _python_version_for_target("not-a-python-target") == "invalid-python-version"
 
     def test_should_build_target(self):

@@ -269,6 +269,10 @@ jupyter-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION):
 codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,codeserver-baseline/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
+.PHONY: runtime-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)
+runtime-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,runtimes/baseline/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
+
 
 ####################################### Deployments #######################################
 
@@ -634,7 +638,8 @@ all-images: \
 	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)
+	codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	runtime-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)
 else
 	$(error Invalid Python version $(RELEASE_PYTHON_VERSION))
 endif
