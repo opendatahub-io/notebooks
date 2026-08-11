@@ -94,14 +94,17 @@ quota. Options, in order of effort:
    read -rs -p "Docker Hub PAT: " DOCKERHUB_PAT; echo
    SECRET_FILE=$(umask 077 && mktemp)
    trap 'rm -f "$SECRET_FILE"' EXIT
-   AUTH=$(base64 <<< "${DOCKERHUB_USER}:${DOCKERHUB_PAT}" | tr -d '\n')
+   AUTH=$(printf '%s' "${DOCKERHUB_USER}:${DOCKERHUB_PAT}" | base64 | tr -d '\n')   # printf, not a here-string (<<< appends a trailing newline, corrupting the credential)
    cat > "$SECRET_FILE" <<EOF
    {"auths":{"https://index.docker.io/v1/":{"auth":"$AUTH"}}}
    EOF
    oc --context "$CLUSTER_CONTEXT" create secret generic dockerhub-pull -n <namespace> \
      --from-file=.dockerconfigjson="$SECRET_FILE" --type=kubernetes.io/dockerconfigjson
-   oc --context "$CLUSTER_CONTEXT" patch sa default -n <namespace> \
-     --type merge -p '{"imagePullSecrets":[{"name":"dockerhub-pull"}]}'
+   # `oc secrets link`, not a merge patch — a JSON merge patch replaces
+   # imagePullSecrets wholesale, wiping out any secrets already on the
+   # default SA (e.g. OpenShift's own auto-generated internal-registry
+   # pull secret) instead of appending to them.
+   oc --context "$CLUSTER_CONTEXT" secrets link default dockerhub-pull -n <namespace> --for=pull
    ```
    Authenticated pulls get a much higher limit. This skill does **not**
    auto-extract a Docker Hub credential from `~/.docker/config.json` by
@@ -127,6 +130,10 @@ geo-distributed S3-compatible store, zero external dependencies.
 ```bash
 oc --context "$CLUSTER_CONTEXT" new-project garage
 git clone https://git.deuxfleurs.fr/Deuxfleurs/garage.git
+# Pin to a reviewed tag/commit before using this beyond a quick check —
+# a bare clone tracks the moving default branch, and the chart falls back
+# to .Chart.AppVersion for image.tag when unset (also pin that explicitly
+# below once you know the chart version you're actually running).
 ```
 
 **Values override** (`garage-values.yaml`) — fixes both gotchas found this
@@ -181,6 +188,7 @@ git clone https://github.com/rustfs/helm.git rustfs-helm
 # rustfs-helm is a packaged Helm *repository* (gh-pages style, .tgz releases
 # + index.yaml) — the chart source itself is not checked in there. Extract
 # the latest release to inspect/override values:
+mkdir -p /tmp/rustfs-extracted
 tar -xzf rustfs-helm/rustfs-<version>.tgz -C /tmp/rustfs-extracted
 ```
 
@@ -261,6 +269,11 @@ S3 service (`seaweedfs-s3`) listening on port 8333.
 helm repo add seaweedfs https://seaweedfs.github.io/seaweedfs/helm
 helm repo update seaweedfs
 oc --context "$CLUSTER_CONTEXT" new-project seaweedfs
+# Pin --version to the chart release you actually tested against before
+# installing (helm search repo seaweedfs/seaweedfs --versions) — an
+# unversioned install tracks whatever the chart repo currently publishes,
+# and a chart update can change value paths or restore hostPath defaults
+# out from under the values override below.
 ```
 
 **Values override** (`seaweedfs-values.yaml`) — three fixes, none of which

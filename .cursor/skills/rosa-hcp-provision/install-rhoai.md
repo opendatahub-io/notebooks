@@ -55,6 +55,13 @@ what you're actually validating against — don't default to the bare
 `stable` channel, it tracks the latest minor and will drift out from under
 a pinned validation run.
 
+**The `channel`/`startingCSV`/`CSV_NAME` values below (`stable-2.25`,
+`rhods-operator.2.25.9`) are this session's concrete worked example, not
+generic placeholders** — if step 1 discovers a different channel/CSV for
+your target version, replace all three occurrences below (the
+Subscription YAML, the `CSV_NAME` variable, and the final `oc wait`
+command) consistently; they're not derived from each other automatically.
+
 ## 2. OperatorGroup must be `AllNamespaces`, not `OwnNamespace`
 
 A scoped `OperatorGroup` (`targetNamespaces: [redhat-ods-operator]`) fails
@@ -124,7 +131,12 @@ doesn't retry a `Failed` CSV automatically. Delete and recreate:
 ```bash
 oc --context "$CLUSTER_CONTEXT" delete subscription rhods-operator -n redhat-ods-operator
 oc --context "$CLUSTER_CONTEXT" delete csv rhods-operator.<version> -n redhat-ods-operator
-oc --context "$CLUSTER_CONTEXT" delete installplan -n redhat-ods-operator --all
+# Delete only the failed InstallPlan, not --all — the namespace can hold
+# InstallPlans for other subscriptions/CSVs that --all would also delete.
+FAILED_CSV=rhods-operator.<version>
+oc --context "$CLUSTER_CONTEXT" get installplan -n redhat-ods-operator -o json | \
+  jq -r --arg csv "$FAILED_CSV" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name' | \
+  xargs -r -n1 oc --context "$CLUSTER_CONTEXT" delete installplan -n redhat-ods-operator
 # then re-apply the Subscription above
 ```
 
@@ -201,9 +213,14 @@ error. To enable pipelines post-install regardless of which key your
 version uses:
 ```bash
 # Select the key the DSC actually supports — patching the wrong one is a
-# silent no-op (see above), so don't hardcode either name.
+# silent no-op (see above), so don't hardcode either name, and don't
+# silently fall back to one if the DSC has neither (a schema this doc
+# hasn't seen yet) — fail loudly instead of patching a nonexistent key.
 COMPONENT_KEY=$(oc --context "$CLUSTER_CONTEXT" get dsc default-dsc -o json | \
-  jq -r 'if .spec.components | has("aipipelines") then "aipipelines" else "datasciencepipelines" end')
+  jq -r 'if .spec.components | has("aipipelines") then "aipipelines"
+         elif .spec.components | has("datasciencepipelines") then "datasciencepipelines"
+         else "" end')
+[ -n "$COMPONENT_KEY" ] || { echo "ERROR: DSC has neither aipipelines nor datasciencepipelines — check 'oc get dsc default-dsc -o json | jq .spec.components'" >&2; exit 1; }
 oc --context "$CLUSTER_CONTEXT" patch dsc default-dsc --type merge \
   -p "{\"spec\":{\"components\":{\"$COMPONENT_KEY\":{\"managementState\":\"Managed\"}}}}"
 ```

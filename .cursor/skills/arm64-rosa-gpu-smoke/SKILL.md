@@ -50,8 +50,17 @@ ROCm images should be amd64-only (confirms exclusion is intentional):
 
 ```bash
 IMG=quay.io/rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9:rhoai-3.6-ea.1
-skopeo inspect --raw docker://$IMG | jq '[.manifests[] | {arch: .platform.architecture, os: .platform.os}] | unique'
-# Expect: [{"arch":"amd64","os":"linux"}]
+RAW=$(skopeo inspect --raw docker://$IMG)
+# A genuinely amd64-only image has no manifest list at all (single-manifest
+# response, no top-level .manifests) — jq '.manifests[]' would crash on it
+# with "Cannot iterate over null" precisely in the expected-good case.
+if echo "$RAW" | jq -e 'has("manifests")' >/dev/null; then
+  echo "$RAW" | jq '[.manifests[] | {arch: .platform.architecture, os: .platform.os}] | unique'
+else
+  skopeo inspect docker://$IMG | jq '{arch: .Architecture, os: .Os}'
+fi
+# Expect either [{"arch":"amd64","os":"linux"}] (manifest list) or
+# {"arch":"amd64","os":"linux"} (single manifest)
 ```
 
 ## Phase 2: CPU Testcontainers Smoke
@@ -101,7 +110,7 @@ Other workbench tests (Jupyter HTTP serve, entrypoint boot) still pass for CUDA 
 | codeserver-datascience-cpu | `test_mysql_connection` | `pip install mysql-connector-python` fails against RHOAI EA PyPI index (3/3 consistent) | ENV |
 | tensorflow-cuda workbench | `test_ipv6_only` | IPv6-only network not available on test host | ENV — entrypoint passes with IPv6 disabled |
 | pytorch-llmcompressor-cuda workbench | `test_image_entrypoint_starts`, `test_ipv6_only` | IPv6 env; entrypoint **PASS** with `disable_ipv6` sysctl | ENV — not arm64 boot defect |
-| All CUDA runtimes | — | **PASS** on remote arm64 host with `--ignore=base_image_test.py` | — |
+| All CUDA runtimes | — | **PASS** on remote arm64 host — this run used `--ignore=base_image_test.py` (skips the whole file, not just the known ELF-link failure), so it's narrower coverage than the `--deselect` approach used elsewhere in this doc | — |
 
 CUDA **runtime** images (`odh-pipeline-runtime-*-cuda-*`) passed CPU testcontainers on arm64; workbench CUDA images need follow-up on ipv6/entrypoint tests, not manifest/arch issues.
 
@@ -174,8 +183,20 @@ oc --context "$RDU2_CONTEXT" create ns "$RDU2_NAMESPACE"   # fails loudly if it 
 # Get auth from the ROSA cluster context (or personal docker config)
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
+# GNU base64 uses -d, macOS/BSD base64 uses -D — python3 sidesteps the
+# flag difference entirely rather than guessing; only fall back to a
+# specific flag if python3 truly isn't available.
+base64_decode() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import sys, base64; sys.stdout.buffer.write(base64.b64decode(sys.stdin.read()))'
+  elif base64 --version >/dev/null 2>&1; then
+    base64 -d   # GNU coreutils supports --version
+  else
+    base64 -D   # BSD/macOS base64 has no --version
+  fi
+}
 oc get secret rhoai-pull -n "$TEST_NAMESPACE" --context="$CLUSTER_CONTEXT" \
-  -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d > "$SECRET_FILE"
+  -o jsonpath='{.data.\.dockerconfigjson}' | base64_decode > "$SECRET_FILE"
 oc --context "$RDU2_CONTEXT" create secret generic rhoai-pull -n "$RDU2_NAMESPACE" \
   --from-file=.dockerconfigjson="$SECRET_FILE" \
   --type=kubernetes.io/dockerconfigjson
@@ -241,7 +262,7 @@ read -r -p "Quay.io username: " QUAY_USER
 read -rs -p "Quay.io token/password: " QUAY_PASS; echo
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
-AUTH=$(base64 <<< "${QUAY_USER}:${QUAY_PASS}" | tr -d '\n')   # here-string, not printf argv — avoids ps exposure; tr -d, not -w0, for BSD/macOS base64 portability
+AUTH=$(printf '%s' "${QUAY_USER}:${QUAY_PASS}" | base64 | tr -d '\n')   # printf, not a here-string (<<< appends a trailing newline, corrupting the credential); tr -d, not -w0, for BSD/macOS base64 portability
 cat > "$SECRET_FILE" <<EOF
 {"auths":{"quay.io":{"auth":"$AUTH"}}}
 EOF

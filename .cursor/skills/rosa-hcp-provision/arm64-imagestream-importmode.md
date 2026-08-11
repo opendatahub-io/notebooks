@@ -11,7 +11,7 @@ ROSA/ARO HCP cluster with non-amd64 worker NodePools.
 A workbench (or any RHOAI-managed pod backed by an ImageStream) scheduled
 correctly on an arm64 worker crash-loops:
 
-```
+```text
 exec container process `/opt/app-root/bin/start-notebook.sh`: Exec format error
 ```
 
@@ -220,15 +220,20 @@ oc --context "$CLUSTER_CONTEXT" get imagestream <name> -n redhat-ods-application
 oc --context "$CLUSTER_CONTEXT" delete pod <affected-workbench-pod> -n <project>   # force a fresh pull
 ```
 
-**Tier 4 (the actual upstream fix, not a workaround)**:
-`workbenches-operator` (and any other RHOAI component creating
-ImageStreams) should set `importPolicy.importMode: PreserveOriginal`
-explicitly in its bundled manifests as a defensive measure — but
-**conditionally**, checking `ClusterVersion.status.desired.architecture
-== "Multi"` first, mirroring what core OpenShift's own (currently broken)
+**Tier 4 (the actual upstream fix, not a workaround)**: this has to live in
+`workbenches-operator`'s (and any other RHOAI component creating
+ImageStreams) **reconciliation code**, not a static bundled manifest — a
+bundled YAML can't itself inspect `ClusterVersion.status.desired.architecture`
+at apply time. The operator's reconcile loop should check
+`ClusterVersion.status.desired.architecture == "Multi"` before setting
+`importPolicy.importMode: PreserveOriginal` on the ImageStreams it
+creates, mirroring what core OpenShift's own (currently broken)
 dynamic-default mechanism is supposed to do, so that single-arch clusters
 (the vast majority) don't pay any cost for a benefit they'll never use.
-Suggested in RHOAIENG-82528; not implemented anywhere yet.
+Suggested in RHOAIENG-82528; not implemented anywhere yet. Until it is,
+Tier 3's Kyverno policy above is the closest available approximation of
+this behavior (it does the same conditional check, just via an external
+admission controller instead of in-operator).
 
 **On the "won't this cost etcd/registry overhead on single-arch clusters"
 concern** — real, but narrower than it sounds. Registry storage growth is

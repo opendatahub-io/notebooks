@@ -12,14 +12,16 @@ IMG="${1:?usage: $0 <full-image-ref>}"
 
 # NS/PULL_SECRET/IMG are spliced directly into the YAML heredoc below with
 # no serialization — reject anything that could break out of its scalar
-# context (a newline, or a literal "---" document separator) before that
-# happens. NS/PULL_SECRET are also constrained to valid Kubernetes names,
-# which they need to be anyway.
+# context before that happens. NS/PULL_SECRET are also constrained to
+# valid Kubernetes names, which they need to be anyway. IMG must be a
+# single image-reference token — whitespace and "#" both open room for
+# a YAML comment or truncated value (e.g. "img # pytorch" would silently
+# truncate the interpolated image to "img").
 for _var_name in NS PULL_SECRET; do
   _val="${!_var_name}"
   [[ "$_val" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || { echo "ERROR: $_var_name '$_val' is not a valid Kubernetes name" >&2; exit 1; }
 done
-[[ "$IMG" != *$'\n'* && "$IMG" != *"---"* ]] || { echo "ERROR: IMG contains a newline or '---' — refusing to interpolate into YAML" >&2; exit 1; }
+[[ "$IMG" =~ ^[^[:space:]#]+$ ]] || { echo "ERROR: IMG must be a single image-reference token (no whitespace or '#')" >&2; exit 1; }
 
 hash_cmd() { command -v sha256sum >/dev/null 2>&1 && sha256sum || shasum -a 256; }
 timeout_cmd() { command -v timeout >/dev/null 2>&1 && echo timeout || command -v gtimeout >/dev/null 2>&1 && echo gtimeout || { echo "ERROR: need GNU timeout (brew install coreutils for gtimeout on macOS)" >&2; exit 1; }; }

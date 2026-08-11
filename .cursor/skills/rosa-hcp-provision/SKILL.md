@@ -452,7 +452,7 @@ read -r -p "Quay.io username: " QUAY_USER
 read -rs -p "Quay.io token/password: " QUAY_PASS; echo
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
-AUTH=$(base64 <<< "${QUAY_USER}:${QUAY_PASS}" | tr -d '\n')   # here-string, not printf argv — avoids ps exposure; tr -d, not -w0, for BSD/macOS base64 portability
+AUTH=$(printf '%s' "${QUAY_USER}:${QUAY_PASS}" | base64 | tr -d '\n')   # printf, not a here-string (<<< appends a trailing newline, corrupting the credential); tr -d, not -w0, for BSD/macOS base64 portability
 cat > "$SECRET_FILE" <<EOF
 {"auths":{"quay.io":{"auth":"$AUTH"}}}
 EOF

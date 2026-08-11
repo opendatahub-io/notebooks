@@ -84,9 +84,14 @@ helm --kube-context "$CLUSTER_CONTEXT" install kyverno kyverno/kyverno -n kyvern
 ```
 
 Verified working end-to-end on OCP 4.21 (2026-08-10). **Fallback if `helm`
-truly isn't available**: `kubectl --context "$CLUSTER_CONTEXT" apply --server-side -f install.yaml`
-(pin a version — this session used v1.18.0), then patch out the
-incompatible fields on all 4 controller Deployments
+truly isn't available**:
+```bash
+KYVERNO_VERSION=v1.18.0   # pin a version — this session used v1.18.0
+curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
+less /tmp/kyverno-install.yaml   # skim before applying cluster-scoped RBAC/webhooks — see cost-optimization.md item 5 on why a checksum here wouldn't help
+kubectl --context "$CLUSTER_CONTEXT" apply --server-side -f /tmp/kyverno-install.yaml
+```
+then patch out the incompatible fields on all 4 controller Deployments
 (`kyverno-admission-controller`, `kyverno-background-controller`,
 `kyverno-cleanup-controller`, `kyverno-reports-controller`):
 
@@ -103,12 +108,14 @@ Wait for `kyverno-svc` to have endpoints before relying on the admission
 webhook — check events, don't just sleep blindly:
 
 ```bash
+n=0
 for i in $(seq 1 30); do
   n=$(oc --context "$CLUSTER_CONTEXT" get endpoints kyverno-svc -n kyverno -o jsonpath='{.subsets[*].addresses[*].ip}' | wc -w)
   [ "$n" -gt 0 ] && break
   oc --context "$CLUSTER_CONTEXT" get events -n kyverno --sort-by=.lastTimestamp | tail -5
   sleep 10
 done
+[ "$n" -gt 0 ] || { echo "ERROR: kyverno-svc has no endpoints after 300s — do not proceed to apply ClusterPolicies against a webhook that isn't up" >&2; exit 1; }
 ```
 
 ## 5. `kyverno-secret-manager` ClusterRole + `pull-secret-quay`
@@ -153,9 +160,9 @@ read -r -p "registry.redhat.io username (leave blank to skip): " REDHAT_USER
 REDHAT_AUTH=""
 if [ -n "$REDHAT_USER" ]; then
   read -rs -p "registry.redhat.io token/password: " REDHAT_PASS; echo
-  REDHAT_AUTH=$(base64 <<< "${REDHAT_USER}:${REDHAT_PASS}" | tr -d '\n')
+  REDHAT_AUTH=$(printf '%s' "${REDHAT_USER}:${REDHAT_PASS}" | base64 | tr -d '\n')
 fi
-QUAY_AUTH=$(base64 <<< "${QUAY_USER}:${QUAY_PASS}" | tr -d '\n')   # here-string, not printf argv — avoids ps exposure; tr -d, not -w0, for BSD/macOS base64 portability
+QUAY_AUTH=$(printf '%s' "${QUAY_USER}:${QUAY_PASS}" | base64 | tr -d '\n')   # printf, not a here-string (<<< appends a trailing newline, corrupting the credential); tr -d, not -w0, for BSD/macOS base64 portability
 cat > "$SECRET_FILE" <<EOF
 {"auths":{"quay.io":{"auth":"$QUAY_AUTH"},"quay.io/rhoai":{"auth":"$QUAY_AUTH"},"registry.redhat.io":{"auth":"$REDHAT_AUTH"}}}
 EOF
@@ -237,6 +244,12 @@ spec:
       any:
       - resources:
           kinds: ["Pod"]
+          # Must match sync-secrets' namespace scope above — pull-secret-quay
+          # only exists in these namespaces. Without this, a Pod in ANY
+          # namespace pulling a public quay.io/registry.redhat.io image
+          # (common, unrelated to RHOAI) gets a reference to a Secret that
+          # doesn't exist there and fails to start.
+          namespaces: ["redhat-ods-applications", "redhat-ods-operator", "redhat-ods-monitoring"]
     preconditions:
       any:
       - key: "{{ request.object.spec.containers[?contains(image, 'quay.io') || contains(image, 'registry.redhat.io')] | length(@) }}"
@@ -253,6 +266,12 @@ spec:
         spec:
           imagePullSecrets:
           - name: pull-secret-quay
+    # Note: the namespace list above is a static subset of sync-secrets'
+    # scope — it doesn't cover the label-matched ("opendatahub.io/dashboard")
+    # Data Science Project namespaces, since Kyverno match.resources.namespaces
+    # only accepts literal names/globs, not a label selector on the Pod's
+    # own namespace. A Pod needing this secret in a DS Project namespace
+    # still needs pull-secret-quay attached manually there for now.
 ---
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -317,10 +336,17 @@ spec:
           - key: '{{ element.from.kind || `""` }}'
             operator: Equals
             value: DockerImage
+        # patchesJson6902's own string content gets parsed as YAML a
+        # second time by Kyverno. A double-quoted `value:` here would put
+        # the regex's `\.` through YAML's double-quote escape rules,
+        # where it isn't a valid escape sequence — single-quoted (with
+        # '' for a literal quote, matching the Pod/initContainer rules
+        # above) has no escape processing at all, so `\.` survives as a
+        # literal backslash-dot, which is what the regex actually needs.
         patchesJson6902: |-
           - path: "/spec/tags/{{elementIndex}}/from/name"
             op: replace
-            value: "{{ regex_replace_all_literal('^registry\.redhat\.io/rhoai/', element.from.name, 'quay.io/rhoai/') }}"
+            value: '{{ regex_replace_all_literal(''^registry\.redhat\.io/rhoai/'', element.from.name, ''quay.io/rhoai/'') }}'
 EOF
 ```
 
@@ -396,14 +422,25 @@ spec:
 EOF
 ```
 
+A Secret referenced by a ServiceAccount's `imagePullSecrets` must exist in
+that **same namespace** — `pull-secret-quay` was only created in
+`openshift-config` (step 5), so copy it into `openshift-marketplace` too
+before referencing it here:
+
+```bash
+oc --context "$CLUSTER_CONTEXT" get secret pull-secret-quay -n openshift-config -o json | \
+  jq 'del(.metadata.namespace, .metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp, .metadata.selfLink)' | \
+  jq '.metadata.namespace = "openshift-marketplace"' | \
+  oc --context "$CLUSTER_CONTEXT" apply -f -
+```
+
 **Gotcha**: `CatalogSource.spec.secrets` did **not** visibly propagate to
 the CatalogSource pod's ServiceAccount in time this session — the
 reliable path was patching the SA directly, then deleting the pod to pick
 it up:
 
 ```bash
-oc --context "$CLUSTER_CONTEXT" patch sa rhoai-fbc-fragment-3-6-ea-1 -n openshift-marketplace \
-  --type merge -p '{"imagePullSecrets":[{"name":"pull-secret-quay"}]}'
+oc --context "$CLUSTER_CONTEXT" secrets link rhoai-fbc-fragment-3-6-ea-1 pull-secret-quay -n openshift-marketplace --for=pull
 oc --context "$CLUSTER_CONTEXT" delete pod -n openshift-marketplace -l olm.catalogSource=rhoai-fbc-fragment-3-6-ea-1
 ```
 
