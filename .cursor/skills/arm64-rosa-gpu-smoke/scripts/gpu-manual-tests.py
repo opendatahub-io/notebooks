@@ -17,6 +17,13 @@ from pathlib import Path
 from kubernetes import client, config, watch
 from kubernetes.stream import stream
 
+# Accepted residual risk (see arm64-rosa-gpu-smoke/SKILL.md's "Accepted
+# residual risk" note for the full rationale): this only validates SHA
+# *format*, not that the revision is an approved sign-off commit — a
+# malicious 40-hex SHA on some fork/branch would still pass. Building and
+# maintaining a signed-revision allowlist is disproportionate for a
+# personal, single-operator validation tool against tests/manual, a
+# fast-moving fixture directory with no release/signing process.
 NOTEBOOK_REV = os.environ.get("NOTEBOOK_REV")
 if not NOTEBOOK_REV or not re.fullmatch(r"[0-9a-f]{40}", NOTEBOOK_REV):
     sys.exit(
@@ -27,7 +34,9 @@ if not NOTEBOOK_REV or not re.fullmatch(r"[0-9a-f]{40}", NOTEBOOK_REV):
 NOTEBOOK_BASE = (
     f"https://raw.githubusercontent.com/opendatahub-io/notebooks/{NOTEBOOK_REV}/tests/manual"
 )
-NS = os.environ.get("TEST_NAMESPACE", "jdanek")
+NS = os.environ.get("TEST_NAMESPACE")
+if not NS:
+    sys.exit("TEST_NAMESPACE must be set to a dedicated test namespace")
 PULL_SECRET = os.environ.get("PULL_SECRET", "rhoai-pull")
 CONTAINER = "smoke"
 TAG = os.environ.get("TAG", "rhoai-3.6-ea.1")

@@ -46,9 +46,9 @@ deciding a real cluster is the right tool versus local `kind` or
 | `oc` | [mirror](https://access.redhat.com/downloads/content/290) | Cluster interaction post-create |
 | `helm` | `brew install helm` | **Required for the Pre-Release Images (Kyverno) path only** — the raw `kubectl apply -f install.yaml` route hits `FailedCreate`/SCC errors on ROSA HCP (upstream manifest hardcodes `runAsUser: 65534`, outside the namespace's allowed UID range); Helm's `--set ...securityContext=null` flags (see Option A below) are the documented way around it. Without `helm`, the fallback is manually patching `runAsUser`/`runAsGroup` out of each Kyverno controller Deployment post-apply — works, but do this only if you can't install `helm`. |
 
-Valid Kerberos ticket required: `kinit <user>@IPA.REDHAT.COM`
+Valid Kerberos ticket required: `kinit "<user>@IPA.REDHAT.COM"`
 
-On macOS with credentials in Keychain: `kinit --keychain <user>@IPA.REDHAT.COM` (no password prompt).
+On macOS with credentials in Keychain: `kinit --keychain "<user>@IPA.REDHAT.COM"` (no password prompt).
 
 ## Critical: SAML wrapper pattern
 
@@ -153,7 +153,7 @@ checking `importPolicy.importMode` on the affected ImageStream first
 the two symptoms are indistinguishable from the crash log alone.
 
 ```bash
-export CLUSTER_NAME=<unique-name>    # MAX 15 chars! (longer triggers interactive prompt)
+export CLUSTER_NAME="<unique-name>"    # MAX 15 chars! (longer triggers interactive prompt) — quoted so a literal placeholder doesn't get parsed as shell redirection
 export MACHINE_POOL_TYPE=m6g.2xlarge # aarch64 — for GPU work. RHOAI/notebook testing: use m5.2xlarge (x86_64) instead.
 
 # Shared infra constants
@@ -196,14 +196,14 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa logs install -c $CLUSTER_NAME --wat
 # visible to other processes via `ps` for the command's lifetime)
 HTPASSWD_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$HTPASSWD_FILE"' EXIT
-htpasswd -c -B -b "$HTPASSWD_FILE" admin <pw>
+htpasswd -c -B "$HTPASSWD_FILE" admin   # omit -b — prompts interactively so the password never touches argv/history
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa create idp -c $CLUSTER_NAME \
   --type htpasswd --name htpasswd --from-file "$HTPASSWD_FILE"
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa grant user cluster-admin \
   --user admin --cluster $CLUSTER_NAME
 
 # oc login (get API URL from describe output)
-oc login -u admin https://api.<domain-prefix>.xxxx.p3.openshiftapps.com:443
+oc login -u admin "https://api.<domain-prefix>.xxxx.p3.openshiftapps.com:443"
 
 # Capture the exact context name NOW, right after login, before anything
 # else on this shared machine can change current-context out from under
@@ -310,10 +310,13 @@ On ROSA HCP the node pool label is `hypershift.openshift.io/nodePool=<pool-name>
 
 ```bash
 # A100 (8 GPUs, us-east-1d AZ required — see A100 doc). $PRIVATE is the
-# general cluster subnet and is NOT guaranteed to be in us-east-1d — verify
-# before use, don't assume:
-#   aws ec2 describe-subnets --subnet-ids "$A100_SUBNET" --query 'Subnets[0].AvailabilityZone'
+# general cluster subnet and is NOT guaranteed to be in us-east-1d — enforce
+# it, don't just document it, since a subnet in the wrong AZ fails much
+# later (or lands the pool somewhere it can't actually get an A100):
 A100_SUBNET="${A100_SUBNET:?set to a subnet ID verified to be in us-east-1d}"
+A100_AZ=$(rh-aws-saml-login iaps-rhods-odh-dev -- aws ec2 describe-subnets \
+  --subnet-ids "$A100_SUBNET" --query 'Subnets[0].AvailabilityZone' --output text)
+[ "$A100_AZ" = "us-east-1d" ] || { echo "ERROR: A100_SUBNET $A100_SUBNET is in AZ $A100_AZ, not us-east-1d" >&2; exit 1; }
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa create machinepool \
   --cluster $CLUSTER_NAME --name gpu-x86 \
   --instance-type p4d.24xlarge --replicas 1 --subnet "$A100_SUBNET"
@@ -435,18 +438,25 @@ that shrinks RHOAI's own over-requested CPU/memory on test clusters.
 Sufficient for [arm64 GPU smoke](../arm64-rosa-gpu-smoke/SKILL.md) without RHOAI/Kyverno:
 
 ```bash
-: "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, don't default to a personal name}"
+set -euo pipefail
+: "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, never default to a personal name}"
 oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
 
 # This skill does NOT read your local ~/.docker/config.json automatically —
 # a skill executed by an agent that silently harvests a local registry
 # credential and pushes it into a cluster Secret is a real credential-theft
-# pattern, independently flagged in review. Create the pull-secret yourself:
-oc --context "$CLUSTER_CONTEXT" create secret docker-registry rhoai-pull -n "$TEST_NAMESPACE" \
-  --docker-server=quay.io \
-  --docker-username=<your-quay-username> \
-  --docker-password=<your-quay-token-or-password> \
-  --docker-email=unused@example.com
+# pattern, independently flagged in review. Create the pull-secret yourself,
+# reading the token interactively so it never lands in argv/ps/history:
+read -r -p "Quay.io username: " QUAY_USER
+read -rs -p "Quay.io token/password: " QUAY_PASS; echo
+SECRET_FILE=$(umask 077 && mktemp)
+trap 'rm -f "$SECRET_FILE"' EXIT
+AUTH=$(base64 <<< "${QUAY_USER}:${QUAY_PASS}" | tr -d '\n')   # here-string, not printf argv — avoids ps exposure; tr -d, not -w0, for BSD/macOS base64 portability
+cat > "$SECRET_FILE" <<EOF
+{"auths":{"quay.io":{"auth":"$AUTH"}}}
+EOF
+oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
+  --from-file=.dockerconfigjson="$SECRET_FILE" --type=kubernetes.io/dockerconfigjson
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
 # `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
@@ -472,10 +482,10 @@ represents and cheaper configurations for next time.
 Quick sequence:
 
 ```bash
-export CLUSTER_NAME=<name>
-export OPERATOR_PREFIX=<name>-w7f2   # from rosa create / delete cluster output
+export CLUSTER_NAME="<name>"
+export OPERATOR_PREFIX="<name>-w7f2"   # from rosa create / delete cluster output
 
-kinit --keychain <user>@IPA.REDHAT.COM   # if SAML login fails
+kinit --keychain "<user>@IPA.REDHAT.COM"   # if SAML login fails
 
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete cluster --cluster "$CLUSTER_NAME" --yes
 # Wait until cluster drops from: rosa list clusters  (~15–20 min observed)

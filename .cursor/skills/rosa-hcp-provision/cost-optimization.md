@@ -142,6 +142,11 @@ KYVERNO_VERSION=v1.14.4
 # way it wouldn't be real verification, and it applies cluster-scoped
 # CRDs/RBAC/webhooks with your privileges, so know what you're running.
 curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
+# Skim the downloaded file before applying — this is the actual verification
+# step now that checksum verification is confirmed ineffective for this
+# asset (see above): look for anything unexpected (unfamiliar external
+# references, surprising RBAC) before granting it cluster-scoped privileges.
+less /tmp/kyverno-install.yaml
 kubectl --context "$CLUSTER_CONTEXT" apply --server-side -f /tmp/kyverno-install.yaml
 kubectl --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/part-of=kyverno -n kyverno --timeout=120s
 ```
@@ -263,7 +268,7 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 aws ec2 describe-instances --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
   --query "Reservations[].Instances[].{ID:InstanceId,Type:InstanceType,Lifecycle:InstanceLifecycle,State:State.Name}"
 aws ec2 describe-volumes --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>" \
-  --query "Volumes[].{ID:VolumeId,Size:Size,State:State}"
+  --query "Volumes[].{ID:VolumeId,Size:Size,Iops:Iops,Throughput:Throughput,State:State}"
 aws ec2 describe-nat-gateways --region "$AWS_REGION" --filter "Name=tag:api.openshift.com/name,Values=<cluster>"
 aws elbv2 describe-load-balancers --region "$AWS_REGION" --query "LoadBalancers[?contains(LoadBalancerName,'<cluster>')]"
 aws ec2 describe-addresses --region "$AWS_REGION" --filters "Name=tag:api.openshift.com/name,Values=<cluster>"

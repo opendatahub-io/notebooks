@@ -177,13 +177,33 @@ spec:
           - ImageStream
           namespaces:
           - redhat-ods-applications
+    # Two branches, not one: JSON Patch's "add" can't materialize a missing
+    # intermediate object — it can only set/replace a leaf whose parent
+    # already exists. Every tag encountered so far happened to already have
+    # a defaulted importPolicy: {}, but that's not guaranteed for every
+    # future tag, so branch on whether importPolicy is already present.
     mutate:
       foreach:
       - list: "request.object.spec.tags"
+        preconditions:
+          all:
+          - key: "{{ element.importPolicy || '' }}"
+            operator: NotEquals
+            value: ''
         patchesJson6902: |-
           - op: add
             path: /spec/tags/{{elementIndex}}/importPolicy/importMode
             value: PreserveOriginal
+      - list: "request.object.spec.tags"
+        preconditions:
+          all:
+          - key: "{{ element.importPolicy || '' }}"
+            operator: Equals
+            value: ''
+        patchesJson6902: |-
+          - op: add
+            path: /spec/tags/{{elementIndex}}/importPolicy
+            value: {importMode: PreserveOriginal}
 ```
 Apply, then force a fresh import by deleting the affected ImageStream(s)
 (the operator recreates them — see the delete/recreate note above; this

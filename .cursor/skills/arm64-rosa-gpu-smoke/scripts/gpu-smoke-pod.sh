@@ -2,7 +2,7 @@
 # GPU smoke via Pod (no Notebook CR / RHOAI required). Run after nvidia.com/gpu allocatable.
 set -euo pipefail
 
-: "${NS:=jdanek}"
+: "${NS:?Set NS to a unique, dedicated namespace — this is a shared account, never default to a personal name}"
 : "${TAG:=rhoai-3.6-ea.1}"
 : "${PULL_SECRET:=rhoai-pull}"
 : "${TIMEOUT:=900}"
@@ -10,6 +10,7 @@ set -euo pipefail
 
 IMG="${1:?usage: $0 <full-image-ref>}"
 hash_cmd() { command -v sha256sum >/dev/null 2>&1 && sha256sum || shasum -a 256; }
+timeout_cmd() { command -v timeout >/dev/null 2>&1 && echo timeout || command -v gtimeout >/dev/null 2>&1 && echo gtimeout || { echo "ERROR: need GNU timeout (brew install coreutils for gtimeout on macOS)" >&2; exit 1; }; }
 POD="gpu-smoke-$(printf '%s' "$IMG" | hash_cmd | cut -c1-16)-${RANDOM}${RANDOM}"
 
 if [[ "$IMG" == *"-runtime-"* ]]; then
@@ -48,6 +49,7 @@ metadata:
   namespace: $NS
 spec:
   restartPolicy: Never
+  automountServiceAccountToken: false
   nodeSelector:
     kubernetes.io/arch: arm64
   tolerations:
@@ -95,9 +97,11 @@ echo "==> Scheduled on node: $SCHEDULED_NODE"
 
 case "$LIB" in
   torch)
+    # if/raise, not assert — assert is a no-op under PYTHONOPTIMIZE, and a
+    # SMOKE_PASS that can lie is worse than one that's merely verbose
     PY='import platform, torch
-assert platform.machine() == "aarch64", platform.machine()
-assert torch.cuda.is_available(), "cuda not available"
+if platform.machine() != "aarch64": raise SystemExit(platform.machine())
+if not torch.cuda.is_available(): raise SystemExit("cuda not available")
 print("device:", torch.cuda.get_device_name(0))
 print("sm:", torch.cuda.get_device_capability())
 x = torch.randn(1024, 1024, device="cuda")
@@ -107,27 +111,27 @@ print("SMOKE_PASS")'
   tensorflow)
     PY='import os, platform, tensorflow as tf
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-assert platform.machine() == "aarch64", platform.machine()
+if platform.machine() != "aarch64": raise SystemExit(platform.machine())
 gpus = tf.config.list_physical_devices("GPU")
 print("gpus:", gpus)
-assert gpus, "no GPU devices"
+if not gpus: raise SystemExit("no GPU devices")
 tf.config.set_soft_device_placement(False)
 with tf.device("/GPU:0"):
     x = tf.random.uniform([1024, 1024])
     result = tf.matmul(x, x)
-assert "GPU" in result.device, result.device
+if "GPU" not in result.device: raise SystemExit(result.device)
 print("SMOKE_PASS")'
     ;;
   minimal)
     PY='import platform, subprocess
-assert platform.machine() == "aarch64", platform.machine()
+if platform.machine() != "aarch64": raise SystemExit(platform.machine())
 out = subprocess.check_output(["nvidia-smi", "-L"], text=True)
 print(out.strip())
-assert "GPU" in out
+if "GPU" not in out: raise SystemExit("no GPU in nvidia-smi -L output")
 print("SMOKE_PASS")'
     ;;
 esac
 
 echo "==> Running GPU check ($LIB)..."
-timeout "${EXEC_TIMEOUT:-$TIMEOUT}s" oc --context "$CLUSTER_CONTEXT" exec -n "$NS" "$POD" -c smoke -- python -c "$PY"
+"$(timeout_cmd)" "${EXEC_TIMEOUT:-$TIMEOUT}s" oc --context "$CLUSTER_CONTEXT" exec -n "$NS" "$POD" -c smoke -- python -c "$PY"
 echo "==> PASS $IMG"

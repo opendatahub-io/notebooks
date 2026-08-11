@@ -206,10 +206,17 @@ storageclass:
 # you either set secret.existingSecret, or set both of these to something
 # other than the well-known "rustfsadmin/rustfsadmin" default, or explicitly
 # opt into that default via secret.allowInsecureDefaults=true.
+#
+# Generate your own unique secret_key — never reuse the value below.
+# Anyone who copy-pastes this doc verbatim without changing it ends up
+# with the exact same S3 credential as every other RustFS deployment made
+# from it. e.g.: openssl rand -base64 24
+# Prefer secret.existingSecret pointing at a pre-created Kubernetes Secret
+# over inlining values here at all, where practical.
 secret:
   rustfs:
     access_key: rustfsadmin-arm64test
-    secret_key: change-me-demo-only-12345
+    secret_key: "<generate-your-own-e.g.-openssl-rand-base64-24>"
 ```
 
 ```bash

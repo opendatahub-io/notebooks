@@ -167,15 +167,18 @@ disables certificate validation for all subsequent API calls.)
 **Important:** RHOAI 3.5 images on this cluster are **amd64-only** (`registry.redhat.io`). To test arm64 EA images, create a pull secret for `quay.io/rhoai` (copy from ROSA cluster or personal auth). `$CLUSTER_CONTEXT` here is the ROSA cluster's context captured in `## Cluster prerequisites` below — set that up first if you haven't:
 
 ```bash
-oc --context "$RDU2_CONTEXT" create ns jdanek --dry-run=client -o yaml | oc --context "$RDU2_CONTEXT" apply -f -
+set -euo pipefail
+: "${RDU2_NAMESPACE:?Set RDU2_NAMESPACE to a unique, dedicated namespace on the rdu2 cluster — never default to a personal name}"
+: "${TEST_NAMESPACE:?Set TEST_NAMESPACE to the namespace already set up on the ROSA cluster below}"
+oc --context "$RDU2_CONTEXT" create ns "$RDU2_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
 # Get auth from the ROSA cluster context (or personal docker config)
 SECRET_FILE=$(umask 077 && mktemp)
 trap 'rm -f "$SECRET_FILE"' EXIT
-oc get secret rhoai-pull -n jdanek --context="$CLUSTER_CONTEXT" \
+oc get secret rhoai-pull -n "$TEST_NAMESPACE" --context="$CLUSTER_CONTEXT" \
   -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d > "$SECRET_FILE"
-oc --context "$RDU2_CONTEXT" create secret generic rhoai-pull -n jdanek \
+oc --context "$RDU2_CONTEXT" create secret generic rhoai-pull -n "$RDU2_NAMESPACE" \
   --from-file=.dockerconfigjson="$SECRET_FILE" \
-  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc --context "$RDU2_CONTEXT" apply -f -
+  --type=kubernetes.io/dockerconfigjson
 ```
 
 Then deploy pods with `imagePullSecrets: [{name: rhoai-pull}]` and `nodeName: nvd-srv-18.nvidia.eng.rdu2.redhat.com`.
@@ -217,22 +220,29 @@ See [rosa-hcp-provision skill](../rosa-hcp-provision/SKILL.md):
 3. **Pull secret** for `quay.io/rhoai` in test namespace (ROSA global pull-secret lacks rhoai)
 
 ```bash
+set -euo pipefail
 # CLUSTER_CONTEXT: this is the ROSA cluster from rosa-hcp-provision/SKILL.md
 # — capture it there right after login and reuse the same value here rather
 # than relying on ambient current-context.
-: "${CLUSTER_CONTEXT:?Set CLUSTER_CONTEXT to the ROSA cluster's exact kubeconfig context}"
-: "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, don't default to a personal name}"
-oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
+: "${CLUSTER_CONTEXT:?Set CLUSTER_CONTEXT to the ROSA cluster exact kubeconfig context}"
+: "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, never default to a personal name}"
+oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace (set -e above stops the script here on failure)
 
 # This skill does NOT read your local ~/.docker/config.json automatically —
 # a skill executed by an agent that silently harvests a local registry
 # credential and pushes it into a cluster Secret is a real credential-theft
-# pattern, independently flagged in review. Create the pull-secret yourself:
-oc --context "$CLUSTER_CONTEXT" create secret docker-registry rhoai-pull -n "$TEST_NAMESPACE" \
-  --docker-server=quay.io \
-  --docker-username=<your-quay-username> \
-  --docker-password=<your-quay-token-or-password> \
-  --docker-email=unused@example.com
+# pattern, independently flagged in review. Create the pull-secret yourself,
+# reading the token interactively so it never lands in argv/ps/history:
+read -r -p "Quay.io username: " QUAY_USER
+read -rs -p "Quay.io token/password: " QUAY_PASS; echo
+SECRET_FILE=$(umask 077 && mktemp)
+trap 'rm -f "$SECRET_FILE"' EXIT
+AUTH=$(base64 <<< "${QUAY_USER}:${QUAY_PASS}" | tr -d '\n')   # here-string, not printf argv — avoids ps exposure; tr -d, not -w0, for BSD/macOS base64 portability
+cat > "$SECRET_FILE" <<EOF
+{"auths":{"quay.io":{"auth":"$AUTH"}}}
+EOF
+oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
+  --from-file=.dockerconfigjson="$SECRET_FILE" --type=kubernetes.io/dockerconfigjson
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
 # `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
@@ -245,8 +255,9 @@ Verify GPU ready:
 
 ```bash
 oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --timeout=1800s
-oc --context "$CLUSTER_CONTEXT" get node -l nvidia.com/gpu.present=true \
-  -o jsonpath='{.items[0].metadata.name}{" gpu="}{.items[0].status.allocatable.nvidia\.com/gpu}{" type="}{.items[0].metadata.labels.node\.kubernetes\.io/instance-type}{"\n"}'
+GPU_NODE=$(oc --context "$CLUSTER_CONTEXT" get node -l nvidia.com/gpu.present=true,kubernetes.io/arch=arm64 -o json)
+[ "$(echo "$GPU_NODE" | jq '.items | length')" -gt 0 ] || { echo "ERROR: no arm64 GPU node found (mixed-arch cluster? check nodeSelector)" >&2; exit 1; }
+echo "$GPU_NODE" | jq -r '.items[0] | "\(.metadata.name) gpu=\(.status.allocatable["nvidia.com/gpu"]) type=\(.metadata.labels["node.kubernetes.io/instance-type"])"'
 ```
 
 ### Phase 3a — Quick GPU smoke (matmul / nvidia-smi)
@@ -256,7 +267,7 @@ One Pod per image, pinned to GPU node, sequential (single GPU).
 ```bash
 cd <notebooks-repo>
 export TAG=rhoai-3.6-ea.1
-export NS=jdanek
+export NS="$TEST_NAMESPACE"   # reuse the namespace validated in "Cluster prerequisites" above — never hardcode a personal name
 export CLUSTER_CONTEXT   # already set above — the script requires it explicitly
 .cursor/skills/arm64-rosa-gpu-smoke/scripts/gpu-smoke-pod.sh \
   quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:$TAG
@@ -293,11 +304,13 @@ Example:
 
 ```bash
 export NOTEBOOK_REV=<full-40-char-commit-sha>   # pin the reviewed tests/manual revision — required, not "main"
+: "${NOTEBOOK_REV:?Set NOTEBOOK_REV to a reviewed full commit SHA}"
+[[ "$NOTEBOOK_REV" =~ ^[0-9a-f]{40}$ ]] || { echo "NOTEBOOK_REV must be a full 40-character lowercase commit SHA" >&2; exit 2; }
 # set -e + a per-run mktemp path (not a fixed /tmp/gpu-test.ipynb): without
 # these, a failed curl leaves nbconvert executing stale content from a prior
 # run and reporting a result for the wrong revision. NOTEBOOK_REV is passed
 # as a quoted positional parameter, not interpolated into the script text.
-oc --context "$CLUSTER_CONTEXT" exec -q -n jdanek "$POD" -c smoke -- bash -lc '
+oc --context "$CLUSTER_CONTEXT" exec -q -n "$TEST_NAMESPACE" "$POD" -c smoke -- bash -lc '
   set -euo pipefail
   rev="$1"
   tmp_nb=$(mktemp --suffix=.ipynb)
@@ -324,7 +337,7 @@ proportionate mitigations; know what's pinned before running it.
 ```bash
 cd <notebooks-repo>
 export TAG=rhoai-3.6-ea.1
-export TEST_NAMESPACE=jdanek
+export TEST_NAMESPACE   # already set (see "Cluster prerequisites" above) — never hardcode a personal name
 export CLUSTER_CONTEXT   # already set (see "Cluster prerequisites" above) — required, no ambient fallback
 export NOTEBOOK_REV=<full-40-char-commit-sha>   # required — see Phase 3b example above
 uv run .cursor/skills/arm64-rosa-gpu-smoke/scripts/gpu-manual-tests.py

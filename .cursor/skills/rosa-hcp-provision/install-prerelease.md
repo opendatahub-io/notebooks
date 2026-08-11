@@ -74,7 +74,7 @@ pull-secret.
 
 ```bash
 helm repo add kyverno https://kyverno.github.io/kyverno/ && helm repo update
-helm install kyverno kyverno/kyverno -n kyverno --create-namespace \
+helm --kube-context "$CLUSTER_CONTEXT" install kyverno kyverno/kyverno -n kyverno --create-namespace \
   --set securityContext=null \
   --set backgroundController.securityContext=null \
   --set cleanupController.securityContext=null \
@@ -84,7 +84,7 @@ helm install kyverno kyverno/kyverno -n kyverno --create-namespace \
 ```
 
 Verified working end-to-end on OCP 4.21 (2026-08-10). **Fallback if `helm`
-truly isn't available**: `kubectl apply --server-side -f install.yaml`
+truly isn't available**: `kubectl --context "$CLUSTER_CONTEXT" apply --server-side -f install.yaml`
 (pin a version — this session used v1.18.0), then patch out the
 incompatible fields on all 4 controller Deployments
 (`kyverno-admission-controller`, `kyverno-background-controller`,
@@ -180,7 +180,11 @@ path. Confirmed via `skopeo inspect --raw` that the original
 `^registry\.redhat\.io/rhoai/` instead**:
 
 ```bash
-cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
+# Heredoc delimiter is quoted ('EOF') so bash performs NO expansion inside —
+# this YAML contains literal Kyverno JMESPath backtick expressions
+# (`` `[]` ``, `` `""` `` below) that an unquoted heredoc would otherwise
+# treat as command substitution, corrupting the policy before oc ever sees it.
+cat <<'EOF' | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -192,6 +196,18 @@ spec:
       any:
       - resources:
           kinds: ["Namespace"]
+    # Scope generation to actual RHOAI namespaces + namespaces explicitly
+    # opted in as Data Science Projects — without this, EVERY namespace on
+    # the cluster gets a copy of the quay.io/registry.redhat.io credential,
+    # readable by anyone with Secret-read access anywhere.
+    preconditions:
+      any:
+      - key: "{{ request.object.metadata.name }}"
+        operator: AnyIn
+        value: ["redhat-ods-applications", "redhat-ods-operator", "redhat-ods-monitoring"]
+      - key: '{{ request.object.metadata.labels."opendatahub.io/dashboard" || `""` }}'
+        operator: Equals
+        value: "true"
     generate:
       apiVersion: v1
       kind: Secret
@@ -217,6 +233,12 @@ spec:
     preconditions:
       any:
       - key: "{{ request.object.spec.containers[?contains(image, 'quay.io') || contains(image, 'registry.redhat.io')] | length(@) }}"
+        operator: GreaterThan
+        value: 0
+      # Also check initContainers — without this branch, a Pod whose ONLY
+      # quay.io/registry.redhat.io reference is on an initContainer never
+      # gets the pull secret, and that initContainer fails to pull.
+      - key: "{{ request.object.spec.initContainers[?contains(image, 'quay.io') || contains(image, 'registry.redhat.io')] || `[]` | length(@) }}"
         operator: GreaterThan
         value: 0
     mutate:

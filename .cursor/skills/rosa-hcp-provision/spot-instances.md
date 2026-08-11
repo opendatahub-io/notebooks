@@ -237,8 +237,15 @@ above.
       won't work even with a newer CLI — this is enforced service-side)
 - [ ] Re-read `ROSA-26` and `ROSAENG-63392` for current status before
       assuming either gate has cleared
-- [ ] If both gates clear: retry the `rosa --debug` repro above and
-      confirm `spot_market_options` now appears in the request, then
+- [ ] Confirm the live OCM API response actually includes
+      `spot_market_options` on `AWSNodePool` (inspect via `ocm` schema
+      dump or `rosa --debug`) — don't rely on ticket status text alone
+- [ ] If pursuing Enhanced mode: verify the SQS queue policy grants
+      `events.amazonaws.com` `sqs:SendMessage` — otherwise EventBridge
+      interruption events never reach the queue even with a valid URL
+      configured
+- [ ] If all applicable gates clear: retry the `rosa --debug` repro above
+      and confirm `spot_market_options` now appears in the request, then
       confirm `InstanceLifecycle` on the actual EC2 instances
 - [ ] Only after that: consider whether Simple mode (no proactive
       *interruption* notification — Simple mode does show an informational
