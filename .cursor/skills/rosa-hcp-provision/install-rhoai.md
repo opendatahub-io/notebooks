@@ -3,10 +3,22 @@
 This covers installing an **already-released** RHOAI version via the
 standard `redhat-operators` OperatorHub catalog. If you need an
 **EA/pre-release** build instead (not yet on any GA channel), see
-[install-prerelease.md](install-prerelease.md) — that path needs Kyverno,
-a namespace pull-secret for `quay.io/rhoai`, a custom `CatalogSource`, and
-(for RHOAI 3.3+ dashboard builds) Red Hat OpenShift Service Mesh 3 for
-Gateway API; this doc needs none of that.
+[install-prerelease.md](install-prerelease.md) — that path additionally
+needs Kyverno, a namespace pull-secret for `quay.io/rhoai`, and a custom
+`CatalogSource`; this doc needs none of that.
+
+**Version note, not EA/GA-specific:** if your target version is RHOAI
+3.3+, the dashboard has moved from a plain OpenShift `Route` to
+Kubernetes Gateway API regardless of which channel/catalog you installed
+it from — see [install-prerelease.md](install-prerelease.md#10-rhoai-36-ea1-specific-the-dashboard-needs-gateway-api--service-mesh-3)
+step 10 for why and how to install Red Hat OpenShift Service Mesh 3 (the
+prerequisite for *any* Gateway API controller on OpenShift). Without it,
+step 4 below's `oc get route rhods-dashboard` check will find nothing and
+`dsc/default-dsc` will sit at `DashboardReady=False reason=RouteNotReady`
+indefinitely, even though the operator install itself succeeded. This doc
+was validated against RHOAI 2.25.9 (still Route-based, see below) — for
+3.3+ via this GA path, do steps 1-3 here, then install Service Mesh 3
+per that step 10 before step 4's confirmation check.
 
 Validated end-to-end on a real ROSA HCP cluster (2026-08-08): RHOAI 2.25.9,
 `dashboard`+`workbenches` only, from operator subscribe to dashboard pods
@@ -245,15 +257,24 @@ anything's wrong.
 
 ## 4. Confirm it's up
 
+**The `oc get route` check below only applies to Route-based dashboards
+(RHOAI < 3.3, e.g. the 2.25.9 this doc was validated against).** For
+RHOAI 3.3+, see the version note above — install Service Mesh 3 first, or
+this will find nothing:
+
 ```bash
 oc --context "$CLUSTER_CONTEXT" get pods -n redhat-ods-applications
-oc --context "$CLUSTER_CONTEXT" get route -n redhat-ods-applications rhods-dashboard
+oc --context "$CLUSTER_CONTEXT" get dsc default-dsc -o jsonpath='{.status.phase}'   # expect "Ready" on any version
+oc --context "$CLUSTER_CONTEXT" get route -n redhat-ods-applications rhods-dashboard   # RHOAI < 3.3 only
 ```
 
 Dashboard route host looks like
 `rhods-dashboard-redhat-ods-applications.apps.rosa.<cluster>.<hash>.p3.openshiftapps.com`
 — note the `rosa.` prefix on ROSA HCP apps domains, easy to miss when
-constructing URLs by hand (e.g. for `test-variables.yml`).
+constructing URLs by hand (e.g. for `test-variables.yml`). On RHOAI 3.3+
+(Gateway API), read the dashboard's actual hostname from
+`gatewayconfig/default-gateway`'s `.status.domain` instead — see
+install-prerelease.md step 10's "Dashboard URL note".
 
 ## htpasswd auth for testing (if not already done)
 
