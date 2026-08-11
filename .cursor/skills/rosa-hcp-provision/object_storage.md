@@ -119,6 +119,19 @@ quota. Options, in order of effort:
 Verified working end-to-end. Deuxfleurs Garage — lightweight,
 geo-distributed S3-compatible store, zero external dependencies.
 
+**Test-only, plain HTTP, in-cluster only.** No Route/Ingress is created
+for this service anywhere in this doc — S3 clients (Elyra, DSPA) reach it
+only via its `ClusterIP` at `garage.<namespace>.svc.cluster.local:3900`,
+never from outside the cluster. `ClusterIP` scopes *which pods can route
+to it*, but the connection itself is unencrypted HTTP, so the S3 access
+key/secret still cross the pod network in cleartext to any workload that
+*can* reach the namespace. Acceptable for this validation setup, but
+don't reuse it as-is for anything beyond a disposable test cluster:
+namespace-scope it with a `NetworkPolicy` restricting ingress on port 3900
+to only the pods that legitimately need it (the workbench/DSPA pods in
+the project namespace), rather than leaving it reachable from every
+namespace on the cluster by default.
+
 ```bash
 oc --context "$CLUSTER_CONTEXT" new-project garage
 git clone https://git.deuxfleurs.fr/Deuxfleurs/garage.git

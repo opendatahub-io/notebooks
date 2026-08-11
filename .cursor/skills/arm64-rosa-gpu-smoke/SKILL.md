@@ -507,6 +507,10 @@ No upstream/RHOAIENG issue existed for this before — filed as
    type "S3 compatible object storage - v1", endpoint
    `http://garage.<namespace>.svc.cluster.local:3900`, region `us-east-1`
    (per the gotcha above), the bucket/key from the prerequisites step.
+   **This is plain HTTP, in-cluster only, test-only** — see
+   [object_storage.md](../rosa-hcp-provision/object_storage.md#garage)'s
+   Garage section for the network-isolation caveat before reusing this
+   setup beyond a disposable test cluster.
 2. **Configure the pipeline server** (Pipelines tab → Configure pipeline
    server), filling the same access key/secret/endpoint/region/bucket —
    the "Autofill from connection" dropdown menu items don't render in an
