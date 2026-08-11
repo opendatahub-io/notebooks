@@ -217,7 +217,7 @@ for ARM64 pools substitute `m6g`/`g5g` instance types:
 
 ```bash
 START_TIME="$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-1H +%Y-%m-%dT%H:%M:%S)"
-aws ec2 describe-spot-price-history --region us-east-1 \
+rh-aws-saml-login iaps-rhods-odh-dev -- aws ec2 describe-spot-price-history --region us-east-1 \
   --instance-types m5.2xlarge m5.xlarge m5.large m6i.large \
   --product-descriptions "Linux/UNIX" --availability-zone us-east-1a \
   --start-time "$START_TIME"

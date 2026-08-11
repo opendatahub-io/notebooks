@@ -288,11 +288,10 @@ oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if 
 # credential and pushes it into a cluster Secret is a real credential-theft
 # pattern, independently flagged in review. create-pull-secret.sh reads the
 # token interactively so it never lands in argv/ps/history:
-oc config use-context "$CLUSTER_CONTEXT"
 .cursor/skills/lib/create-pull-secret.sh rhoai-pull "$TEST_NAMESPACE" quay.io
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
-# `oc create secret generic rhoai-pull -n "$TEST_NAMESPACE"
+# `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
 # --from-file=.dockerconfigjson=<path-you-trust> --type=kubernetes.io/dockerconfigjson`)
 
 oc --context "$CLUSTER_CONTEXT" label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline

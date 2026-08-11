@@ -287,8 +287,10 @@ rh-aws-saml-login iaps-rhods-odh-dev -- rosa create machinepool \
   --cluster $CLUSTER_NAME --name gpu-arm2 \
   --instance-type g5g.2xlarge --replicas 1 --subnet $PRIVATE --yes
 
-# Wait for node
-oc --context "$CLUSTER_CONTEXT" get nodes -l node.kubernetes.io/instance-type=g5g.2xlarge -w
+# Wait for node — `get -w` streams forever and never exits on its own,
+# so this must be a bounded `oc wait`, not a watch, to continue unattended
+oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready node \
+  -l hypershift.openshift.io/nodePool=gpu-arm2 --timeout=600s
 
 # Wait for the driver on the NEW pool specifically (not just any GPU node)
 NEW_NODE=$(oc --context "$CLUSTER_CONTEXT" get node -l hypershift.openshift.io/nodePool=gpu-arm2 -o json)
@@ -376,7 +378,6 @@ EOF
 # necessarily "the one we pinned"); polls since OLM creates the
 # InstallPlan asynchronously after the Subscription is applied.
 CSV_NAME=gpu-operator-certified.v25.3.4
-oc config use-context "$CLUSTER_CONTEXT"
 .cursor/skills/lib/wait-for-csv.sh nvidia-gpu-operator "$CSV_NAME"
 
 # ClusterPolicy — extract default from CSV alm-examples (empty spec{} is invalid in v25.3+)
@@ -433,8 +434,7 @@ Sufficient for [arm64 GPU smoke](../arm64-rosa-gpu-smoke/SKILL.md) without RHOAI
 ```bash
 set -euo pipefail
 : "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, never default to a personal name}"
-oc config use-context "$CLUSTER_CONTEXT"
-oc create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
+oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
 
 # This skill does NOT read your local ~/.docker/config.json automatically —
 # a skill executed by an agent that silently harvests a local registry
@@ -444,10 +444,10 @@ oc create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't s
 .cursor/skills/lib/create-pull-secret.sh rhoai-pull "$TEST_NAMESPACE" quay.io
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
-# `oc create secret generic rhoai-pull -n "$TEST_NAMESPACE"
+# `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
 # --from-file=.dockerconfigjson=<path-you-trust> --type=kubernetes.io/dockerconfigjson`)
 
-oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
+oc --context "$CLUSTER_CONTEXT" label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
 ```
 
 Reference `imagePullSecrets: [rhoai-pull]` in GPU test Pods (see arm64 skill scripts).
@@ -468,12 +468,29 @@ Quick sequence:
 
 ```bash
 export CLUSTER_NAME="<name>"
-export OPERATOR_PREFIX="<name>-w7f2"   # from rosa create / delete cluster output
+# Copy verbatim from THIS cluster's own `rosa create`/`rosa delete cluster`
+# output — never reuse a prefix from another cluster or session; the role
+# deletion below is irreversible and scoped by this value, not by CLUSTER_NAME.
+export OPERATOR_PREFIX="<name>-w7f2"
 
 kinit --keychain "<user>@IPA.REDHAT.COM"   # if SAML login fails
 
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete cluster --cluster "$CLUSTER_NAME" --yes
-# Wait until cluster drops from: rosa list clusters  (~15–20 min observed)
+
+# Fail closed before the irreversible role deletion below: poll until the
+# cluster is actually gone (same bounded-retry pattern as deprovision.md
+# step 2) rather than assuming --yes above already finished the job.
+CLUSTER_GONE=false
+for i in $(seq 1 30); do
+  if clusters="$(rh-aws-saml-login iaps-rhods-odh-dev -- rosa list clusters)" \
+     && ! printf '%s\n' "$clusters" | grep -Fq "$CLUSTER_NAME"; then
+    CLUSTER_GONE=true
+    break
+  fi
+  echo "still present or query failed (attempt $i/30), waiting 60s..." >&2
+  sleep 60
+done
+[ "$CLUSTER_GONE" = true ] || { echo "ERROR: cluster still present after 30 attempts (~30 min) — do not proceed to role deletion" >&2; exit 1; }
 
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete operator-roles \
   --prefix "$OPERATOR_PREFIX" --mode auto --yes

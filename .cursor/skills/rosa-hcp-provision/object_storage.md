@@ -91,7 +91,6 @@ quota. Options, in order of effort:
    # create-pull-secret.sh reads the PAT interactively (never a CLI flag —
    # that would expose it via shell history and `ps` for the command's
    # lifetime) and never touches ~/.docker/config.json automatically.
-   oc config use-context "$CLUSTER_CONTEXT"
    .cursor/skills/lib/create-pull-secret.sh dockerhub-pull "<namespace>" "https://index.docker.io/v1/"
    # `oc secrets link`, not a merge patch — a JSON merge patch replaces
    # imagePullSecrets wholesale, wiping out any secrets already on the

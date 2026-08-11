@@ -101,11 +101,13 @@ for DEPLOYMENT_NAME in kyverno-admission-controller kyverno-background-controlle
   oc --context "$CLUSTER_CONTEXT" patch deployment "$DEPLOYMENT_NAME" -n kyverno --type=json -p='
 [{"op":"remove","path":"/spec/template/spec/containers/0/securityContext/runAsUser"},
  {"op":"remove","path":"/spec/template/spec/containers/0/securityContext/runAsGroup"}]'
+  if [ "$DEPLOYMENT_NAME" = "kyverno-admission-controller" ]; then
+    oc --context "$CLUSTER_CONTEXT" patch deployment "$DEPLOYMENT_NAME" -n kyverno --type=json -p='
+[{"op":"remove","path":"/spec/template/spec/initContainers/0/securityContext/runAsUser"},
+ {"op":"remove","path":"/spec/template/spec/initContainers/0/securityContext/runAsGroup"}]'
+  fi
 done
 ```
-
-(`kyverno-admission-controller` also has an initContainer needing the same
-two ops.)
 
 Wait for `kyverno-svc` to have endpoints before relying on the admission
 webhook — check events, don't just sleep blindly:
@@ -155,7 +157,6 @@ Read the credentials interactively instead, so they never touch argv/ps/
 shell history either:
 
 ```bash
-oc config use-context "$CLUSTER_CONTEXT"
 .cursor/skills/lib/create-pull-secret.sh pull-secret-quay openshift-config \
   "quay.io,quay.io/rhoai" registry.redhat.io
 ```
@@ -542,13 +543,12 @@ spec:
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
 EOF
-oc config use-context "$CLUSTER_CONTEXT"
 # No startingCSV is pinned above (see Gotcha 1), so the CSV name isn't known
 # until OLM resolves it — discover it from the Subscription rather than
 # waiting on a label selector, which can match an unrelated/older CSV.
 CSV_NAME=""
 for i in $(seq 1 12); do
-  CSV_NAME=$(oc get subscription servicemeshoperator3 -n openshift-operators -o jsonpath='{.status.currentCSV}')
+  CSV_NAME=$(oc --context "$CLUSTER_CONTEXT" get subscription servicemeshoperator3 -n openshift-operators -o jsonpath='{.status.currentCSV}')
   [ -n "$CSV_NAME" ] && break
   echo "waiting for Subscription to resolve a currentCSV (attempt $i/12)..." >&2
   sleep 5

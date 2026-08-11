@@ -116,7 +116,6 @@ until the condition nor times out):
 
 ```bash
 CSV_NAME=rhods-operator.2.25.9
-oc config use-context "$CLUSTER_CONTEXT"
 .cursor/skills/lib/wait-for-csv.sh redhat-ods-operator "$CSV_NAME"
 ```
 
@@ -132,7 +131,9 @@ oc --context "$CLUSTER_CONTEXT" delete csv "rhods-operator.<version>" -n redhat-
 FAILED_CSV="rhods-operator.<version>"
 oc --context "$CLUSTER_CONTEXT" get installplan -n redhat-ods-operator -o json | \
   jq -r --arg csv "$FAILED_CSV" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name' | \
-  xargs -r -n1 oc --context "$CLUSTER_CONTEXT" delete installplan -n redhat-ods-operator
+  while IFS= read -r ip; do
+    [ -n "$ip" ] && oc --context "$CLUSTER_CONTEXT" delete installplan "$ip" -n redhat-ods-operator
+  done
 # then re-apply the Subscription above
 ```
 

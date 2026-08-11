@@ -6,7 +6,7 @@
 # ~/.docker/config.json automatically (would silently harvest whatever
 # credential happens to be cached there).
 #
-# Usage: create-pull-secret.sh <secret-name> <namespace> <registry-host-group> [<registry-host-group> ...]
+# Usage: CLUSTER_CONTEXT=<ctx> create-pull-secret.sh <secret-name> <namespace> <registry-host-group> [<registry-host-group> ...]
 #
 # Each <registry-host-group> is one or more comma-separated auth keys that
 # share a single prompted credential, e.g. "quay.io,quay.io/rhoai" writes
@@ -18,15 +18,18 @@
 # quay.io credential is available), without any special-cased flag. If a
 # username is given, the password is required non-empty.
 #
-# Assumes the caller has already selected the right cluster context
-# (`oc config use-context ...` or an already-current context) — this
-# script does not take a --context flag, to avoid a second place that
-# has to be kept in sync with however the surrounding doc names its
-# context variable.
+# Requires CLUSTER_CONTEXT in the environment and passes it explicitly on
+# every oc call — never relies on / mutates the ambient current-context.
+# `oc config use-context` changes shared, machine-wide kubeconfig state; a
+# concurrent process changing it between the caller's setup and this
+# script's execution would otherwise create the secret in the wrong
+# cluster (see rosa-hcp-provision/SKILL.md's "always pass --context" rule).
 set -euo pipefail
 
+: "${CLUSTER_CONTEXT:?Set CLUSTER_CONTEXT to the exact kubeconfig context of the target cluster}"
+
 if [ "$#" -lt 3 ]; then
-  echo "Usage: $0 <secret-name> <namespace> <registry-host-group> [<registry-host-group> ...]" >&2
+  echo "Usage: CLUSTER_CONTEXT=<ctx> $0 <secret-name> <namespace> <registry-host-group> [<registry-host-group> ...]" >&2
   exit 2
 fi
 
@@ -51,14 +54,18 @@ for GROUP in "$@"; do
     echo "ERROR: a username was given for ${GROUP} but the password was empty" >&2
     exit 1
   fi
-  AUTH=$(printf '%s' "${REG_USER}:${REG_PASS}" | base64 | tr -d '\n')
+  AUTH_FILE=$(umask 077 && mktemp)
+  printf '%s' "${REG_USER}:${REG_PASS}" | base64 | tr -d '\n' > "$AUTH_FILE"
   IFS=',' read -ra HOST_KEYS <<< "$GROUP"
   for HOST in "${HOST_KEYS[@]}"; do
-    AUTHS_JSON=$(printf '%s' "$AUTHS_JSON" | jq --arg host "$HOST" --arg auth "$AUTH" \
+    # --rawfile, not --arg $AUTH — --arg would put the (base64-encoded,
+    # still sensitive) credential into jq's own process argument list.
+    AUTHS_JSON=$(printf '%s' "$AUTHS_JSON" | jq --arg host "$HOST" --rawfile auth "$AUTH_FILE" \
       '.[$host] = {"auth": $auth}')
   done
+  rm -f "$AUTH_FILE"
   ANY_HOST_CONFIGURED=true
-  unset REG_USER REG_PASS AUTH
+  unset REG_USER REG_PASS AUTH_FILE
 done
 
 if [ "$ANY_HOST_CONFIGURED" != true ]; then
@@ -68,10 +75,10 @@ fi
 
 printf '%s' "$AUTHS_JSON" | jq '{"auths": .}' > "$SECRET_FILE"
 
-oc create secret generic "$SECRET_NAME" -n "$NAMESPACE" \
+oc --context "$CLUSTER_CONTEXT" create secret generic "$SECRET_NAME" -n "$NAMESPACE" \
   --from-file=.dockerconfigjson="$SECRET_FILE" \
   --type=kubernetes.io/dockerconfigjson \
-  --dry-run=client -o yaml | oc apply -f -
+  --dry-run=client -o yaml | oc --context "$CLUSTER_CONTEXT" apply -f -
 
 rm -f "$SECRET_FILE"
 echo "Created/updated secret ${SECRET_NAME} in namespace ${NAMESPACE}" >&2
