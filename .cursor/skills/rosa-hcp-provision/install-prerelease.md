@@ -96,9 +96,12 @@ then patch out the incompatible fields on all 4 controller Deployments
 `kyverno-cleanup-controller`, `kyverno-reports-controller`):
 
 ```bash
-oc --context "$CLUSTER_CONTEXT" patch deployment <name> -n kyverno --type=json -p='
+for DEPLOYMENT_NAME in kyverno-admission-controller kyverno-background-controller \
+  kyverno-cleanup-controller kyverno-reports-controller; do
+  oc --context "$CLUSTER_CONTEXT" patch deployment "$DEPLOYMENT_NAME" -n kyverno --type=json -p='
 [{"op":"remove","path":"/spec/template/spec/containers/0/securityContext/runAsUser"},
  {"op":"remove","path":"/spec/template/spec/containers/0/securityContext/runAsGroup"}]'
+done
 ```
 
 (`kyverno-admission-controller` also has an initContainer needing the same
@@ -152,24 +155,16 @@ Read the credentials interactively instead, so they never touch argv/ps/
 shell history either:
 
 ```bash
-SECRET_FILE=$(umask 077 && mktemp)
-trap 'rm -f "$SECRET_FILE"' EXIT
-read -r -p "Quay.io username: " QUAY_USER
-read -rs -p "Quay.io token/password: " QUAY_PASS; echo
-read -r -p "registry.redhat.io username (leave blank to skip): " REDHAT_USER
-REDHAT_AUTH=""
-if [ -n "$REDHAT_USER" ]; then
-  read -rs -p "registry.redhat.io token/password: " REDHAT_PASS; echo
-  REDHAT_AUTH=$(printf '%s' "${REDHAT_USER}:${REDHAT_PASS}" | base64 | tr -d '\n')
-fi
-QUAY_AUTH=$(printf '%s' "${QUAY_USER}:${QUAY_PASS}" | base64 | tr -d '\n')   # printf, not a here-string (<<< appends a trailing newline, corrupting the credential); tr -d, not -w0, for BSD/macOS base64 portability
-cat > "$SECRET_FILE" <<EOF
-{"auths":{"quay.io":{"auth":"$QUAY_AUTH"},"quay.io/rhoai":{"auth":"$QUAY_AUTH"},"registry.redhat.io":{"auth":"$REDHAT_AUTH"}}}
-EOF
-oc --context "$CLUSTER_CONTEXT" create secret generic pull-secret-quay -n openshift-config \
-  --from-file=.dockerconfigjson="$SECRET_FILE" \
-  --type=kubernetes.io/dockerconfigjson --dry-run=client -o yaml | oc --context "$CLUSTER_CONTEXT" apply -f -
+oc config use-context "$CLUSTER_CONTEXT"
+.cursor/skills/lib/create-pull-secret.sh pull-secret-quay openshift-config \
+  "quay.io,quay.io/rhoai" registry.redhat.io
 ```
+
+(`quay.io,quay.io/rhoai` writes the same Quay credential under both auth
+keys — some clients do exact-key lookup rather than registry-prefix
+matching. `registry.redhat.io` is entered as its own group; leave its
+username blank at the prompt to omit it entirely if you don't have a
+working credential for it yet.)
 
 **If the cached `quay.io/rhoai` robot credential is dead** (`"Could not
 find robot with username..."` — hit exactly this in the 2026-08-10 run):
@@ -387,7 +382,7 @@ whichever policy is live at the moment of recreation. Confirm recovery
 with:
 
 ```bash
-oc --context "$CLUSTER_CONTEXT" get imagestream <name> -n redhat-ods-applications -o json | \
+oc --context "$CLUSTER_CONTEXT" get imagestream "<name>" -n redhat-ods-applications -o json | \
   jq -r '.spec.tags[] | "\(.name) -> \(.from.name)"'
 ```
 
@@ -440,7 +435,18 @@ reliable path was patching the SA directly, then deleting the pod to pick
 it up:
 
 ```bash
+# OLM creates the CatalogSource's ServiceAccount asynchronously — `oc
+# secrets link` fails outright if it races ahead of that creation, so
+# poll for the SA to exist first rather than assuming it's already there.
+for i in $(seq 1 12); do
+  oc --context "$CLUSTER_CONTEXT" get sa rhoai-fbc-fragment-3-6-ea-1 -n openshift-marketplace >/dev/null 2>&1 && break
+  echo "waiting for CatalogSource ServiceAccount to exist (attempt $i/12)..." >&2
+  sleep 5
+done
 oc --context "$CLUSTER_CONTEXT" secrets link rhoai-fbc-fragment-3-6-ea-1 pull-secret-quay -n openshift-marketplace --for=pull
+oc --context "$CLUSTER_CONTEXT" get sa rhoai-fbc-fragment-3-6-ea-1 -n openshift-marketplace \
+  -o jsonpath='{.imagePullSecrets[*].name}' | grep -q pull-secret-quay \
+  || { echo "ERROR: pull-secret-quay did not land in the SA's imagePullSecrets" >&2; exit 1; }
 oc --context "$CLUSTER_CONTEXT" delete pod -n openshift-marketplace -l olm.catalogSource=rhoai-fbc-fragment-3-6-ea-1
 ```
 
@@ -459,10 +465,11 @@ The `3.6.0-ea.1` CSV showed up only in the full `entries[]` dump of the
 ## 8. Namespace + OperatorGroup + Subscription
 
 Same pattern as [install-rhoai.md](install-rhoai.md) step 2 (empty
-`spec: {}` OperatorGroup, `installPlanApproval: Manual`, exact-CSV-match
-InstallPlan-approval retry loop) — just point `source` at your
-`CatalogSource` name from step 7 and `channel`/`startingCSV` at what you
-found in step 7's channel dump.
+`spec: {}` OperatorGroup, `installPlanApproval: Manual`, then
+`.cursor/skills/lib/wait-for-csv.sh redhat-ods-operator "$CSV_NAME"` to
+approve-and-wait by exact CSV match) — just point `source` at your
+`CatalogSource` name from step 7 and `channel`/`startingCSV`/`CSV_NAME` at
+what you found in step 7's channel dump.
 
 **Bundle-unpack retry gotcha**: if the InstallPlan never appears and `oc
 describe subscription` shows `BundleUnpackFailed: DeadlineExceeded`, OLM
@@ -471,7 +478,7 @@ partial CSV) once the ClusterPolicies are confirmed `Ready`:
 
 ```bash
 oc --context "$CLUSTER_CONTEXT" delete subscription rhods-operator -n redhat-ods-operator
-oc --context "$CLUSTER_CONTEXT" delete csv rhods-operator.<version> -n redhat-ods-operator --ignore-not-found
+oc --context "$CLUSTER_CONTEXT" delete csv "rhods-operator.<version>" -n redhat-ods-operator --ignore-not-found
 # then re-apply the Subscription
 ```
 
@@ -535,7 +542,19 @@ spec:
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
 EOF
-oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded csv -n openshift-operators -l operators.coreos.com/servicemeshoperator3.openshift-operators --timeout=300s
+oc config use-context "$CLUSTER_CONTEXT"
+# No startingCSV is pinned above (see Gotcha 1), so the CSV name isn't known
+# until OLM resolves it — discover it from the Subscription rather than
+# waiting on a label selector, which can match an unrelated/older CSV.
+CSV_NAME=""
+for i in $(seq 1 12); do
+  CSV_NAME=$(oc get subscription servicemeshoperator3 -n openshift-operators -o jsonpath='{.status.currentCSV}')
+  [ -n "$CSV_NAME" ] && break
+  echo "waiting for Subscription to resolve a currentCSV (attempt $i/12)..." >&2
+  sleep 5
+done
+[ -n "$CSV_NAME" ] || { echo "ERROR: Subscription servicemeshoperator3 never resolved a currentCSV" >&2; exit 1; }
+.cursor/skills/lib/wait-for-csv.sh openshift-operators "$CSV_NAME"
 ```
 
 **Gotcha 1 — don't pin `startingCSV`.** A first attempt pinning
@@ -579,8 +598,11 @@ the images really ship arm64 variants, don't assume from the release
 notes:
 
 ```bash
-IMG=quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:rhoai-3.6-ea.1
-skopeo inspect --raw docker://$IMG | \
+IMG="quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:rhoai-3.6-ea.1"
+skopeo inspect --raw "docker://$IMG" | \
+  jq -e '[.manifests[]? | select(.platform.architecture=="arm64" and .platform.os=="linux")] | length > 0' \
+  || { echo "ERROR: no arm64/linux manifest found for $IMG" >&2; exit 1; }
+skopeo inspect --raw "docker://$IMG" | \
   jq -c '[.manifests[]? | {arch: .platform.architecture, os: .platform.os}] | unique'
 ```
 

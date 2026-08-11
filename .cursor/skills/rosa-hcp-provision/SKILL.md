@@ -369,23 +369,15 @@ spec: {channel: v25.3, name: gpu-operator-certified, source: certified-operators
 EOF
 
 # Approve the InstallPlan pinned to the CSV above (Manual approval prevents an
-# unreviewed newer CSV in the v25.3 channel from installing silently).
-# Select by exact CSV match, not output order — a namespace can have more
-# than one InstallPlan and "last one" isn't necessarily "the one we pinned".
-# OLM creates the InstallPlan asynchronously after the Subscription is
-# applied, so poll for it rather than querying once.
+# unreviewed newer CSV in the v25.3 channel from installing silently) and
+# wait for it to succeed. Shared script: selects by exact CSV match, not
+# output order or a label selector (a namespace can have more than one
+# InstallPlan/CSV, and "last one"/"any CSV with this label" isn't
+# necessarily "the one we pinned"); polls since OLM creates the
+# InstallPlan asynchronously after the Subscription is applied.
 CSV_NAME=gpu-operator-certified.v25.3.4
-INSTALLPLAN=""
-for i in $(seq 1 12); do
-  INSTALLPLAN=$(oc --context "$CLUSTER_CONTEXT" get installplan -n nvidia-gpu-operator -o json | \
-    jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
-  [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] && break
-  echo "waiting for InstallPlan referencing $CSV_NAME (attempt $i/12)..." >&2
-  sleep 5
-done
-[ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one InstallPlan for $CSV_NAME, found: $INSTALLPLAN" >&2; exit 1; }
-oc --context "$CLUSTER_CONTEXT" patch installplan "$INSTALLPLAN" -n nvidia-gpu-operator --type merge -p '{"spec":{"approved":true}}'
-oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded csv -n nvidia-gpu-operator -l operators.coreos.com/gpu-operator-certified.nvidia-gpu-operator --timeout=180s
+oc config use-context "$CLUSTER_CONTEXT"
+.cursor/skills/lib/wait-for-csv.sh nvidia-gpu-operator "$CSV_NAME"
 
 # ClusterPolicy — extract default from CSV alm-examples (empty spec{} is invalid in v25.3+)
 # Use $CSV_NAME directly (defined above), not a grep match — grep can hit an
@@ -441,29 +433,21 @@ Sufficient for [arm64 GPU smoke](../arm64-rosa-gpu-smoke/SKILL.md) without RHOAI
 ```bash
 set -euo pipefail
 : "${TEST_NAMESPACE:?Set TEST_NAMESPACE to a unique, dedicated namespace — this is a shared account, never default to a personal name}"
-oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
+oc config use-context "$CLUSTER_CONTEXT"
+oc create ns "$TEST_NAMESPACE"   # fails loudly if it already exists — don't silently reuse another operator's namespace
 
 # This skill does NOT read your local ~/.docker/config.json automatically —
 # a skill executed by an agent that silently harvests a local registry
 # credential and pushes it into a cluster Secret is a real credential-theft
-# pattern, independently flagged in review. Create the pull-secret yourself,
-# reading the token interactively so it never lands in argv/ps/history:
-read -r -p "Quay.io username: " QUAY_USER
-read -rs -p "Quay.io token/password: " QUAY_PASS; echo
-SECRET_FILE=$(umask 077 && mktemp)
-trap 'rm -f "$SECRET_FILE"' EXIT
-AUTH=$(printf '%s' "${QUAY_USER}:${QUAY_PASS}" | base64 | tr -d '\n')   # printf, not a here-string (<<< appends a trailing newline, corrupting the credential); tr -d, not -w0, for BSD/macOS base64 portability
-cat > "$SECRET_FILE" <<EOF
-{"auths":{"quay.io":{"auth":"$AUTH"}}}
-EOF
-oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
-  --from-file=.dockerconfigjson="$SECRET_FILE" --type=kubernetes.io/dockerconfigjson
+# pattern, independently flagged in review. create-pull-secret.sh reads the
+# token interactively so it never lands in argv/ps/history:
+.cursor/skills/lib/create-pull-secret.sh rhoai-pull "$TEST_NAMESPACE" quay.io
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
-# `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
+# `oc create secret generic rhoai-pull -n "$TEST_NAMESPACE"
 # --from-file=.dockerconfigjson=<path-you-trust> --type=kubernetes.io/dockerconfigjson`)
 
-oc --context "$CLUSTER_CONTEXT" label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
+oc label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
 ```
 
 Reference `imagePullSecrets: [rhoai-pull]` in GPU test Pods (see arm64 skill scripts).

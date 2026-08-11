@@ -88,23 +88,16 @@ quota. Options, in order of effort:
    Access Token (Account Settings → Security → Personal access tokens,
    *not* your account password), then create a pull secret and attach it:
    ```bash
-   # Read interactively — a literal --docker-password on the command line
-   # exposes the PAT via shell history and `ps` for the command's lifetime.
-   read -r -p "Docker Hub username: " DOCKERHUB_USER
-   read -rs -p "Docker Hub PAT: " DOCKERHUB_PAT; echo
-   SECRET_FILE=$(umask 077 && mktemp)
-   trap 'rm -f "$SECRET_FILE"' EXIT
-   AUTH=$(printf '%s' "${DOCKERHUB_USER}:${DOCKERHUB_PAT}" | base64 | tr -d '\n')   # printf, not a here-string (<<< appends a trailing newline, corrupting the credential)
-   cat > "$SECRET_FILE" <<EOF
-   {"auths":{"https://index.docker.io/v1/":{"auth":"$AUTH"}}}
-   EOF
-   oc --context "$CLUSTER_CONTEXT" create secret generic dockerhub-pull -n <namespace> \
-     --from-file=.dockerconfigjson="$SECRET_FILE" --type=kubernetes.io/dockerconfigjson
+   # create-pull-secret.sh reads the PAT interactively (never a CLI flag —
+   # that would expose it via shell history and `ps` for the command's
+   # lifetime) and never touches ~/.docker/config.json automatically.
+   oc config use-context "$CLUSTER_CONTEXT"
+   .cursor/skills/lib/create-pull-secret.sh dockerhub-pull "<namespace>" "https://index.docker.io/v1/"
    # `oc secrets link`, not a merge patch — a JSON merge patch replaces
    # imagePullSecrets wholesale, wiping out any secrets already on the
    # default SA (e.g. OpenShift's own auto-generated internal-registry
    # pull secret) instead of appending to them.
-   oc --context "$CLUSTER_CONTEXT" secrets link default dockerhub-pull -n <namespace> --for=pull
+   oc --context "$CLUSTER_CONTEXT" secrets link default dockerhub-pull -n "<namespace>" --for=pull
    ```
    Authenticated pulls get a much higher limit. This skill does **not**
    auto-extract a Docker Hub credential from `~/.docker/config.json` by
@@ -375,12 +368,13 @@ helm --kube-context "$CLUSTER_CONTEXT" install s4 s4/charts/s4 \
   --set route.enabled=true \
   --set auth.username=admin \
   --set-file auth.password="$PASSWORD_FILE"
+rm -f "$PASSWORD_FILE"   # don't wait for the trap/EXIT fallback — clean up as soon as it's no longer needed
 ```
 
 Result: `CrashLoopBackOff`,
 
 ```
-oc logs deploy/s4 -n s4
+oc --context "$CLUSTER_CONTEXT" logs deploy/s4 -n s4
 exec container process `/opt/ceph-container/bin/entrypoint.sh`: Exec format error
 ```
 
@@ -398,7 +392,7 @@ arm64 image.
 
 ```bash
 for ns in garage rustfs seaweedfs s4; do
-  helm --kube-context "$CLUSTER_CONTEXT" uninstall "$ns" -n "$ns" 2>/dev/null
+  helm --kube-context "$CLUSTER_CONTEXT" uninstall "$ns" -n "$ns"   # let a real uninstall failure print, don't swallow it before deleting the project out from under it
   oc --context "$CLUSTER_CONTEXT" delete project "$ns" --ignore-not-found
 done
 ```

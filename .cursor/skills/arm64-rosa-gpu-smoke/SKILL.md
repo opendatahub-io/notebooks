@@ -49,18 +49,18 @@ Registry: `quay.io/rhoai/`
 ROCm images should be amd64-only (confirms exclusion is intentional):
 
 ```bash
-IMG=quay.io/rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9:rhoai-3.6-ea.1
-RAW=$(skopeo inspect --raw docker://$IMG)
+IMG="quay.io/rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9:rhoai-3.6-ea.1"
+RAW=$(skopeo inspect --raw "docker://$IMG")
 # A genuinely amd64-only image has no manifest list at all (single-manifest
 # response, no top-level .manifests) — jq '.manifests[]' would crash on it
 # with "Cannot iterate over null" precisely in the expected-good case.
 if echo "$RAW" | jq -e 'has("manifests")' >/dev/null; then
-  echo "$RAW" | jq '[.manifests[] | {arch: .platform.architecture, os: .platform.os}] | unique'
+  echo "$RAW" | jq -e '[.manifests[] | {arch: .platform.architecture, os: .platform.os}] | unique == [{"arch":"amd64","os":"linux"}]' \
+    || { echo "ERROR: $IMG is not amd64-only (unexpected — ROCm should be excluded from arm64)" >&2; exit 1; }
 else
-  skopeo inspect docker://$IMG | jq '{arch: .Architecture, os: .Os}'
+  skopeo inspect "docker://$IMG" | jq -e '.Architecture == "amd64" and .Os == "linux"' \
+    || { echo "ERROR: $IMG is not amd64/linux (unexpected — ROCm should be excluded from arm64)" >&2; exit 1; }
 fi
-# Expect either [{"arch":"amd64","os":"linux"}] (manifest list) or
-# {"arch":"amd64","os":"linux"} (single manifest)
 ```
 
 ## Phase 2: CPU Testcontainers Smoke
@@ -120,6 +120,7 @@ Run the same pytest loop on a Linux arm64 box (e.g. via SSH):
 
 ```bash
 ssh user@host 'bash -s' <<'REMOTE'
+set -euo pipefail
 export TESTCONTAINERS_RYUK_DISABLED=true
 cd ~/notebooks
 IMG=quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9:rhoai-3.6-ea.1
@@ -195,6 +196,7 @@ base64_decode() {
     base64 -D   # BSD/macOS base64 has no --version
   fi
 }
+oc --context "$CLUSTER_CONTEXT" whoami --show-server   # confirm this is really the ROSA cluster before reading its secret
 oc get secret rhoai-pull -n "$TEST_NAMESPACE" --context="$CLUSTER_CONTEXT" \
   -o jsonpath='{.data.\.dockerconfigjson}' | base64_decode > "$SECRET_FILE"
 oc --context "$RDU2_CONTEXT" create secret generic rhoai-pull -n "$RDU2_NAMESPACE" \
@@ -202,7 +204,35 @@ oc --context "$RDU2_CONTEXT" create secret generic rhoai-pull -n "$RDU2_NAMESPAC
   --type=kubernetes.io/dockerconfigjson
 ```
 
-Then deploy pods with `imagePullSecrets: [{name: rhoai-pull}]` and `nodeName: nvd-srv-18.nvidia.eng.rdu2.redhat.com`.
+Then deploy pods against `nvd-srv-18`, using `nodeSelector` (not
+`nodeName`, so the scheduler still evaluates GPU/toleration matching
+instead of blindly binding to the node) plus the `nvidia.com/gpu`
+toleration used elsewhere in this doc:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gh200-smoke
+  namespace: "<RDU2_NAMESPACE>"
+spec:
+  automountServiceAccountToken: false
+  imagePullSecrets:
+  - name: rhoai-pull
+  nodeSelector:
+    kubernetes.io/hostname: nvd-srv-18.nvidia.eng.rdu2.redhat.com
+  tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+  containers:
+  - name: smoke
+    image: "<image-under-test>"
+    resources:
+      requests: {nvidia.com/gpu: "1"}
+      limits: {nvidia.com/gpu: "1"}
+    command: ["sleep", "infinity"]
+```
 
 **GH200 reference benchmarks (rhoai-3.6-ea.1, PyTorch):**
 
@@ -256,21 +286,13 @@ oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if 
 # This skill does NOT read your local ~/.docker/config.json automatically —
 # a skill executed by an agent that silently harvests a local registry
 # credential and pushes it into a cluster Secret is a real credential-theft
-# pattern, independently flagged in review. Create the pull-secret yourself,
-# reading the token interactively so it never lands in argv/ps/history:
-read -r -p "Quay.io username: " QUAY_USER
-read -rs -p "Quay.io token/password: " QUAY_PASS; echo
-SECRET_FILE=$(umask 077 && mktemp)
-trap 'rm -f "$SECRET_FILE"' EXIT
-AUTH=$(printf '%s' "${QUAY_USER}:${QUAY_PASS}" | base64 | tr -d '\n')   # printf, not a here-string (<<< appends a trailing newline, corrupting the credential); tr -d, not -w0, for BSD/macOS base64 portability
-cat > "$SECRET_FILE" <<EOF
-{"auths":{"quay.io":{"auth":"$AUTH"}}}
-EOF
-oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE" \
-  --from-file=.dockerconfigjson="$SECRET_FILE" --type=kubernetes.io/dockerconfigjson
+# pattern, independently flagged in review. create-pull-secret.sh reads the
+# token interactively so it never lands in argv/ps/history:
+oc config use-context "$CLUSTER_CONTEXT"
+.cursor/skills/lib/create-pull-secret.sh rhoai-pull "$TEST_NAMESPACE" quay.io
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
-# `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
+# `oc create secret generic rhoai-pull -n "$TEST_NAMESPACE"
 # --from-file=.dockerconfigjson=<path-you-trust> --type=kubernetes.io/dockerconfigjson`)
 
 oc --context "$CLUSTER_CONTEXT" label namespace "$TEST_NAMESPACE" pod-security.kubernetes.io/enforce=baseline
@@ -554,25 +576,34 @@ repeat steps 5–6 per image to extend coverage.
 ### Teardown (when done billing)
 
 ```bash
+oc --context "$CLUSTER_CONTEXT" whoami --show-server   # confirm you're pointed at the right cluster before a --yes deletion
 # GPU_POOL_NAME must match whichever pool you actually created/GPU-tested
-# above ("gpu-arm" by default, "gpu-arm2" only if you resized) — a
-# mismatch here silently leaves the real GPU pool running and billing.
+# above — restrict to the two names this doc's workflow can actually
+# produce, so a typo can't --yes-delete an unrelated pool.
+: "${GPU_POOL_NAME:?Set GPU_POOL_NAME to the pool you actually created (gpu-arm by default, gpu-arm2 if resized)}"
+case "$GPU_POOL_NAME" in
+  gpu-arm|gpu-arm2) ;;
+  *) echo "ERROR: GPU_POOL_NAME must be gpu-arm or gpu-arm2, not '$GPU_POOL_NAME'" >&2; exit 1 ;;
+esac
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete machinepool \
-  --cluster "$CLUSTER_NAME" "${GPU_POOL_NAME:?Set GPU_POOL_NAME to the pool you actually created (gpu-arm by default, gpu-arm2 if resized)}" --yes
+  --cluster "$CLUSTER_NAME" "$GPU_POOL_NAME" --yes
 # Optional: delete cluster — see rosa-hcp-provision skill
 ```
 
 ## Phase 4: Results Matrix
 
-| Component | Manifest | testcontainers | GPU smoke (3a) | Manual notebooks (3b) | Notes |
-|-----------|----------|----------------|----------------|----------------------|-------|
-| …13 rows… | pass/fail | pass/fail | pass/fail/N/A | pass/fail/N/A | |
+| Component | Manifest | testcontainers | GPU smoke (3a) | Manual notebooks (3b) | Elyra pipeline UI (3c) | Notes |
+|-----------|----------|----------------|----------------|----------------------|------------------------|-------|
+| …13 rows… | pass/fail | pass/fail | pass/fail/N/A | pass/fail/N/A | pass/fail/N/A | |
 
 Rules:
 - ROCm: manifest amd64-only expected; GPU columns N/A
 - CPU images: GPU columns N/A
 - CUDA ldd failures on CPU host: env issue, not blocking
 - minimal-cuda manual: gpu-test **subset** counts as pass for 3b
+- 3c only applies to Pipeline Runtime images (see Phase 3c) — N/A for
+  workbench-only rows, but don't leave it blank for runtime rows; a blank
+  cell reads as "not tracked," not "not applicable"
 
 Template artifact: `.cursor-tmp-artifact/arm64-ea1-validation/results-matrix.md`
 

@@ -58,9 +58,12 @@ a pinned validation run.
 **The `channel`/`startingCSV`/`CSV_NAME` values below (`stable-2.25`,
 `rhods-operator.2.25.9`) are this session's concrete worked example, not
 generic placeholders** — if step 1 discovers a different channel/CSV for
-your target version, replace all three occurrences below (the
-Subscription YAML, the `CSV_NAME` variable, and the final `oc wait`
-command) consistently; they're not derived from each other automatically.
+your target version, replace **every** occurrence consistently: step 1's
+own discovery command above, the Subscription YAML below, and the
+`CSV_NAME` variable passed to `wait-for-csv.sh`. None of these are
+derived from each other automatically — a mismatch between the discovery
+command's `stable-2.25` and a Subscription pinned to a different channel
+is easy to miss if you only update some of them.
 
 ## 2. OperatorGroup must be `AllNamespaces`, not `OwnNamespace`
 
@@ -104,24 +107,17 @@ EOF
 ```
 
 Manual approval means OLM won't silently install a newer CSV pushed to
-`stable-2.25` after you pinned this. Approve the pinned InstallPlan before
-waiting for `Succeeded` — select it by exact CSV match, not output order,
-since a namespace can have more than one InstallPlan. OLM creates the
-InstallPlan asynchronously after the Subscription is applied, so poll for
-it rather than querying once:
+`stable-2.25` after you pinned this. Approve the pinned InstallPlan and
+wait for `Succeeded` via the shared script (selects by exact CSV match,
+not output order, since a namespace can have more than one InstallPlan;
+polls since OLM creates the InstallPlan asynchronously after the
+Subscription is applied — `-w`/`get -w` only streams, it neither blocks
+until the condition nor times out):
 
 ```bash
 CSV_NAME=rhods-operator.2.25.9
-INSTALLPLAN=""
-for i in $(seq 1 12); do
-  INSTALLPLAN=$(oc --context "$CLUSTER_CONTEXT" get installplan -n redhat-ods-operator -o json | \
-    jq -r --arg csv "$CSV_NAME" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name')
-  [ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] && break
-  echo "waiting for InstallPlan referencing $CSV_NAME (attempt $i/12)..." >&2
-  sleep 5
-done
-[ "$(echo "$INSTALLPLAN" | grep -c .)" -eq 1 ] || { echo "ERROR: expected exactly one InstallPlan for $CSV_NAME, found: $INSTALLPLAN" >&2; exit 1; }
-oc --context "$CLUSTER_CONTEXT" patch installplan "$INSTALLPLAN" -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
+oc config use-context "$CLUSTER_CONTEXT"
+.cursor/skills/lib/wait-for-csv.sh redhat-ods-operator "$CSV_NAME"
 ```
 
 **If a `Subscription`/CSV was already created against the wrong
@@ -130,21 +126,14 @@ doesn't retry a `Failed` CSV automatically. Delete and recreate:
 
 ```bash
 oc --context "$CLUSTER_CONTEXT" delete subscription rhods-operator -n redhat-ods-operator
-oc --context "$CLUSTER_CONTEXT" delete csv rhods-operator.<version> -n redhat-ods-operator
+oc --context "$CLUSTER_CONTEXT" delete csv "rhods-operator.<version>" -n redhat-ods-operator
 # Delete only the failed InstallPlan, not --all — the namespace can hold
 # InstallPlans for other subscriptions/CSVs that --all would also delete.
-FAILED_CSV=rhods-operator.<version>
+FAILED_CSV="rhods-operator.<version>"
 oc --context "$CLUSTER_CONTEXT" get installplan -n redhat-ods-operator -o json | \
   jq -r --arg csv "$FAILED_CSV" '.items[] | select(.spec.clusterServiceVersionNames | index($csv)) | .metadata.name' | \
   xargs -r -n1 oc --context "$CLUSTER_CONTEXT" delete installplan -n redhat-ods-operator
 # then re-apply the Subscription above
-```
-
-Wait for `Succeeded` (`-w` only streams — it neither blocks until the
-condition nor times out, so use `oc wait` for anything scripted):
-
-```bash
-oc --context "$CLUSTER_CONTEXT" wait --for=jsonpath='{.status.phase}'=Succeeded csv/rhods-operator.2.25.9 -n redhat-ods-operator --timeout=300s
 ```
 
 ## 3. Minimal DSC/DSCI for IDE/spawn/clone-focused testing

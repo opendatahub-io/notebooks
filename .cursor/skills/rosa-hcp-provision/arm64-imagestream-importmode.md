@@ -18,7 +18,7 @@ exec container process `/opt/app-root/bin/start-notebook.sh`: Exec format error
 ...even though the underlying image genuinely ships an arm64 variant:
 
 ```bash
-skopeo inspect --raw --no-tags docker://quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9@<manifest-list-digest> | \
+skopeo inspect --raw --no-tags "docker://quay.io/rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9@<manifest-list-digest>" | \
   jq -c '[.manifests[]? | {arch: .platform.architecture, os: .platform.os}] | unique'
 # -> includes {"arch":"arm64","os":"linux"}
 ```
@@ -29,7 +29,7 @@ The ImageStreamTag resolved to the **amd64** sub-manifest despite the
 manifest list containing arm64. Confirm via:
 
 ```bash
-oc get imagestream <name> -n redhat-ods-applications -o json | \
+oc get imagestream "<name>" -n redhat-ods-applications -o json | \
   jq -c '.spec.tags[] | {name, importPolicy}'
 # -> importPolicy.importMode: "Legacy" (or omitted, which defaults to Legacy)
 ```
@@ -100,11 +100,11 @@ oc --context "$CLUSTER_CONTEXT" get clusterversion version -o jsonpath='{.status
 oc --context "$CLUSTER_CONTEXT" get image.config/cluster -o jsonpath='{.status}{"\n"}'
 
 # 2. Confirm the affected tag's importPolicy
-oc --context "$CLUSTER_CONTEXT" get imagestream <name> -n redhat-ods-applications -o json | \
+oc --context "$CLUSTER_CONTEXT" get imagestream "<name>" -n redhat-ods-applications -o json | \
   jq -c '.spec.tags[] | {name, importPolicy}'
 
 # 3. Confirm the source manifest genuinely is a multi-arch list, not single-arch
-skopeo inspect --raw --no-tags docker://<image>@<manifest-list-digest> | \
+skopeo inspect --raw --no-tags "docker://<image>@<manifest-list-digest>" | \
   jq -c '{mediaType, manifests: [.manifests[]? | {arch: .platform.architecture, digest}]}'
 
 # 4. Check systemically across every RHOAI ImageStream (not just the one that crashed)
@@ -128,7 +128,7 @@ like at first: the `oc` CLI itself hardcodes a client-side default of
 --confirm` alone reproduces the exact same bug from the client side. You
 must pass the flag explicitly:
 ```bash
-oc --context "$CLUSTER_CONTEXT" import-image <tag> -n redhat-ods-applications --import-mode=PreserveOriginal --confirm
+oc --context "$CLUSTER_CONTEXT" import-image "<tag>" -n redhat-ods-applications --import-mode=PreserveOriginal --confirm
 ```
 
 ## Customer-friendly workaround, in order of effort
@@ -213,11 +213,11 @@ time the recreate is a genuine `ImageStream` CREATE that Kyverno's
 ```bash
 oc --context "$CLUSTER_CONTEXT" apply -f fix-imagestream-import-mode.yaml
 oc --context "$CLUSTER_CONTEXT" get clusterpolicy fix-imagestream-import-mode   # Ready=True
-oc --context "$CLUSTER_CONTEXT" delete imagestream <name> -n redhat-ods-applications
+oc --context "$CLUSTER_CONTEXT" delete imagestream "<name>" -n redhat-ods-applications
 # recreated within ~1s by workbenches-operator's reconcile loop, this time with PreserveOriginal
-oc --context "$CLUSTER_CONTEXT" get imagestream <name> -n redhat-ods-applications -o json | \
+oc --context "$CLUSTER_CONTEXT" get imagestream "<name>" -n redhat-ods-applications -o json | \
   jq '.spec.tags[] | {name, importPolicy}'   # -> PreserveOriginal
-oc --context "$CLUSTER_CONTEXT" delete pod <affected-workbench-pod> -n <project>   # force a fresh pull
+oc --context "$CLUSTER_CONTEXT" delete pod "<affected-workbench-pod>" -n "<project>"   # force a fresh pull
 ```
 
 **Tier 4 (the actual upstream fix, not a workaround)**: this has to live in

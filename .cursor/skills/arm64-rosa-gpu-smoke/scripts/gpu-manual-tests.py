@@ -108,10 +108,13 @@ IMAGES: tuple[ImageSpec, ...] = (
 def load_client() -> tuple[client.CoreV1Api, str]:
     config.load_kube_config(config_file=str(Path.home() / ".kube/config"), context=CONTEXT)
     v1 = client.CoreV1Api()
-    gpu_node = v1.list_node(
-        label_selector="nvidia.com/gpu.present=true", _request_timeout=30
-    ).items[0].metadata.name
-    return v1, gpu_node
+    nodes = v1.list_node(
+        label_selector="nvidia.com/gpu.present=true,kubernetes.io/arch=arm64",
+        _request_timeout=30,
+    ).items
+    if not nodes:
+        sys.exit("No arm64 GPU node found (label nvidia.com/gpu.present=true,kubernetes.io/arch=arm64)")
+    return v1, nodes[0].metadata.name
 
 
 def pod_name(label: str) -> str:
