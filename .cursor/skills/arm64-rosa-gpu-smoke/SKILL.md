@@ -319,7 +319,7 @@ oc --context "$CLUSTER_CONTEXT" exec -q -n "$TEST_NAMESPACE" "$POD" -c smoke -- 
   rev="$1"
   tmp_nb=$(mktemp --suffix=.ipynb)
   trap "rm -f \"$tmp_nb\"" EXIT
-  curl -fsSL -o "$tmp_nb" "https://raw.githubusercontent.com/opendatahub-io/notebooks/${rev}/tests/manual/gpu-test-notebook.ipynb"
+  curl -fsSL --connect-timeout 30 --max-time 300 -o "$tmp_nb" "https://raw.githubusercontent.com/opendatahub-io/notebooks/${rev}/tests/manual/gpu-test-notebook.ipynb"
   cd /opt/app-root/src
   python -m jupyter nbconvert --ExecutePreprocessor.timeout=1800 \
     --to notebook --execute "$tmp_nb" --output /tmp/out.ipynb

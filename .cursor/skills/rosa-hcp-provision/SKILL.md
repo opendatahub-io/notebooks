@@ -295,7 +295,8 @@ NEW_NODE=$(oc --context "$CLUSTER_CONTEXT" get node -l hypershift.openshift.io/n
 [ "$(echo "$NEW_NODE" | jq '.items | length')" -eq 1 ] || { echo "ERROR: expected exactly one node in pool gpu-arm2" >&2; exit 1; }
 NEW_NODE_NAME=$(echo "$NEW_NODE" | jq -r '.items[0].metadata.name')
 oc --context "$CLUSTER_CONTEXT" wait --for=condition=Ready pod -l app.kubernetes.io/component=nvidia-driver -n nvidia-gpu-operator --field-selector spec.nodeName="$NEW_NODE_NAME" --timeout=1800s
-oc --context "$CLUSTER_CONTEXT" get node "$NEW_NODE_NAME" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}{"\n"}'  # expect 1
+NEW_NODE_GPU=$(oc --context "$CLUSTER_CONTEXT" get node "$NEW_NODE_NAME" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}')
+[ "$NEW_NODE_GPU" = "1" ] || { echo "ERROR: $NEW_NODE_NAME has no usable GPU (allocatable=$NEW_NODE_GPU) — do not delete the old pool" >&2; exit 1; }
 
 # Remove old pool (old node drains → SchedulingDisabled → gone)
 rh-aws-saml-login iaps-rhods-odh-dev -- rosa delete machinepool \
