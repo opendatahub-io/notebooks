@@ -8,6 +8,12 @@ from scripts.ci.validate_renovate_config import (
     EXPECTED_COMMIT_MESSAGE_PREFIX,
     EXPECTED_PREFIX_MATCH_BASE,
     MINTMAKER_POLICIES,
+    ODH_BASE_DISABLE_RULE_DESCRIPTION,
+    ODH_BASE_ENABLE_RULE_DESCRIPTION,
+    ODH_BASE_MANAGER_DESCRIPTION,
+    ODH_BASE_MANAGER_FILE_PATTERN,
+    ODH_BASE_PACKAGE_PATTERN,
+    ODH_REPO,
     PREFIX_RULE_DESCRIPTION,
     REQUIRED_ENABLED_MANAGERS,
     MintMakerRepoPolicy,
@@ -54,15 +60,51 @@ def centos_stream_pin_rule() -> dict[str, Any]:
     }
 
 
+def odh_base_image_custom_manager() -> dict[str, Any]:
+    return {
+        "customType": "regex",
+        "description": ODH_BASE_MANAGER_DESCRIPTION,
+        "managerFilePatterns": [ODH_BASE_MANAGER_FILE_PATTERN],
+        "versioningTemplate": "docker",
+    }
+
+
+def odh_base_image_disable_rule() -> dict[str, Any]:
+    return {
+        "description": ODH_BASE_DISABLE_RULE_DESCRIPTION,
+        "matchManagers": ["custom.regex"],
+        "matchDatasources": ["docker"],
+        "matchPackageNames": [ODH_BASE_PACKAGE_PATTERN],
+        "enabled": False,
+    }
+
+
+def odh_base_image_enable_rule() -> dict[str, Any]:
+    return {
+        "description": ODH_BASE_ENABLE_RULE_DESCRIPTION,
+        "matchManagers": ["custom.regex"],
+        "matchDatasources": ["docker"],
+        "matchPackageNames": [ODH_BASE_PACKAGE_PATTERN],
+        "matchRepositories": [ODH_REPO],
+        "matchBaseBranches": ["main"],
+        "enabled": True,
+        "pinDigests": True,
+        "allowedVersions": "/^latest$/",
+    }
+
+
 def minimal_valid_config(*extra_rules: dict[str, Any]) -> dict[str, Any]:
     package_rules: list[dict[str, Any]] = [prefix_rule()]
     for policy in MINTMAKER_POLICIES:
         package_rules.extend(mintmaker_gate_rules(policy))
     package_rules.append(github_actions_group_rule())
     package_rules.append(centos_stream_pin_rule())
+    package_rules.append(odh_base_image_disable_rule())
+    package_rules.append(odh_base_image_enable_rule())
     package_rules.extend(extra_rules)
     return {
         "enabledManagers": list(REQUIRED_ENABLED_MANAGERS),
+        "customManagers": [odh_base_image_custom_manager()],
         "packageRules": package_rules,
     }
 
@@ -83,10 +125,19 @@ def policy_by_label(label: str) -> MintMakerRepoPolicy:
     raise KeyError(msg)
 
 
+def _is_mintmaker_repo_gate(rule: dict[str, Any], policy: MintMakerRepoPolicy) -> bool:
+    """True for repo-wide MintMaker gates (not manager-scoped packageRules)."""
+    return (
+        rule.get("matchRepositories") == [policy.repository]
+        and "matchManagers" not in rule
+        and "matchPackageNames" not in rule
+    )
+
+
 def remove_mintmaker_disable(config: dict[str, Any], policy: MintMakerRepoPolicy) -> dict[str, Any]:
     return with_package_rules_removed(
         config,
-        lambda rule: rule.get("matchRepositories") == [policy.repository] and rule.get("enabled") is False,
+        lambda rule: _is_mintmaker_repo_gate(rule, policy) and rule.get("enabled") is False,
     )
 
 
@@ -94,9 +145,7 @@ def remove_mintmaker_enable(config: dict[str, Any], policy: MintMakerRepoPolicy)
     return with_package_rules_removed(
         config,
         lambda rule: (
-            rule.get("matchRepositories") == [policy.repository]
-            and rule.get("enabled") is True
-            and "matchBaseBranches" in rule
+            _is_mintmaker_repo_gate(rule, policy) and rule.get("enabled") is True and "matchBaseBranches" in rule
         ),
     )
 
@@ -111,11 +160,7 @@ def mintmaker_enable_with_branches(
         if not isinstance(rule, dict):
             updated_rules.append(rule)
             continue
-        if (
-            rule.get("matchRepositories") == [policy.repository]
-            and rule.get("enabled") is True
-            and "matchBaseBranches" in rule
-        ):
+        if _is_mintmaker_repo_gate(rule, policy) and rule.get("enabled") is True and "matchBaseBranches" in rule:
             updated_rules.append({**rule, "matchBaseBranches": branches})
             continue
         updated_rules.append(rule)
