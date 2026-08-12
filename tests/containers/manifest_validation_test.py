@@ -373,11 +373,11 @@ def _packages_from_pip_list(image_ref: str, *, cleanup: bool) -> dict[str, str]:
     If the image was not present locally before this call and *cleanup* is True,
     the image is removed after inspection to free disk space.
     """
-    import docker  # noqa: PLC0415
-    import docker.errors  # noqa: PLC0415
-    import testcontainers.core.container  # noqa: PLC0415
+    import docker  # ruff: ignore[import-outside-top-level]
+    import docker.errors  # ruff: ignore[import-outside-top-level]
+    import testcontainers.core.container  # ruff: ignore[import-outside-top-level]
 
-    from tests.containers import docker_utils  # noqa: PLC0415
+    from tests.containers import docker_utils  # ruff: ignore[import-outside-top-level]
 
     client = docker.from_env()
 
@@ -444,7 +444,7 @@ def _check_major_minor(manifest_version: str, actual_version_str: str) -> tuple[
 def _rocm_version_from_image_config(image_ref: str) -> str | None:
     """Read ``ROCM_VERSION`` from OCI image config when Clair/SBOM lack ``rocm-core``."""
     try:
-        from manifests.tools import skopeo_inspect  # noqa: PLC0415
+        from manifests.tools import skopeo_inspect  # ruff: ignore[import-outside-top-level]
     except ImportError:
         return None
 
@@ -821,7 +821,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     url = f"https://quay.io/api/v1/repository/{repo}/manifest/{digest}/security?vulnerabilities=false"
 
     req = urllib.request.Request(url, headers={"Authorization": f"Basic {quay_auth}"})
-    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - HTTPS URL only; token in header, not URL
+    with urllib.request.urlopen(req, timeout=30) as resp:  # ruff: ignore[suspicious-url-open-usage] - HTTPS URL only; token in header, not URL
         data = json.loads(resp.read())
 
     features = ((data.get("data") or {}).get("Layer") or {}).get("Features", [])

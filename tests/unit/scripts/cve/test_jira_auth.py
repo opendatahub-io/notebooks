@@ -9,10 +9,10 @@ import pytest
 
 from scripts.cve.jira_auth import (
     JiraAuthError,
-    _basic_auth_header,  # noqa: PLC2701
-    _not_expired,  # noqa: PLC2701
-    _parse_expires_at,  # noqa: PLC2701
-    _pkce_pair,  # noqa: PLC2701
+    _basic_auth_header,  # ruff: ignore[import-private-name]
+    _not_expired,  # ruff: ignore[import-private-name]
+    _parse_expires_at,  # ruff: ignore[import-private-name]
+    _pkce_pair,  # ruff: ignore[import-private-name]
     get_auth_headers,
 )
 

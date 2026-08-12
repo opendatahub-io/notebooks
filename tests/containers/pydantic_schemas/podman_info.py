@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-# ruff: noqa: N815 Variable `volumePath` in class scope should not be mixedCase
+# ruff: file-ignore[mixed-case-variable-in-class-scope] Variable `volumePath` in class scope should not be mixedCase
 
 
 class Conmon(BaseModel):
@@ -305,7 +305,7 @@ def test_podman_info():
                     "Supports volatile": "true",
                     "Using metacopy": "true",
                 },
-                "imageCopyTmpDir": "/var/tmp",  # noqa: S108 - string literal in test fixture data, not an actual tmpdir path
+                "imageCopyTmpDir": "/var/tmp",  # ruff: ignore[hardcoded-temp-file] - string literal in test fixture data, not an actual tmpdir path
                 "imageStore": {"number": 15},
                 "runRoot": "/run/containers/storage",
                 "transientStore": False,
@@ -449,7 +449,7 @@ def test_podman_info():
                     "Supports volatile": "true",
                     "Using metacopy": "false",
                 },
-                "imageCopyTmpDir": "/var/tmp",  # noqa: S108 - string literal in test fixture data, not an actual tmpdir path
+                "imageCopyTmpDir": "/var/tmp",  # ruff: ignore[hardcoded-temp-file] - string literal in test fixture data, not an actual tmpdir path
                 "imageStore": {"number": 2},
                 "runRoot": "/run/user/501/containers",
                 "transientStore": False,

@@ -29,7 +29,7 @@ def get_json(url: str) -> dict[str, Any]:
     # bundled OpenSSL does not read from the system Keychain by default.
     ctx = ssl.create_default_context(cafile=certifi.where())
     req = urllib.request.Request(url)
-    with urllib.request.urlopen(req, context=ctx, timeout=30) as response:  # noqa: S310
+    with urllib.request.urlopen(req, context=ctx, timeout=30) as response:  # ruff: ignore[suspicious-url-open-usage]
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -92,7 +92,7 @@ def main(
 
         try:
             img_resp = get_json(img_url)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # ruff: ignore[blind-except]
             failures.append(f"{repo}: {e}")
             continue
 
