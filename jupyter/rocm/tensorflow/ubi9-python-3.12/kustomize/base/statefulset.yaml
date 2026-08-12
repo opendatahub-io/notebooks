@@ -32,12 +32,18 @@ spec:
             - name: notebook-port
               protocol: TCP
               containerPort: 8888
+          # Allow up to 50 seconds for startup (preserves prior 15s + 3×10s budget).
+          startupProbe:
+            tcpSocket:
+              port: notebook-port
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 5
           livenessProbe:
             tcpSocket:
               port: notebook-port
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 0
+            periodSeconds: 5
             successThreshold: 1
             failureThreshold: 3
           readinessProbe:
@@ -45,9 +51,8 @@ spec:
               path: /notebook/opendatahub/jovyan/api
               port: notebook-port
               scheme: HTTP
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 10
+            periodSeconds: 5
             successThreshold: 1
             failureThreshold: 3
           resources:
