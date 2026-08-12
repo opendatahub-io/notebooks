@@ -1,10 +1,10 @@
-# 16. Property-based testing and contracts for pure helpers
+# 17. Property-based testing and contracts for pure helpers
 
 Date: 2026-07-27
 
 ## Status
 
-Accepted
+Proposed
 
 ## Context
 
@@ -29,6 +29,7 @@ strengthen coverage of these pure helpers without adding heavy infrastructure.
 | **PythonFuzz** | Rejected | Byte-blob crash-oracle fuzzing; overlaps Hypothesis poorly for structured invariants |
 | **icontract** (decorator contracts) | Rejected for now | Single-maintainer (Ossuary risk ~70), adds runtime dep; IDE autocomplete benefit not worth bus-factor risk |
 | **deal** (decorator contracts + test gen) | Rejected for now | Single-maintainer (Ossuary risk ~73), 8 months dormant, Python 3.14 unconfirmed |
+| **beartype** (runtime type-checking decorator) | Rejected for now | Single-maintainer (estimated Ossuary risk ~50 — real scoring run was rate-limited by pypistats.org; estimate reflects zero runtime deps, MIT, active Dec 2025 release, 3.5k stars offsetting bus-factor risk); checks type hints only, doesn't cover general pre/post invariants — no gap PEP 316 doesn't already fill; already present as an unrelated transitive dep (`py-key-value-aio`) |
 | **PEP 316 docstring contracts** | **Adopted** | Zero runtime deps; verified by `crosshair check`; no bus-factor exposure |
 
 ### Key findings during evaluation
