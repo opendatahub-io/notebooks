@@ -3,12 +3,38 @@
 from __future__ import annotations
 
 
+def _patch_lines(patch: str) -> list[str]:
+    """Split a GitHub unified-diff patch into lines.
+
+    Patches are ``\\n``-separated records. Do **not** use ``str.splitlines()``:
+    it also splits on ``\\r``, which can appear inside file content and is not a
+    patch-line boundary. A single trailing newline does not create an extra line.
+
+    post: len(__return__) >= 0
+    """
+    lines = patch.split("\n")
+    if lines and lines[-1] == "":
+        lines = lines[:-1]
+    return lines
+
+
 def capped_patch_excerpt(patch: str | None, *, max_lines: int) -> str | None:
-    if not patch:
-        return None
+    """Return ``patch`` capped to at most ``max_lines`` lines, or ``None`` if empty.
+
+    When truncated (and ``max_lines > 1``), keeps a head/tail around a ``...``
+    marker. The result may contain fewer than ``max_lines`` lines when a trailing
+    empty segment is lost through ``"\\n".join`` — the contract is a line budget,
+    not blank-line round-trips.
+
+    pre: max_lines >= 1
+    post: (__return__ is None) == (not patch)
+    post: __return__ is None or len(_patch_lines(__return__)) <= max_lines
+    """
     if max_lines < 1:
         raise ValueError("max_lines must be >= 1")
-    lines = patch.splitlines()
+    if not patch:
+        return None
+    lines = _patch_lines(patch)
     if len(lines) <= max_lines:
         return patch
     if max_lines == 1:

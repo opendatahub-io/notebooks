@@ -672,6 +672,12 @@ test-unit:
 	GOTOOLCHAIN=auto GONOSUMDB=golang.org/toolchain \
 	  go test -C scripts/buildinputs -cover ./...
 
+.PHONY: test-crosshair
+test-crosshair:
+	@echo "Running Hypothesis property tests with CrossHair SMT backend"
+	uv sync --locked --group crosshair
+	uv run pytest tests/unit/test_property_helpers.py --hypothesis-profile=crosshair -m 'not buildonlytest' --no-cov
+
 PYTEST_ARGS ?=
 
 .PHONY: test-integration

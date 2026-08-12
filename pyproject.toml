@@ -19,6 +19,7 @@ dev = [
     "pytest-cov",
     "pytest-instafail",
     "allure-pytest",
+    "hypothesis",
     #
     "pyfakefs",
     # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
@@ -51,6 +52,13 @@ dev = [
     # rich powers the local live progress table in ci/check-image-availability.py
     "rich>=15.0.0",
     "inline-snapshot>=0.34.2",
+]
+
+# Optional SMT backend for Hypothesis (z3 ~37MB). Not installed by default.
+#   uv sync --group crosshair
+#   make test-crosshair
+crosshair = [
+    "hypothesis[crosshair]",
 ]
 
 [tool.uv]
