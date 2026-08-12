@@ -88,6 +88,29 @@ def extract_pr_titles(records: list[dict]) -> list[str]:
     return titles
 
 
+def _rule_description(rule: dict) -> str:
+    description = rule.get("description", "")
+    if isinstance(description, list):
+        return description[0] if description and isinstance(description[0], str) else ""
+    return description if isinstance(description, str) else ""
+
+
+def extract_combined_prefix_rule(records: list[dict]) -> dict | None:
+    """Return the PR-title prefix packageRule from Renovate's Combined config log."""
+    for record in records:
+        if record.get("msg") != "Combined config":
+            continue
+        config = record.get("config")
+        if not isinstance(config, dict):
+            continue
+        for rule in config.get("packageRules", []):
+            if not isinstance(rule, dict):
+                continue
+            if _rule_description(rule).startswith("Prefix PR titles with branch name for non-main branches"):
+                return rule
+    return None
+
+
 def is_known_config_warning(message: str) -> bool:
     return any(known in message for known in KNOWN_CONFIG_WARNINGS)
 
@@ -107,10 +130,35 @@ def fatal_config_warnings(records: list[dict]) -> list[str]:
     return warnings
 
 
-def validate_scenario_titles(scenario: DryRunScenario, titles: list[str]) -> list[str]:
+def validate_scenario_titles(
+    scenario: DryRunScenario,
+    titles: list[str],
+    *,
+    records: list[dict] | None = None,
+) -> list[str]:
     errors: list[str] = []
     if not titles:
-        errors.append(f"{scenario.name}: no prTitle values found in Renovate dry-run output")
+        # No pending updates on this branch — cannot assert on live PR titles.
+        # Fall back to confirming Renovate loaded the prefix packageRule.
+        if records is None:
+            errors.append(f"{scenario.name}: no prTitle values found in Renovate dry-run output")
+            return errors
+        prefix_rule = extract_combined_prefix_rule(records)
+        if prefix_rule is None:
+            errors.append(
+                f"{scenario.name}: no prTitle values and Combined config is missing the PR-title prefix packageRule"
+            )
+            return errors
+        if prefix_rule.get("commitMessagePrefix") != "[{{{baseBranch}}}]":
+            errors.append(
+                f"{scenario.name}: Combined config prefix rule commitMessagePrefix must be "
+                f"'[{{{{baseBranch}}}}]', got {prefix_rule.get('commitMessagePrefix')!r}"
+            )
+        if prefix_rule.get("matchBaseBranches") != ["!/^main$/"]:
+            errors.append(
+                f"{scenario.name}: Combined config prefix rule matchBaseBranches must be "
+                f'["!/^main$/"], got {prefix_rule.get("matchBaseBranches")!r}'
+            )
         return errors
 
     if scenario.require_prefix is None:
@@ -201,7 +249,13 @@ def validate_dry_runs(
             continue
 
         errors.extend(f"{scenario.name}: unexpected config warning: {msg}" for msg in fatal_config_warnings(records))
-        errors.extend(validate_scenario_titles(scenario, extract_pr_titles(records)))
+        errors.extend(
+            validate_scenario_titles(
+                scenario,
+                extract_pr_titles(records),
+                records=records,
+            )
+        )
     return errors
 
 

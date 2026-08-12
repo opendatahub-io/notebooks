@@ -90,6 +90,27 @@ def test_minimal_valid_config_passes_validation() -> None:
             [f"missing CentOS Stream pin packageRule: {validator.CENTOS_STREAM_RULE_DESCRIPTION!r}"],
             id="missing-centos-stream-pin",
         ),
+        pytest.param(
+            lambda config: {**config, "customManagers": []},
+            [f"missing customManager: {validator.ODH_BASE_MANAGER_DESCRIPTION!r}"],
+            id="missing-odh-base-manager",
+        ),
+        pytest.param(
+            lambda config: testdata.with_package_rules_removed(
+                config,
+                lambda rule: rule.get("description", "").startswith(validator.ODH_BASE_DISABLE_RULE_DESCRIPTION),
+            ),
+            [f"missing packageRule: {validator.ODH_BASE_DISABLE_RULE_DESCRIPTION!r}"],
+            id="missing-odh-base-disable",
+        ),
+        pytest.param(
+            lambda config: testdata.with_package_rules_removed(
+                config,
+                lambda rule: rule.get("description", "").startswith(validator.ODH_BASE_ENABLE_RULE_DESCRIPTION),
+            ),
+            [f"missing packageRule: {validator.ODH_BASE_ENABLE_RULE_DESCRIPTION!r}"],
+            id="missing-odh-base-enable",
+        ),
     ],
 )
 def test_validate_config_reports_expected_errors(

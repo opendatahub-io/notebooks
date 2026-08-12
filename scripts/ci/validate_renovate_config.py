@@ -24,6 +24,11 @@ EXPECTED_PREFIX_MATCH_BASE = ["!/^main$/"]
 EXPECTED_COMMIT_MESSAGE_PREFIX = "[{{{baseBranch}}}]"
 CENTOS_STREAM_RULE_DESCRIPTION = "Pin CentOS Stream base to stream9 (c9s only; no stream10)"
 CENTOS_STREAM_ALLOWED_VERSIONS = "/^stream9$/"
+ODH_BASE_DISABLE_RULE_DESCRIPTION = "Disable ODH quay.io/opendatahub BASE_IMAGE updates by default"
+ODH_BASE_ENABLE_RULE_DESCRIPTION = "ODH BASE_IMAGE digest updates on opendatahub-io/notebooks main only"
+ODH_BASE_MANAGER_DESCRIPTION = "Update BASE_IMAGE in ODH (non-konflux) build-args conf files"
+ODH_BASE_MANAGER_FILE_PATTERN = "/(jupyter|codeserver|runtimes)/.+/build-args/(cpu|cuda|rocm)\\.conf$/"
+ODH_BASE_PACKAGE_PATTERN = "/^quay\\.io\\/opendatahub\\//"
 
 
 @dataclass(frozen=True)
@@ -64,12 +69,17 @@ def find_repo_rule(
     enabled: bool,
     require_match_base_branches: bool | None = None,
 ) -> dict[str, Any] | None:
+    """Find a repo-wide MintMaker gate rule (no manager/package filters)."""
     for rule in package_rules:
         if not isinstance(rule, dict):
             continue
         if rule.get("matchRepositories") != [repository]:
             continue
         if rule.get("enabled") is not enabled:
+            continue
+        # Manager-scoped rules (e.g. ODH BASE_IMAGE enable) share matchRepositories
+        # with the repo-wide MintMaker gates; only the unscoped gates qualify here.
+        if "matchManagers" in rule or "matchPackageNames" in rule:
             continue
         has_match_base_branches = "matchBaseBranches" in rule
         if require_match_base_branches is True and not has_match_base_branches:
@@ -201,6 +211,91 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
             )
         if centos_stream_pin.get("pinDigests") is not True:
             errors.append("CentOS Stream pin rule must set pinDigests: true")
+
+    errors.extend(validate_odh_base_image_policy(config.get("customManagers"), package_rules))
+
+    return errors
+
+
+def validate_odh_base_image_policy(
+    custom_managers: object,
+    package_rules: list[Any],
+) -> list[str]:
+    errors: list[str] = []
+
+    if not isinstance(custom_managers, list):
+        errors.append("customManagers must be a list")
+        return errors
+
+    odh_manager = next(
+        (
+            manager
+            for manager in custom_managers
+            if isinstance(manager, dict) and manager.get("description", "").startswith(ODH_BASE_MANAGER_DESCRIPTION)
+        ),
+        None,
+    )
+    if odh_manager is None:
+        errors.append(f"missing customManager: {ODH_BASE_MANAGER_DESCRIPTION!r}")
+    else:
+        patterns = odh_manager.get("managerFilePatterns")
+        if patterns != [ODH_BASE_MANAGER_FILE_PATTERN]:
+            errors.append(
+                "ODH BASE_IMAGE customManager managerFilePatterns must be "
+                f"{[ODH_BASE_MANAGER_FILE_PATTERN]!r}, got {patterns!r}"
+            )
+        if odh_manager.get("versioningTemplate") != "docker":
+            errors.append("ODH BASE_IMAGE customManager must use versioningTemplate: docker")
+
+    disable_rule = next(
+        (
+            rule
+            for rule in package_rules
+            if isinstance(rule, dict) and rule.get("description", "").startswith(ODH_BASE_DISABLE_RULE_DESCRIPTION)
+        ),
+        None,
+    )
+    if disable_rule is None:
+        errors.append(f"missing packageRule: {ODH_BASE_DISABLE_RULE_DESCRIPTION!r}")
+    else:
+        if disable_rule.get("enabled") is not False:
+            errors.append("ODH BASE_IMAGE disable rule must set enabled: false")
+        if disable_rule.get("matchPackageNames") != [ODH_BASE_PACKAGE_PATTERN]:
+            errors.append(
+                "ODH BASE_IMAGE disable rule matchPackageNames must be "
+                f"{[ODH_BASE_PACKAGE_PATTERN]!r}, got {disable_rule.get('matchPackageNames')!r}"
+            )
+
+    enable_rule = next(
+        (
+            rule
+            for rule in package_rules
+            if isinstance(rule, dict) and rule.get("description", "").startswith(ODH_BASE_ENABLE_RULE_DESCRIPTION)
+        ),
+        None,
+    )
+    if enable_rule is None:
+        errors.append(f"missing packageRule: {ODH_BASE_ENABLE_RULE_DESCRIPTION!r}")
+    else:
+        if enable_rule.get("enabled") is not True:
+            errors.append("ODH BASE_IMAGE enable rule must set enabled: true")
+        if enable_rule.get("matchRepositories") != [ODH_REPO]:
+            errors.append(
+                "ODH BASE_IMAGE enable rule matchRepositories must be "
+                f"{[ODH_REPO]!r}, got {enable_rule.get('matchRepositories')!r}"
+            )
+        if enable_rule.get("matchBaseBranches") != ["main"]:
+            errors.append(
+                "ODH BASE_IMAGE enable rule matchBaseBranches must be ['main'], "
+                f"got {enable_rule.get('matchBaseBranches')!r}"
+            )
+        if enable_rule.get("pinDigests") is not True:
+            errors.append("ODH BASE_IMAGE enable rule must set pinDigests: true")
+        if enable_rule.get("allowedVersions") != "/^latest$/":
+            errors.append(
+                "ODH BASE_IMAGE enable rule allowedVersions must be '/^latest$/', "
+                f"got {enable_rule.get('allowedVersions')!r}"
+            )
 
     return errors
 

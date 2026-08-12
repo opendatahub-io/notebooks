@@ -111,7 +111,7 @@
     ],
   },
 
-  // Track BASE_IMAGE references in konflux build-args conf files.
+  // Track BASE_IMAGE references in build-args conf files.
   // These files use shell-variable syntax (BASE_IMAGE=registry/repo:tag)
   // which the built-in dockerfile manager cannot parse.
   "customManagers": [
@@ -138,6 +138,22 @@
       // still treating EA tags as unstable for ignoreUnstable gating.
       // This RE2-safe form avoids duplicate named capture groups.
       "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?(?:-ea\\.(?<prerelease>\\d+-\\d+)|-(?<build>\\d+))$",
+    },
+    {
+      // ODH PRODUCT=odh pins (cpu.conf / cuda.conf / rocm.conf) use :latest@sha256.
+      // Separate from the konflux manager: docker versioning, not AIPCC EA regex.
+      // Enabled only on opendatahub-io/notebooks @ main via packageRules below.
+      "customType": "regex",
+      "description": "Update BASE_IMAGE in ODH (non-konflux) build-args conf files",
+      "managerFilePatterns": [
+        "/(jupyter|codeserver|runtimes)/.+/build-args/(cpu|cuda|rocm)\\.conf$/",
+      ],
+      "matchStrings": [
+        "BASE_IMAGE=(?<depName>[^:@\\s]+(?:/[^:@\\s]+)+):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?",
+      ],
+      "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker",
     },
   ],
 
@@ -198,6 +214,29 @@
       "matchPackageNames": ["/^quay\\.io\\/aipcc\\//"],
       "groupName": "konflux BASE_IMAGE {{{depNameSanitized}}}",
       "pinDigests": true,
+      "recreateWhen": "always",
+      "semanticCommits": "enabled",
+    },
+    {
+      // Shared renovate.json5 is also used on RHDS release branches; keep ODH
+      // quay pins off everywhere until explicitly re-enabled for upstream main.
+      "description": "Disable ODH quay.io/opendatahub BASE_IMAGE updates by default",
+      "matchManagers": ["custom.regex"],
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^quay\\.io\\/opendatahub\\//"],
+      "enabled": false,
+    },
+    {
+      "description": "ODH BASE_IMAGE digest updates on opendatahub-io/notebooks main only",
+      "matchManagers": ["custom.regex"],
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^quay\\.io\\/opendatahub\\//"],
+      "matchRepositories": ["opendatahub-io/notebooks"],
+      "matchBaseBranches": ["main"],
+      "enabled": true,
+      "groupName": "odh BASE_IMAGE {{{depNameSanitized}}}",
+      "pinDigests": true,
+      "allowedVersions": "/^latest$/",
       "recreateWhen": "always",
       "semanticCommits": "enabled",
     },
