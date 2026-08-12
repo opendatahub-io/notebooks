@@ -143,22 +143,22 @@ def _iter_regions(data: dict[str, Any]):
 @_settings
 @given(data=sarif_documents())
 def test_sanitize_sarif_properties(data: dict[str, Any]) -> None:
-    before_invalid = 0
-    for region in _iter_regions(data):
-        end_col = region.get("endColumn")
-        if end_col is None or end_col < 1:
-            before_invalid += 1
+    # Snapshot before sanitize_sarif mutates regions in place.
+    regions = list(_iter_regions(data))
+    before = [(region.get("startColumn"), region.get("endColumn")) for region in regions]
 
     sanitized, fixed = sanitize_sarif(data)
     assert sanitized is data
-    assert fixed == before_invalid
 
-    for region in _iter_regions(sanitized):
-        end_col = region.get("endColumn")
-        # Regions that already had a valid endColumn keep it; previously
-        # invalid/missing ones are clamped to >= 1.
-        if end_col is not None:
-            assert end_col >= 1
+    expected_fixed = 0
+    for region, (start_col, end_col) in zip(regions, before, strict=True):
+        if end_col is None or end_col < 1:
+            expected_fixed += 1
+            # Mirrors sanitize_sarif: max(startColumn or 1, 1).
+            assert region["endColumn"] == max(start_col or 1, 1)
+        else:
+            assert region.get("endColumn") == end_col
+    assert fixed == expected_fixed
 
     # Idempotent: a second pass must not claim further fixes.
     _, fixed_again = sanitize_sarif(sanitized)
