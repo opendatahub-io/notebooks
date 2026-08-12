@@ -29,7 +29,7 @@ spec:
     value: quay.io/opendatahub/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9:{{revision}}
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
     - linux-d160-m4xlarge/arm64
   - name: dockerfile
     value: runtimes/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.konflux.cuda
@@ -85,16 +85,18 @@ spec:
         requests:
           cpu: '4'
           memory: 8Gi
+          ephemeral-storage: 64Gi
         limits:
           cpu: '4'
           memory: 8Gi
+          ephemeral-storage: 64Gi
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
-        cpu: '4'
+        cpu: '8'
         memory: 8Gi
       limits:
-        cpu: '4'
+        cpu: '8'
         memory: 8Gi
   - pipelineTaskName: sast-shell-check
     computeResources:
@@ -114,7 +116,11 @@ spec:
         memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
       limits:
+        cpu: '4'
         memory: 8Gi
   - pipelineTaskName: clamav-scan
     computeResources:

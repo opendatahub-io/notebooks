@@ -29,7 +29,7 @@ spec:
     value: quay.io/opendatahub/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9:{{revision}}
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
   - name: dockerfile
     value: runtimes/rocm-tensorflow/ubi9-python-3.12/Dockerfile.konflux.rocm
   - name: build-args-file
@@ -84,9 +84,11 @@ spec:
         requests:
           cpu: '4'
           memory: 8Gi
+          ephemeral-storage: 80Gi
         limits:
           cpu: '4'
           memory: 8Gi
+          ephemeral-storage: 80Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
       requests:
@@ -98,11 +100,11 @@ spec:
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
-        cpu: '4'
-        memory: 32Gi
+        cpu: '8'
+        memory: 8Gi
       limits:
-        cpu: '4'
-        memory: 32Gi
+        cpu: '8'
+        memory: 8Gi
   - pipelineTaskName: sast-shell-check
     computeResources:
       requests:

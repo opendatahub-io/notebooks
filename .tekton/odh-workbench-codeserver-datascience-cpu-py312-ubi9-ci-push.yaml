@@ -43,7 +43,7 @@ spec:
     - 3.6_ea1-v1.47
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
     - linux-d160-m4xlarge/arm64
     - linux/ppc64le
     - linux/s390x
@@ -197,40 +197,58 @@ spec:
   - pipelineTaskName: prefetch-dependencies
     computeResources:
       requests:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
       limits:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: build-images
     stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+          ephemeral-storage: 80Gi
+        limits:
+          cpu: '8'
+          memory: 16Gi
+          ephemeral-storage: 80Gi
     - name: prepare-sboms
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: sbom-syft-generate
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
   - pipelineTaskName: sast-unicode-check
     computeResources:
       limits:
         memory: 8Gi
   - pipelineTaskName: clair-scan
     computeResources:
+      requests:
+        cpu: '8'
+        memory: 8Gi
       limits:
+        cpu: '8'
         memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
       limits:
+        cpu: '4'
         memory: 8Gi
   - pipelineTaskName: clamav-scan
     computeResources:
