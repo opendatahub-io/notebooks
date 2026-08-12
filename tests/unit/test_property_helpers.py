@@ -15,13 +15,12 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from scripts.ci.sanitize_gitleaks_sarif import sanitize_sarif
 
-_PATCH_EXCERPT_PATH = (
-    Path(__file__).resolve().parents[2] / "ci/agentic-reviewer/src/odh_ci_agent/patch_excerpt.py"
-)
+_PATCH_EXCERPT_PATH = Path(__file__).resolve().parents[2] / "ci/agentic-reviewer/src/odh_ci_agent/patch_excerpt.py"
 _spec = importlib.util.spec_from_file_location("odh_ci_agent_patch_excerpt", _PATCH_EXCERPT_PATH)
 assert _spec is not None and _spec.loader is not None
 patch_excerpt = importlib.util.module_from_spec(_spec)
@@ -78,13 +77,14 @@ def test_capped_patch_excerpt_properties(patch: str | None, max_lines: int) -> N
 
     if max_lines == 1:
         assert result == input_lines[0]
-        assert "..." not in patch_excerpt._patch_lines(result)
         return
 
     # Truncation uses "\\n".join; a trailing empty line is not always
     # round-trippable. The contract is a line budget, not blank-line preservation.
-    assert "..." in output_lines
-    ellipsis_at = output_lines.index("...")
+    # Locate the ellipsis by its deterministic position (matches head_count in
+    # capped_patch_excerpt), not by content: a generated line can equal "...".
+    ellipsis_at = (max_lines - 1) // 2
+    assert output_lines[ellipsis_at] == "..."
     head = output_lines[:ellipsis_at]
     tail = output_lines[ellipsis_at + 1 :]
     assert head == input_lines[: len(head)]
