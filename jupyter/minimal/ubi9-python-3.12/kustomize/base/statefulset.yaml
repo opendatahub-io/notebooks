@@ -42,7 +42,7 @@ spec:
           livenessProbe:
             tcpSocket:
               port: notebook-port
-            initialDelaySeconds: 5
+            initialDelaySeconds: 0
             periodSeconds: 5
             successThreshold: 1
             failureThreshold: 3
