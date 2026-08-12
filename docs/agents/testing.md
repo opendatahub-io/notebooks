@@ -103,11 +103,33 @@ The `check-generated-code` job runs `ci/generate_code.sh`, then verifies a clean
 | pytest-subtests | Granular sub-assertions within a single test |
 | pytest-cov | Coverage (XML + terminal) |
 | allure-pytest | Issue tracking + step decoration |
+| hypothesis | Property-based tests for pure helpers (`tests/unit/test_property_helpers.py`) |
+| crosshair | Optional SMT backend for those Hypothesis tests (`make test-crosshair`) |
 | testcontainers | Container lifecycle for integration tests |
 | pyfakefs | Filesystem mocking for unit tests |
 | Playwright | Browser tests (TypeScript) |
 | papermill | Notebook execution verification |
 
+Hypothesis tests run in the normal `make test` / `make test-unit` pytest jobs
+(same `pytest-tests` CI job). There is no separate Hypothesis workflow: default
+`max_examples` is enough for PR CI. Raise examples locally when exploring
+(`settings(max_examples=...)` or a Hypothesis profile).
+
+### Optional CrossHair (SMT) backend
+
+CrossHair is **not** in the default `dev` install (pulls z3 ~37MB). Use it when you
+want a solver to hunt hard-to-reach branches in existing `@given` tests:
+
+```bash
+make test-crosshair
+# equivalent:
+uv sync --locked --group crosshair
+uv run pytest tests/unit/test_property_helpers.py --hypothesis-profile=crosshair
+```
+
+Do **not** enable `backend="crosshair"` on the default CI path: it is slower and the
+standard Hypothesis backend already covers PR gating. Standalone `crosshair check`
+needs explicit contracts (`pre:`/`post:`) and is not wired up yet.
 ## Troubleshooting
 
 - **Container tests hang:** Ensure the container runtime (podman/docker) is running.
