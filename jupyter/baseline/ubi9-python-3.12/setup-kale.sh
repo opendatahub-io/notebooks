@@ -49,4 +49,6 @@ export KALE_DEFAULT_BASE_IMAGE=ubi9/python-312
 # Written as a JupyterLab user-settings file so Kale picks it up on startup.
 KALE_SETTINGS_DIR="${HOME}/.jupyter/lab/user-settings/jupyterlab-kubeflow-kale"
 mkdir -p "${KALE_SETTINGS_DIR}"
-echo '{"outputPath": "_kale"}' > "${KALE_SETTINGS_DIR}/kale-settings.jupyterlab-settings"
+if [ ! -f "${KALE_SETTINGS_DIR}/kale-settings.jupyterlab-settings" ]; then
+    echo '{"outputPath": "_kale"}' > "${KALE_SETTINGS_DIR}/kale-settings.jupyterlab-settings"
+fi
