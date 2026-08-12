@@ -30,7 +30,7 @@ class TestJupyterLabImage:
             # and we also have them in the Kustomize test files for Makefile tests
             container.with_env(
                 "NOTEBOOK_ARGS",
-                "\n".join(  # noqa: FLY002 Consider f-string instead of string join
+                "\n".join(  # ruff: ignore[static-join-to-f-string] Consider f-string instead of string join
                     [
                         "--ServerApp.port=8888",
                         "--ServerApp.token=''",

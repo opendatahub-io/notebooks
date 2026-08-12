@@ -78,6 +78,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      code-quality: write  # upload coverage to GitHub Code Quality
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -85,6 +86,10 @@ jobs:
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
           # Full history so tests/test_pylock_downgrade.py can `git show origin/main:…/pylock.toml`.
           fetch-depth: 0
+          # Check out the PR head (not the merge commit) so coverage maps to head.sha, which is
+          # what upload-code-coverage attributes the report to (matches the action's README
+          # example). On push, head.sha is empty -> falls back to github.sha (unchanged).
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Login to GitHub Container Registry
         if: ${{ github.repository != 'opendatahub-io/notebooks' }}
@@ -142,6 +147,28 @@ jobs:
           flags: python
           fail_ci_if_error: false
 
+      # --- GitHub Code Quality: native code coverage on PRs (complements Codecov) ---
+      # One-time repo setup: Settings > Security > Code quality > Enable code quality.
+      # Needs (1) a Cobertura XML report -- coverage.xml, produced above by pytest-cov
+      # via PYTEST_ADDOPTS -- and (2) code-quality:write, granted on this job's perms.
+      # Fork PRs and merge_group runs are skipped by the action itself (read-only token).
+      # Feature docs:   https://docs.github.com/en/code-security/code-quality
+      # Setup guide:    https://docs.github.com/en/code-security/how-tos/maintain-quality-code/set-up-code-coverage
+      # Enable feature: https://docs.github.com/en/code-security/how-tos/maintain-quality-code/enable-code-quality
+      # Upload action:  https://github.com/actions/upload-code-coverage
+      # NOTE: on push/workflow_dispatch this action interpolates github.ref_name/github.ref into a
+      # shell run: (upstream script injection: https://github.com/actions/upload-code-coverage/issues/26).
+      # Only reachable with write access (which already grants CI code execution), so no marginal
+      # risk here; the fix belongs upstream (pass those values via env:).
+      - name: Upload Python coverage to GitHub Code Quality
+        if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
+        uses: actions/upload-code-coverage@1c15be36fc3733ba839b1dd643bd9556e4426dc1  # v1.4.1
+        with:
+          file: coverage.xml
+          language: Python
+          label: code-coverage/python
+          fail-on-error: false  # non-blocking, matching the Codecov steps
+
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
         uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3  # v1.2.1
@@ -153,8 +180,13 @@ jobs:
     runs-on: ubuntu-26.04
     permissions:
       contents: read
+      code-quality: write  # upload coverage to GitHub Code Quality
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false  # don't leave the (code-quality:write) token in .git/config for PR code
+          # PR head (not the merge commit) so Go coverage maps to head.sha (see pytest-tests note).
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
@@ -174,6 +206,20 @@ jobs:
         run: gotestsum --junitfile=junit-go.xml -- -coverprofile=coverage-go.out -covermode=atomic ./...
         working-directory: scripts/buildinputs
 
+      - name: Convert Go coverage to Cobertura XML
+        id: go-cobertura
+        if: ${{ !cancelled() }}
+        continue-on-error: true  # optional coverage tooling must not fail the go-tests job
+        # upload-code-coverage only accepts Cobertura; Codecov reads the native .out directly.
+        # GitHub's documented Go recipe (see the "set-up-code-coverage" guide, language table):
+        #   go test -coverprofile=cover.out && gocover-cobertura < cover.out > coverage.xml
+        # https://docs.github.com/en/code-security/how-tos/maintain-quality-code/set-up-code-coverage
+        # https://github.com/boumenot/gocover-cobertura
+        run: |
+          go install github.com/boumenot/gocover-cobertura@v1.5.0
+          "$(go env GOPATH)/bin/gocover-cobertura" < coverage-go.out > coverage-go.xml
+        working-directory: scripts/buildinputs
+
       - name: Upload Go coverage to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
@@ -183,6 +229,16 @@ jobs:
           files: scripts/buildinputs/coverage-go.out
           flags: go
           fail_ci_if_error: false
+
+      # See the upstream-injection note on the Python upload above (github.com/actions/upload-code-coverage/issues/26).
+      - name: Upload Go coverage to GitHub Code Quality
+        if: ${{ !cancelled() && steps.go-cobertura.outcome == 'success' }}
+        uses: actions/upload-code-coverage@1c15be36fc3733ba839b1dd643bd9556e4426dc1  # v1.4.1
+        with:
+          file: scripts/buildinputs/coverage-go.xml
+          language: Go
+          label: code-coverage/go
+          fail-on-error: false  # non-blocking, matching the Codecov steps
 
       - name: Upload Go test results to Codecov
         if: ${{ !cancelled() }}

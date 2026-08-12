@@ -32,24 +32,29 @@ spec:
             - name: notebook-port
               protocol: TCP
               containerPort: 8888
-          # Generous delays for slow or constrained nodes (e.g. ppc64le in CI).
-          # Liveness must allow Jupyter + datascience deps to bind before first check (avoids restart loops).
+          # Allow up to 180 seconds for startup on slow or constrained nodes (e.g. ppc64le in CI).
+          startupProbe:
+            tcpSocket:
+              port: notebook-port
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 18
           livenessProbe:
             tcpSocket:
               port: notebook-port
-            initialDelaySeconds: 120
-            periodSeconds: 10
+            initialDelaySeconds: 5
+            periodSeconds: 5
             successThreshold: 1
-            failureThreshold: 6
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /notebook/opendatahub/jovyan/api
               port: notebook-port
               scheme: HTTP
-            initialDelaySeconds: 90
-            periodSeconds: 10
+            initialDelaySeconds: 10
+            periodSeconds: 5
             successThreshold: 1
-            failureThreshold: 6
+            failureThreshold: 3
           # Jupyter + papermill share the pod cgroup; keep headroom for datascience tests on ppc64le CI.
           resources:
             limits:
