@@ -41,3 +41,11 @@ export KALE_SECURITY_CONTEXT_ENABLED=false
 
 # Set default image
 export KALE_DEFAULT_BASE_IMAGE=ubi9/python-312
+
+# Set the default pipeline output directory to _kale/ (instead of the default .kale/)
+# Written as a JupyterLab user-settings file so the extension picks it up on startup.
+KALE_SETTINGS_DIR="${HOME}/.jupyter/lab/user-settings/jupyterlab-kubeflow-kale"
+mkdir -p "${KALE_SETTINGS_DIR}"
+if [ ! -f "${KALE_SETTINGS_DIR}/kale-settings.jupyterlab-settings" ]; then
+    echo '{"outputPath": "_kale"}' > "${KALE_SETTINGS_DIR}/kale-settings.jupyterlab-settings"
+fi

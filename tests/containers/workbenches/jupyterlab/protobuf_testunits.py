@@ -23,7 +23,7 @@ import unittest
 # Must be set before importing google.protobuf (impl is chosen at import time).
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "upb"
 
-# ruff: noqa: PLC0415 `import` should be at the top-level of a file
+# ruff: file-ignore[import-outside-top-level] `import` should be at the top-level of a file
 
 
 def _make_message(

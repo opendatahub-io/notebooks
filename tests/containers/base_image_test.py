@@ -38,12 +38,13 @@ class TestBaseImage:
             def check_elf_file():
                 """This python function will be executed on the image itself.
                 That's why it has to have here all imports it needs."""
-                # ruff: noqa: PLC0415 `import` should be at the top-level of a file
+                # ruff: disable[import-outside-top-level] `import` should be at the top-level of a file
                 import glob
                 import json
                 import os
                 import stat
                 import subprocess
+                # ruff: enable[import-outside-top-level]
 
                 dirs = ["/bin", "/lib", "/lib64", "/opt/app-root"]
                 for path in dirs:

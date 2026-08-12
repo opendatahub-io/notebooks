@@ -18,8 +18,8 @@ CI_CACHED_BUILDS = REPO_ROOT / "ci" / "cached-builds"
 if str(CI_CACHED_BUILDS) not in sys.path:
     sys.path.insert(0, str(CI_CACHED_BUILDS))
 
-import gen_gha_matrix_jobs  # pyright: ignore[reportMissingImports]  # noqa: E402
-import gha_pr_changed_files  # pyright: ignore[reportMissingImports]  # noqa: E402
+import gen_gha_matrix_jobs  # pyright: ignore[reportMissingImports]  # ruff: ignore[module-import-not-at-top-of-file]
+import gha_pr_changed_files  # pyright: ignore[reportMissingImports]  # ruff: ignore[module-import-not-at-top-of-file]
 
 MAX_PATCH_LINES = 50
 MAX_CHANGED_FILES = 200

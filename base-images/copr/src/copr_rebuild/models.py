@@ -77,8 +77,8 @@ class BuildResult(BaseModel):
 
 def main():
     """Generate the JSON schema for the Manifest model."""
-    import json  # noqa: PLC0415
-    from pathlib import Path  # noqa: PLC0415
+    import json  # ruff: ignore[import-outside-top-level]
+    from pathlib import Path  # ruff: ignore[import-outside-top-level]
 
     out = Path(__file__).parent / "manifest_schema.json"
     schema = {

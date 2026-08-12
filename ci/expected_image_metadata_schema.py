@@ -50,8 +50,8 @@ class ImageMetadataFile(RootModel[dict[str, ImageEntry]]):
 
 def main():
     """Generate the JSON schema for expected-image-metadata.yaml."""
-    import json  # noqa: PLC0415
-    from pathlib import Path  # noqa: PLC0415
+    import json  # ruff: ignore[import-outside-top-level]
+    from pathlib import Path  # ruff: ignore[import-outside-top-level]
 
     out = Path(__file__).parent / "expected-image-metadata.schema.json"
     schema = {
