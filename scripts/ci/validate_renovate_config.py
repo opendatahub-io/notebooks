@@ -69,12 +69,17 @@ def find_repo_rule(
     enabled: bool,
     require_match_base_branches: bool | None = None,
 ) -> dict[str, Any] | None:
+    """Find a repo-wide MintMaker gate rule (no manager/package filters)."""
     for rule in package_rules:
         if not isinstance(rule, dict):
             continue
         if rule.get("matchRepositories") != [repository]:
             continue
         if rule.get("enabled") is not enabled:
+            continue
+        # Manager-scoped rules (e.g. ODH BASE_IMAGE enable) share matchRepositories
+        # with the repo-wide MintMaker gates; only the unscoped gates qualify here.
+        if "matchManagers" in rule or "matchPackageNames" in rule:
             continue
         has_match_base_branches = "matchBaseBranches" in rule
         if require_match_base_branches is True and not has_match_base_branches:
@@ -226,8 +231,7 @@ def validate_odh_base_image_policy(
         (
             manager
             for manager in custom_managers
-            if isinstance(manager, dict)
-            and manager.get("description", "").startswith(ODH_BASE_MANAGER_DESCRIPTION)
+            if isinstance(manager, dict) and manager.get("description", "").startswith(ODH_BASE_MANAGER_DESCRIPTION)
         ),
         None,
     )
@@ -247,8 +251,7 @@ def validate_odh_base_image_policy(
         (
             rule
             for rule in package_rules
-            if isinstance(rule, dict)
-            and rule.get("description", "").startswith(ODH_BASE_DISABLE_RULE_DESCRIPTION)
+            if isinstance(rule, dict) and rule.get("description", "").startswith(ODH_BASE_DISABLE_RULE_DESCRIPTION)
         ),
         None,
     )
@@ -267,8 +270,7 @@ def validate_odh_base_image_policy(
         (
             rule
             for rule in package_rules
-            if isinstance(rule, dict)
-            and rule.get("description", "").startswith(ODH_BASE_ENABLE_RULE_DESCRIPTION)
+            if isinstance(rule, dict) and rule.get("description", "").startswith(ODH_BASE_ENABLE_RULE_DESCRIPTION)
         ),
         None,
     )

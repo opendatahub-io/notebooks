@@ -56,6 +56,25 @@ def test_validate_scenario_titles_detects_missing_prefix() -> None:
     assert "expected at least one PR title" in errors[0], f"Unexpected validation error message: {errors[0]}"
 
 
+def test_validate_scenario_titles_empty_falls_back_to_combined_config() -> None:
+    scenario = dry_run.SCENARIOS[1]
+    records = dry_run.parse_json_log_lines(
+        """
+{"msg":"Combined config","config":{"packageRules":[{"description":"Prefix PR titles with branch name for non-main branches","matchBaseBranches":["!/^main$/"],"commitMessagePrefix":"[{{{baseBranch}}}]"}]}}
+"""
+    )
+    errors = dry_run.validate_scenario_titles(scenario, [], records=records)
+    assert errors == [], f"Expected empty titles to pass via Combined config fallback, got: {errors}"
+
+
+def test_validate_scenario_titles_empty_without_prefix_rule_fails() -> None:
+    scenario = dry_run.SCENARIOS[1]
+    records = dry_run.parse_json_log_lines('{"msg":"Combined config","config":{"packageRules":[]}}')
+    errors = dry_run.validate_scenario_titles(scenario, [], records=records)
+    assert len(errors) == 1, f"Expected exactly one validation error, got: {errors}"
+    assert "missing the PR-title prefix packageRule" in errors[0], f"Unexpected error: {errors[0]}"
+
+
 def test_fatal_config_warnings_ignores_known_cosmetic() -> None:
     records = dry_run.parse_json_log_lines(MAIN_FIXTURE)
     warnings = dry_run.fatal_config_warnings(records)
