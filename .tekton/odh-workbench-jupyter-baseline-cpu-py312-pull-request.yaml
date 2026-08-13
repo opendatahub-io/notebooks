@@ -28,6 +28,8 @@ spec:
     value: jupyter/baseline/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: path-context
     value: .
+  - name: build-args-file
+    value: codeserver-baseline/ubi9-python-3.12/build-args/konflux.cpu.conf
   - name: image-expires-after
     value: 5d
   - name: enable-slack-failure-notification
