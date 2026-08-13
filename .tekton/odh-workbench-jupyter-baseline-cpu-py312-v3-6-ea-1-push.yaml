@@ -36,10 +36,14 @@ spec:
     value: jupyter/baseline/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: path-context
     value: .
+  # Phase 1: non-hermetic online RPM + PyPI (no prefetch yet). Proven on
+  # notebooks PR trials for RHOAIENG-81140.
   - name: hermetic
-    value: true
+    value: false
   - name: build-args-file
-    value: codeserver-baseline/ubi9-python-3.12/build-args/konflux.cpu.conf
+    value: jupyter/baseline/ubi9-python-3.12/build-args/konflux.cpu.conf
+  - name: rhel-subscription-activation-key
+    value: rhel-subscription-activation-key-rhoai-devops-for-notebooks-rhel9-6
   - name: build-platforms
     value:
     - linux/x86_64
