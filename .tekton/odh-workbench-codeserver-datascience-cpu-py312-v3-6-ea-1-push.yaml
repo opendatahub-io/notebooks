@@ -1,5 +1,6 @@
 apiVersion: tekton.dev/v1
 #manual trigger
+# konflux build manual retrigger - 2026-08-12 17:56:09
 kind: PipelineRun
 metadata:
   annotations:
@@ -230,4 +231,3 @@ spec:
     secret:
       secretName: '{{ git_auth_secret }}'
 status: {}
-#restart
