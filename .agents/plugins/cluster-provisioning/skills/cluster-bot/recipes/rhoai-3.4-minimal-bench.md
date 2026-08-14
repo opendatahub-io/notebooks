@@ -12,8 +12,8 @@ Timed end-to-end comparison: **cluster-bot `launch 4.20 aws`** (Pass A) vs **`ro
 | `fixtures/dsci-default.yaml` | DSCInitialization (monitoring Removed) |
 | `fixtures/dsc-minimal-workbenches.yaml` | Workbenches-only DSC |
 | `fixtures/notebook-minimal.yaml` | Kubeflow Notebook `bench-minimal` |
-| `../../scripts/cluster-bot-rhoai-bench.sh` | Phase orchestrator + timings |
-| `../../scripts/cluster-bot-prow-watch.sh` | Prow log state machine + progress |
+| `../scripts/cluster-bot-rhoai-bench.sh` | Phase orchestrator + timings |
+| `../scripts/cluster-bot-prow-watch.sh` | Prow log state machine + progress |
 | `.cluster-bot-bench/<pass>/` | Gitignored kubeconfig + `timings.jsonl` + `prow_states.jsonl` |
 
 ## Prerequisites
@@ -91,11 +91,11 @@ cluster-bot launch jobs log to Prow (`release-openshift-origin-installer-launch-
 
 ```bash
 # One-shot progress (poll log tail, default 30s interval in --watch mode)
-./scripts/cluster-bot-prow-watch.sh --pass a --once \
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-prow-watch.sh --pass a --once \
   --prow-url 'https://prow.ci.openshift.org/view/gs/test-platform-results/logs/release-openshift-origin-installer-launch-aws-modern/<id>'
 
 # Background-friendly watch until nodes-readiness or failure
-./scripts/cluster-bot-prow-watch.sh --pass a --watch --poll-interval 30 \
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-prow-watch.sh --pass a --watch --poll-interval 30 \
   --prow-job release-openshift-origin-installer-launch-aws-modern --prow-id <id>
 ```
 
@@ -200,10 +200,10 @@ REPO=/path/to/notebooks
 cd "${REPO}"
 
 # 1. After Slack launch/rosa command (prefer Slack launch ts as T0):
-./scripts/cluster-bot-rhoai-bench.sh --pass a --mark-event cluster_request
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --mark-event cluster_request
 
 # 1b. When bot posts Prow link (~10s after launch), start watch:
-./scripts/cluster-bot-prow-watch.sh --pass a --watch --poll-interval 30 \
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-prow-watch.sh --pass a --watch --poll-interval 30 \
   --prow-url '<prow link from DM>'
 
 # 2. After “Your cluster is ready” DM — save credentials or kubeconfig:
@@ -211,27 +211,27 @@ cd "${REPO}"
 #    rosa: USER=cluster-admin, API_URL=https://api....openshiftapps.com:443
 
 # 3. Provision gate (login + nodes Ready):
-./scripts/cluster-bot-rhoai-bench.sh --pass a --phase provision \
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --phase provision \
   --cluster-type launch --credentials-file .cluster-bot-bench/a/credentials.env
 
 # 4. Install through workbench API:
-./scripts/cluster-bot-rhoai-bench.sh --pass a --phase install --cluster-type launch
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --phase install --cluster-type launch
 
 # 5. Uninstall:
-./scripts/cluster-bot-rhoai-bench.sh --pass a --phase uninstall
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --phase uninstall
 
 # 6. After Slack done + bot ack:
-./scripts/cluster-bot-rhoai-bench.sh --pass a --mark-event deprovision_ack
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --mark-event deprovision_ack
 
 # 7. Summary (repeat for pass b with --cluster-type rosa):
-./scripts/cluster-bot-rhoai-bench.sh --pass a --summary
-./scripts/cluster-bot-rhoai-bench.sh --pass b --summary
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --summary
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass b --summary
 ```
 
 Or one shot after credentials are ready:
 
 ```bash
-./scripts/cluster-bot-rhoai-bench.sh --pass a --phase all \
+.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --phase all \
   --cluster-type launch --credentials-file .cluster-bot-bench/a/credentials.env
 ```
 

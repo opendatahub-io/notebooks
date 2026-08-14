@@ -3,14 +3,15 @@
 # Timed RHOAI 3.4 minimal workbench benchmark for cluster-bot clusters.
 # Uses isolated kubeconfig under .cluster-bot-bench/<pass>/ and logs phases to timings.jsonl.
 #
-# Fixtures: .agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/
-# Recipe:   .agents/plugins/cluster-provisioning/skills/cluster-bot/recipes/rhoai-3.4-minimal-bench.md
+# Fixtures: ../fixtures/
+# Recipe:   ../recipes/rhoai-3.4-minimal-bench.md
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-FIXTURES="${REPO_ROOT}/.agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures"
+SKILL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
+FIXTURES="${SKILL_DIR}/fixtures"
 
 PASS=""
 PHASE="all"
@@ -59,18 +60,18 @@ Slack steps (cluster-bot U03GSGSMF38) are outside this script:
 
 Examples:
   # After sending launch/rosa command in Slack:
-  ./scripts/cluster-bot-rhoai-bench.sh --pass a --mark-event cluster_request
+  ./.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --mark-event cluster_request
 
   # After auth / kubeconfig or oc login credentials from DM:
-  ./scripts/cluster-bot-rhoai-bench.sh --pass a --phase provision \
+  ./.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --phase provision \
     --cluster-type launch --credentials-file .cluster-bot-bench/a/credentials.env
 
   # RHOAI install through workbench API probe:
-  ./scripts/cluster-bot-rhoai-bench.sh --pass a --phase install --cluster-type launch
+  ./.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --phase install --cluster-type launch
 
   # Uninstall + summary:
-  ./scripts/cluster-bot-rhoai-bench.sh --pass a --phase uninstall
-  ./scripts/cluster-bot-rhoai-bench.sh --pass a --summary
+  ./.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --phase uninstall
+  ./.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-rhoai-bench.sh --pass a --summary
 EOF
 }
 

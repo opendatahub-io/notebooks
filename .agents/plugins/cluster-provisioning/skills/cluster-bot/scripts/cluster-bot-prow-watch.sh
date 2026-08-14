@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
 
 PASS=""
 BENCH_ROOT="${REPO_ROOT}/.cluster-bot-bench"
@@ -65,10 +65,10 @@ Macro states (derived):
   nodes_readiness, post_install, job_succeeded, job_failed
 
 Examples:
-  ./scripts/cluster-bot-prow-watch.sh --pass a --once \
+  ./.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-prow-watch.sh --pass a --once \
     --prow-url 'https://prow.ci.openshift.org/view/gs/test-platform-results/logs/release-openshift-origin-installer-launch-aws-modern/2086024205236703232'
 
-  ./scripts/cluster-bot-prow-watch.sh --pass a --watch --poll-interval 30 \
+  ./.agents/plugins/cluster-provisioning/skills/cluster-bot/scripts/cluster-bot-prow-watch.sh --pass a --watch --poll-interval 30 \
     --prow-job release-openshift-origin-installer-launch-aws-modern \
     --prow-id 2086024205236703232
 EOF
