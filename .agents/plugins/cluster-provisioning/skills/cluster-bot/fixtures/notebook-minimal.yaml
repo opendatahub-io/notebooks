@@ -1,0 +1,49 @@
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: bench-minimal
+  namespace: rhods-notebooks
+  annotations:
+    opendatahub.io/username: bench-minimal
+  labels:
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/notebook-image: "true"
+spec:
+  template:
+    spec:
+      containers:
+        - name: bench-minimal
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-minimal-notebook:3.4
+          imagePullPolicy: Always
+          workingDir: /opt/app-root/src
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/rhods-notebooks/bench-minimal
+                --ServerApp.quit_button=False
+          ports:
+            - name: notebook-port
+              containerPort: 8888
+          resources:
+            limits:
+              cpu: 500m
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /notebook/rhods-notebooks/bench-minimal/api
+              port: notebook-port
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: notebook-port
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
