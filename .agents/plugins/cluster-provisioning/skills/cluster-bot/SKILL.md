@@ -192,6 +192,9 @@ oc wait csv/rhods-operator.3.4.2 -n redhat-ods-operator \
 export KUBECONFIG=.cluster-bot-bench/a/kubeconfig
 oc delete subscription rhods-operator -n redhat-ods-operator
 oc delete csv,installplan -n redhat-ods-operator --all 2>/dev/null || true
+# Use whichever Subscription fixture matches the run being recovered — rhoai-operator-sub.yaml
+# (channel head) or rhoai-operator-sub-pinned.yaml (pinned CSV) — reapplying the other one
+# silently switches the install mode.
 oc apply -f .agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/rhoai-operator-sub.yaml
 oc apply -f .agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/operatorgroup-rhods.yaml
 # Wait until CSV appears, then wait by name (not -l):

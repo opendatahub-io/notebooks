@@ -283,8 +283,7 @@ login_from_credentials() {
         echo "error: credentials file needs API_URL, USER (or USERNAME), PASSWORD" >&2
         return 1
     fi
-    # nosemgrep: generic-hardcoded-secret -- PASSWORD is sourced from credentials.env, not a literal
-    oc login "${API_URL}" --username="${user}" --password="${PASSWORD}"
+    oc login "${API_URL}" --username="${user}" --password="${PASSWORD}" # nosemgrep: generic-hardcoded-secret -- PASSWORD is sourced from credentials.env, not a literal
 }
 
 phase_provision() {
@@ -320,6 +319,11 @@ phase_provision() {
 apply_fixtures() {
     oc_cmd apply -f "${FIXTURES}/${SUBSCRIPTION_FIXTURE}"
     oc_cmd apply -f "${FIXTURES}/operatorgroup-rhods.yaml"
+    if [[ "${SUBSCRIPTION_FIXTURE}" == "rhoai-operator-sub-pinned.yaml" ]]; then
+        echo "Pinned Subscription uses installPlanApproval: Manual — approve the initial InstallPlan in another terminal:" >&2
+        echo "  oc --kubeconfig=${KUBECONFIG} get installplan -n ${ODS_OPERATOR_NS}" >&2
+        echo "  oc --kubeconfig=${KUBECONFIG} patch installplan <name> -n ${ODS_OPERATOR_NS} --type merge -p '{\"spec\":{\"approved\":true}}'" >&2
+    fi
 }
 
 wait_csv_succeeded() {
@@ -530,12 +534,12 @@ print_summary() {
     local workbench_end
     workbench_end="$(grep '"phase":"workbench_api"' "${TIMINGS}" 2>/dev/null | grep '"status":"ok"' | tail -1 || true)"
     if [[ -n "${workbench_end}" ]]; then
-        local wb_start wb_dur wb_end_elapsed
-        wb_start="$(printf '%s' "${workbench_end}" | sed -n 's/.*"start":"\([^"]*\)".*/\1/p')"
+        local wb_end wb_dur wb_end_elapsed
+        wb_end="$(printf '%s' "${workbench_end}" | sed -n 's/.*"end":"\([^"]*\)".*/\1/p')"
         wb_dur="$(printf '%s' "${workbench_end}" | sed -n 's/.*"duration_sec":\([^,}]*\).*/\1/p')"
         wb_end_elapsed="$(printf '%s' "${workbench_end}" | sed -n 's/.*"end_elapsed_sec":\([^,}]*\).*/\1/p')"
         echo ""
-        echo "workbench_api end: ${wb_start} (+${wb_dur}s phase)"
+        echo "workbench_api end: ${wb_end} (+${wb_dur}s phase)"
         if [[ -n "${wb_end_elapsed}" ]]; then
             echo "E2E cluster_request → workbench_api: ${wb_end_elapsed}s from bench start marker"
         fi
