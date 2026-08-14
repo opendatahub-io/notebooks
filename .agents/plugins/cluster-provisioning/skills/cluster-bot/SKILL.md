@@ -254,6 +254,7 @@ Full bench recipe + filled comparison table: [recipes/rhoai-3.4-minimal-bench.md
 - GCP workspace access (`request`/`revoke`) is capped at 7 days, non-extendable, and gated to the Hybrid Platforms org.
 - Fleet-wide caps exist per pool (`list` shows the denominator) — you can be capacity-blocked even if your own request is valid.
 - Undocumented/mistyped commands just say "msg me `help`" — no fuzzy help; check `pkg/manager/prow.go` or `workflows-config.yaml` directly for anything not in the six `help` categories.
+- `rosa create <version> <duration>` has no architecture/platform parameter at all — confirmed via `pkg/manager/rosa.go` (no arch handling anywhere in the file) and a live run: always amd64. Arch selection (`arm64`, `multi`) only exists on the `launch` (classic Prow) path.
 
 ## cluster-bot vs manual ROSA CLI
 
