@@ -312,6 +312,9 @@ process_log_lines() {
         duration="$(printf '%s' "${line}" | sed -n 's/.*Step launch-\([^ ]*\) succeeded after \(.*\)\./\2/p')"
         if [[ -n "${step}" ]]; then
             dedup_append_state "step_done" "launch-${step}" "duration=${duration}"
+            if [[ "launch-${step}" == "${EXPECTED_STEPS[${#EXPECTED_STEPS[@]} - 1]}" ]]; then
+                dedup_append_state "macro" "job_succeeded"
+            fi
         fi
     done < <(grep -E 'Step launch-.* succeeded after' <<<"${clean}" || true)
 
@@ -377,9 +380,6 @@ job_terminal() {
         return 0
     fi
     if grep '"kind":"macro"' "${STATES}" 2>/dev/null | grep -q '"state":"job_failed"'; then
-        return 0
-    fi
-    if grep '"kind":"step_done"' "${STATES}" 2>/dev/null | grep -q 'launch-nodes-readiness'; then
         return 0
     fi
     return 1

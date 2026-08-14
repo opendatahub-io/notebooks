@@ -6,6 +6,7 @@
 #   oc patch installplan <name> -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
 #
 # Initial install also requires approving the first InstallPlan when using Manual.
+---
 apiVersion: v1
 kind: Namespace
 metadata:

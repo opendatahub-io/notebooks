@@ -3,14 +3,14 @@
 # Timed RHOAI 3.4 minimal workbench benchmark for cluster-bot clusters.
 # Uses isolated kubeconfig under .cluster-bot-bench/<pass>/ and logs phases to timings.jsonl.
 #
-# Fixtures: .cursor/skills/cluster-bot/fixtures/
-# Recipe:   .cursor/skills/cluster-bot/recipes/rhoai-3.4-minimal-bench.md
+# Fixtures: .agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/
+# Recipe:   .agents/plugins/cluster-provisioning/skills/cluster-bot/recipes/rhoai-3.4-minimal-bench.md
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-FIXTURES="${REPO_ROOT}/.cursor/skills/cluster-bot/fixtures"
+FIXTURES="${REPO_ROOT}/.agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures"
 
 PASS=""
 PHASE="all"
@@ -26,6 +26,7 @@ NOTEBOOK_IMAGE="${NOTEBOOK_IMAGE:-}"
 ODS_OPERATOR_NS="redhat-ods-operator"
 ODS_APPS_NS="redhat-ods-applications"
 OPERATOR_CSV="${OPERATOR_CSV:-}"
+SUBSCRIPTION_FIXTURE="rhoai-operator-sub.yaml"
 
 usage() {
     cat <<'EOF'
@@ -43,6 +44,9 @@ Options:
                           cluster_ready | deprovision_ack | provision_poll
   --poll-interval SEC     oc wait poll interval for nodes/API (default: 15)
   --notebook-image REF    Notebook container image (auto-resolved if unset)
+  --subscription-fixture NAME
+                          rhoai-operator-sub.yaml (default, channel head) |
+                          rhoai-operator-sub-pinned.yaml (pinned CSV, Manual approval)
   --summary               Print timing summary from timings.jsonl and exit
   -h, --help              Show this help
 
@@ -104,6 +108,10 @@ while [[ $# -gt 0 ]]; do
             NOTEBOOK_IMAGE="${2:-}"
             shift 2
             ;;
+        --subscription-fixture)
+            SUBSCRIPTION_FIXTURE="${2:-}"
+            shift 2
+            ;;
         --summary)
             SUMMARY_ONLY=true
             shift
@@ -128,6 +136,11 @@ fi
 
 if [[ "${PASS}" != "a" && "${PASS}" != "b" ]]; then
     echo "error: --pass must be a or b" >&2
+    exit 1
+fi
+
+if [[ "${SUBSCRIPTION_FIXTURE}" != "rhoai-operator-sub.yaml" && "${SUBSCRIPTION_FIXTURE}" != "rhoai-operator-sub-pinned.yaml" ]]; then
+    echo "error: --subscription-fixture must be rhoai-operator-sub.yaml or rhoai-operator-sub-pinned.yaml" >&2
     exit 1
 fi
 
@@ -177,9 +190,14 @@ append_timing() {
     local end_iso="$3"
     local duration="$4"
     local status="${5:-ok}"
+    local end_epoch="${6:-}"
+    local end_elapsed=0
+    if [[ -n "${end_epoch}" && -f "${BENCH_START_FILE}" ]]; then
+        end_elapsed="$(elapsed_sec "$(cat "${BENCH_START_FILE}")" "${end_epoch}")"
+    fi
   # shellcheck disable=SC2016
-    printf '{"phase":"%s","pass":"%s","cluster_type":"%s","start":"%s","end":"%s","duration_sec":%s,"status":"%s"}\n' \
-        "${phase}" "${PASS}" "${CLUSTER_TYPE}" "${start_iso}" "${end_iso}" "${duration}" "${status}" >>"${TIMINGS}"
+    printf '{"phase":"%s","pass":"%s","cluster_type":"%s","start":"%s","end":"%s","duration_sec":%s,"status":"%s","end_elapsed_sec":%s}\n' \
+        "${phase}" "${PASS}" "${CLUSTER_TYPE}" "${start_iso}" "${end_iso}" "${duration}" "${status}" "${end_elapsed}" >>"${TIMINGS}"
 }
 
 append_event() {
@@ -213,7 +231,7 @@ run_phase_timed_from_bench_start() {
     if ! "$2"; then
         end_epoch="$(now_epoch)"
         end_iso="$(now_iso)"
-        append_timing "${phase}" "${start_iso}" "${end_iso}" "$(elapsed_sec "${start_epoch}" "${end_epoch}")" "failed"
+        append_timing "${phase}" "${start_iso}" "${end_iso}" "$(elapsed_sec "${start_epoch}" "${end_epoch}")" "failed" "${end_epoch}"
         echo "Phase ${phase} FAILED" >&2
         return 1
     fi
@@ -222,7 +240,7 @@ run_phase_timed_from_bench_start() {
     end_iso="$(now_iso)"
     local dur
     dur="$(elapsed_sec "${start_epoch}" "${end_epoch}")"
-    append_timing "${phase}" "${start_iso}" "${end_iso}" "${dur}" "ok"
+    append_timing "${phase}" "${start_iso}" "${end_iso}" "${dur}" "ok" "${end_epoch}"
     echo "Phase ${phase} OK (${dur}s from cluster_request)"
 }
 
@@ -236,7 +254,7 @@ run_phase_timed() {
     if ! "$2"; then
         end_epoch="$(now_epoch)"
         end_iso="$(now_iso)"
-        append_timing "${phase}" "${start_iso}" "${end_iso}" "$(elapsed_sec "${start_epoch}" "${end_epoch}")" "failed"
+        append_timing "${phase}" "${start_iso}" "${end_iso}" "$(elapsed_sec "${start_epoch}" "${end_epoch}")" "failed" "${end_epoch}"
         echo "Phase ${phase} FAILED" >&2
         return 1
     fi
@@ -245,7 +263,7 @@ run_phase_timed() {
     end_iso="$(now_iso)"
     local dur
     dur="$(elapsed_sec "${start_epoch}" "${end_epoch}")"
-    append_timing "${phase}" "${start_iso}" "${end_iso}" "${dur}" "ok"
+    append_timing "${phase}" "${start_iso}" "${end_iso}" "${dur}" "ok" "${end_epoch}"
     echo "Phase ${phase} OK (${dur}s)"
 }
 
@@ -265,7 +283,8 @@ login_from_credentials() {
         echo "error: credentials file needs API_URL, USER (or USERNAME), PASSWORD" >&2
         return 1
     fi
-    oc login "${API_URL}" --username="${user}" --password="${PASSWORD}" --insecure-skip-tls-verify=true
+    # nosemgrep: generic-hardcoded-secret -- PASSWORD is sourced from credentials.env, not a literal
+    oc login "${API_URL}" --username="${user}" --password="${PASSWORD}"
 }
 
 phase_provision() {
@@ -299,7 +318,7 @@ phase_provision() {
 }
 
 apply_fixtures() {
-    oc_cmd apply -f "${FIXTURES}/rhoai-operator-sub.yaml"
+    oc_cmd apply -f "${FIXTURES}/${SUBSCRIPTION_FIXTURE}"
     oc_cmd apply -f "${FIXTURES}/operatorgroup-rhods.yaml"
 }
 
@@ -508,22 +527,17 @@ print_summary() {
         fi
     done <"${TIMINGS}"
 
-    local cluster_req provision_end workbench_end
-    cluster_req="$(grep '"event":"cluster_request"' "${TIMINGS}" 2>/dev/null | tail -1 | sed -n 's/.*"elapsed_sec":\([^,}]*\).*/\1/p' || true)"
-    workbench_end="$(grep '"phase":"workbench_api"' "${TIMINGS}" 2>/dev/null | tail -1 || true)"
+    local workbench_end
+    workbench_end="$(grep '"phase":"workbench_api"' "${TIMINGS}" 2>/dev/null | grep '"status":"ok"' | tail -1 || true)"
     if [[ -n "${workbench_end}" ]]; then
-        local wb_start wb_dur
+        local wb_start wb_dur wb_end_elapsed
         wb_start="$(printf '%s' "${workbench_end}" | sed -n 's/.*"start":"\([^"]*\)".*/\1/p')"
         wb_dur="$(printf '%s' "${workbench_end}" | sed -n 's/.*"duration_sec":\([^,}]*\).*/\1/p')"
+        wb_end_elapsed="$(printf '%s' "${workbench_end}" | sed -n 's/.*"end_elapsed_sec":\([^,}]*\).*/\1/p')"
         echo ""
         echo "workbench_api end: ${wb_start} (+${wb_dur}s phase)"
-        if [[ -n "${cluster_req}" ]]; then
-            local total
-            total="$(grep '"phase":"workbench_api"' "${TIMINGS}" | tail -1 | sed -n 's/.*"duration_sec":\([^,}]*\).*/\1/p')"
-            # E2E from cluster_request event elapsed to workbench phase end
-            local wb_end_elapsed
-            wb_end_elapsed=$((cluster_req + total))
-            echo "E2E cluster_request → workbench_api (approx): ${wb_end_elapsed}s from bench start marker"
+        if [[ -n "${wb_end_elapsed}" ]]; then
+            echo "E2E cluster_request → workbench_api: ${wb_end_elapsed}s from bench start marker"
         fi
     fi
     echo ""

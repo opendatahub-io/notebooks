@@ -18,7 +18,7 @@ Slack app for spinning up short-lived OpenShift/ROSA clusters for manual testing
 ## Identity & access
 
 - Real, live bot: Slack user `U03GSGSMF38` (`ci-chat-bot`), Enterprise Grid workspace `redhat.enterprise.slack.com`. DM it directly.
-- A second, same-named bot (`UE7HH01ML`) exists in `redhat-internal.slack.com` — it does not respond (verified: no reply after 45s). It's stale/decommissioned; ignore it.
+- A second, same-named bot (`UE7HH01ML`) exists on another internal workspace — it does not respond (verified: no reply after 45s). It's stale/decommissioned; ignore it.
 - Human help: `#forum-ocp-crt`. Docs: [ci-chat-bot FAQ](https://github.com/openshift/ci-chat-bot/blob/master/docs/FAQ.md).
 - Source of truth for what's actually supported (help text can lag): [`pkg/manager/prow.go`](https://github.com/openshift/ci-chat-bot/blob/master/pkg/manager/prow.go) (`SupportedPlatforms`, `SupportedParameters`) and [`openshift/release` workflows-config.yaml](https://github.com/openshift/release/blob/master/core-services/ci-chat-bot/workflows-config.yaml) (named workflows for `workflow-launch`/`workflow-test`).
 
@@ -156,7 +156,7 @@ Save to isolated `KUBECONFIG` under `.cluster-bot-bench/<pass>/` — never `~/.k
 
 ### Installing RHOAI on cluster-bot clusters
 
-Validated on **`launch 4.20 aws`** (Pass A) and **`rosa create 4.20 8h`** (Pass B). Fixtures: `.cursor/skills/cluster-bot/fixtures/`, orchestrator: `scripts/cluster-bot-rhoai-bench.sh`.
+Validated on **`launch 4.20 aws`** (Pass A) and **`rosa create 4.20 8h`** (Pass B). Fixtures: `.agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/`, orchestrator: `scripts/cluster-bot-rhoai-bench.sh`.
 
 **OperatorGroup (critical):** `rhods-operator` does **not** support `OwnNamespace` install mode. Use **AllNamespaces**:
 
@@ -192,8 +192,8 @@ oc wait csv/rhods-operator.3.4.2 -n redhat-ods-operator \
 export KUBECONFIG=.cluster-bot-bench/a/kubeconfig
 oc delete subscription rhods-operator -n redhat-ods-operator
 oc delete csv,installplan -n redhat-ods-operator --all 2>/dev/null || true
-oc apply -f .cursor/skills/cluster-bot/fixtures/rhoai-operator-sub.yaml
-oc apply -f .cursor/skills/cluster-bot/fixtures/operatorgroup-rhods.yaml
+oc apply -f .agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/rhoai-operator-sub.yaml
+oc apply -f .agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/operatorgroup-rhods.yaml
 # Wait until CSV appears, then wait by name (not -l):
 oc get csv -n redhat-ods-operator -o name | grep rhods-operator
 oc wait csv/rhods-operator.3.4.2 -n redhat-ods-operator \

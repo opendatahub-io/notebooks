@@ -164,8 +164,8 @@ After CSV `Failed` or manual deletion of CSV/InstallPlan, Subscription may show 
 export KUBECONFIG=.cluster-bot-bench/<pass>/kubeconfig
 oc delete subscription rhods-operator -n redhat-ods-operator
 oc delete csv,installplan -n redhat-ods-operator --all 2>/dev/null || true
-oc apply -f .cursor/skills/cluster-bot/fixtures/rhoai-operator-sub.yaml
-oc apply -f .cursor/skills/cluster-bot/fixtures/operatorgroup-rhods.yaml
+oc apply -f .agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/rhoai-operator-sub.yaml
+oc apply -f .agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/operatorgroup-rhods.yaml
 CSV=$(oc get csv -n redhat-ods-operator -o name | grep rhods-operator | head -1)
 oc wait "${CSV}" -n redhat-ods-operator \
   --for=jsonpath='{.status.phase}'=Succeeded --timeout=30m

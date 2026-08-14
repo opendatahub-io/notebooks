@@ -3,6 +3,7 @@
 # Do NOT set startingCSV below channel head — OLM installs that CSV then immediately
 # plans an upgrade to the head (e.g. 3.4.0 → 3.4.2), wasting time and polluting
 # install benchmarks. For a fixed older CSV, use rhoai-operator-sub-pinned.yaml.
+---
 apiVersion: v1
 kind: Namespace
 metadata:
