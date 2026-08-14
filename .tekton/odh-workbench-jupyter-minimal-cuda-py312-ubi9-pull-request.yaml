@@ -43,7 +43,7 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
     - linux-d160-m4xlarge/arm64
   - name: dockerfile
     value: jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cuda
@@ -70,53 +70,55 @@ spec:
   - pipelineTaskName: prefetch-dependencies
     computeResources:
       requests:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
       limits:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: build-images
     stepSpecs:
     - name: prepare-sboms
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: sbom-syft-generate
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: build
       computeResources:
         requests:
-          cpu: '8'
-          memory: 16Gi
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 64Gi
         limits:
-          cpu: '16'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 64Gi
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
         cpu: '8'
-        memory: 32Gi
+        memory: 8Gi
       limits:
         cpu: '8'
-        memory: 32Gi
+        memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
       requests:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
       limits:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: sast-unicode-check
     computeResources:
       limits:

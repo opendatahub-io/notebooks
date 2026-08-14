@@ -50,10 +50,13 @@ ROOT = SCRIPT_DIR.parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from manifests.tools.commit_env_refs import parse_env_file  # noqa: E402
-from manifests.tools.generate_kustomization import Workbench, discover_config  # noqa: E402
-from manifests.tools.package_names import manifest_name_to_pip  # noqa: E402
-from tests.manifests import (  # noqa: E402
+from manifests.tools.commit_env_refs import parse_env_file  # ruff: ignore[module-import-not-at-top-of-file]
+from manifests.tools.generate_kustomization import (  # ruff: ignore[module-import-not-at-top-of-file]
+    Workbench,
+    discover_config,
+)
+from manifests.tools.package_names import manifest_name_to_pip  # ruff: ignore[module-import-not-at-top-of-file]
+from tests.manifests import (  # ruff: ignore[module-import-not-at-top-of-file]
     extract_metadata_from_path,
     get_source_of_truth_filepath,
 )

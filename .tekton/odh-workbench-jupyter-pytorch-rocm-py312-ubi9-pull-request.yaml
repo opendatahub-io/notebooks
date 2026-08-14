@@ -37,7 +37,7 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
   - name: dockerfile
     value: jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm
   - name: path-context
@@ -72,6 +72,16 @@ spec:
         memory: 8Gi
   - pipelineTaskName: build-images
     stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 80Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 80Gi
     - name: prepare-sboms
       computeResources:
         requests:
@@ -91,11 +101,11 @@ spec:
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
-        cpu: '4'
-        memory: 32Gi
+        cpu: '8'
+        memory: 8Gi
       limits:
-        cpu: '4'
-        memory: 32Gi
+        cpu: '8'
+        memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
       requests:

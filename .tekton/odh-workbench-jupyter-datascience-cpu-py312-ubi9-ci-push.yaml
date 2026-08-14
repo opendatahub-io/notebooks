@@ -28,7 +28,7 @@ spec:
     value: quay.io/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9:odh-stable
   - name: build-platforms
     value:
-    - linux-mxlarge/amd64
+    - linux/x86_64
     - linux-mxlarge/arm64
     - linux/ppc64le
     - linux/s390x
@@ -61,48 +61,58 @@ spec:
   - pipelineTaskName: prefetch-dependencies
     computeResources:
       requests:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
       limits:
-        cpu: '8'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: build-images
     stepSpecs:
     - name: prepare-sboms
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: sbom-syft-generate
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: build
       computeResources:
         requests:
-          cpu: '8'
-          memory: 16Gi
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 64Gi
         limits:
-          cpu: '16'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 64Gi
   - pipelineTaskName: sast-unicode-check
     computeResources:
       limits:
         memory: 8Gi
   - pipelineTaskName: clair-scan
     computeResources:
+      requests:
+        cpu: '8'
+        memory: 8Gi
       limits:
+        cpu: '8'
         memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
       limits:
+        cpu: '4'
         memory: 8Gi
   - pipelineTaskName: clamav-scan
     computeResources:

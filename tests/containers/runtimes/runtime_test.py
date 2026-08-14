@@ -20,8 +20,7 @@ class TestRuntimeImage:
     @allure.description("Check that pyzmq library works correctly, important to check especially on s390x.")
     def test_pyzmq_import(self, runtime_image: conftest.Image) -> None:
         def check_zmq():
-            # ruff: noqa: PLC0415 `import` should be at the top-level of a file
-            import zmq  # pyright: ignore reportMissingImports
+            import zmq  # pyright: ignore reportMissingImports  # ruff: ignore[import-outside-top-level]
 
             context = zmq.Context()
             socket = None
@@ -82,8 +81,7 @@ class TestRuntimeImage:
             pytest.skip("MLflow is not installed in minimal/baseline runtime images.")
 
         def check_mlflow():
-            # ruff: noqa: PLC0415 `import` should be at the top-level of a file
-            import mlflow  # pyright: ignore reportMissingImports
+            import mlflow  # pyright: ignore reportMissingImports  # ruff: ignore[import-outside-top-level]
 
             assert hasattr(mlflow, "start_run"), "MLflow does not have start_run function"
             assert hasattr(mlflow, "log_param"), "MLflow does not have log_param function"
