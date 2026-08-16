@@ -1,0 +1,141 @@
+# yamllint disable-file
+# Hermetic build spike - public PyPI (RHAIENG-6564)
+# This is a testing PipelineRun for spike investigation, NOT for production use.
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: 'true'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    # Only trigger on explicit comment - spike testing only
+    pipelinesascode.tekton.dev/on-comment: ^/build\-testing\-spike
+    pipelinesascode.tekton.dev/on-cel-expression: 'false'
+  labels:
+    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/component: odh-workbench-jupyter-testing-cpu-py312-ubi9
+    pipelines.appstudio.openshift.io/type: build
+  name: odh-workbench-jupyter-testing-cpu-py312-ubi9-on-pull-request
+  namespace: open-data-hub-tenant
+spec:
+  timeouts:
+    pipeline: 6h
+  params:
+  - name: event-type
+    value: '{{event_type}}'
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/opendatahub/odh-workbench-jupyter-testing-cpu-py312-ubi9:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
+  # Start with x86_64 only for spike - add other archs after confirming wheel availability
+  - name: build-platforms
+    value:
+    - linux/x86_64
+  - name: dockerfile
+    value: jupyter/testing/ubi9-python-3.12/Dockerfile.konflux.cpu
+  - name: path-context
+    value: .
+  - name: build-args-file
+    value: jupyter/testing/ubi9-python-3.12/build-args/konflux.cpu.conf
+  # HERMETIC BUILD: This is what we're testing
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    # RPMs from standard odh prefetch-input
+    - path: prefetch-input/odh
+      type: rpm
+    # Generic artifacts (GPG keys, etc.)
+    - path: prefetch-input/odh
+      type: generic
+    # Pip packages from PUBLIC PyPI (not RH index)
+    - path: jupyter/testing/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.cpu.txt]
+  taskRunSpecs:
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
+    - name: sbom-syft-generate
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
+    - name: build
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 64Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
+          ephemeral-storage: 64Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 8Gi
+      limits:
+        cpu: '8'
+        memory: 8Gi
+  - pipelineTaskName: ecosystem-cert-preflight-checks
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: clamav-scan
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: sast-shell-check
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: rpms-signature-scan
+    computeResources:
+      limits:
+        memory: 8Gi
+  pipelineRef:
+    name: multiarch-odh-main-combined-pipeline
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-odh-workbench-jupyter-testing-cpu-py312-ubi9
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'

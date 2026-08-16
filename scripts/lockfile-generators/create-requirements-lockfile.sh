@@ -98,6 +98,7 @@ REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
 PUBLIC_INDEX_PROJECTS=(
   "codeserver-baseline/ubi9-python-3.12"
   "jupyter/baseline/ubi9-python-3.12"
+  "jupyter/testing/ubi9-python-3.12"  # Hermetic public-PyPI spike (RHAIENG-6564)
 )
 
 PYLOCKS_MODE="rh-index"
