@@ -206,6 +206,11 @@
       "versioning": "semver",
     },
     {
+      "description": "Separate minor and patch base image upgrades",
+      "matchManagers": ["custom.regex"],
+      "separateMinorPatch": true,
+    },
+    {
       // One PR per quay.io/aipcc image (cpu, cuda-*, …); registry.redhat.io/rhai
       // uses the packageRule below.
       "description": "Group konflux build-args by image (custom.regex / docker)",

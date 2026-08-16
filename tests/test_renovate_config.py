@@ -7,3 +7,7 @@ def test_repo_renovate_json5_passes_semantic_validation() -> None:
     config = validate_renovate_config.load_config(validate_renovate_config.DEFAULT_CONFIG)
     errors = validate_renovate_config.validate_config(config)
     assert errors == [], f"Expected no semantic validation errors, got: {errors}"
+    assert any(
+        rule.get("matchManagers") == ["custom.regex"] and rule.get("separateMinorPatch") is True
+        for rule in config["packageRules"]
+    )
