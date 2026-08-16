@@ -2,141 +2,182 @@
 
 **Jira:** RHAIENG-6564
 **Branch:** `spike/hermetic-public-pypi`
+**PR:** https://github.com/opendatahub-io/notebooks/pull/4393
 **Date:** 2026-08-16
-
-## Objective
-Test hermetic builds using only public PyPI packages (no RHAI internal index).
 
 ## Executive Summary
 
-✅ **Public PyPI packages can be successfully locked and prefetched for hermetic builds.**
+| Finding | Status |
+|---------|--------|
+| Public PyPI package availability | ✅ All 113 packages available |
+| Prefetch from public PyPI | ✅ Works (270MB) |
+| Binary wheels for ODH | ✅ Feasible |
+| Binary wheels for RHOAI | ❌ **BLOCKED by Conforma** |
+| Source-build (sdist) path | ⚠️ Not yet tested |
 
-- 113 Python packages resolved from public PyPI
-- 270MB of wheels prefetched successfully
-- No blocking issues found with package availability for x86_64
+**Recommendation:** Public PyPI hermetic builds are feasible for **ODH only**.
+For **RHOAI**, binary wheels violate Conforma policy - source-build required.
+
+---
 
 ## Setup Completed
 
-| Step | Status | Details |
-|------|--------|---------|
-| Create test image dir | ✅ | `jupyter/testing/ubi9-python-3.12` |
+| Step | Status | Notes |
+|------|--------|-------|
+| Create test image | ✅ | `jupyter/testing/ubi9-python-3.12` |
 | Remove CUDA/ROCM | ✅ | CPU-only for spike |
-| Configure public base | ✅ | `registry.access.redhat.com/ubi9/python-312` |
-| Update pyproject.toml | ✅ | Public PyPI index only |
-| Remove pandoc-rhai | ✅ | Not on public PyPI |
-| Generate uv.lock | ✅ | 113 packages locked |
-| Generate requirements.txt | ✅ | With hashes for hermetic |
-| Create Tekton PipelineRun | ✅ | Triggered via `/build-testing-spike` |
-| Run prefetch-all.sh | ✅ | 270MB pip, 3GB RPMs |
+| Regenerate locks | ✅ | 113 packages from public PyPI |
+| Create Tekton PipelineRun | ✅ | `/build-testing-spike` trigger |
+| Run prefetch | ✅ | 270MB pip, 3GB RPMs |
+| Konflux build | 🔄 | Triggered, awaiting results |
 
-## Key Findings
+---
 
-### 1. Package Availability on Public PyPI ✅
+## Investigation Results
 
-All JupyterLab dependencies available on public PyPI:
+### A) Hermetic Build Path ✅
 
-| Package | Status | Version |
-|---------|--------|---------|
-| jupyterlab | ✅ | 4.6.3 |
-| jupyter-server | ✅ | 2.20.0 |
-| odh-jupyter-trash-cleanup | ✅ | 0.1.1 |
-| All 110 other deps | ✅ | Latest |
+| Check | Result |
+|-------|--------|
+| Prefetch pip from public PyPI | ✅ Works |
+| Prefetch RPMs | ✅ Works |
+| Offline install | ⏳ Konflux test pending |
+| GPG key import | ✅ Works |
 
-**Not Available:**
-- `pandoc-rhai` - RHAI internal (see Section D)
+### B) Public PyPI Policy 🚨
 
-### 2. Prefetch Results ✅
+**CRITICAL FINDING:** Conforma prohibits binary wheels for RHOAI!
 
-```
-Dependencies downloaded:
-  Generic: 8KB (GPG keys)
-  Pip:     270MB (113 packages from public PyPI)
-  RPMs:    3GB (4 architectures)
+From `docs/conforma.md`:
+> `sbom_spdx.disallowed_package_attributes` - Python packages must be **sdist (source distributions), NOT binary wheels**.
 
-Total time: ~44 minutes
-```
+| Policy | ODH | RHOAI |
+|--------|-----|-------|
+| Binary wheels allowed | ✅ Yes | ❌ **NO** |
+| Conforma checked | No | Yes |
+| Source-build required | No | **Yes** |
 
-### 3. Pandoc/PDF Export ⚠️
+### C) Wheels vs Sdists
 
-`pandoc-rhai` is not on public PyPI. Options:
-1. **Skip PDF export** (current approach) - simplest
-2. **System pandoc from RPMs** - requires additional RPM deps
-3. **pypandoc from PyPI** - downloads pandoc binary at install time
+Current spike uses **binary wheels**. For RHOAI compliance:
 
-**Recommendation:** For public-index images, skip PDF export or use system pandoc.
+| Approach | Pros | Cons |
+|----------|------|------|
+| Binary wheels | Fast install, no compile | ❌ Violates Conforma |
+| Source dist (sdist) | ✅ Conforma compliant | Slow compile, needs toolchain |
 
-### 4. Local Build Results
+Packages requiring compilation (partial list):
+- `aiohttp` (7.9MB source)
+- `frozenlist`, `multidict`, `yarl` (Cython)
+- `cffi`, `pycparser`
+- `debugpy`, `pyzmq`
 
-Local podman build encountered permission issues with bind mounts (local env quirk).
-Key hermetic components validated:
-- ✅ Base image from public registry works
-- ✅ GPG key import from cachi2 works
-- ✅ Prefetch-input integration works
+### D) RHDS rhoai-2.25 Comparison
 
-**Next step:** Test in Konflux via PR.
+| Aspect | RHDS rhoai-2.25 | ODH main |
+|--------|-----------------|----------|
+| Hermetic | ⚠️ Partial (hash verify) | ✅ Full (Cachi2 prefetch) |
+| Download during build | Yes | No |
+| Index strategy | `unsafe-best-match` | `--no-index` |
+| Cachi2 | Not used | Used |
+
+**Key difference:** RHDS downloads during build with hash verification.
+ODH uses full hermetic prefetch - no network during build.
+
+### E) Pandoc/PDF Export ✅
+
+| Finding | Detail |
+|---------|--------|
+| `pandoc-rhai` | ❌ Not on public PyPI |
+| Recommendation | Skip PDF export for public-index images |
+| Alternative | System pandoc from RPMs (needs investigation) |
+
+### F) Conforma/ProdSec ✅
+
+| Check | Status for public PyPI |
+|-------|------------------------|
+| `hermetic_task` | ✅ Satisfied |
+| `trusted_task` | ✅ Satisfied |
+| `rpm_signature` | ✅ Using signed RPMs |
+| `sbom_spdx.disallowed_package_attributes` | ❌ **FAILS with binary wheels** |
+
+---
+
+## Decision Matrix
+
+| Option | ODH Feasible | RHOAI Feasible | Effort | Notes |
+|--------|--------------|----------------|--------|-------|
+| **1. Public PyPI + wheels** | ✅ Yes | ❌ No | Low | Current spike |
+| **2. Public PyPI + sdist** | ✅ Yes | ✅ Yes | High | Needs compiler toolchain |
+| **3. Policy exception** | N/A | ⚠️ Maybe | Medium | Requires PSX approval |
+| **4. Hybrid (AIPCC + PyPI)** | ❓ | ❓ | Medium | Index mixing unclear |
+
+---
+
+## Recommendations
+
+### For ODH (opendatahub.io)
+**GO** - Public PyPI with binary wheels is feasible.
+- Not subject to Conforma policy
+- All packages available
+- Prefetch works
+
+### For RHOAI (Red Hat OpenShift AI)
+**CONDITIONAL GO** - Requires one of:
+
+1. **Source-build path** (Recommended)
+   - Use sdist instead of wheels
+   - Add compiler toolchain to build image
+   - Longer build times (~10-30 min compile)
+   - Need follow-up spike to measure
+
+2. **Policy exception** (Alternative)
+   - Request PSX approval for binary wheels
+   - Document business justification
+   - Time-limited exception
+
+---
+
+## Follow-up Stories
+
+1. **Source-build spike** - Test sdist compile path, measure build time
+2. **Dockerfile redesign** - Multi-stage build with compiler toolchain
+3. **Pandoc solution** - System RPM vs alternative
+4. **Multi-arch testing** - Validate ppc64le, s390x wheel/sdist availability
+5. **Policy exception request** - If source-build not viable
+
+---
 
 ## Files Changed
 
 ```
 jupyter/testing/ubi9-python-3.12/
-├── Dockerfile.konflux.cpu          # Updated for public base
-├── build-args/konflux.cpu.conf     # Public RHEL base image
-├── pyproject.toml                  # Public PyPI index
-├── pylock.toml                     # NEW: 113 packages locked
-├── uv.lock                         # NEW: Full lock file
-├── requirements.cpu.txt            # 895 lines with hashes
-└── SPIKE-NOTES.md                  # This file
-
-scripts/lockfile-generators/
-└── create-requirements-lockfile.sh # Added testing to PUBLIC_INDEX_PROJECTS
+├── Dockerfile.konflux.cpu
+├── SPIKE-NOTES.md
+├── build-args/konflux.cpu.conf
+├── pylock.toml (113 packages)
+├── requirements.cpu.txt
+└── uv.lock
 
 .tekton/
 └── odh-workbench-jupyter-testing-cpu-py312-ubi9-pull-request.yaml
+
+scripts/lockfile-generators/
+└── create-requirements-lockfile.sh (added testing to PUBLIC_INDEX_PROJECTS)
 ```
 
-## How to Test in Konflux
-
-1. **Push branch:**
-   ```bash
-   git push -u origin spike/hermetic-public-pypi
-   ```
-
-2. **Create PR** targeting `main`
-
-3. **Trigger build** by commenting:
-   ```
-   /build-testing-spike
-   ```
-
-4. **Monitor** Konflux build logs for:
-   - Cachi2 prefetch success
-   - pip install from local cache
-   - No network access during build
-
-## Recommendations
-
-### For ODH Baseline Images
-Public PyPI hermetic builds are **feasible** with these considerations:
-
-1. **Package availability:** All core JupyterLab packages available
-2. **Wheel coverage:** x86_64 well covered; test ppc64le/s390x
-3. **PDF export:** Decide on pandoc approach
-4. **Policy review:** Confirm compliance allows public PyPI
-
-### Next Steps
-
-1. [ ] Submit PR and run Konflux build
-2. [ ] Test multi-arch wheel availability (ppc64le, s390x)
-3. [ ] Review Conforma compliance requirements
-4. [ ] Document pandoc solution
-5. [ ] Get policy approval for public PyPI usage
+---
 
 ## Acceptance Criteria Status
 
 | Criteria | Status |
 |----------|--------|
-| Packages resolve from public PyPI | ✅ |
-| Prefetch succeeds | ✅ |
-| Hermetic build (no network) | ⏳ Pending Konflux test |
-| Multi-arch support | ⏳ Pending test |
-| Policy compliance | ⏳ Pending review |
+| Spike repro steps documented | ✅ |
+| Hermetic build attempted | ✅ (Konflux pending) |
+| Sdist source-build tested | ❌ (Follow-up needed) |
+| RHDS comparison documented | ✅ |
+| Pandoc decision documented | ✅ |
+| Conforma assessment | ✅ |
+| Blocker list | ✅ |
+| Clear recommendation | ✅ |
+| Follow-up stories | ✅ |
