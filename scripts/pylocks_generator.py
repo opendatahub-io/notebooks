@@ -15,7 +15,8 @@ Features:
 Index Modes:
   auto (default) -- Uses rh-index if uv.lock.d/ exists, public-index otherwise.
   rh-index       -- Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml.
-  public-index   -- Uses public PyPI index and updates pylock.toml in place.
+  public-index   -- Uses public PyPI index and updates pylock.toml in place,
+                    then converts it to requirements.cpu.txt.
 
 Usage:
   1. Lock using auto mode (default) for all projects in MAIN_DIRS::
@@ -59,6 +60,7 @@ Reproducible CI checks (PYLOCKS_CI_CHECK):
 Notes:
   - If the script fails for a directory, it lists the failed directories at the end.
   - Public index mode does not create uv.lock.d directories and keeps the old format.
+  - Public index mode also writes requirements.cpu.txt from the root pylock.toml.
   - Python version extraction depends on directory naming convention; invalid formats are skipped.
 """
 
@@ -330,6 +332,13 @@ def resolve_pr_scoped_target_dirs(
     return sorted(touched)
 
 
+def effective_index_mode(project_dir: Path, index_mode: IndexMode) -> IndexMode:
+    """Resolve auto mode from lock layout: uv.lock.d/ → rh-index, else public-index."""
+    if index_mode == IndexMode.auto:
+        return IndexMode.rh_index if (project_dir / "uv.lock.d").is_dir() else IndexMode.public_index
+    return index_mode
+
+
 def detect_flavors(project_dir: Path) -> set[str]:
     """Detect available Dockerfile.konflux.* flavors (cpu, cuda, rocm) in a directory."""
     return {f for f in FLAVORS if (project_dir / f"Dockerfile.konflux.{f}").is_file()}
@@ -575,17 +584,22 @@ def generate_requirements_txt(
     project_dir: Path,
     flavor: str,
     log: LogBuffer,
+    *,
+    public_index: bool = False,
 ) -> bool:
-    """Convert pylock.<flavor>.toml → requirements.<flavor>.txt via helper script."""
-    pylock_path = project_dir / "uv.lock.d" / f"pylock.{flavor}.toml"
+    """Convert pylock → requirements.<flavor>.txt via helper script."""
     requirements_path = project_dir / f"requirements.{flavor}.txt"
-    resolved = resolve_rh_index_config(project_dir, flavor, log)
-
-    cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
-    if resolved is None:
-        log.warning(f"Falling back to --default-index recorded in {pylock_path} for requirements generation.")
+    if public_index:
+        pylock_path = project_dir / "pylock.toml"
+        cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
     else:
-        cmd.append(resolved.index_url)
+        pylock_path = project_dir / "uv.lock.d" / f"pylock.{flavor}.toml"
+        resolved = resolve_rh_index_config(project_dir, flavor, log)
+        cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
+        if resolved is None:
+            log.warning(f"Falling back to --default-index recorded in {pylock_path} for requirements generation.")
+        else:
+            cmd.append(resolved.index_url)
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.stdout:
@@ -632,28 +646,33 @@ def process_directory(
         log.print(f"  • {f.upper()}")
     log.print("")
 
-    if index_mode == IndexMode.auto:
-        effective_mode = IndexMode.rh_index if (tdir / "uv.lock.d").is_dir() else IndexMode.public_index
-    else:
-        effective_mode = index_mode
+    effective_mode = effective_index_mode(tdir, index_mode)
     log.info(f"Effective mode for this directory: {effective_mode.value}")
 
     dir_success = True
 
     if effective_mode == IndexMode.public_index:
-        if not requirements_only:
-            if not run_lock(
-                tdir,
-                "cpu",
-                [PUBLIC_INDEX],
-                effective_mode,
-                python_version,
-                upgrade,
-                ci_check,
-                live_timestamp,
-                log,
-            ):
+        if requirements_only:
+            pylock_path = tdir / "pylock.toml"
+            if not pylock_path.is_file():
+                log.warning(f"No {pylock_path} found, skipping public-index requirements.")
                 dir_success = False
+            elif not generate_requirements_txt(tdir, "cpu", log, public_index=True):
+                dir_success = False
+        elif not run_lock(
+            tdir,
+            "cpu",
+            [PUBLIC_INDEX],
+            effective_mode,
+            python_version,
+            upgrade,
+            ci_check,
+            live_timestamp,
+            log,
+        ):
+            dir_success = False
+        elif not generate_requirements_txt(tdir, "cpu", log, public_index=True):
+            dir_success = False
     else:
         for flavor in ("cpu", "cuda", "rocm"):
             if flavor not in flavors:

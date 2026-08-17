@@ -267,6 +267,131 @@ def test_generate_requirements_txt_falls_back_to_pylock_header_when_index_resolu
     ], f"unexpected pylock-to-requirements command: {captured_cmd}"
 
 
+def test_generate_requirements_txt_public_index_uses_root_pylock_without_index_url(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    log = pg.LogBuffer()
+    captured_cmd: list[str] = []
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd[:] = cmd
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    def fail_rh_index(*args, **kwargs):
+        raise AssertionError("public-index conversion must not resolve an RH index URL")
+
+    monkeypatch.setattr(pg, "resolve_rh_index_config", fail_rh_index)
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    success = pg.generate_requirements_txt(project_dir, "cpu", log, public_index=True)
+
+    assert success is True, "public-index generate_requirements_txt should succeed"
+    assert captured_cmd == [
+        pg.sys.executable,
+        str(pg.PYLOCK_TO_REQUIREMENTS),
+        str(project_dir / "pylock.toml"),
+        str(project_dir / "requirements.cpu.txt"),
+    ], f"unexpected public-index pylock-to-requirements command: {captured_cmd}"
+
+
+def test_effective_index_mode_without_uv_lock_d_is_public_index(tmp_path: Path) -> None:
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    assert pg.effective_index_mode(project_dir, pg.IndexMode.auto) == pg.IndexMode.public_index, (
+        "auto mode without uv.lock.d/ should be public-index"
+    )
+
+
+def test_effective_index_mode_with_uv_lock_d_is_rh_index(tmp_path: Path) -> None:
+    project_dir = tmp_path / "project"
+    (project_dir / "uv.lock.d").mkdir(parents=True)
+    assert pg.effective_index_mode(project_dir, pg.IndexMode.auto) == pg.IndexMode.rh_index, (
+        "auto mode with uv.lock.d/ should be rh-index"
+    )
+
+
+def test_effective_index_mode_honors_explicit_mode(tmp_path: Path) -> None:
+    project_dir = tmp_path / "project"
+    (project_dir / "uv.lock.d").mkdir(parents=True)
+    assert pg.effective_index_mode(project_dir, pg.IndexMode.public_index) == pg.IndexMode.public_index, (
+        "explicit public-index must win even when uv.lock.d/ exists"
+    )
+
+
+def _public_index_project(tmp_path: Path) -> Path:
+    project_dir = tmp_path / "jupyter" / "baseline" / "ubi9-python-3.12"
+    project_dir.mkdir(parents=True)
+    (project_dir / "Dockerfile.konflux.cpu").write_text("FROM scratch\n", encoding="utf-8")
+    (project_dir / "pylock.toml").write_text('lock-version = "1.0"\n', encoding="utf-8")
+    return project_dir
+
+
+def test_process_directory_public_index_requirements_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_dir = _public_index_project(tmp_path)
+    captured_cmd: list[str] = []
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd[:] = cmd
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    _path, success, _log = pg.process_directory(
+        project_dir,
+        pg.IndexMode.public_index,
+        False,
+        False,
+        "2026-01-01T00:00:00Z",
+        requirements_only=True,
+    )
+
+    assert success is True, "public-index --requirements-only should succeed when pylock.toml exists"
+    assert captured_cmd == [
+        pg.sys.executable,
+        str(pg.PYLOCK_TO_REQUIREMENTS),
+        str(project_dir / "pylock.toml"),
+        str(project_dir / "requirements.cpu.txt"),
+    ], f"unexpected --requirements-only command: {captured_cmd}"
+
+
+def test_process_directory_public_index_generates_requirements_after_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_dir = _public_index_project(tmp_path)
+    cmds: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):
+        cmds.append(list(cmd))
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    _path, success, _log = pg.process_directory(
+        project_dir,
+        pg.IndexMode.public_index,
+        False,
+        False,
+        "2026-01-01T00:00:00Z",
+        requirements_only=False,
+    )
+
+    assert success is True, "public-index lock + requirements generation should succeed"
+    assert cmds, "expected uv pip compile and pylock-to-requirements invocations"
+    assert cmds[-1] == [
+        pg.sys.executable,
+        str(pg.PYLOCK_TO_REQUIREMENTS),
+        str(project_dir / "pylock.toml"),
+        str(project_dir / "requirements.cpu.txt"),
+    ], f"last command should convert root pylock.toml: {cmds[-1]}"
+
+
 def test_image_project_dir_for_repo_file_jupyter(repo_root: Path) -> None:
     project = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
     assert pg.image_project_dir_for_repo_file("jupyter/minimal/ubi9-python-3.12/pyproject.toml") == project, (
