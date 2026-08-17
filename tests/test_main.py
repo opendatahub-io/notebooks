@@ -853,6 +853,7 @@ def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bo
     unimplemented_dirs = (
         "codeserver-baseline/ubi9-python-3.12",
         "jupyter/baseline/ubi9-python-3.12",
+        "runtimes/baseline/ubi9-python-3.12",
     )
     for d in unimplemented_dirs:
         if is_suffix(directory.parts, pathlib.Path(d).parts):
