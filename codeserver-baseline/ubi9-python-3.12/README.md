@@ -6,7 +6,7 @@ Phase 1 baseline code-server workbench image with Python 3.12 on UBI 9.
 
 - Builds `code-server` from the baseline-owned `code-server/` submodule.
 - Resolves RPM, npm, and Python dependencies online during the image build.
-- Installs Python packages from the checked-in root `pylock.toml` using PyPI.
+- Installs Python packages from `requirements.${PYLOCK_FLAVOR}.txt` using PyPI.
 - Keeps hermetic `prefetch-input/` conversion deferred to phase 2.
 
 ## Code-server version
@@ -48,7 +48,8 @@ Phase 1 uses the public-index lock layout (no `uv.lock.d/` directory):
 - `requirements.cpu.txt` is generated from that `pylock.toml` (pip/Cachi2 format)
 - `make refresh-lock-files` and `create-requirements-lockfile.sh` detect this
   layout automatically — a future `runtimes/baseline` image needs no script edit
-- Dockerfiles still install with `uv pip sync ./pylock.toml` until hermetic phase 2
+- Dockerfiles install with `uv pip install --requirements=./requirements.txt`
+  (hashes from `requirements.${PYLOCK_FLAVOR}.txt`; index URL is in that file)
 
 Regenerate after Python dependency changes:
 
@@ -69,7 +70,6 @@ Regenerate after Python dependency changes:
 
 The later hermetic conversion is expected to restore:
 
-- `prefetch-input/` ownership and Cachi2 wiring
-- switching the Dockerfile from `uv pip sync ./pylock.toml` to `requirements.cpu.txt`
+- `prefetch-input/` ownership and Cachi2 wiring (`--no-index` / `--find-links`)
 - flavor-specific `uv.lock.d/pylock.<flavor>.toml` if additional flavors land
 - broader multi-arch code-server build support
