@@ -306,7 +306,7 @@ Our push pipelines use `on-cel-expression` combining event + branch + `pathChang
   - `/build-runtime-pytorch-cuda`, `/build-runtime-pytorch-rocm`, `/build-runtime-pytorch-llmcompressor`
   - `/build-runtime-tensorflow-cuda`, `/build-runtime-tensorflow-rocm`
   - `/build-minimal-cpu`, `/build-minimal-cuda`, `/build-minimal-rocm`
-  - `/build-datascience`, `/build-codeserver`, `/build-codeserver-baseline`
+  - `/build-datascience`, `/build-codeserver`, `/build-codeserver-baseline`, `/build-jupyter-baseline`, `/build-runtime-baseline`
   - `/build-pytorch-cuda`, `/build-pytorch-rocm`, `/build-pytorch-llmcompressor`
   - `/build-tensorflow-cuda`, `/build-tensorflow-rocm`
   - `/build-trustyai`
