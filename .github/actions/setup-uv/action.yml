@@ -19,5 +19,5 @@ runs:
       with:
         version-file: pyproject.toml
         python-version: ${{ steps.python-version.outputs.version }}
-        enable-cache: true
+        enable-cache: auto
         cache-dependency-glob: "uv.lock"
