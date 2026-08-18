@@ -37,8 +37,9 @@ spec:
   - name: path-context
     value: .
   - name: hermetic
-    value: true
-
+    value: false
+  - name: rhel-subscription-activation-key
+    value: rhel-subscription-activation-key-rhoai-devops-for-notebooks-rhel9-6
   - name: build-platforms
     value:
     - linux/x86_64
