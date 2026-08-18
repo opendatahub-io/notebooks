@@ -1,0 +1,26 @@
+# Pin an exact operator CSV (e.g. 3.4.0) without unsolicited channel-head upgrade.
+#
+# installPlanApproval: Manual — OLM will not auto-apply upgrade InstallPlans while you
+# prepare or run tests. Approve explicitly when you intend to upgrade:
+#   oc get installplan -n redhat-ods-operator
+#   oc patch installplan <name> -n redhat-ods-operator --type merge -p '{"spec":{"approved":true}}'
+#
+# Initial install also requires approving the first InstallPlan when using Manual.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redhat-ods-operator
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: rhods-operator
+  namespace: redhat-ods-operator
+spec:
+  channel: stable-3.x
+  installPlanApproval: Manual
+  name: rhods-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: rhods-operator.3.4.0
