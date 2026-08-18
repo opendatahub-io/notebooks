@@ -6,3 +6,9 @@ version: 3
 # Two spaces before # to satisfy yamllint's "comments" rule
 # (too few spaces before comment: expected 2)
 separator: "  # "
+
+# Reusable workflow uses a floating major-version tag (v1) by design;
+# Renovate keeps it current. See PR #4386.
+ignore_actions:
+  - name: opendatahub-io/disconnected-readiness-scorer/.github/workflows/disconnected-readiness-check.yml
+    ref: v1
