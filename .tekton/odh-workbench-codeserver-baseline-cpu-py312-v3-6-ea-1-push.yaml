@@ -46,6 +46,8 @@ spec:
     - linux-m2xlarge/arm64
     - linux/ppc64le
     - linux/s390x
+  - name: build-args-file
+    value: codeserver-baseline/ubi9-python-3.12/build-args/konflux.cpu.conf
   pipelineRef:
     params:
     - name: url
