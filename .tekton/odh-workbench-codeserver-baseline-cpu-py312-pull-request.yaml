@@ -12,9 +12,9 @@ metadata:
     pipelinesascode.tekton.dev/on-target-branch: '[{{target_branch}}]'
   labels:
     appstudio.openshift.io/application: automation
-    appstudio.openshift.io/component: pull-request-pipelines-odh-workbench-codeserver-baseline-cpu-py312
+    appstudio.openshift.io/component: pull-request-pipelines-odh-wb-codeserver-baseline-cpu-py312
     pipelines.appstudio.openshift.io/type: build
-  name: odh-workbench-codeserver-baseline-cpu-py312-on-pull-request-{{pull_request_number}}
+  name: odh-wb-codeserver-baseline-cpu-py312-on-pull-request-{{pull_request_number}}
   namespace: rhoai-tenant
 spec:
   params:
