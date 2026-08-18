@@ -1,4 +1,4 @@
-# Phase 1: baseline build resolves Python packages from PyPI using `pylock.toml`.
+# Phase 1: baseline build installs Python packages from PyPI using `requirements.${PYLOCK_FLAVOR}.txt`.
 # Hermetic Python input generation stays deferred to phase 2.
 
 [project]

@@ -15,7 +15,8 @@ Features:
 Index Modes:
   auto (default) -- Uses rh-index if uv.lock.d/ exists, public-index otherwise.
   rh-index       -- Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml.
-  public-index   -- Uses public PyPI index and updates pylock.toml in place.
+  public-index   -- Uses public PyPI index and updates pylock.toml in place,
+                    then converts it to requirements.cpu.txt.
 
 Usage:
   1. Lock using auto mode (default) for all projects in MAIN_DIRS::
@@ -59,6 +60,7 @@ Reproducible CI checks (PYLOCKS_CI_CHECK):
 Notes:
   - If the script fails for a directory, it lists the failed directories at the end.
   - Public index mode does not create uv.lock.d directories and keeps the old format.
+  - Public index mode also writes requirements.cpu.txt from the root pylock.toml.
   - Python version extraction depends on directory naming convention; invalid formats are skipped.
 """
 
@@ -68,6 +70,8 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+import tomllib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -76,6 +80,8 @@ from pathlib import Path
 from typing import Annotated
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
+import packaging.requirements
+import packaging.utils
 import typer
 
 from scripts.index_url_resolver import IndexResolutionError, ResolvedIndexConfig, resolve_index_config
@@ -109,6 +115,21 @@ NO_EMIT_PACKAGES = (
 )
 
 FLAVORS = ("cpu", "cuda", "rocm")
+AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME = ".aipcc-alignment.constraints.txt"
+
+# Baseline public-index images inherit direct dependency lock versions from paired
+# AIPCC-index image requirements files.
+BASELINE_AIPCC_ALIGNMENT_PAIRS: dict[Path, Path] = {
+    Path("codeserver-baseline/ubi9-python-3.12"): Path("codeserver/ubi9-python-3.12"),
+    Path("jupyter/baseline/ubi9-python-3.12"): Path("jupyter/datascience/ubi9-python-3.12"),
+    Path("runtimes/baseline/ubi9-python-3.12"): Path("runtimes/datascience/ubi9-python-3.12"),
+}
+
+# Name aliases when package names differ between source (AIPCC) and target (baseline) indexes.
+# key=baseline package name, value=source package name.
+BASELINE_AIPCC_ALIGNMENT_SOURCE_ALIASES: dict[str, str] = {
+    "pandoc": "pandoc-rhai",
+}
 
 # Optimal concurrency is 5-6 based on benchmarks (macOS 12-core, RH PyPI index with
 # no HTTP cache headers).  Each uv process internally uses UV_CONCURRENT_DOWNLOADS
@@ -330,6 +351,13 @@ def resolve_pr_scoped_target_dirs(
     return sorted(touched)
 
 
+def effective_index_mode(project_dir: Path, index_mode: IndexMode) -> IndexMode:
+    """Resolve auto mode from lock layout: uv.lock.d/ → rh-index, else public-index."""
+    if index_mode == IndexMode.auto:
+        return IndexMode.rh_index if (project_dir / "uv.lock.d").is_dir() else IndexMode.public_index
+    return index_mode
+
+
 def detect_flavors(project_dir: Path) -> set[str]:
     """Detect available Dockerfile.konflux.* flavors (cpu, cuda, rocm) in a directory."""
     return {f for f in FLAVORS if (project_dir / f"Dockerfile.konflux.{f}").is_file()}
@@ -408,6 +436,89 @@ def resolve_exclude_newer(
     return parsed if parsed is not None else live_timestamp
 
 
+def _parse_pinned_requirements(requirements_file: Path) -> dict[str, str]:
+    """Parse package==version entries from requirements.<flavor>.txt."""
+    pinned: dict[str, str] = {}
+    pattern = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([^ ;\\]+)")
+    for line in requirements_file.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("#", "--")):
+            continue
+        match = pattern.match(stripped)
+        if match is None:
+            continue
+        name = packaging.utils.canonicalize_name(match.group(1))
+        pinned[name] = match.group(2)
+    return pinned
+
+
+def _project_direct_dependencies(pyproject_file: Path) -> dict[str, str]:
+    """Return direct dependencies from pyproject keyed by canonical package name."""
+    document = tomllib.loads(pyproject_file.read_text(encoding="utf-8"))
+    deps: dict[str, str] = {}
+    for dep in document.get("project", {}).get("dependencies", []):
+        req = packaging.requirements.Requirement(dep)
+        deps[packaging.utils.canonicalize_name(req.name)] = req.name
+    return deps
+
+
+def generate_baseline_alignment_constraints(project_dir: Path, log: LogBuffer) -> Path | None:
+    """Generate baseline-to-AIPCC direct-dependency alignment constraints file.
+
+    Returns the generated constraints file path, or None if no pair applies.
+    """
+    try:
+        rel = project_dir.relative_to(ROOT_DIR)
+    except ValueError:
+        # Unit tests may use temporary directories outside the repository tree.
+        return None
+    source_rel = BASELINE_AIPCC_ALIGNMENT_PAIRS.get(rel)
+    if source_rel is None:
+        return None
+
+    source_requirements = ROOT_DIR / source_rel / "requirements.cpu.txt"
+    if not source_requirements.is_file():
+        log.warning(
+            f"Alignment source requirements file not found: {source_requirements}. "
+            "Skipping baseline AIPCC alignment for this directory."
+        )
+        return None
+
+    pyproject_file = project_dir / "pyproject.toml"
+    direct_deps = _project_direct_dependencies(pyproject_file)
+    source_locked = _parse_pinned_requirements(source_requirements)
+
+    generated: list[str] = []
+    for canonical_name, original_name in sorted(direct_deps.items()):
+        source_name = BASELINE_AIPCC_ALIGNMENT_SOURCE_ALIASES.get(canonical_name, canonical_name)
+        source_version = source_locked.get(source_name)
+        if source_version is None:
+            continue
+        generated.append(f"{original_name}=={source_version}")
+
+    header = [
+        "# Auto-generated by scripts/pylocks_generator.py",
+        f"# Source pair: {source_rel.as_posix()} -> {rel.as_posix()}",
+        "# Direct dependencies only; pyproject.toml remains version-agnostic.",
+        "",
+    ]
+    content = "\n".join(header + generated) + "\n"
+    temp_file = tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        suffix=f".{AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME}",
+        prefix="pylocks-",
+        delete=False,
+    )
+    try:
+        temp_file.write(content)
+    finally:
+        temp_file.close()
+    alignment_file = Path(temp_file.name)
+    log.print(f"  🔗 Generated temporary AIPCC alignment constraints: {alignment_file}")
+    return alignment_file
+
+
 # endregion
 
 
@@ -474,6 +585,7 @@ def run_lock(
     ci_check: bool,
     live_timestamp: str,
     log: LogBuffer,
+    extra_constraints: Path | None = None,
 ) -> bool:
     """Run uv pip compile to generate a lock file. Returns True on success."""
     if mode == IndexMode.public_index:
@@ -523,6 +635,8 @@ def run_lock(
     relative_constraints = os.path.relpath(CONSTRAINTS_FILE, project_dir)
     relative_overrides = os.path.relpath(OVERRIDES_FILE, project_dir)
     cmd.extend(["--constraints", relative_constraints, "--override", relative_overrides])
+    if extra_constraints is not None:
+        cmd.extend(["--constraints", os.path.relpath(extra_constraints, project_dir)])
 
     lock_path = project_dir / output
     exclude_newer = resolve_exclude_newer(lock_path, ci_check=ci_check, live_timestamp=live_timestamp)
@@ -575,17 +689,22 @@ def generate_requirements_txt(
     project_dir: Path,
     flavor: str,
     log: LogBuffer,
+    *,
+    public_index: bool = False,
 ) -> bool:
-    """Convert pylock.<flavor>.toml → requirements.<flavor>.txt via helper script."""
-    pylock_path = project_dir / "uv.lock.d" / f"pylock.{flavor}.toml"
+    """Convert pylock → requirements.<flavor>.txt via helper script."""
     requirements_path = project_dir / f"requirements.{flavor}.txt"
-    resolved = resolve_rh_index_config(project_dir, flavor, log)
-
-    cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
-    if resolved is None:
-        log.warning(f"Falling back to --default-index recorded in {pylock_path} for requirements generation.")
+    if public_index:
+        pylock_path = project_dir / "pylock.toml"
+        cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
     else:
-        cmd.append(resolved.index_url)
+        pylock_path = project_dir / "uv.lock.d" / f"pylock.{flavor}.toml"
+        resolved = resolve_rh_index_config(project_dir, flavor, log)
+        cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
+        if resolved is None:
+            log.warning(f"Falling back to --default-index recorded in {pylock_path} for requirements generation.")
+        else:
+            cmd.append(resolved.index_url)
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.stdout:
@@ -632,28 +751,40 @@ def process_directory(
         log.print(f"  • {f.upper()}")
     log.print("")
 
-    if index_mode == IndexMode.auto:
-        effective_mode = IndexMode.rh_index if (tdir / "uv.lock.d").is_dir() else IndexMode.public_index
-    else:
-        effective_mode = index_mode
+    effective_mode = effective_index_mode(tdir, index_mode)
     log.info(f"Effective mode for this directory: {effective_mode.value}")
 
     dir_success = True
 
     if effective_mode == IndexMode.public_index:
-        if not requirements_only:
-            if not run_lock(
-                tdir,
-                "cpu",
-                [PUBLIC_INDEX],
-                effective_mode,
-                python_version,
-                upgrade,
-                ci_check,
-                live_timestamp,
-                log,
-            ):
+        extra_constraints = generate_baseline_alignment_constraints(tdir, log) if not requirements_only else None
+        if requirements_only:
+            pylock_path = tdir / "pylock.toml"
+            if not pylock_path.is_file():
+                log.warning(f"No {pylock_path} found, skipping public-index requirements.")
                 dir_success = False
+            elif not generate_requirements_txt(tdir, "cpu", log, public_index=True):
+                dir_success = False
+        else:
+            try:
+                if not run_lock(
+                    tdir,
+                    "cpu",
+                    [PUBLIC_INDEX],
+                    effective_mode,
+                    python_version,
+                    upgrade,
+                    ci_check,
+                    live_timestamp,
+                    log,
+                    extra_constraints,
+                ):
+                    dir_success = False
+                elif not generate_requirements_txt(tdir, "cpu", log, public_index=True):
+                    dir_success = False
+            finally:
+                if extra_constraints is not None:
+                    extra_constraints.unlink(missing_ok=True)
     else:
         for flavor in ("cpu", "cuda", "rocm"):
             if flavor not in flavors:

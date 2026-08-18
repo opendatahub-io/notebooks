@@ -5,7 +5,7 @@ Phase 1 baseline Jupyter workbench image with Python 3.12 on UBI 9.
 ## Status
 
 - Resolves RPM and Python dependencies online during the image build.
-- Installs Python packages from the checked-in root `pylock.toml` using PyPI.
+- Installs Python packages from `requirements.${PYLOCK_FLAVOR}.txt` using PyPI.
 - Keeps JupyterLab feature set (Elyra, Kale, PDF export) with a lean Python footprint.
 - Keeps hermetic `prefetch-input/` conversion deferred to phase 2.
 
@@ -21,18 +21,21 @@ The downstream RHOAI variant continues to use `build-args/konflux.cpu.conf`.
 
 ## Python lockfile flow
 
-Phase 1 uses the public-index lock layout:
+Phase 1 uses the public-index lock layout (no `uv.lock.d/` directory):
 
 - `pyproject.toml` is the source of truth
 - `pylock.toml` is generated in place at the image root
-- `scripts/lockfile-generators/create-requirements-lockfile.sh` treats this
-  directory as a `PUBLIC_INDEX_PROJECTS` entry
+- `requirements.cpu.txt` is generated from that `pylock.toml` (pip/Cachi2 format)
+- `make refresh-lock-files` and `create-requirements-lockfile.sh` detect this
+  layout automatically — a future `runtimes/baseline` image needs no script edit
+- Dockerfiles install with `uv pip install --requirements=./requirements.txt`
+  (hashes from `requirements.${PYLOCK_FLAVOR}.txt`; index URL is in that file)
 
 Regenerate after Python dependency changes:
 
 ```bash
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
-  --pyproject jupyter/baseline/ubi9-python-3.12/pyproject.toml \
+  --pyproject-toml jupyter/baseline/ubi9-python-3.12/pyproject.toml \
   --flavor cpu
 ```
 
@@ -46,5 +49,5 @@ Regenerate after Python dependency changes:
 
 The later hermetic conversion is expected to restore:
 
-- `prefetch-input/` ownership and Cachi2 wiring
-- flavor-specific `uv.lock.d/pylock.<flavor>.toml` and `requirements.<flavor>.txt`
+- `prefetch-input/` ownership and Cachi2 wiring (`--no-index` / `--find-links`)
+- flavor-specific `uv.lock.d/pylock.<flavor>.toml` if additional flavors land

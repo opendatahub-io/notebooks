@@ -3,7 +3,7 @@
 #
 # This baseline image intentionally uses a non-hermetic build path for phase 1:
 # - RPMs are resolved online during the image build
-# - Python packages are installed from the checked-in root pylock.toml via PyPI
+# - Python packages are installed from requirements.${PYLOCK_FLAVOR}.txt via PyPI
 #
 # [PHASE 2 HERMETIC]
 # The copied runtimes/datascience Dockerfile used cachi2-managed RPM/pip inputs.
@@ -68,6 +68,7 @@ USER 1001
 FROM cpu-base AS runtime-baseline
 
 ARG BASELINE_SOURCE_CODE=runtimes/baseline/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
@@ -109,17 +110,16 @@ ENV SHELL=/bin/bash
 ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
 ENV ELYRA_INSTALL_PACKAGES="false"
 
-# Phase 1 Python install: sync directly from the checked-in PyPI pylock.
-COPY ${BASELINE_SOURCE_CODE}/pylock.toml ./pylock.toml
+# Phase 1 Python install: hashed requirements from PyPI (non-hermetic).
+COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing software and packages"
-UV_DEFAULT_INDEX=https://pypi.org/simple \
-UV_NO_CACHE=true \
-UV_LINK_MODE=copy \
-uv pip sync ./pylock.toml \
-    --strict --no-config --no-progress \
-    --compile-bytecode --index-strategy=unsafe-best-match
+UV_NO_CACHE=true UV_LINK_MODE=copy \
+uv pip install \
+    --strict --no-deps --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --requirements=./requirements.txt
 
 /usr/local/bin/ensure-openshift-site-packages.sh
 

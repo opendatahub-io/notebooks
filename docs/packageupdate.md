@@ -65,8 +65,8 @@ The `scripts/pylocks_generator.sh` script supports three modes:
 | Mode | Description |
 |------|-------------|
 | `auto` (default) | Uses `rh-index` if `uv.lock.d/` exists, otherwise `public-index` |
-| `public-index` | Uses public PyPI, generates/updates `pylock.toml` |
-| `rh-index` | Uses internal AIPCC indexes, generates `uv.lock.d/pylock.<flavor>.toml` |
+| `public-index` | Uses public PyPI, generates/updates `pylock.toml` and `requirements.cpu.txt` |
+| `rh-index` | Uses internal AIPCC indexes, generates `uv.lock.d/pylock.<flavor>.toml` and `requirements.<flavor>.txt` |
 
 #### Force Upgrade
 
