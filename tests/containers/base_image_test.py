@@ -282,8 +282,9 @@ class TestBaseImage:
         garbage results.
 
         Public-index images are the explicit exception. The
-        ``codeserver-baseline-ubi9-python-*`` and
-        ``jupyter-baseline-ubi9-python-*`` image families are public-index
+        ``codeserver-baseline-ubi9-python-*``,
+        ``jupyter-baseline-ubi9-python-*``, and
+        ``runtime-baseline-ubi9-python-*`` image families are public-index
         backed and must not advertise the AIPCC config-file contract.
 
         ODH-derived images usually also export PIP_INDEX_URL / UV_INDEX_URL.
