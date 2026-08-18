@@ -7,7 +7,7 @@ set -euo pipefail
 # ----------------------
 # Hermetic builds need every Python wheel prefetched.  This script:
 #   1. Delegates to pylocks_generator.py to generate a lockfile
-#      (PUBLIC_INDEX_PROJECTS → public-index → root pylock.toml; else rh-index → uv.lock.d/pylock.<flavor>.toml).
+#      (no uv.lock.d/ → public-index → root pylock.toml; else rh-index → uv.lock.d/pylock.<flavor>.toml).
 #      (ensures consistency with CI's check-generated-code).
 #   2. Converts the pylock to a pip-compatible requirements.<flavor>.txt.
 #   3. (--download) Downloads every wheel into cachi2/output/deps/pip/.
@@ -55,7 +55,7 @@ Options:
   -h, --help             Show this help message and exit
 
 Steps performed:
-  1. pylocks_generator.py rh-index or public-index (see PUBLIC_INDEX_PROJECTS in script)
+  1. pylocks_generator.py rh-index or public-index (uv.lock.d/ present → rh-index, else public-index)
   2. Convert pylock → <project>/requirements.<flavor>.txt
   3. (--download) Download all wheels from the lockfile URLs
 EOF
@@ -93,22 +93,12 @@ done
 PROJECT_DIR="$(dirname "$PYPROJECT")"
 REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
 
-# Use public-index when PROJECT_DIR equals a listed path or is a subdirectory (e.g. .../ubi9-python-3.12).
-# Produces root pylock.toml (not uv.lock.d/pylock.<flavor>.toml) — same layout as jupyter/rocm/tensorflow.
-PUBLIC_INDEX_PROJECTS=(
-  "codeserver-baseline/ubi9-python-3.12"
-  "jupyter/baseline/ubi9-python-3.12"
-  "runtimes/baseline/ubi9-python-3.12"
-)
-
-PYLOCKS_MODE="rh-index"
-if ((${#PUBLIC_INDEX_PROJECTS[@]} > 0)); then
-  for _d in "${PUBLIC_INDEX_PROJECTS[@]}"; do
-    if [[ "$PROJECT_DIR" == "$_d" || "$PROJECT_DIR" == "$_d/"* ]]; then
-      PYLOCKS_MODE="public-index"
-      break
-    fi
-  done
+# Same layout rule as pylocks_generator.py auto mode: uv.lock.d/ → rh-index, else public-index.
+# Public-index writes root pylock.toml (jupyter/baseline, codeserver-baseline, future runtimes/baseline).
+if [[ -d "${PROJECT_DIR}/uv.lock.d" ]]; then
+  PYLOCKS_MODE="rh-index"
+else
+  PYLOCKS_MODE="public-index"
 fi
 
 PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"

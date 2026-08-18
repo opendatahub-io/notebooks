@@ -4,7 +4,7 @@
 # This baseline image intentionally uses a non-hermetic build path for phase 1:
 # - code-server is built from a baseline-owned source checkout
 # - RPMs and npm packages are resolved online during the image build
-# - Python packages are installed from the checked-in root pylock.toml via PyPI
+# - Python packages are installed from requirements.${PYLOCK_FLAVOR}.txt via PyPI
 #
 # [PHASE 2 HERMETIC]
 # The copied codeserver Dockerfile used cachi2-managed source inputs and offline
@@ -302,7 +302,7 @@ EOF
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SOURCE_CODE}/run-nginx.sh ./
 
 # The raw RHEL Python base does not bootstrap uv the way the AIPCC notebook
-# base does, so install it explicitly for the phase-1 online PyPI sync.
+# base does, so install it explicitly for the phase-1 online PyPI install.
 ARG UV_VERSION=0.12.1
 RUN python3 -m pip install --no-cache-dir "uv==${UV_VERSION}"
 
@@ -311,17 +311,16 @@ ENV SHELL=/bin/bash
 # Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
 ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
 
-# Phase 1 Python install: sync directly from the checked-in PyPI pylock.
-COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./pylock.toml
+# Phase 1 Python install: hashed requirements from PyPI (non-hermetic).
+COPY ${CODESERVER_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing software and packages"
-UV_DEFAULT_INDEX=https://pypi.org/simple \
-UV_NO_CACHE=true \
-UV_LINK_MODE=copy \
-uv pip sync ./pylock.toml \
-    --strict --no-config --no-progress \
-    --compile-bytecode --index-strategy=unsafe-best-match
+UV_NO_CACHE=true UV_LINK_MODE=copy \
+uv pip install \
+    --strict --no-deps --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --requirements=./requirements.txt
 ./replace-aipcc-ripgrep.sh /usr/lib/code-server
 
 # change ownership to default user (all packages were installed as root and has root:root ownership

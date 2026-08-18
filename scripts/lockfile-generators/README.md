@@ -216,7 +216,7 @@ internally. Option 6 (Git submodule) is a manual setup.
 | 1   | Generic            | [create-artifact-lockfile.py](#1-generic-artifacts--create-artifact-lockfilepy)          | `artifacts.lock.yaml`                                 |
 | 2   | RPM                | [create-rpm-lockfile.sh](#2-rpm-packages--create-rpm-lockfilesh)                         | `rpms.lock.yaml`                                      |
 | 3   | npm                | [download-npm.sh](#3-npm-packages--download-npmsh)                                       | Downloaded tarballs in `cachi2/output/deps/npm/`      |
-| 4   | pip (RHOAI)        | [create-requirements-lockfile.sh](#4-pip-packages-rhoai--create-requirements-lockfilesh) | `pylock.<flavor>.toml` + `requirements.<flavor>.txt`  |
+| 4   | pip                | [create-requirements-lockfile.sh](#4-pip-packages-rhoai--create-requirements-lockfilesh) | `pylock` + `requirements.<flavor>.txt` (RH or public index) |
 | 5   | Go modules (gomod) | [create-go-lockfile.sh](#5-go-modules--create-go-lockfilesh)                             | Go module cache in `cachi2/output/deps/gomod/`        |
 | 6   | Git submodule      | (manual setup)                                                                           | [Pinned repo under prefetch-input/](#6-git-submodule) |
 
@@ -690,11 +690,17 @@ local cachi2 cache instead of the network.
 
 ---
 
-## 4. pip packages (RHOAI) — `create-requirements-lockfile.sh`
+## 4. pip packages — `create-requirements-lockfile.sh`
 
-Generates `pylock.<flavor>.toml` via `pylocks_generator.sh` (the same script
-CI uses), then converts it to a pip-compatible `requirements.<flavor>.txt`
-for use in hermetic builds.
+Generates a pylock via `pylocks_generator.py` (the same script CI uses), then
+converts it to a pip-compatible `requirements.<flavor>.txt` for hermetic builds
+and local wheel download.
+
+Index mode is detected from lock layout: `uv.lock.d/` present → RH-index
+(`uv.lock.d/pylock.<flavor>.toml`); otherwise public-index (root `pylock.toml`
+plus `requirements.cpu.txt`). Public-index images such as
+`jupyter/baseline`, `codeserver-baseline`, and a future `runtimes/baseline`
+need no allowlist entry.
 
 ### Why RHOAI?
 
@@ -718,11 +724,11 @@ source builds entirely.
 
 The script performs three steps:
 
-1. `**pylocks_generator.sh`** — delegates to `scripts/pylocks_generator.sh`
+1. **`pylocks_generator.py`** — delegates to `scripts/pylocks_generator.py`
   (the same script used by CI's `check-generated-code`) to run `uv pip compile`
-   against `pyproject.toml` with the RHOAI index from `build-args/<flavor>.conf`,
-   producing `uv.lock.d/pylock.<flavor>.toml` (PEP 751 format) with exact
-   versions, wheel URLs, and sha256 hashes for all target architectures.
+   against `pyproject.toml`. RH-index uses the RHOAI index from
+   `build-args/konflux.<flavor>.conf` and writes `uv.lock.d/pylock.<flavor>.toml`.
+   Public-index (no `uv.lock.d/`) uses PyPI and writes root `pylock.toml`.
    This ensures the generated pylock is always identical to what CI expects.
 2. **Convert** (`helpers/pylock-to-requirements.py`) — parses the pylock.toml
   and generates `requirements.<flavor>.txt` (with `--index-url` and
@@ -766,7 +772,7 @@ The script performs three steps:
 
 This single command:
 
-1. Delegates to `pylocks_generator.sh` to resolve `codeserver/ubi9-python-3.12/pyproject.toml`
+1. Delegates to `pylocks_generator.py` to resolve `codeserver/ubi9-python-3.12/pyproject.toml`
   via the RHOAI index (from `build-args/konflux.cpu.conf`) → `uv.lock.d/pylock.cpu.toml`.
 2. Converts `pylock.cpu.toml` → `codeserver/ubi9-python-3.12/requirements.cpu.txt`
   (with `--index-url` header and `--hash` lines).
@@ -782,6 +788,11 @@ This single command:
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml \
     --flavor cuda
+
+# Public-index baseline (no uv.lock.d/; writes root pylock.toml + requirements.cpu.txt)
+./scripts/lockfile-generators/create-requirements-lockfile.sh \
+    --pyproject-toml jupyter/baseline/ubi9-python-3.12/pyproject.toml \
+    --flavor cpu
 ```
 
 ### Helper: `helpers/download-pip-packages.py`
