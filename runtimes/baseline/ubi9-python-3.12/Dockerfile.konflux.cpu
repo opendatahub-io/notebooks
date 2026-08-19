@@ -32,7 +32,7 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
-ARG RHEL_VERSION=9.6
+ARG RHEL_VERSION=9.8
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 

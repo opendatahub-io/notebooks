@@ -67,15 +67,15 @@ ARG GHA_BUILD=false
 
 ARG NODE_VERSION=22.22.0
 ARG CODESERVER_VERSION=v4.122.1
-ARG RHEL_VERSION=9.6
+ARG RHEL_VERSION=9.8
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # Pin RHSM to the same EL point release as the Python base image so EUS repo
-# URLs resolve to /content/eus/rhel9/9.6/... instead of /content/eus/rhel9/9/...
+# URLs resolve to /content/eus/rhel9/9.8/... instead of /content/eus/rhel9/9/...
 RUN subscription-manager release --set="${RHEL_VERSION}"
 
-# RHDS builds on the RHEL 9.6 Python base need EUS CodeReady Builder for
+# RHDS builds on the RHEL 9.8 Python base need EUS CodeReady Builder for
 # libxkbfile-devel, which code-server's native-keymap build depends on.
 RUN basearch="$(rpm --eval '%{_arch}')" && \
     subscription-manager repos --enable="codeready-builder-for-rhel-9-${basearch}-eus-rpms"
@@ -131,7 +131,7 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
-ARG RHEL_VERSION=9.6
+ARG RHEL_VERSION=9.8
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
