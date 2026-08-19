@@ -17,6 +17,9 @@ metadata:
   name: odh-wb-codeserver-baseline-cpu-py312-on-pull-request-{{pull_request_number}}
   namespace: rhoai-tenant
 spec:
+  timeouts:
+    pipeline: 8h
+    tasks: 4h
   params:
   - name: git-url
     value: '{{source_url}}'
