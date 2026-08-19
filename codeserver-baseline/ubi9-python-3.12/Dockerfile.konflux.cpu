@@ -50,6 +50,16 @@ ENV CODESERVER_SOURCE_CODE=${HOME}/${CODESERVER_CONTEXT}
 ENV CODESERVER_SOURCE_SUBMODULE=${CODESERVER_SOURCE_CODE}/code-server
 ENV CODESERVER_PATCHES=${CODESERVER_SOURCE_CODE}/patches
 
+# Phase 1 is intentionally online; Konflux egress can be flaky.
+# Configure npm to be more resilient and to avoid extra registry calls.
+ENV NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_FUND=false \
+    NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000 \
+    NPM_CONFIG_FETCH_TIMEOUT=600000 \
+    NPM_CONFIG_NODEDIR=/usr
+
 ARG BASE_IMAGE
 ARG GHA_BUILD=false
 
@@ -78,6 +88,9 @@ RUN dnf install -y \
         jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
         krb5-devel libX11-devel libxkbfile-devel && \
     dnf clean all
+
+# RHEL's packaged node-gyp makefile can exec gyp_main.py directly; ensure it's executable.
+RUN chmod 755 /usr/lib/node_modules/npm/node_modules/node-gyp/gyp/gyp_main.py || true
 # Git metadata needed by code-server's build scripts (version detection, submodules).
 COPY .git /root/.git
 COPY ${CODESERVER_CONTEXT}/code-server/ ${CODESERVER_SOURCE_SUBMODULE}/
@@ -94,7 +107,7 @@ RUN chmod 755 ${CODESERVER_PATCHES}/*.sh
 # Keep this in a helper script; Hadolint on the hosted CI runner misparses the
 # inline patch loop heredoc in this Dockerfile.
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && GHA_BUILD="${GHA_BUILD}" "${CODESERVER_PATCHES}/apply-patch.sh"
-RUN /bin/bash -lc 'cd "${CODESERVER_SOURCE_SUBMODULE}" && if [[ "$(uname -m)" == "ppc64le" ]] || [[ "$(uname -m)" == "s390x" ]]; then PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci; else npm ci; fi'
+RUN /bin/bash -lc 'cd "${CODESERVER_SOURCE_SUBMODULE}" && if [[ "$(uname -m)" == "ppc64le" ]] || [[ "$(uname -m)" == "s390x" ]]; then PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci --no-audit --no-fund; else npm ci --no-audit --no-fund; fi'
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && npm run build
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && \
     (ulimit -n 65536 2>/dev/null || ulimit -n 16384 2>/dev/null || true) && \
