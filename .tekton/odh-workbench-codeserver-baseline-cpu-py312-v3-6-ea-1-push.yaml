@@ -20,6 +20,9 @@ metadata:
   name: odh-workbench-codeserver-baseline-cpu-py312-v3-6-ea-1-on-push
   namespace: rhoai-tenant
 spec:
+  timeouts:
+    pipeline: 8h
+    tasks: 4h
   params:
   - name: git-url
     value: '{{source_url}}'
