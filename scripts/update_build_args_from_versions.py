@@ -4,11 +4,12 @@
 
 This flow validates the root config, scans managed image-tree ``build-args``
 files, rewrites managed ``BASE_IMAGE`` and ``RELEASE`` assignments plus the
-root ``Makefile`` release defaults, resolves newer RHDS ``channel: fast``
-releases to the highest already-published phase per target repository, uses
-``skopeo`` to select the latest build in the chosen release-and-phase family,
-and pins each resolved ``BASE_IMAGE`` to an immutable
-``repository:tag@sha256:…`` reference.
+root ``Makefile`` release defaults, rewrites ``INDEX_URL`` in
+``base-images/build-args/*.conf`` from ``release.aipcc_wheel_index``, resolves
+newer RHDS ``channel: fast`` releases to the highest already-published phase
+per target repository, uses ``skopeo`` to select the latest build in the
+chosen release-and-phase family, and pins each resolved ``BASE_IMAGE`` to an
+immutable ``repository:tag@sha256:…`` reference.
 """
 
 from __future__ import annotations
@@ -25,9 +26,20 @@ from typing import Any
 
 import yaml
 
+from scripts.index_url_resolver import build_rhoai_index_url, build_rhoai_test_index_url
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG_PATH = ROOT_DIR / "versions_config.yml"
 MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver")
+BASE_IMAGES_BUILD_ARGS_DIR = Path("base-images") / "build-args"
+# Tekton --build-arg-file inputs for ODH base images (INDEX_URL only).
+BASE_IMAGES_INDEX_CONFS: dict[str, str] = {
+    "cpu.conf": "cpu",
+    "cuda12.9.conf": "cuda12.9",
+    "cuda13.0.conf": "cuda13.0",
+    "rocm7.14.conf": "rocm7.14",
+}
+AIPCC_WHEEL_INDEX_STREAM_RE = re.compile(r"^[0-9]+\.[0-9]+(-EA[0-9]+)?$")
 POLICY_SCHEMA = object()
 GPU_FLAVORS = {
     "cuda": ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow"),
@@ -84,6 +96,10 @@ ROOT_SCHEMA = {
         "full_version": None,
         "rhds_os_base": None,
         "python_version": None,
+        "aipcc_wheel_index": {
+            "stream": None,
+            "use_test": None,
+        },
     },
     "artifacts": {
         "base_image": BASE_IMAGE_SCHEMA,
@@ -110,10 +126,17 @@ _STABLE_ACC_VERSION_INSPECT_FAILED = object()
 
 
 @dataclass(frozen=True)
+class AipccWheelIndexConfig:
+    stream: str
+    use_test: bool
+
+
+@dataclass(frozen=True)
 class ReleaseConfig:
     full_version: str
     rhds_os_base: str
     python_version: str
+    aipcc_wheel_index: AipccWheelIndexConfig
 
 
 @dataclass(frozen=True)
@@ -549,10 +572,12 @@ def load_versions_config(path: Path) -> VersionsConfig:
         raise ValueError(f"Unsupported schema_version in {path}: {data['schema_version']!r}")
 
     release_data = data["release"]
+    aipcc_wheel_index = parse_aipcc_wheel_index(release_data["aipcc_wheel_index"])
     release = ReleaseConfig(
         full_version=scalar_to_string(release_data["full_version"]),
         rhds_os_base=scalar_to_string(release_data["rhds_os_base"]),
         python_version=scalar_to_string(release_data["python_version"]),
+        aipcc_wheel_index=aipcc_wheel_index,
     )
     parse_release_version(release.full_version)
     if not release.rhds_os_base:
@@ -561,6 +586,65 @@ def load_versions_config(path: Path) -> VersionsConfig:
 
     base_image, gpu_acc_versions = normalize_base_image_config(data["artifacts"]["base_image"], release)
     return VersionsConfig(release=release, base_image=base_image, gpu_acc_versions=gpu_acc_versions)
+
+
+def parse_aipcc_wheel_index(raw: object) -> AipccWheelIndexConfig:
+    if not isinstance(raw, dict):
+        raise ValueError("Expected mapping at release.aipcc_wheel_index")
+    stream = scalar_to_string(raw["stream"])
+    if not AIPCC_WHEEL_INDEX_STREAM_RE.fullmatch(stream):
+        raise ValueError(
+            "release.aipcc_wheel_index.stream must look like '3.5' or '3.5-EA2', " f"got {stream!r}"
+        )
+    use_test = raw["use_test"]
+    if not isinstance(use_test, bool):
+        raise ValueError(
+            "release.aipcc_wheel_index.use_test must be a boolean, " f"got {type(use_test).__name__}"
+        )
+    return AipccWheelIndexConfig(stream=stream, use_test=use_test)
+
+
+def build_base_images_index_url(*, stream: str, accelerator: str, use_test: bool) -> str:
+    if use_test:
+        return build_rhoai_test_index_url(release=stream, accelerator=accelerator)
+    return build_rhoai_index_url(release=stream, accelerator=accelerator)
+
+
+def plan_base_images_index_updates(root_dir: Path, config: VersionsConfig) -> list[PlannedUpdate]:
+    build_args_dir = root_dir / BASE_IMAGES_BUILD_ARGS_DIR
+    if not build_args_dir.is_dir():
+        # Unit-test fixtures often omit base-images/; real checkouts always have it.
+        return []
+
+    found = {path.name: path for path in sorted(build_args_dir.glob("*.conf"))}
+    unexpected = sorted(set(found) - set(BASE_IMAGES_INDEX_CONFS))
+    missing = sorted(set(BASE_IMAGES_INDEX_CONFS) - set(found))
+    if unexpected:
+        raise ValueError(
+            "Unexpected base-images/build-args conf file(s): "
+            f"{', '.join(unexpected)}; expected only {', '.join(sorted(BASE_IMAGES_INDEX_CONFS))}"
+        )
+    if missing:
+        raise ValueError(f"Missing base-images/build-args conf file(s): {', '.join(missing)}")
+
+    wheel_index = config.release.aipcc_wheel_index
+    updates: list[PlannedUpdate] = []
+    for conf_name, accelerator in BASE_IMAGES_INDEX_CONFS.items():
+        path = found[conf_name]
+        original_text = path.read_text(encoding="utf-8")
+        index_url = build_base_images_index_url(
+            stream=wheel_index.stream,
+            accelerator=accelerator,
+            use_test=wheel_index.use_test,
+        )
+        updates.append(
+            PlannedUpdate(
+                path=path,
+                original_text=original_text,
+                updated_text=rewrite_conf_text(original_text, {"INDEX_URL": index_url}),
+            )
+        )
+    return updates
 
 
 def classify_conf_name(name: str) -> tuple[str, str] | None:
@@ -1612,6 +1696,8 @@ def plan_updates(
                 updated_text=rewrite_makefile_text(original_text, build_makefile_replacements(config.release)),
             )
         )
+
+    updates.extend(plan_base_images_index_updates(root_dir, config))
 
     return updates
 

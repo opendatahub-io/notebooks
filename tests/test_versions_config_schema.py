@@ -32,6 +32,7 @@ def _minimal_valid_config() -> dict:
             "full_version": "3.5.0",
             "rhds_os_base": "el9.6",
             "python_version": "3.12",
+            "aipcc_wheel_index": {"stream": "3.5-EA2", "use_test": True},
         },
         "artifacts": {
             "base_image": {

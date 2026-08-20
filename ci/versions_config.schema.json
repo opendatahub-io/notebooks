@@ -2,6 +2,34 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "versions_config.schema.json",
   "$defs": {
+    "AipccWheelIndex": {
+      "additionalProperties": false,
+      "description": "AIPCC wheel index stream baked into ODH base-images INDEX_URL build-args.",
+      "properties": {
+        "stream": {
+          "description": "AIPCC public-rhai rhoai path segment for base-images INDEX_URL (for example \"3.5-EA2\" or \"3.5\"). Independent of release.full_version.",
+          "examples": [
+            "3.5-EA2",
+            "3.6-EA1",
+            "3.5"
+          ],
+          "pattern": "^[0-9]+\\.[0-9]+(-EA[0-9]+)?$",
+          "title": "AIPCC wheel index stream",
+          "type": "string"
+        },
+        "use_test": {
+          "description": "When true, use *-ubi9-test simple indexes; when false, use prod *-ubi9 indexes.",
+          "title": "Use test index",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "stream",
+        "use_test"
+      ],
+      "title": "AipccWheelIndex",
+      "type": "object"
+    },
     "Artifacts": {
       "additionalProperties": false,
       "description": "Artifact groups managed by the versions sync flow.",
@@ -213,12 +241,18 @@
           "pattern": "^[0-9]+\\.[0-9]+$",
           "title": "Python version",
           "type": "string"
+        },
+        "aipcc_wheel_index": {
+          "$ref": "#/$defs/AipccWheelIndex",
+          "description": "Operator input for base-images/build-args/*.conf INDEX_URL. Synced by make sync-build-args-from-versions.",
+          "title": "AIPCC wheel index"
         }
       },
       "required": [
         "full_version",
         "rhds_os_base",
-        "python_version"
+        "python_version",
+        "aipcc_wheel_index"
       ],
       "title": "Release",
       "type": "object"
@@ -338,7 +372,11 @@
       "release": {
         "full_version": "3.5.0",
         "rhds_os_base": "el9.6",
-        "python_version": "3.12"
+        "python_version": "3.12",
+        "aipcc_wheel_index": {
+          "stream": "3.5-EA2",
+          "use_test": true
+        }
       },
       "artifacts": {
         "base_image": {
