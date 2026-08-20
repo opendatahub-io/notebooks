@@ -58,7 +58,9 @@ ENV NPM_CONFIG_AUDIT=false \
     NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \
     NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000 \
     NPM_CONFIG_FETCH_TIMEOUT=600000 \
-    NPM_CONFIG_NODEDIR=/usr
+    NPM_CONFIG_MAXSOCKETS=5 \
+    NPM_CONFIG_NODEDIR=/usr \
+    VSCODE_NPM_INSTALL_CONCURRENCY=4
 
 ARG BASE_IMAGE
 ARG GHA_BUILD=false
@@ -107,7 +109,7 @@ RUN chmod 755 ${CODESERVER_PATCHES}/*.sh
 # Keep this in a helper script; Hadolint on the hosted CI runner misparses the
 # inline patch loop heredoc in this Dockerfile.
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && GHA_BUILD="${GHA_BUILD}" "${CODESERVER_PATCHES}/apply-patch.sh"
-RUN /bin/bash -lc 'cd "${CODESERVER_SOURCE_SUBMODULE}" && if [[ "$(uname -m)" == "ppc64le" ]] || [[ "$(uname -m)" == "s390x" ]]; then PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci --no-audit --no-fund; else npm ci --no-audit --no-fund; fi'
+RUN /bin/bash -lc 'cd "${CODESERVER_SOURCE_SUBMODULE}" && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PLAYWRIGHT_SKIP_FFMPEG_INSTALL=1 ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci --no-audit --no-fund'
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && npm run build
 RUN cd ${CODESERVER_SOURCE_SUBMODULE} && \
     (ulimit -n 65536 2>/dev/null || ulimit -n 16384 2>/dev/null || true) && \
