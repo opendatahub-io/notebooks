@@ -19,7 +19,7 @@ set -euo pipefail
 
 # --- Configuration & Defaults ---
 SCRIPTS_PATH="scripts/lockfile-generators"
-UBI9_IMAGE="registry.redhat.io/ubi9:8"
+UBI9_IMAGE="registry.redhat.io/ubi9:9.8"
 ODH_BASE_IMAGE="quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest"
 
 RPM_INPUT=""
