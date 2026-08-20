@@ -103,7 +103,7 @@ spec:
     imagePullSecrets: [<pull-secret-name>]   # required if `repository` is private
 ```
 
-Driver daemonset pod names include the **kernel version** (e.g. `nvidia-driver-daemonset-5.14.0-570.78.1.el9_6.aarch64-…`) instead of the DTK-style `openshift-driver-toolkit` sidecar layout.
+Driver daemonset pod names include the **kernel version** (e.g. `nvidia-driver-daemonset-5.14.0-570.78.1.el9_6.aarch64-…` on the 9.6 validation cluster above) instead of the DTK-style `openshift-driver-toolkit` sidecar layout.
 
 ### Building the image
 
@@ -131,7 +131,7 @@ export KERNEL_VERSION=$(podman run --rm -ti --authfile "$PULL_SECRET_FILE" ${DRI
 
 export DRIVER_VERSION=580.82.07             # match ClusterPolicy / operator
 export CUDA_VERSION=12.x.x                # base image tag selection
-export OS_TAG=...                         # see below
+export OS_TAG=rhel9.8                     # OCP 4.19+ OS tag matching RHEL_VERSION
 export RHEL_VERSION=9.8                   # target RHEL minor matching the node's RHCOS base
 export RHSM_ORG_FILE=/path/to/rhsm-org               # Red Hat Subscription Manager org ID
 export RHSM_ACTIVATIONKEY_FILE=/path/to/rhsm-activationkey  # RHSM activation key for your org
@@ -148,14 +148,17 @@ Red Hat Subscription Manager (the UBI9 base image needs RHEL package repos
 enabled to build kernel modules) — see the repo's own docs for how to
 obtain an activation key for your org.
 
-**Image tag format** must encode driver, kernel, and OS, e.g.:
+**Image tag format** must encode driver, kernel, and OS. Use
+`${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}` from the exports above;
+take `KERNEL_VERSION` from DTK, not a copied historical string. Example
+shape for the current 9.8 target:
 
-`580.82.07-5.14.0-570.78.1.el9_6.aarch64-<os-tag>`
+`580.82.07-5.14.0-<rhel-kernel>.el9_8.aarch64-rhel9.8`
 
 **OS tag suffix changed at OCP 4.19:**
 
 - Before 4.19: `rhcos4.xx` (e.g. `rhcos4.17`)
-- OCP 4.19+: `rhel9.6` style (verify against GPU Operator 25.3.4 OpenShift docs for your exact release)
+- OCP 4.19+: `rhel9.x` matching the node's RHEL minor (currently `rhel9.8`; verify against GPU Operator 25.3.4 OpenShift docs for your exact release)
 
 **aarch64 page size:** Some RHEL 9 aarch64 kernels use a `+64k` suffix in tags. Match the kernel from DTK / node labels, not assumptions from amd64 builds.
 
