@@ -250,7 +250,7 @@ def discover_all_image_project_dirs() -> list[Path]:
     for base_name in MAIN_DIRS:
         base = ROOT_DIR / base_name
         if base.is_dir():
-            dirs.update(p.parent for p in base.rglob("pyproject.toml"))
+            dirs.update(p.parent for p in base.rglob("pyproject.toml") if extract_python_version(p.parent) is not None)
     return sorted(dirs)
 
 
@@ -736,9 +736,8 @@ def process_directory(
 
     python_version = extract_python_version(tdir)
     if python_version is None:
-        log.warning(f"Could not extract valid Python version from directory name: {tdir}")
-        log.warning("Expected directory format: .../ubi9-python-X.Y")
-        return tdir, False, log
+        log.warning(f"Skipping non-image pyproject.toml (not .../ubi9-python-X.Y): {tdir}")
+        return tdir, True, log
 
     flavors = detect_flavors(tdir)
     if not flavors:

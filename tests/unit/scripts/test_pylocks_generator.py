@@ -34,6 +34,11 @@ def test_detect_flavors_empty_when_no_konflux_dockerfiles(tmp_path: Path) -> Non
     assert pg.detect_flavors(project_dir) == set()
 
 
+def test_discover_all_image_project_dirs_skips_unversioned_pyproject(repo_root: Path) -> None:
+    leaked = [d for d in pg.discover_all_image_project_dirs() if d.name == "py-pyproject-toml"]
+    assert leaked == [], f"Copilot fixtures must not be lock targets: {leaked}"
+
+
 def test_utc_now_iso_format() -> None:
     s = pg.utc_now_iso()
     assert len(s) == 20
