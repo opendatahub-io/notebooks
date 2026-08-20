@@ -22,15 +22,15 @@ spec:
             {"name": "CUDA", "version": "13.0"},
             {"name": "Python", "version": "v3.12"},
             {"name": "PyTorch", "version": "2.11"},
-            {"name": "LLM-Compressor", "version": "0.12"}
+            {"name": "LLM-Compressor", "version": "0.13"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name": "Accelerate", "version": "1.13"},
+            {"name": "Accelerate", "version": "1.14"},
             {"name": "JupyterLab", "version": "4.5"},
             {"name": "PyTorch", "version": "2.11"},
-            {"name": "LLM-Compressor", "version": "0.12"},
+            {"name": "LLM-Compressor", "version": "0.13"},
             {"name": "Tensorboard", "version": "2.20"},
             {"name": "Boto3", "version": "1.43"},
             {"name": "Datasets", "version": "5.0"},
@@ -50,7 +50,7 @@ spec:
             {"name": "Psycopg", "version": "3.3"},
             {"name": "MySQL Connector/Python", "version": "26.7"},
             {"name": "MLflow", "version": "3.15"},
-            {"name": "Transformers", "version": "5.10"}
+            {"name": "Transformers", "version": "5.14"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9
         opendatahub.io/workbench-image-recommended: 'true'

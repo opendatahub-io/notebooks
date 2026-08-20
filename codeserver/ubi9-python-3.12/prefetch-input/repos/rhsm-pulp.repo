@@ -4,25 +4,25 @@ name = rhel-9-for-$basearch-baseos-e4s-rpms__9_DOT_6
 enabled = 1
 gpgcheck = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.6/$basearch/baseos/os
+baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.8/$basearch/baseos/os
 
 [rhel-9-for-$basearch-appstream-e4s-rpms__9_DOT_6]
 name = rhel-9-for-$basearch-appstream-e4s-rpms__9_DOT_6
 enabled = 1
 gpgcheck = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.6/$basearch/appstream/os
+baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.8/$basearch/appstream/os
 
 [rhel-9-for-$basearch-highavailability-e4s-rpms__9_DOT_6]
 name = rhel-9-for-$basearch-highavailability-e4s-rpms__9_DOT_6
 enabled = 1
 gpgcheck = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.6/$basearch/highavailability/os
+baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.8/$basearch/highavailability/os
 
 [codeready-builder-for-rhel-9-$basearch-eus-rpms__9_DOT_6]
 name = codeready-builder-for-rhel-9-$basearch-eus-rpms__9_DOT_6
-baseurl = https://rhsm-pulp.corp.redhat.com/content/eus/rhel9/9.6/$basearch/codeready-builder/os/
+baseurl = https://rhsm-pulp.corp.redhat.com/content/eus/rhel9/9.8/$basearch/codeready-builder/os/
 enabled = 1
 gpgcheck = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release

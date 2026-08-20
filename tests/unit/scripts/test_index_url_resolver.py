@@ -48,6 +48,9 @@ def make_skopeo_inspect_fail_stub():
 DIGEST_PINNED_CPU = (
     "quay.io/aipcc/base-images/cpu@sha256:2f93df7e0b1b823bb63311f38b91cb8e0dc305d588813815dd4f77061fd15585"
 )
+DIGEST_PINNED_CPU_EL98 = (
+    "quay.io/aipcc/base-images/cpu-el9.8@sha256:472b75898e8ba84941b98d7150f412e5eac43d1b2889463e0ccf800245c97166"
+)
 DIGEST_PINNED_CUDA = (
     "quay.io/aipcc/base-images/cuda-13.0-el9.6@sha256:1620d9ade9a2a196b9d9bcca7842918dbf911273957abdd064a25e5f9d3f027c"
 )
@@ -70,6 +73,14 @@ def test_build_test_variant_url_returns_none_for_test_url() -> None:
     test = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
     result = resolver.build_test_variant_url(test)
     assert result is None, f"expected None for test URL, got {result}"
+
+
+@pytest.mark.parametrize(
+    "image_name",
+    ["cpu", "cpu-el9.8", "cpu-el9.6"],
+)
+def test_parse_accelerator_accepts_cpu_os_suffix(image_name: str) -> None:
+    assert resolver.parse_accelerator(image_name, Path("konflux.cpu.conf")) == "cpu"
 
 
 def test_resolve_rhoai_cpu_index_from_label(
@@ -336,6 +347,7 @@ def test_resolve_falls_back_to_tag_when_label_missing(
     ("conf_name", "base_image", "flavor", "accelerator"),
     [
         ("konflux.cpu.conf", DIGEST_PINNED_CPU, "cpu", "cpu"),
+        ("konflux.cpu.conf", DIGEST_PINNED_CPU_EL98, "cpu", "cpu"),
         ("konflux.cpu.conf", TAG_AND_DIGEST_PINNED_CPU, "cpu", "cpu"),
         ("konflux.cuda.conf", DIGEST_PINNED_CUDA, "cuda", "cuda13.0"),
     ],
