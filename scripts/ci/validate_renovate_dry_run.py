@@ -29,6 +29,8 @@ KNOWN_CONFIG_WARNINGS = (
 
 RunSubprocess = Callable[..., subprocess.CompletedProcess[str]]
 
+SEPARATE_MINOR_PATCH_RULE_DESCRIPTION = "Separate minor and patch base image upgrades"
+
 
 def _subprocess_stream_text(data: str | bytes | None) -> str:
     if not data:
@@ -95,8 +97,8 @@ def _rule_description(rule: dict) -> str:
     return description if isinstance(description, str) else ""
 
 
-def extract_combined_prefix_rule(records: list[dict]) -> dict | None:
-    """Return the PR-title prefix packageRule from Renovate's Combined config log."""
+def extract_combined_rule_by_description(records: list[dict], description: str) -> dict | None:
+    """Return the first packageRule from Renovate's Combined config log matching a description prefix."""
     for record in records:
         if record.get("msg") != "Combined config":
             continue
@@ -106,9 +108,37 @@ def extract_combined_prefix_rule(records: list[dict]) -> dict | None:
         for rule in config.get("packageRules", []):
             if not isinstance(rule, dict):
                 continue
-            if _rule_description(rule).startswith("Prefix PR titles with branch name for non-main branches"):
+            if _rule_description(rule).startswith(description):
                 return rule
     return None
+
+
+def extract_combined_prefix_rule(records: list[dict]) -> dict | None:
+    """Return the PR-title prefix packageRule from Renovate's Combined config log."""
+    return extract_combined_rule_by_description(records, "Prefix PR titles with branch name for non-main branches")
+
+
+def validate_separate_minor_patch_rule(records: list[dict]) -> list[str]:
+    """Confirm real Renovate loads and merges the separateMinorPatch packageRule correctly.
+
+    custom.regex is excluded from RENOVATE_ENABLED_MANAGERS in these dry runs (see
+    build_dry_run_env), so this only checks the rule survives Renovate's config
+    merge — it does not exercise the manager itself or assert on real branches.
+    """
+    errors: list[str] = []
+    rule = extract_combined_rule_by_description(records, SEPARATE_MINOR_PATCH_RULE_DESCRIPTION)
+    if rule is None:
+        errors.append("Combined config is missing the separateMinorPatch packageRule")
+        return errors
+    if rule.get("matchManagers") != ["custom.regex"]:
+        errors.append(
+            f"separateMinorPatch rule matchManagers must be ['custom.regex'], got {rule.get('matchManagers')!r}"
+        )
+    if rule.get("separateMinorPatch") is not True:
+        errors.append(
+            f"separateMinorPatch rule must set separateMinorPatch: true, got {rule.get('separateMinorPatch')!r}"
+        )
+    return errors
 
 
 def is_known_config_warning(message: str) -> bool:
@@ -249,6 +279,7 @@ def validate_dry_runs(
             continue
 
         errors.extend(f"{scenario.name}: unexpected config warning: {msg}" for msg in fatal_config_warnings(records))
+        errors.extend(f"{scenario.name}: {msg}" for msg in validate_separate_minor_patch_rule(records))
         errors.extend(
             validate_scenario_titles(
                 scenario,
