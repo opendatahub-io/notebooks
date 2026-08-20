@@ -47,7 +47,7 @@ RhdsOsBase = Annotated[
     StringConstraints(pattern=RHDS_OS_BASE_PATTERN),
     Field(
         title="RHDS OS base",
-        description='RHDS CUDA/ROCm repository OS suffix, for example "el9.8".',
+        description='RHDS repository OS suffix for CPU, CUDA, and ROCm, for example "el9.8".',
         examples=["el9.8"],
     ),
 ]

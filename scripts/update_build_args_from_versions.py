@@ -1120,7 +1120,7 @@ def resolve_latest_published_rhds_image(
 
 def build_rhds_pinned_repository(accelerator: str, version: str, release: ReleaseConfig) -> str:
     if accelerator == "cpu":
-        return "quay.io/aipcc/base-images/cpu"
+        return f"quay.io/aipcc/base-images/cpu-{release.rhds_os_base}"
     normalized_version = normalize_stream_version(version)
     return f"quay.io/aipcc/base-images/{accelerator}-{normalized_version}-{release.rhds_os_base}"
 
