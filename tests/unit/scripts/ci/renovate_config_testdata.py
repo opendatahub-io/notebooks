@@ -16,6 +16,7 @@ from scripts.ci.validate_renovate_config import (
     ODH_REPO,
     PREFIX_RULE_DESCRIPTION,
     REQUIRED_ENABLED_MANAGERS,
+    SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES,
     SEPARATE_MINOR_PATCH_RULE_DESCRIPTION,
     MintMakerRepoPolicy,
 )
@@ -98,6 +99,7 @@ def separate_minor_patch_rule() -> dict[str, Any]:
     return {
         "description": SEPARATE_MINOR_PATCH_RULE_DESCRIPTION,
         "matchManagers": ["custom.regex"],
+        "matchPackageNames": list(SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES),
         "separateMinorPatch": True,
     }
 

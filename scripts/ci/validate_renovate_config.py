@@ -30,6 +30,7 @@ ODH_BASE_MANAGER_DESCRIPTION = "Update BASE_IMAGE in ODH (non-konflux) build-arg
 ODH_BASE_MANAGER_FILE_PATTERN = "/(jupyter|codeserver|runtimes)/.+/build-args/(cpu|cuda|rocm)\\.conf$/"
 ODH_BASE_PACKAGE_PATTERN = "/^quay\\.io\\/opendatahub\\//"
 SEPARATE_MINOR_PATCH_RULE_DESCRIPTION = "Separate minor and patch base image upgrades"
+SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES = [f"!{ODH_BASE_PACKAGE_PATTERN}"]
 
 
 @dataclass(frozen=True)
@@ -228,6 +229,12 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
     else:
         if separate_minor_patch_rule.get("matchManagers") != ["custom.regex"]:
             errors.append("separateMinorPatch rule must match custom.regex manager only")
+        if separate_minor_patch_rule.get("matchPackageNames") != SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES:
+            errors.append(
+                "separateMinorPatch rule matchPackageNames must be "
+                f"{SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES!r} (exclude ODH BASE_IMAGE, no minor/patch axis), "
+                f"got {separate_minor_patch_rule.get('matchPackageNames')!r}"
+            )
         if separate_minor_patch_rule.get("separateMinorPatch") is not True:
             errors.append("separateMinorPatch rule must set separateMinorPatch: true")
 

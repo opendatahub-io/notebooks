@@ -132,6 +132,25 @@ def test_minimal_valid_config_passes_validation() -> None:
             ["separateMinorPatch rule must set separateMinorPatch: true"],
             id="separate-minor-patch-rule-disabled",
         ),
+        pytest.param(
+            lambda config: {
+                **config,
+                "packageRules": [
+                    {k: v for k, v in rule.items() if k != "matchPackageNames"}
+                    if rule.get("description", "").startswith(validator.SEPARATE_MINOR_PATCH_RULE_DESCRIPTION)
+                    else rule
+                    for rule in config["packageRules"]
+                ],
+            },
+            [
+                (
+                    "separateMinorPatch rule matchPackageNames must be "
+                    f"{validator.SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES!r} "
+                    "(exclude ODH BASE_IMAGE, no minor/patch axis), got None"
+                ),
+            ],
+            id="separate-minor-patch-rule-missing-package-names",
+        ),
     ],
 )
 def test_validate_config_reports_expected_errors(

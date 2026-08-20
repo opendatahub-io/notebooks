@@ -30,6 +30,7 @@ KNOWN_CONFIG_WARNINGS = (
 RunSubprocess = Callable[..., subprocess.CompletedProcess[str]]
 
 SEPARATE_MINOR_PATCH_RULE_DESCRIPTION = "Separate minor and patch base image upgrades"
+SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES = ["!/^quay\\.io\\/opendatahub\\//"]
 
 
 def _subprocess_stream_text(data: str | bytes | None) -> str:
@@ -133,6 +134,11 @@ def validate_separate_minor_patch_rule(records: list[dict]) -> list[str]:
     if rule.get("matchManagers") != ["custom.regex"]:
         errors.append(
             f"separateMinorPatch rule matchManagers must be ['custom.regex'], got {rule.get('matchManagers')!r}"
+        )
+    if rule.get("matchPackageNames") != SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES:
+        errors.append(
+            "separateMinorPatch rule matchPackageNames must be "
+            f"{SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES!r}, got {rule.get('matchPackageNames')!r}"
         )
     if rule.get("separateMinorPatch") is not True:
         errors.append(
