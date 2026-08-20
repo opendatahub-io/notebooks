@@ -70,7 +70,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import tomllib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -503,19 +502,10 @@ def generate_baseline_alignment_constraints(project_dir: Path, log: LogBuffer) -
         "",
     ]
     content = "\n".join(header + generated) + "\n"
-    temp_file = tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        suffix=f".{AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME}",
-        prefix="pylocks-",
-        delete=False,
-    )
-    try:
-        temp_file.write(content)
-    finally:
-        temp_file.close()
-    alignment_file = Path(temp_file.name)
-    log.print(f"  🔗 Generated temporary AIPCC alignment constraints: {alignment_file}")
+    # Repo-relative path so uv's pylock.toml header is identical on macOS and Linux CI.
+    alignment_file = project_dir / AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME
+    alignment_file.write_text(content, encoding="utf-8")
+    log.print(f"  🔗 Generated AIPCC alignment constraints: {alignment_file}")
     return alignment_file
 
 

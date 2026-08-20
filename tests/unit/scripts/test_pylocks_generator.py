@@ -617,7 +617,7 @@ pandoc-rhai==3.8.0 ; sys_platform == 'linux'
     generated = pg.generate_baseline_alignment_constraints(baseline_dir, pg.LogBuffer())
 
     assert generated is not None
-    assert generated.name.endswith(".aipcc-alignment.constraints.txt")
+    assert generated == baseline_dir / pg.AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME
     content = generated.read_text(encoding="utf-8")
     assert "pandas==2.3.3" in content
     assert "pandoc==3.8.0" in content
