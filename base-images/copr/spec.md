@@ -26,6 +26,8 @@ The tool reads from a declarative YAML manifest file that lists all packages to 
 - The source package name
 - The exact Fedora build version to use (Name-Version-Release)
 - An optional human-readable note explaining why the package is needed
+- Optional per-package build customizations such as skipping `%check` or applying
+  literal spec-file replacements for EL9 compatibility
 
 The manifest also declares the target Copr project and the Fedora tag to pull SRPMs from.
 
@@ -98,14 +100,24 @@ When an operation fails, the tool displays a clear, human-readable error message
 - If manifest loading fails, the validation error is reported immediately.
 - All error output is written to stderr with a consistent `Error:` prefix, and the tool exits with a non-zero status code.
 
-### R12: Skipping Package Tests
+### R12: Custom Spec Adjustments
 
-Some Fedora SRPMs have `%check` sections that are too slow or fail when rebuilt on EL9. The manifest supports an optional `skip_tests` flag per package (default: false). When set to `true`, the tool uses Copr's custom build method (`copr-cli buildcustom`) with a generated script that:
+Some Fedora SRPMs need small adjustments when rebuilt on EL9. The manifest
+supports optional per-package customizations that use Copr's custom build method
+(`copr-cli buildcustom`) with a generated script. Supported customizations are:
+
+- `skip_tests` -- inject `exit 0` after `%check`
+- `spec_replacements` -- apply literal text replacements to the extracted `.spec`
+  file before build (for example, renaming a Fedora-only `BuildRequires` to its
+  EL9 equivalent)
+
+The generated script:
 
 1. Downloads the SRPM from Koji (with retry for robustness)
 2. Extracts it with `rpm2cpio` / `cpio`
 3. Deletes the original `.src.rpm` so Copr doesn't use it
-4. Patches the `.spec` file to insert `exit 0` immediately after `%check`
+4. Applies any requested literal `.spec` replacements
+5. Optionally patches the `.spec` file to insert `exit 0` immediately after `%check`
 
 Copr then builds directly from the unpacked `.spec` and source files in the result directory (`.`), without needing `rpmbuild -bs` repacking. The custom build uses `--enable-net on` (so the script can download the SRPM) and declares `curl rpm cpio` as script build dependencies.
 
@@ -151,5 +163,5 @@ The dry-run output indicates which packages will skip tests.
 5. Invalid manifests are rejected before any external service calls
 6. A failed Copr build halts the process immediately with a clear error identifying the failed build
 7. All failures produce actionable error messages (with the underlying cause from the build service), not raw stack traces
-8. Build environment differences between Fedora and EL9 (e.g. autoconf version) are handled declaratively through the manifest, without per-SRPM patching
+8. Build environment differences between Fedora and EL9 (e.g. autoconf version or small spec-file renames) are handled declaratively through the manifest
 9. Packages with long-running test suites (e.g. HDF5 MPI tests) can skip `%check` via the manifest's `skip_tests` flag, or use an extended build timeout

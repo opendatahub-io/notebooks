@@ -58,12 +58,31 @@ Run `--dry-run` first to verify the plan.
 | `nvr` | yes | Fedora Name-Version-Release (e.g. `hdf5-1.14.6-6.fc43`) |
 | `note` | no | Why this package is needed |
 | `skip_tests` | no | Skip `%check` section (default: false) |
+| `spec_replacements` | no | Literal `.spec` text replacements applied before build |
 
 Top-level manifest fields: `copr_project`, `koji_tag`, `chroots`, `chroot_packages`, `build_timeout`.
 
 ### Skipping tests
 
 Some packages have test suites that are too slow or fail on EL9. Set `skip_tests: true` to inject `exit 0` after `%check` in the spec file via Copr custom builds.
+
+### Spec replacements
+
+Some Fedora SRPMs need small spec-file adjustments to rebuild on EL9, such as
+renaming a `BuildRequires` package that has a different name in the target
+buildroot. Set `spec_replacements` to apply literal text replacements to the
+extracted `.spec` file before Copr builds it:
+
+```yaml
+packages:
+  - name: thrift
+    nvr: thrift-0.24.0-1.fc46
+    spec_replacements:
+      - old: "BuildRequires: openssl3-devel"
+        new: "BuildRequires: openssl-devel"
+```
+
+Packages with either `skip_tests` or `spec_replacements` use Copr custom builds.
 
 ## How it works
 
