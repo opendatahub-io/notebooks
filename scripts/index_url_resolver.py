@@ -47,7 +47,7 @@ _BASE_IMAGE_RE = re.compile(
 )
 _RELEASE_OVERRIDE_RE = re.compile(r"^(?P<minor>\d+\.\d+)(?:-EA(?P<ea>\d+))?$")
 _ACCELERATOR_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"^cpu$"), "cpu"),
+    (re.compile(r"^cpu(?:-el\d+(?:\.\d+)?)?$"), "cpu"),
     (re.compile(r"^cuda-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "cuda"),
     (re.compile(r"^rocm-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "rocm"),
 )

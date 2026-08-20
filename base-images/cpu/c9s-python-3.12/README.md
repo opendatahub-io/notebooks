@@ -4,7 +4,7 @@
 
 ```commandline
 podman run --rm --pull=always quay.io/sclorg/python-312-c9s:c9s rpm -qa '*' | sort > /tmp/scl_packages.txt
-podman run --rm --pull=always quay.io/aipcc/base-images/cpu:3.1 rpm -qa '*' | sort > /tmp/aipcc_packages.txt
+podman run --rm --pull=always quay.io/aipcc/base-images/cpu-el9.8:3.6.0-ea.1 rpm -qa '*' | sort > /tmp/aipcc_packages.txt
 ```
 
 ```python

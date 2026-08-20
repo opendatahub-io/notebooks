@@ -122,8 +122,8 @@ artifacts:
 
 - `release.full_version` drives RHDS release selection and the managed
   `RELEASE` value written to build-args files and the root `Makefile`
-- `release.rhds_os_base` selects the RHDS CUDA and ROCm repository suffix such as
-  `el9.6`
+- `release.rhds_os_base` selects the RHDS repository OS suffix such as
+  `el9.8` (CPU: `cpu-el9.8`; CUDA/ROCm: `cuda-13.0-el9.8`)
 - `release.python_version` selects the managed `RELEASE_PYTHON_VERSION` value and
   drives CPU ODH repository naming
 
@@ -195,9 +195,9 @@ the selected release-and-phase family.
 
 Representative repository shapes:
 
-- CPU: `quay.io/aipcc/base-images/cpu`
-- CUDA: `quay.io/aipcc/base-images/cuda-13.0-el9.6`
-- ROCm: `quay.io/aipcc/base-images/rocm-7.1-el9.6`
+- CPU: `quay.io/aipcc/base-images/cpu-el9.8`
+- CUDA: `quay.io/aipcc/base-images/cuda-13.0-el9.8`
+- ROCm: `quay.io/aipcc/base-images/rocm-7.1-el9.8`
 
 ### Same-Release Bundle Phase Inference
 

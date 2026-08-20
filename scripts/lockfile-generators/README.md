@@ -978,9 +978,9 @@ podman build \
     -f codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu \
     --platform linux/arm64 \
     -t code-server-test \
-    --build-arg BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-1782270118 \
+    --build-arg BASE_IMAGE=quay.io/aipcc/base-images/cpu-el9.8:3.6.0-ea.1-1787158567 \
     --build-arg PYLOCK_FLAVOR=cpu \
-    --build-arg INDEX_URL=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/ \
+    --build-arg INDEX_URL=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.6-EA1/cpu-ubi9/simple/ \
     -v "$(realpath ./cachi2/output):/cachi2/output:z" \
     -v "$(realpath ./cachi2/output/deps/rpm/aarch64/repos.d):/etc/yum.repos.d/:z" \
     .

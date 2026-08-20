@@ -71,7 +71,7 @@ printf "%s/entitlement:/etc/pki/entitlement\n%s/consumer:/etc/pki/consumer\n" "$
 ### Verify
 
 ```bash
-podman run --rm --platform=linux/amd64 --user 0 quay.io/aipcc/base-images/cpu:3.4.0-1774635932 \
+podman run --rm --platform=linux/amd64 --user 0 quay.io/aipcc/base-images/cpu-el9.8:3.6.0-ea.1-1787158567 \
   bash -c "subscription-manager identity && subscription-manager refresh && dnf repolist"
 ```
 
@@ -87,7 +87,7 @@ For a stricter pass/fail check that actually validates CDN access (including EUS
 download metadata from one small EUS repo (~16 MB, ~6 seconds):
 
 ```bash
-podman run --rm --platform=linux/amd64 --user 0 quay.io/aipcc/base-images/cpu:3.4.0-1774635932 \
+podman run --rm --platform=linux/amd64 --user 0 quay.io/aipcc/base-images/cpu-el9.8:3.6.0-ea.1-1787158567 \
   bash -c "subscription-manager refresh \
     && dnf makecache --repo=codeready-builder-for-rhel-9-x86_64-eus-rpms"
 ```
@@ -105,7 +105,7 @@ Python index URL from that `BASE_IMAGE`.
 podman build --no-cache \
   --platform=linux/amd64 \
   -f runtimes/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu \
-  --build-arg BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.4.0-1774635932 \
+  --build-arg BASE_IMAGE=quay.io/aipcc/base-images/cpu-el9.8:3.6.0-ea.1-1787158567 \
   --build-arg PYLOCK_FLAVOR=cpu \
   -t my-runtime-minimal:latest \
   .

@@ -19,7 +19,7 @@ set -euo pipefail
 
 # --- Configuration & Defaults ---
 SCRIPTS_PATH="scripts/lockfile-generators"
-UBI9_IMAGE="registry.redhat.io/ubi9:9.6"
+UBI9_IMAGE="registry.redhat.io/ubi9:9.8"
 ODH_BASE_IMAGE="quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest"
 
 RPM_INPUT=""
@@ -102,7 +102,7 @@ PREFETCH_DIR="$(dirname "$RPM_INPUT")"
 # With activation key + org: use UBI9 and pin release. Otherwise: use ODH base image (CentOS Stream), no releasever.
 if [[ -n "$ACTIVATION_KEY" ]] && [[ -n "$ORG" ]]; then
   BASE_IMAGE="$UBI9_IMAGE"
-  RHEL_VERSION="9.6"
+  RHEL_VERSION="9.8"
 else
   BASE_IMAGE="$ODH_BASE_IMAGE"
   RHEL_VERSION=""

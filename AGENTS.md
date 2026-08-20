@@ -2,7 +2,7 @@
 
 This repository builds containerized Jupyter, Code-Server, and runtime images for the
 OpenDataHub ecosystem. Stack: Python 3.14, `uv`, Podman/Docker, GNU Make, building
-multi-stage Dockerfiles on Centos 9 Stream (ODH) and RHEL 9.6 EUS (RHOAI) with Python
+multi-stage Dockerfiles on Centos 9 Stream (ODH) and RHEL 9.8 EUS (RHOAI) with Python
 3.12 virtual env inside.
 
 This file is the short entry point for AI agents working in this repository. Keep it lean,
@@ -62,7 +62,7 @@ that embeds that stage. Do not assume there is one shared parent image definitio
 
 `PRODUCT` selects the product variant (ODH midstream vs RHOAI downstream), not whether
 the build runs on Konflux/Tekton. ODH workbenches stack on c9s odh-base-images;
-RHOAI stacks on RHEL 9.6 AIPCC bases (`ubi9-python-*` paths are EL9 naming only).
+RHOAI stacks on RHEL 9.8 AIPCC bases (`ubi9-python-*` paths are EL9 naming only).
 See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 [CONTRIBUTING.md](CONTRIBUTING.md) for local-build gotchas.
 
