@@ -111,6 +111,27 @@ def test_minimal_valid_config_passes_validation() -> None:
             [f"missing packageRule: {validator.ODH_BASE_ENABLE_RULE_DESCRIPTION!r}"],
             id="missing-odh-base-enable",
         ),
+        pytest.param(
+            lambda config: testdata.with_package_rules_removed(
+                config,
+                lambda rule: rule.get("description", "").startswith(validator.SEPARATE_MINOR_PATCH_RULE_DESCRIPTION),
+            ),
+            [f"missing packageRule: {validator.SEPARATE_MINOR_PATCH_RULE_DESCRIPTION!r}"],
+            id="missing-separate-minor-patch-rule",
+        ),
+        pytest.param(
+            lambda config: {
+                **config,
+                "packageRules": [
+                    {**rule, "separateMinorPatch": False}
+                    if rule.get("description", "").startswith(validator.SEPARATE_MINOR_PATCH_RULE_DESCRIPTION)
+                    else rule
+                    for rule in config["packageRules"]
+                ],
+            },
+            ["separateMinorPatch rule must set separateMinorPatch: true"],
+            id="separate-minor-patch-rule-disabled",
+        ),
     ],
 )
 def test_validate_config_reports_expected_errors(
