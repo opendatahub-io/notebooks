@@ -70,7 +70,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import tomllib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -250,7 +249,7 @@ def discover_all_image_project_dirs() -> list[Path]:
     for base_name in MAIN_DIRS:
         base = ROOT_DIR / base_name
         if base.is_dir():
-            dirs.update(p.parent for p in base.rglob("pyproject.toml"))
+            dirs.update(p.parent for p in base.rglob("pyproject.toml") if extract_python_version(p.parent) is not None)
     return sorted(dirs)
 
 
@@ -503,19 +502,10 @@ def generate_baseline_alignment_constraints(project_dir: Path, log: LogBuffer) -
         "",
     ]
     content = "\n".join(header + generated) + "\n"
-    temp_file = tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        suffix=f".{AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME}",
-        prefix="pylocks-",
-        delete=False,
-    )
-    try:
-        temp_file.write(content)
-    finally:
-        temp_file.close()
-    alignment_file = Path(temp_file.name)
-    log.print(f"  🔗 Generated temporary AIPCC alignment constraints: {alignment_file}")
+    # Repo-relative path so uv's pylock.toml header is identical on macOS and Linux CI.
+    alignment_file = project_dir / AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME
+    alignment_file.write_text(content, encoding="utf-8")
+    log.print(f"  🔗 Generated AIPCC alignment constraints: {alignment_file}")
     return alignment_file
 
 
@@ -736,9 +726,8 @@ def process_directory(
 
     python_version = extract_python_version(tdir)
     if python_version is None:
-        log.warning(f"Could not extract valid Python version from directory name: {tdir}")
-        log.warning("Expected directory format: .../ubi9-python-X.Y")
-        return tdir, False, log
+        log.warning(f"Skipping non-image pyproject.toml (not .../ubi9-python-X.Y): {tdir}")
+        return tdir, True, log
 
     flavors = detect_flavors(tdir)
     if not flavors:

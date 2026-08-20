@@ -47,8 +47,8 @@ RhdsOsBase = Annotated[
     StringConstraints(pattern=RHDS_OS_BASE_PATTERN),
     Field(
         title="RHDS OS base",
-        description='RHDS CUDA/ROCm repository OS suffix, for example "el9.6".',
-        examples=["el9.6"],
+        description='RHDS repository OS suffix for CPU, CUDA, and ROCm, for example "el9.8".',
+        examples=["el9.8"],
     ),
 ]
 RhdsFastCpuVersion = Annotated[
@@ -224,7 +224,7 @@ def build_json_schema() -> dict[str, Any]:
         "schema_version": 1,
         "release": {
             "full_version": "3.5.0",
-            "rhds_os_base": "el9.6",
+            "rhds_os_base": "el9.8",
             "python_version": "3.12",
         },
         "artifacts": {

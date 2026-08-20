@@ -33,7 +33,7 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
-ARG RHEL_VERSION=9.6
+ARG RHEL_VERSION=9.8
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
@@ -149,7 +149,7 @@ COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-package
 
 # The raw RHEL Python base does not bootstrap uv the way the AIPCC notebook
 # base does, so install it explicitly for the phase-1 online PyPI install.
-ARG UV_VERSION=0.12.1
+ARG UV_VERSION=0.12.5
 RUN python3 -m pip install --no-cache-dir "uv==${UV_VERSION}"
 
 ENV SHELL=/bin/bash
