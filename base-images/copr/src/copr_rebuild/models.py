@@ -7,6 +7,15 @@ from pydantic import BaseModel, Field
 from pydantic.json_schema import GenerateJsonSchema
 
 
+class SpecReplacement(BaseModel):
+    """A literal text replacement applied to the spec file before build."""
+
+    model_config = {"extra": "forbid"}
+
+    old: str = Field(description="Literal text to replace in the spec file")
+    new: str = Field(description="Replacement text for the spec file")
+
+
 class PackageEntry(BaseModel):
     """A single entry in the rebuild manifest."""
 
@@ -18,6 +27,10 @@ class PackageEntry(BaseModel):
     skip_tests: bool = Field(
         default=False,
         description="Skip the %check section when building (injects 'exit 0' after %check in the spec)",
+    )
+    spec_replacements: list[SpecReplacement] = Field(
+        default_factory=list,
+        description="Literal text replacements to apply to the extracted .spec file before build",
     )
 
 

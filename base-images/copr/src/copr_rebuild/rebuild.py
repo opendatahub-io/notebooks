@@ -36,14 +36,16 @@ def load_manifest(path: Path) -> Manifest:
 def resolve_package_metadata(
     manifest: Manifest,
     koji_client: KojiClient,
-) -> tuple[dict[str, PackageMetadata], frozenset[str]]:
+) -> tuple[dict[str, PackageMetadata], frozenset[str], dict[str, tuple[tuple[str, str], ...]]]:
     """Query Koji for metadata of all packages in the manifest.
 
     Returns:
-        Tuple of (packages dict keyed by name, frozenset of names with skip_tests).
+        Tuple of (packages dict keyed by name, frozenset of names with
+        skip_tests, spec replacements keyed by package name).
     """
     packages: dict[str, PackageMetadata] = {}
     skip_tests_names: set[str] = set()
+    spec_replacements_by_name: dict[str, tuple[tuple[str, str], ...]] = {}
     for entry in manifest.packages:
         logger.info("Querying Koji for %s ...", entry.nvr)
         meta = koji_client.get_package_metadata(entry.nvr)
@@ -56,7 +58,9 @@ def resolve_package_metadata(
         packages[meta.name] = meta
         if entry.skip_tests:
             skip_tests_names.add(meta.name)
-    return packages, frozenset(skip_tests_names)
+        if entry.spec_replacements:
+            spec_replacements_by_name[meta.name] = tuple((item.old, item.new) for item in entry.spec_replacements)
+    return packages, frozenset(skip_tests_names), spec_replacements_by_name
 
 
 def configure_chroots(manifest: Manifest, copr: CoprClient) -> None:
@@ -79,7 +83,7 @@ def run_dry_run(manifest: Manifest, koji_client: KojiClient) -> None:
         manifest: The validated manifest.
         koji_client: Client for querying Koji metadata.
     """
-    packages, _ = resolve_package_metadata(manifest, koji_client)
+    packages, _, _ = resolve_package_metadata(manifest, koji_client)
     waves = compute_build_waves(packages)
 
     print("Build plan:")
@@ -102,6 +106,8 @@ def run_dry_run(manifest: Manifest, koji_client: KojiClient) -> None:
             print(f"      SRPM: {meta.srpm_url}")
             if entries_by_name[pkg_name].skip_tests:
                 print("      [skip_tests: %check disabled]")
+            if entries_by_name[pkg_name].spec_replacements:
+                print(f"      [spec_replacements: {len(entries_by_name[pkg_name].spec_replacements)}]")
 
 
 def run_rebuild(manifest: Manifest, koji_client: KojiClient) -> None:
@@ -116,7 +122,7 @@ def run_rebuild(manifest: Manifest, koji_client: KojiClient) -> None:
         manifest: The validated manifest.
         koji_client: Client for querying Koji metadata.
     """
-    packages, skip_tests_names = resolve_package_metadata(manifest, koji_client)
+    packages, skip_tests_names, spec_replacements_by_name = resolve_package_metadata(manifest, koji_client)
     waves = compute_build_waves(packages)
 
     copr = CoprClient(project=manifest.copr_project)
@@ -133,6 +139,7 @@ def run_rebuild(manifest: Manifest, koji_client: KojiClient) -> None:
         wave_items,
         timeout=manifest.build_timeout,
         skip_tests_names=frozenset(skip_tests_names),
+        spec_replacements_by_name=spec_replacements_by_name,
     )
 
     # Report submitted build IDs
