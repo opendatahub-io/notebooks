@@ -108,6 +108,10 @@ spec:
     type: string
     default: 'false'
     description: When "true", omit the build history (history timestamps, layer metadata, etc.) from the resulting image.
+  - name: rhel-subscription-activation-key
+    default: 'custom-activation-key'
+    type: string
+    description: The name of the Kubernetes secret containing org and activationkey for RHEL subscription (used by prefetch-dependencies and buildah for hermetic RPM fetch and builds). See https://konflux-ci.dev/docs/building/activation-keys-subscription/
   results:
   - description: ""
     name: IMAGE_URL
@@ -274,6 +278,8 @@ spec:
         runtime:
           concurrency_limit: 8
           subprocess_timeout: 3600
+    - name: ACTIVATION_KEY
+      value: $(params.rhel-subscription-activation-key)
     runAfter:
     - clone-repository
     taskRef:
@@ -320,6 +326,8 @@ spec:
       value: $(params.build-args-file)
     - name: PRIVILEGED_NESTED
       value: $(params.privileged-nested)
+    - name: ACTIVATION_KEY
+      value: $(params.rhel-subscription-activation-key)
     - name: SOURCE_URL
       value: $(tasks.clone-repository.results.url)
     - name: HTTP_PROXY
