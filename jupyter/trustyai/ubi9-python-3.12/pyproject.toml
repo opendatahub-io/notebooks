@@ -52,7 +52,12 @@ dependencies = [
 exclude-dependencies = ["py-spy"]
 
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+    # RHAIENG-7088: split by platform_machine so uv resolves arch-specific wheels
+    # and catches packages that lack wheels for ppc64le / s390x.
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*' and platform_machine == 'aarch64'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*' and platform_machine == 'ppc64le'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*' and platform_machine == 's390x'",
 ]
 override-dependencies = [
     # odh-elyra pins jupyter-resource-usage<1.2.dev0, but 1.1.1 needs psutil<6 while
