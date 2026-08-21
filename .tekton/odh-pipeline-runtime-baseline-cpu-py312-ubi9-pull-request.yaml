@@ -54,6 +54,8 @@ spec:
   - name: build-args-file
     value: runtimes/baseline/ubi9-python-3.12/build-args/cpu.conf
   # Phase 1: non-hermetic online RPM + PyPI install (see Dockerfile header).
+  - name: ACTIVATION_KEY
+    value: custom-notebooks-secret
   - name: hermetic
     value: 'false'
   pipelineRef:
