@@ -72,7 +72,8 @@ function install_packages() {
     # PyArrow
     PKGS+=(
         "utf8proc"
-        # RHELAI
+        # EPEL 9 thrift-0.15.0 is too old for current AIPCC pyarrow wheels;
+        # the Copr rebuild provides libthrift-0.24.0.so instead.
         "re2" "thrift"
     )
 
@@ -478,6 +479,10 @@ function main() {
     if [[ "$(get_os_vendor)" == "centos" ]]; then
         if ! test -f /usr/lib64/libhdf5.so.310; then
             echo "Error: libhdf5.so.310 was not found after installation (see https://github.com/opendatahub-io/notebooks/issues/2944)"
+            exit 1
+        fi
+        if ! test -f /usr/lib64/libthrift-0.24.0.so; then
+            echo "Error: libthrift-0.24.0.so was not found after installation (current pyarrow wheels require it)"
             exit 1
         fi
     fi

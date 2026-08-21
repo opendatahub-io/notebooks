@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shlex
@@ -22,17 +23,51 @@ _FAILED = "failed"
 _CANCELED = "canceled"
 _TERMINAL_STATUSES = frozenset({_SUCCEEDED, _FAILED, _CANCELED})
 
-_SKIP_TESTS_SCRIPT_TEMPLATE = """\
-#!/bin/bash
-set -Eeuxo pipefail
-curl --retry 5 --retry-delay 3 --fail -L -o original.src.rpm {srpm_url}
-rpm2cpio original.src.rpm | cpio -idmv
-rm original.src.rpm
-sed -i '/^%check/a exit 0' *.spec
-"""
-
 _SCRIPT_CHROOT = "fedora-rawhide-x86_64"
-_SCRIPT_BUILDDEPS = "curl rpm cpio"
+_SCRIPT_BUILDDEPS = "curl rpm cpio python3"
+
+
+def build_custom_build_script(
+    srpm_url: str,
+    *,
+    skip_tests: bool = False,
+    spec_replacements: tuple[tuple[str, str], ...] = (),
+) -> str:
+    """Build the Copr custom-build script for an extracted SRPM."""
+
+    script_lines = [
+        "#!/bin/bash",
+        "set -Eeuxo pipefail",
+        f"curl --retry 5 --retry-delay 3 --fail -L -o original.src.rpm {shlex.quote(srpm_url)}",
+        "rpm2cpio original.src.rpm | cpio -idmv",
+        "rm original.src.rpm",
+    ]
+
+    if spec_replacements:
+        script_lines.extend(
+            [
+                "python3 - <<'PY'",
+                "from pathlib import Path",
+                "",
+                "spec_paths = sorted(Path('.').glob('*.spec'))",
+                "if len(spec_paths) != 1:",
+                "    raise SystemExit(f'Expected exactly one spec file, found {len(spec_paths)}')",
+                "spec_path = spec_paths[0]",
+                "spec_text = spec_path.read_text(encoding='utf-8')",
+                f"replacements = {json.dumps(spec_replacements)}",
+                "for old, new in replacements:",
+                "    if old not in spec_text:",
+                "        raise SystemExit(f'Expected spec text not found: {old!r}')",
+                "    spec_text = spec_text.replace(old, new)",
+                "spec_path.write_text(spec_text, encoding='utf-8')",
+                "PY",
+            ]
+        )
+
+    if skip_tests:
+        script_lines.append("sed -i '/^%check/a exit 0' *.spec")
+
+    return "\n".join(script_lines) + "\n"
 
 
 class CoprBuildError(Exception):
@@ -178,17 +213,22 @@ class CoprClient:
         srpm_url: str,
         *,
         timeout: int | None = None,
+        skip_tests: bool = False,
+        spec_replacements: tuple[tuple[str, str], ...] = (),
         with_build_id: int | None = None,
         after_build_id: int | None = None,
     ) -> int:
-        """Submit a custom build that patches the spec to skip %check.
+        """Submit a custom build that patches the extracted spec before build.
 
-        Downloads the SRPM, extracts it, injects ``exit 0`` after ``%check``
-        in the spec file, and lets Copr build from the unpacked content.
+        Downloads the SRPM, extracts it, optionally applies literal spec-file
+        replacements, optionally injects ``exit 0`` after ``%check``, and lets
+        Copr build from the unpacked content.
 
         Args:
             srpm_url: URL to the source RPM to download and patch.
             timeout: Build timeout in seconds.
+            skip_tests: Whether to inject ``exit 0`` after ``%check``.
+            spec_replacements: Literal spec-file replacements to apply before build.
             with_build_id: Add this build to the same batch as the given build ID.
             after_build_id: Chain this build after the given build ID's batch.
 
@@ -199,8 +239,18 @@ class CoprClient:
             RuntimeError: If the build ID cannot be parsed from copr-cli output.
             CoprCliError: If copr-cli returns a non-zero exit code.
         """
-        logger.info("Submitting custom build (skip_tests) to %s: %s", self.project, srpm_url)
-        script_content = _SKIP_TESTS_SCRIPT_TEMPLATE.format(srpm_url=shlex.quote(srpm_url))
+        logger.info(
+            "Submitting custom build to %s: %s (skip_tests=%s, spec_replacements=%d)",
+            self.project,
+            srpm_url,
+            skip_tests,
+            len(spec_replacements),
+        )
+        script_content = build_custom_build_script(
+            srpm_url,
+            skip_tests=skip_tests,
+            spec_replacements=spec_replacements,
+        )
 
         fd, script_path = tempfile.mkstemp(suffix=".sh", prefix="copr_skip_tests_")
         try:
@@ -323,6 +373,7 @@ class CoprClient:
         *,
         timeout: int | None = None,
         skip_tests_names: frozenset[str] = frozenset(),
+        spec_replacements_by_name: dict[str, tuple[tuple[str, str], ...]] | None = None,
     ) -> list[list[int]]:
         """Submit all build waves at once using Copr batch ordering.
 
@@ -331,18 +382,23 @@ class CoprClient:
         is chained after the previous wave's batch (``--after-build-id``)
         so Copr enforces the correct build order server-side.
 
-        Packages whose names appear in ``skip_tests_names`` are submitted
-        via ``submit_custom_build`` (which patches ``%check`` to skip tests).
+        Packages whose names appear in ``skip_tests_names`` or
+        ``spec_replacements_by_name`` are submitted via ``submit_custom_build``.
 
         Args:
             waves: List of waves, where each wave is a list of
                 ``(package_name, srpm_url)`` tuples.
             timeout: Build timeout in seconds per build.
             skip_tests_names: Package names that should skip ``%check``.
+            spec_replacements_by_name: Literal spec-file replacements keyed by
+                package name.
 
         Returns:
             List of lists of Copr build IDs (one inner list per wave).
         """
+        if spec_replacements_by_name is None:
+            spec_replacements_by_name = {}
+
         all_wave_ids: list[list[int]] = []
         prev_wave_anchor: int | None = None
 
@@ -351,18 +407,37 @@ class CoprClient:
             wave_anchor: int | None = None
 
             for i, (name, url) in enumerate(wave_items):
-                submit = self.submit_custom_build if name in skip_tests_names else self.submit_build
+                skip_tests = name in skip_tests_names
+                spec_replacements = spec_replacements_by_name.get(name, ())
+                use_custom_build = skip_tests or bool(spec_replacements)
                 if i == 0:
                     # First build in the wave: chain after previous wave (if any)
-                    build_id = submit(
+                    if use_custom_build:
+                        build_id = self.submit_custom_build(
+                            url,
+                            timeout=timeout,
+                            skip_tests=skip_tests,
+                            spec_replacements=spec_replacements,
+                            after_build_id=prev_wave_anchor,
+                        )
+                    else:
+                        build_id = self.submit_build(
+                            url,
+                            timeout=timeout,
+                            after_build_id=prev_wave_anchor,
+                        )
+                    wave_anchor = build_id
+                # Subsequent builds: same batch as the first build in this wave
+                elif use_custom_build:
+                    build_id = self.submit_custom_build(
                         url,
                         timeout=timeout,
-                        after_build_id=prev_wave_anchor,
+                        skip_tests=skip_tests,
+                        spec_replacements=spec_replacements,
+                        with_build_id=wave_anchor,
                     )
-                    wave_anchor = build_id
                 else:
-                    # Subsequent builds: same batch as the first build in this wave
-                    build_id = submit(
+                    build_id = self.submit_build(
                         url,
                         timeout=timeout,
                         with_build_id=wave_anchor,

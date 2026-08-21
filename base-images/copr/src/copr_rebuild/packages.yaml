@@ -43,3 +43,18 @@ packages:
   - name: zeromq
     nvr: zeromq-4.3.5-22.fc43
     note: "provides libzmq >= 4.3.5 for pyzmq"
+  - name: thrift
+    nvr: thrift-0.24.0-1.fc46
+    note: "provides libthrift-0.24.0.so required by pyarrow 24.x/25.x"
+    spec_replacements:
+      - old: "BuildRequires: openssl3-devel"
+        new: "BuildRequires: openssl-devel"
+      - old: |-
+          # explicitly set python3
+          shopt -s globstar
+          sed -i -E 's@^(#!.*/env) *python *$@\1 python3@' **/*.py
+        new: |-
+          # explicitly set python3
+          shopt -s globstar
+          sed -i -E 's@^(#!.*/env) *python *$@\1 python3@' **/*.py
+          sed -i "s|from setuptools.errors import CompileError, ExecError, PlatformError|from distutils.errors import CompileError, DistutilsExecError as ExecError, DistutilsPlatformError as PlatformError|" lib/py/setup.py

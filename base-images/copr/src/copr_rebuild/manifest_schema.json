@@ -26,6 +26,14 @@
           "description": "Skip the %check section when building (injects 'exit 0' after %check in the spec)",
           "title": "Skip Tests",
           "type": "boolean"
+        },
+        "spec_replacements": {
+          "description": "Literal text replacements to apply to the extracted .spec file before build",
+          "items": {
+            "$ref": "#/$defs/SpecReplacement"
+          },
+          "title": "Spec Replacements",
+          "type": "array"
         }
       },
       "required": [
@@ -33,6 +41,28 @@
         "nvr"
       ],
       "title": "PackageEntry",
+      "type": "object"
+    },
+    "SpecReplacement": {
+      "additionalProperties": false,
+      "description": "A literal text replacement applied to the spec file before build.",
+      "properties": {
+        "old": {
+          "description": "Literal text to replace in the spec file",
+          "title": "Old",
+          "type": "string"
+        },
+        "new": {
+          "description": "Replacement text for the spec file",
+          "title": "New",
+          "type": "string"
+        }
+      },
+      "required": [
+        "old",
+        "new"
+      ],
+      "title": "SpecReplacement",
       "type": "object"
     }
   },
