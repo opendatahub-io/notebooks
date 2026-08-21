@@ -53,6 +53,8 @@ spec:
     value: .
   - name: build-args-file
     value: runtimes/baseline/ubi9-python-3.12/build-args/cpu.conf
+  - name: rhel-subscription-activation-key
+    value: custom-notebooks-secret
   # Phase 1: non-hermetic online RPM + PyPI install (see Dockerfile header).
   - name: hermetic
     value: 'false'
