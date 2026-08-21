@@ -50,6 +50,16 @@ dependencies = [
 [tool.uv]
 # FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
 exclude-dependencies = ["py-spy"]
+# Reject source distributions — require pre-built wheels for all deps.
+no-build = true
+# Workaround for https://github.com/astral-sh/uv/issues/12607 —
+# no-build blocks local source trees too
+no-binary-package = [
+    "odh-notebooks-meta-workbench-datascience-deps",
+    "odh-notebooks-meta-db-connectors-deps",
+    "odh-notebooks-meta-jupyterlab-deps",
+    "odh-notebooks-meta-jupyterlab-datascience-deps",
+]
 
 environments = [
     # RHAIENG-7088: split by platform_machine so uv resolves arch-specific wheels
