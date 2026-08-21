@@ -669,3 +669,116 @@ def test_resolve_pr_scoped_global_input_expands_to_all(
     all_dirs = pg.discover_all_image_project_dirs()
     assert scoped == all_dirs, f"{global_input} change should expand to all image dirs"
     assert len(scoped) > 1, "expected multiple image project dirs for global-input fallback"
+
+
+class TestReplaceOrInsertTomlArray:
+    def test_inserts_after_tool_uv_when_absent(self) -> None:
+        text = '[project]\nname = "x"\n\n[tool.uv]\nexclude-dependencies = ["py-spy"]\n'
+        result = pg._replace_or_insert_toml_array(text, "required-environments", ["a", "b"])
+        assert 'required-environments = [\n    "a",\n    "b",\n]' in result
+        assert result.index("[tool.uv]") < result.index("required-environments")
+
+    def test_replaces_existing_array(self) -> None:
+        text = '[tool.uv]\nrequired-environments = [\n    "old",\n]\nexclude-dependencies = ["py-spy"]\n'
+        result = pg._replace_or_insert_toml_array(text, "required-environments", ["new1", "new2"])
+        assert "old" not in result
+        assert '"new1"' in result
+        assert '"new2"' in result
+        assert 'exclude-dependencies = ["py-spy"]' in result, "unrelated keys must survive the replace"
+
+    def test_appends_tool_uv_table_when_missing_entirely(self) -> None:
+        text = '[project]\nname = "x"\n'
+        result = pg._replace_or_insert_toml_array(text, "required-environments", ["a"])
+        assert "[tool.uv]" in result
+        assert '"a"' in result
+
+
+class TestPatchedFlavorEnvironments:
+    def test_injects_required_environments_for_known_flavor(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text('[project]\nname = "x"\n\n[tool.uv]\nexclude-dependencies = []\n', encoding="utf-8")
+
+        with pg._patched_flavor_environments(pyproject, "rocm"):
+            patched = pyproject.read_text(encoding="utf-8")
+            assert "required-environments" in patched
+            assert "platform_machine == 'x86_64'" in patched
+            assert "ppc64le" not in patched, "rocm should only require x86_64"
+
+        assert (
+            pyproject.read_text(encoding="utf-8") == '[project]\nname = "x"\n\n[tool.uv]\nexclude-dependencies = []\n'
+        ), "file must be restored byte-for-byte after the context manager exits"
+
+    def test_cpu_flavor_requires_all_four_architectures(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text('[project]\nname = "x"\n', encoding="utf-8")
+
+        with pg._patched_flavor_environments(pyproject, "cpu"):
+            patched = pyproject.read_text(encoding="utf-8")
+            for arch in ("x86_64", "aarch64", "ppc64le", "s390x"):
+                assert f"platform_machine == '{arch}'" in patched
+
+    def test_noop_for_unknown_flavor(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        original = '[project]\nname = "x"\n'
+        pyproject.write_text(original, encoding="utf-8")
+
+        with pg._patched_flavor_environments(pyproject, "public-index"):
+            assert pyproject.read_text(encoding="utf-8") == original
+
+    def test_noop_when_pyproject_missing(self, tmp_path: Path) -> None:
+        missing = tmp_path / "pyproject.toml"
+        with pg._patched_flavor_environments(missing, "cpu"):
+            assert not missing.exists()
+
+    def test_restores_file_even_if_body_raises(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        original = '[project]\nname = "x"\n'
+        pyproject.write_text(original, encoding="utf-8")
+
+        with pytest.raises(RuntimeError):
+            with pg._patched_flavor_environments(pyproject, "cpu"):
+                assert "required-environments" in pyproject.read_text(encoding="utf-8")
+                raise RuntimeError("boom")
+
+        assert pyproject.read_text(encoding="utf-8") == original
+
+
+def test_run_lock_patches_required_environments_during_subprocess_call(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """RHAIENG-7088: required-environments must be present during uv pip compile and
+    removed again afterward, so it never leaks into the committed pyproject.toml."""
+    project_dir = tmp_path / "jupyter" / "trustyai" / "ubi9-python-3.12"
+    project_dir.mkdir(parents=True)
+    original_pyproject = '[project]\nname = "test"\n\n[tool.uv]\nexclude-dependencies = ["py-spy"]\n'
+    (project_dir / "pyproject.toml").write_text(original_pyproject, encoding="utf-8")
+    log = pg.LogBuffer()
+    seen_during_call: dict[str, str] = {}
+
+    def fake_run(cmd, **kwargs):
+        seen_during_call["pyproject"] = (project_dir / "pyproject.toml").read_text(encoding="utf-8")
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    success = pg.run_lock(
+        project_dir,
+        "cpu",
+        ["--default-index=https://example.invalid/simple/?format=json"],
+        pg.IndexMode.rh_index,
+        "3.12",
+        False,
+        False,
+        "2026-05-18T00:00:00Z",
+        log,
+    )
+
+    assert success is True
+    assert "required-environments" in seen_during_call["pyproject"], (
+        "required-environments must be injected while uv pip compile runs"
+    )
+    assert "s390x" in seen_during_call["pyproject"], "cpu flavor must require s390x"
+    assert (project_dir / "pyproject.toml").read_text(encoding="utf-8") == original_pyproject, (
+        "pyproject.toml must be restored to its original content after run_lock returns"
+    )

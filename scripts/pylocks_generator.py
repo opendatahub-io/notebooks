@@ -66,6 +66,7 @@ Notes:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import subprocess
@@ -115,6 +116,15 @@ NO_EMIT_PACKAGES = (
 
 FLAVORS = ("cpu", "cuda", "rocm")
 AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME = ".aipcc-alignment.constraints.txt"
+
+# Target architectures per flavor, matching what each RH index provides.
+# Used for `required-environments` (fail at lock time if wheels are missing for an arch,
+# instead of discovering it during the container build — RHAIENG-5451 / RHAIENG-7088).
+FLAVOR_MACHINES: dict[str, list[str]] = {
+    "cpu": ["x86_64", "aarch64", "ppc64le", "s390x"],
+    "cuda": ["x86_64", "aarch64"],
+    "rocm": ["x86_64"],
+}
 
 # Baseline public-index images inherit direct dependency lock versions from paired
 # AIPCC-index image requirements files.
@@ -565,6 +575,47 @@ def lock_extra_index_flags_from_env() -> list[str]:
     return flags
 
 
+def _replace_or_insert_toml_array(text: str, key: str, values: list[str]) -> str:
+    """Replace an existing TOML array or insert it after ``[tool.uv]``."""
+    items = ",\n".join(f'    "{v}"' for v in values)
+    block = f"{key} = [\n{items},\n]"
+    pattern = re.compile(
+        rf"^{re.escape(key)}\s*=\s*\[.*?^\]",
+        re.MULTILINE | re.DOTALL,
+    )
+    if pattern.search(text):
+        return pattern.sub(block, text)
+    if "\n[tool.uv]" in text:
+        return text.replace("\n[tool.uv]", f"\n[tool.uv]\n{block}", 1)
+    return text + f"\n[tool.uv]\n{block}\n"
+
+
+@contextlib.contextmanager
+def _patched_flavor_environments(pyproject_path: Path, flavor: str):
+    """Temporarily inject per-flavor ``required-environments`` into pyproject.toml.
+
+    ``required-environments`` is a project-only setting (no CLI flag, no uv.toml support),
+    so we patch the file on disk before ``uv pip compile`` and restore it afterward.
+    It validates that wheels exist for every target architecture at lock time — without
+    it, ``uv pip compile --universal`` silently accepts a version missing wheels for an
+    architecture the `environments` marker doesn't distinguish (RHAIENG-7088).
+    """
+    machines = FLAVOR_MACHINES.get(flavor)
+    if not machines or not pyproject_path.is_file():
+        yield
+        return
+    original = pyproject_path.read_bytes()
+    try:
+        required_envs = [f"sys_platform == 'linux' and platform_machine == '{machine}'" for machine in machines]
+
+        text = original.decode()
+        text = _replace_or_insert_toml_array(text, "required-environments", required_envs)
+        pyproject_path.write_text(text)
+        yield
+    finally:
+        pyproject_path.write_bytes(original)
+
+
 def run_lock(
     project_dir: Path,
     flavor: str,
@@ -588,16 +639,16 @@ def run_lock(
         desc = f"{flavor.upper()} lock file"
         log.print(f"➡️ Generating {flavor.upper()} lock file...")
 
-    # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
-    # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
-    # now filters wheels by requires-python and marker disjointness even in --universal mode.
-    # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
-    #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
-    # Let's use --universal temporarily, and in the future we can switch to using uv.lock
-    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or symlink `ln -s uv.lock.d/uv.${flavor}.lock uv.lock`
-    # Note: currently generating uv.lock.d/pylock.${flavor}.toml; future rename to uv.${flavor}.lock is planned
-    # See also --universal discussion with Gerard
-    #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
+    # --universal generates a multi-arch pylock.  uv 0.10.5+ (#18081) filters wheels by
+    # requires-python and marker disjointness even in --universal mode.  Combined with the
+    # `environments` setting in each pyproject.toml (Linux + CPython, no platform_machine
+    # axis), a package version missing wheels for one architecture is *not* rejected on
+    # its own — `required-environments` below (RHAIENG-7088) is what actually enforces
+    # per-architecture wheel coverage at lock-generation time.
+    #
+    # --python-platform linux is an alias for x86_64-unknown-linux-gnu and cannot produce
+    # multi-arch output, so --universal is the correct choice.
+    # Future: switch to uv.lock when https://github.com/astral-sh/uv/issues/6830 is resolved.
     cmd: list[str] = [
         str(UV),
         "pip",
@@ -646,20 +697,22 @@ def run_lock(
 
     compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
 
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=600,
-            env=compile_env,
-        )
-    except subprocess.TimeoutExpired:
-        log.warning(f"Timed out generating {desc} in {project_dir}")
-        (project_dir / output).unlink(missing_ok=True)
-        return False
+    pyproject_path = project_dir / "pyproject.toml"
+    with _patched_flavor_environments(pyproject_path, flavor):
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=600,
+                env=compile_env,
+            )
+        except subprocess.TimeoutExpired:
+            log.warning(f"Timed out generating {desc} in {project_dir}")
+            (project_dir / output).unlink(missing_ok=True)
+            return False
 
     if result.stdout:
         log.print(result.stdout)
