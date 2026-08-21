@@ -23,6 +23,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # No secrets needed — safe to run on fork PRs too, unlike the dry-run job below.
+  validate-renovate-config:
+    if: >-
+      github.event_name != 'schedule' || github.repository_owner == 'opendatahub-io'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Validate renovate.json5 semantics
+        run: ./uv run python scripts/ci/validate_renovate_config.py
+
   validate-renovate-dry-run:
     if: >-
       (github.event_name != 'schedule' || github.repository_owner == 'opendatahub-io')
@@ -43,9 +63,6 @@ jobs:
 
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
-
-      - name: Validate renovate.json5 semantics
-        run: ./uv run python scripts/ci/validate_renovate_config.py
 
       - name: Remote Renovate dry-run prefix checks
         env:

@@ -206,8 +206,13 @@
       "versioning": "semver",
     },
     {
+      // Excludes the ODH quay.io/opendatahub BASE_IMAGE manager, which is pinned
+      // to the literal "latest" tag and has no minor/patch axis; this rule only
+      // needs to apply to the release-versioned quay.io/aipcc and
+      // registry.redhat.io/rhai images.
       "description": "Separate minor and patch base image upgrades",
       "matchManagers": ["custom.regex"],
+      "matchPackageNames": ["!/^quay\\.io\\/opendatahub\\//"],
       "separateMinorPatch": true,
     },
     {
@@ -271,7 +276,8 @@
     //   - Local dry-runs (--platform=local) cannot evaluate matchBaseBranches;
     //     this is a known limitation of local mode.
     {
-      // Re-enables the major/minor updates that packageRules[4] blocks by default.
+      // Re-enables the major/minor updates that the "Block major/minor base
+      // image version upgrades (default)" rule above blocks by default.
       "description": "Allow major/minor base image upgrades on upstream main",
       "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["major", "minor"],
