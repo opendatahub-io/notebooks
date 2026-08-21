@@ -107,15 +107,31 @@ jobs:
         env:
           platform: ${{ inputs.platform }}
 
+      # Fork PRs do not receive repository secrets. When subscription was requested
+      # but GIT_CRYPT_KEY is missing, warn and continue without subscription so the
+      # reusable workflow does not fail hard at unlock.
+      - name: Resolve subscription availability
+        id: sub
+        if: ${{ inputs.subscription }}
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+        run: |
+          if [[ -z "${GIT_CRYPT_KEY}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Skipping RHEL subscription setup::GIT_CRYPT_KEY is unavailable (common for fork PRs). Continuing without subscription. See CONTRIBUTING.md#contributing-from-branches-vs-forks."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # do this early because it's fast and why not
       - name: Install git-crypt
-        if: ${{ inputs.subscription }}
+        if: steps.sub.outputs.enabled == 'true'
         uses: ./.github/actions/apt-install
         with:
           packages: git-crypt
 
       - name: Unlock encrypted secrets with git-crypt
-        if: ${{ inputs.subscription }}
+        if: steps.sub.outputs.enabled == 'true'
         run: |
           echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
           git-crypt unlock ./git-crypt-key
@@ -127,7 +143,7 @@ jobs:
       # This runs slower than storing the entitlement certificates with git-crypt,
       #  but on the other hand, it's then not necessary to regularly update them in the repo.
       - name: Add subscriptions from GitHub secret
-        if: ${{ inputs.subscription }}
+        if: steps.sub.outputs.enabled == 'true'
         run: |
           # https://access.redhat.com/solutions/5870841
           # https://github.com/containers/common/issues/1735
@@ -386,7 +402,8 @@ jobs:
             # AIPCC builds use RHEL-based base images, so prefetch from the rhds
             # variant to avoid RPM conflicts (e.g. openssl-fips-provider vs
             # openssl-fips-provider-so).
-            if [ "${{ inputs.subscription }}" = "true" ]; then
+            # Prefer the resolved subscription flag (false when fork PRs lack secrets).
+            if [ "${{ steps.sub.outputs.enabled }}" = "true" ]; then
               if [ ! -d "$PREFETCH_ROOT/rhds" ]; then
                 echo "Subscription build requires $PREFETCH_ROOT/rhds" >&2
                 exit 1
