@@ -20,6 +20,20 @@ dependencies = [
 odh-notebooks-meta-jupyterlab-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
 
 [tool.uv]
+# RHAIENG-5451 / RHAIENG-7088: only the intersection across this file's
+# flavors is listed here (not each flavor's own full requirement) -- this
+# pyproject.toml is shared by cpu/cuda/rocm, and a single static value can't
+# be correct for all three. Tested committing the CPU flavor's 4-arch set
+# here and it broke both CUDA and ROCm lock generation, because pandoc-rhai
+# -- a shared, non-GPU dependency -- has no ppc64le/s390x wheels in the
+# cuda13.0-ubi9/rocm7.14-ubi9 channels; then tried x86_64+aarch64 and ROCm
+# still failed, because rocm7.14-ubi9 only has pandoc-rhai for x86_64 (matches
+# README.md: ROCm Minimal is x86_64-only). Getting full per-flavor coverage
+# checking here requires the dynamic per-flavor injection in
+# opendatahub-io/notebooks#4422 instead.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
