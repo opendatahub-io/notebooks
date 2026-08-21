@@ -1173,6 +1173,13 @@ arches:
     name: libtool
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.aarch64.rpm
+    repoid: rhel-9-for-x86_64-appstream-eus-rpms
+    size: 37581
+    checksum: sha256:85f38e641398438f7f08526d7003f47e47a14369798464fd67c465134258e964
+    name: libtool-ltdl
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/l/libubsan-11.5.0-14.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 178996
@@ -4267,13 +4274,6 @@ arches:
     name: libtirpc
     evr: 1.3.3-9.el9
     sourcerpm: libtirpc-1.3.3-9.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.aarch64.rpm
-    repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 37581
-    checksum: sha256:85f38e641398438f7f08526d7003f47e47a14369798464fd67c465134258e964
-    name: libtool-ltdl
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libunistring-0.9.10-15.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 503151
@@ -4899,10 +4899,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/repodata/5c63d7173d22f54bf51b9526f644652ef3ecfe79de355ae18a3bafcd9aec71a0-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/repodata/8437cbdf89dc0e6a8f6d77806dd5958f9be729e420a08090cbe110125645ecdf-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 64243
-    checksum: sha256:5c63d7173d22f54bf51b9526f644652ef3ecfe79de355ae18a3bafcd9aec71a0
+    size: 64616
+    checksum: sha256:8437cbdf89dc0e6a8f6d77806dd5958f9be729e420a08090cbe110125645ecdf
 - arch: ppc64le
   packages:
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/ppc64le/rhelai/3.5/os/Packages/l/libsndfile-1.2.2-6.el9ai.ppc64le.rpm
@@ -6093,6 +6093,13 @@ arches:
     size: 598794
     checksum: sha256:96046b39bc6272ea8453c7b6da58781ce8be2976fcd6583ac739df055c52f5c5
     name: libtool
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.ppc64le.rpm
+    repoid: rhel-9-for-x86_64-appstream-eus-rpms
+    size: 41941
+    checksum: sha256:1aeb1dd5ed52720e71481871150b8feed52d0fed307d38fefb636a2065854107
+    name: libtool-ltdl
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/l/libubsan-11.5.0-14.el9.ppc64le.rpm
@@ -9203,13 +9210,6 @@ arches:
     name: libtirpc
     evr: 1.3.3-9.el9
     sourcerpm: libtirpc-1.3.3-9.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.ppc64le.rpm
-    repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 41941
-    checksum: sha256:1aeb1dd5ed52720e71481871150b8feed52d0fed307d38fefb636a2065854107
-    name: libtool-ltdl
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libunistring-0.9.10-15.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 519115
@@ -9835,10 +9835,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/repodata/7ddf1e13cafa0e8afe90eee0daf94e606e9d39b14c3a8e58e99684385a20d945-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/repodata/e6f3935129b33909605eeb5c10bc08962001b42071fec05e12414c8b1cd6431d-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 64339
-    checksum: sha256:7ddf1e13cafa0e8afe90eee0daf94e606e9d39b14c3a8e58e99684385a20d945
+    size: 64714
+    checksum: sha256:e6f3935129b33909605eeb5c10bc08962001b42071fec05e12414c8b1cd6431d
 - arch: s390x
   packages:
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/s390x/rhelai/3.5/os/Packages/l/libsndfile-1.2.2-6.el9ai.s390x.rpm
@@ -11057,6 +11057,13 @@ arches:
     size: 598814
     checksum: sha256:33fa067a7f3aa0f51bf0f777a6648f853871bc32bf6742c671db1d90b2596af2
     name: libtool
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.s390x.rpm
+    repoid: rhel-9-for-x86_64-appstream-eus-rpms
+    size: 38223
+    checksum: sha256:eb4af423c05fa567c3886feb8598da24a0c31de2010aa92ea21b871fbb9f8e31
+    name: libtool-ltdl
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/l/libubsan-11.5.0-14.el9.s390x.rpm
@@ -14111,13 +14118,6 @@ arches:
     name: libtirpc
     evr: 1.3.3-9.el9
     sourcerpm: libtirpc-1.3.3-9.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.s390x.rpm
-    repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 38223
-    checksum: sha256:eb4af423c05fa567c3886feb8598da24a0c31de2010aa92ea21b871fbb9f8e31
-    name: libtool-ltdl
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libunistring-0.9.10-15.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 504493
@@ -14743,10 +14743,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/repodata/87b3b1c71a758fa7bdf76c76e966ad31fb787214e8ae193d796728f6b2852e6e-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/repodata/ab9c7d0d37a64206c44da239065d175c87c798e86003f960ebff2c27f2c4ce22-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 62443
-    checksum: sha256:87b3b1c71a758fa7bdf76c76e966ad31fb787214e8ae193d796728f6b2852e6e
+    size: 62925
+    checksum: sha256:ab9c7d0d37a64206c44da239065d175c87c798e86003f960ebff2c27f2c4ce22
 - arch: x86_64
   packages:
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.5/os/Packages/l/libsndfile-1.2.2-6.el9ai.x86_64.rpm
@@ -15944,6 +15944,13 @@ arches:
     size: 598907
     checksum: sha256:29e3e75c1037c5335fd6f9f4029e2dcdcd27d8870fd72b18bd7c16bf51a0db8c
     name: libtool
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-eus-rpms
+    size: 38043
+    checksum: sha256:44f7303229bdb4c2975f9829e3dd13dc7984e2cb53ef0f85baf894b39f605c38
+    name: libtool-ltdl
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/l/libuv-1.42.0-2.el9_4.x86_64.rpm
@@ -19054,13 +19061,6 @@ arches:
     name: libtirpc
     evr: 1.3.3-9.el9
     sourcerpm: libtirpc-1.3.3-9.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.x86_64.rpm
-    repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 38043
-    checksum: sha256:44f7303229bdb4c2975f9829e3dd13dc7984e2cb53ef0f85baf894b39f605c38
-    name: libtool-ltdl
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libunistring-0.9.10-15.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 510558
@@ -19686,7 +19686,7 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/repodata/d63cb17e2b57fd06be85401dd61e0ce5e72b14612a96514dec9efa36013faad0-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/repodata/34039a43e315ae4a28d2cb5768fca0c7033ec1df735f0a8a35e8a7f04e5ed70f-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 66902
-    checksum: sha256:d63cb17e2b57fd06be85401dd61e0ce5e72b14612a96514dec9efa36013faad0
+    size: 67285
+    checksum: sha256:34039a43e315ae4a28d2cb5768fca0c7033ec1df735f0a8a35e8a7f04e5ed70f
