@@ -26,6 +26,13 @@ dependencies = [
 ]
 
 [tool.uv]
+# RHAIENG-5451 / RHAIENG-7088: fail at lock-generation time (not inside the
+# Konflux build) if a package version lacks wheels for any architecture this
+# image ships. See opendatahub-io/notebooks#4422 for the dynamic alternative.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+]
 # FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
 exclude-dependencies = ["py-spy"]
 
