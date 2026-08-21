@@ -50,6 +50,8 @@ spec:
     - linux/s390x
   - name: dockerfile
     value: codeserver-baseline/ubi9-python-3.12/Dockerfile.konflux.cpu
+  - name: rhel-subscription-activation-key
+    value: custom-notebooks-secret
   - name: path-context
     value: .
   - name: build-args-file
