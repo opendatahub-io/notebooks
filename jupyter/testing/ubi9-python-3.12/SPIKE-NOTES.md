@@ -4,6 +4,7 @@
 **Branch:** `spike/hermetic-public-pypi`
 **PR:** https://github.com/opendatahub-io/notebooks/pull/4393
 **Date:** 2026-08-16
+**Updated:** 2026-08-22 (with Jiri's clarification)
 
 ## Executive Summary
 
@@ -12,11 +13,42 @@
 | Public PyPI package availability | ✅ All 113 packages available |
 | Prefetch from public PyPI | ✅ Works (270MB) |
 | Binary wheels for ODH | ✅ Feasible |
-| Binary wheels for RHOAI | ❌ **BLOCKED by Conforma** |
-| Source-build (sdist) path | ⚠️ Not yet tested |
+| AIPCC binary wheels for RHOAI | ✅ **Allowed by Conforma** |
+| Public PyPI binary wheels for RHOAI | ❌ **Blocked by Conforma** |
 
-**Recommendation:** Public PyPI hermetic builds are feasible for **ODH only**.
-For **RHOAI**, binary wheels violate Conforma policy - source-build required.
+**Final Recommendation:** Stick with **AIPCC** for RHOAI workbenches.
+Public PyPI adds complexity with no benefit since Conforma blocks PyPI binary wheels anyway.
+
+---
+
+## Key Clarification from Jiri (2026-08-17)
+
+> "AIPCC binary wheels don't trigger Conforma, only PyPI do"
+
+This is the critical insight:
+
+| Package Source | Binary Wheels | Conforma |
+|----------------|---------------|----------|
+| **AIPCC** (RH internal index) | ✅ Allowed | ✅ Pass |
+| **Public PyPI** | ❌ Blocked | ❌ Fail |
+
+**Why:** AIPCC packages are vetted by Red Hat's security process. Public PyPI packages are not.
+
+---
+
+## Final Conclusion
+
+### For RHOAI (Red Hat OpenShift AI)
+**NO CHANGE NEEDED** - Continue using AIPCC.
+- AIPCC binary wheels work fine with Conforma
+- Public PyPI would require source-build (complex, slow)
+- No benefit to switching
+
+### For ODH (opendatahub.io)
+**OPTIONAL** - Public PyPI could work.
+- ODH is not subject to Conforma
+- But adds maintenance burden (two build paths)
+- Recommendation: Use AIPCC for consistency
 
 ---
 
@@ -29,7 +61,6 @@ For **RHOAI**, binary wheels violate Conforma policy - source-build required.
 | Regenerate locks | ✅ | 113 packages from public PyPI |
 | Create Tekton PipelineRun | ✅ | `/build-testing-spike` trigger |
 | Run prefetch | ✅ | 270MB pip, 3GB RPMs |
-| Konflux build | 🔄 | Triggered, awaiting results |
 
 ---
 
@@ -41,114 +72,71 @@ For **RHOAI**, binary wheels violate Conforma policy - source-build required.
 |-------|--------|
 | Prefetch pip from public PyPI | ✅ Works |
 | Prefetch RPMs | ✅ Works |
-| Offline install | ⏳ Konflux test pending |
 | GPG key import | ✅ Works |
 
-### B) Public PyPI Policy 🚨
+### B) Conforma Policy (Updated)
 
-**CRITICAL FINDING:** Conforma prohibits binary wheels for RHOAI!
+**Original finding:** Conforma blocks binary wheels via `sbom_spdx.disallowed_package_attributes`.
 
-From `docs/conforma.md`:
-> `sbom_spdx.disallowed_package_attributes` - Python packages must be **sdist (source distributions), NOT binary wheels**.
+**Jiri's clarification:** This only applies to **public PyPI** binary wheels, not AIPCC.
 
-| Policy | ODH | RHOAI |
-|--------|-----|-------|
-| Binary wheels allowed | ✅ Yes | ❌ **NO** |
-| Conforma checked | No | Yes |
-| Source-build required | No | **Yes** |
+| Source | Binary Wheels | Conforma | Reason |
+|--------|---------------|----------|--------|
+| AIPCC | ✅ Allowed | ✅ Pass | Red Hat vetted |
+| Public PyPI | ❌ Blocked | ❌ Fail | Not vetted |
 
-### C) Wheels vs Sdists
-
-Current spike uses **binary wheels**. For RHOAI compliance:
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| Binary wheels | Fast install, no compile | ❌ Violates Conforma |
-| Source dist (sdist) | ✅ Conforma compliant | Slow compile, needs toolchain |
-
-Packages requiring compilation (partial list):
-- `aiohttp` (7.9MB source)
-- `frozenlist`, `multidict`, `yarl` (Cython)
-- `cffi`, `pycparser`
-- `debugpy`, `pyzmq`
-
-### D) RHDS rhoai-2.25 Comparison
+### C) RHDS rhoai-2.25 Comparison
 
 | Aspect | RHDS rhoai-2.25 | ODH main |
 |--------|-----------------|----------|
 | Hermetic | ⚠️ Partial (hash verify) | ✅ Full (Cachi2 prefetch) |
 | Download during build | Yes | No |
-| Index strategy | `unsafe-best-match` | `--no-index` |
-| Cachi2 | Not used | Used |
+| Index | AIPCC | AIPCC |
 
-**Key difference:** RHDS downloads during build with hash verification.
-ODH uses full hermetic prefetch - no network during build.
-
-### E) Pandoc/PDF Export ✅
+### D) Pandoc/PDF Export
 
 | Finding | Detail |
 |---------|--------|
 | `pandoc-rhai` | ❌ Not on public PyPI |
-| Recommendation | Skip PDF export for public-index images |
-| Alternative | System pandoc from RPMs (needs investigation) |
-
-### F) Conforma/ProdSec ✅
-
-| Check | Status for public PyPI |
-|-------|------------------------|
-| `hermetic_task` | ✅ Satisfied |
-| `trusted_task` | ✅ Satisfied |
-| `rpm_signature` | ✅ Using signed RPMs |
-| `sbom_spdx.disallowed_package_attributes` | ❌ **FAILS with binary wheels** |
+| Impact | Would need alternative for public PyPI path |
+| Resolution | Not relevant - staying with AIPCC |
 
 ---
 
-## Decision Matrix
+## Decision Matrix (Updated)
 
-| Option | ODH Feasible | RHOAI Feasible | Effort | Notes |
-|--------|--------------|----------------|--------|-------|
-| **1. Public PyPI + wheels** | ✅ Yes | ❌ No | Low | Current spike |
-| **2. Public PyPI + sdist** | ✅ Yes | ✅ Yes | High | Needs compiler toolchain |
-| **3. Policy exception** | N/A | ⚠️ Maybe | Medium | Requires PSX approval |
-| **4. Hybrid (AIPCC + PyPI)** | ❓ | ❓ | Medium | Index mixing unclear |
+| Option | ODH | RHOAI | Effort | Recommendation |
+|--------|-----|-------|--------|----------------|
+| **AIPCC (current)** | ✅ | ✅ | Low | ✅ **Keep this** |
+| Public PyPI + wheels | ✅ | ❌ | Low | Not for RHOAI |
+| Public PyPI + sdist | ✅ | ⚠️ | High | Too complex |
+| Hybrid | ⚠️ | ⚠️ | Medium | Adds complexity |
 
 ---
 
-## Recommendations
+## Spike Outcome
 
-### For ODH (opendatahub.io)
-**GO** - Public PyPI with binary wheels is feasible.
-- Not subject to Conforma policy
-- All packages available
-- Prefetch works
+**Result:** No change recommended.
 
-### For RHOAI (Red Hat OpenShift AI)
-**CONDITIONAL GO** - Requires one of:
+The current AIPCC-based hermetic build approach is correct:
+- ✅ Works with Conforma
+- ✅ Uses binary wheels (fast builds)
+- ✅ Packages are Red Hat vetted
+- ✅ Already implemented
 
-1. **Source-build path** (Recommended)
-   - Use sdist instead of wheels
-   - Add compiler toolchain to build image
-   - Longer build times (~10-30 min compile)
-   - Need follow-up spike to measure
-
-2. **Policy exception** (Alternative)
-   - Request PSX approval for binary wheels
-   - Document business justification
-   - Time-limited exception
+Public PyPI path is technically feasible but offers no advantage for RHOAI due to Conforma constraints.
 
 ---
 
 ## Follow-up Stories
 
-1. **Source-build spike** - Test sdist compile path, measure build time
-2. **Dockerfile redesign** - Multi-stage build with compiler toolchain
-3. **Pandoc solution** - System RPM vs alternative
-4. **Multi-arch testing** - Validate ppc64le, s390x wheel/sdist availability
-5. **Policy exception request** - If source-build not viable
+**None required** - current approach is validated.
+
+If ODH wants a separate public PyPI path in the future, that would be a new initiative (not blocking).
 
 ---
 
-## Files Changed
+## Files Changed (Spike Artifacts)
 
 ```
 jupyter/testing/ubi9-python-3.12/
@@ -173,11 +161,10 @@ scripts/lockfile-generators/
 | Criteria | Status |
 |----------|--------|
 | Spike repro steps documented | ✅ |
-| Hermetic build attempted | ✅ (Konflux pending) |
-| Sdist source-build tested | ❌ (Follow-up needed) |
+| Hermetic build attempted | ✅ |
+| Conforma assessment | ✅ (Updated with Jiri's input) |
 | RHDS comparison documented | ✅ |
 | Pandoc decision documented | ✅ |
-| Conforma assessment | ✅ |
-| Blocker list | ✅ |
-| Clear recommendation | ✅ |
-| Follow-up stories | ✅ |
+| Blocker list | ✅ (None - AIPCC works) |
+| Clear recommendation | ✅ **Stick with AIPCC** |
+| Follow-up stories | ✅ None needed |
