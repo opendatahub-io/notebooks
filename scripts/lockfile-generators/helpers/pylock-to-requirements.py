@@ -47,13 +47,18 @@ import tomllib
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from packaging.utils import InvalidWheelFilename, parse_wheel_filename
+
 # uv pip compile records its index in the first-line comment, e.g.
 #   --default-index=https://pypi.org/simple
 _DEFAULT_INDEX_RE = re.compile(r"--default-index=(https?://\S+)")
 
 # UBI9/EL9 ships glibc 2.34. manylinux_2_35+ wheels cannot be installed there.
+# Inspect packaging.tags.Tag.platform only — never the distribution name.
 _MAX_EL9_GLIBC = 34
-_MANYLINUX_GLIBC_RE = re.compile(r"manylinux_2_(\d+)")
+_MUSLLINUX_TAG_RE = re.compile(r"^musllinux(?:_|$)")
+_LEGACY_MANYLINUX_TAG_RE = re.compile(r"^manylinux(?:1|2010|2014)_")
+_MANYLINUX_GLIBC_TAG_RE = re.compile(r"^manylinux_2_(\d+)(?:_|$)")
 
 
 def strip_format_json_param(index_url: str) -> str:
@@ -67,17 +72,29 @@ def strip_format_json_param(index_url: str) -> str:
     return urlunparse(parsed._replace(query=normalized_query))
 
 
+def _wheel_platform_tags(filename: str) -> list[str]:
+    """Return expanded PEP 425 platform tags via packaging.utils.parse_wheel_filename."""
+    try:
+        _name, _version, _build, tags = parse_wheel_filename(filename)
+    except InvalidWheelFilename:
+        return []
+    return [tag.platform for tag in tags]
+
+
 def wheel_is_el9_compatible(url_or_name: str) -> bool:
     """Return True if this wheel can install on UBI9/EL9 (glibc 2.34)."""
-    name = Path(urlparse(url_or_name).path).name.lower()
-    if not name.endswith(".whl") or "musllinux" in name:
-        return False
-    if name.endswith("none-any.whl"):
-        return True
-    if "manylinux2014" in name or "manylinux2010" in name or "manylinux1_" in name:
-        return True
-    glibcs = [int(match) for match in _MANYLINUX_GLIBC_RE.findall(name)]
-    return bool(glibcs) and max(glibcs) <= _MAX_EL9_GLIBC
+    name = Path(urlparse(url_or_name).path).name
+    for tag in _wheel_platform_tags(name):
+        if _MUSLLINUX_TAG_RE.match(tag):
+            continue
+        if tag == "any":
+            return True
+        if _LEGACY_MANYLINUX_TAG_RE.match(tag):
+            return True
+        m = _MANYLINUX_GLIBC_TAG_RE.match(tag)
+        if m and int(m.group(1)) <= _MAX_EL9_GLIBC:
+            return True
+    return False
 
 
 def collect_index_hashes(pkg: dict) -> list[str]:

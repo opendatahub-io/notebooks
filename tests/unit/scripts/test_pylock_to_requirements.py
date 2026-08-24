@@ -33,6 +33,10 @@ def test_wheel_is_el9_compatible() -> None:
         "ripgrep-15.1.0-py3-none-manylinux_2_39_x86_64.whl"
     )
     assert not helper.wheel_is_el9_compatible("pkg-1.0-py3-none-musllinux_1_1_x86_64.whl")
+    assert not helper.wheel_is_el9_compatible(
+        "manylinux2010_helper-1.0-cp312-cp312-manylinux_2_39_x86_64.whl"
+    )
+    assert not helper.wheel_is_el9_compatible("not-a-wheel.tar.gz")
 
 
 def test_collect_index_hashes_omits_sdist_when_el9_wheel_exists() -> None:
