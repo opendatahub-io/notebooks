@@ -80,9 +80,7 @@ def wheel_is_el9_compatible(url_or_name: str) -> bool:
 
     for tag in tags:
         platform = tag.platform
-        if platform == "any" or platform.startswith(
-            ("manylinux1_", "manylinux2010_", "manylinux2014_")
-        ):
+        if platform == "any" or platform.startswith(("manylinux1_", "manylinux2010_", "manylinux2014_")):
             return True
         if platform.startswith("manylinux_"):
             # PEP 600: manylinux_{major}_{minor}_{arch}

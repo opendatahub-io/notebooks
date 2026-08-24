@@ -30,13 +30,9 @@ def test_wheel_is_el9_compatible() -> None:
     assert helper.wheel_is_el9_compatible("pkg-1.0-cp312-cp312-manylinux2010_x86_64.whl")
     assert helper.wheel_is_el9_compatible("pkg-1.0-cp312-cp312-manylinux_2_34_x86_64.whl")
     assert not helper.wheel_is_el9_compatible("pkg-1.0-cp312-cp312-manylinux_2_35_x86_64.whl")
-    assert not helper.wheel_is_el9_compatible(
-        "ripgrep-15.1.0-py3-none-manylinux_2_39_x86_64.whl"
-    )
+    assert not helper.wheel_is_el9_compatible("ripgrep-15.1.0-py3-none-manylinux_2_39_x86_64.whl")
     assert not helper.wheel_is_el9_compatible("pkg-1.0-py3-none-musllinux_1_1_x86_64.whl")
-    assert not helper.wheel_is_el9_compatible(
-        "manylinux2010_helper-1.0-cp312-cp312-manylinux_2_39_x86_64.whl"
-    )
+    assert not helper.wheel_is_el9_compatible("manylinux2010_helper-1.0-cp312-cp312-manylinux_2_39_x86_64.whl")
     assert not helper.wheel_is_el9_compatible("not-a-wheel.tar.gz")
 
 
