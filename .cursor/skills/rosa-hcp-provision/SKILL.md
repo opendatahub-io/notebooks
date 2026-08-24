@@ -118,14 +118,13 @@ rh-aws-saml-login iaps-rhods-odh-dev -- aws sts get-caller-identity
 
 ### If wrong OCM org
 
-Your personal `jdanek@redhat.com` SSO maps to the **wrong** OCM org
-(`6340056`). The RHOAI shared org is **account 7081269** / OCM
-`1pwwsfazToamNegaehP6eaDg80K`. Login as **`rhoai-jdanek`** (or the
-`rhoai-<user>` invite for whoever is running this), not the personal
-Red Hat email:
+A personal Red Hat SSO may map to a different OCM org than the shared
+RHOAI tenant. `rosa whoami` must show **OCM Organization ID
+`1pwwsfazToamNegaehP6eaDg80K`**. Use the `rhoai-<user>` invite account
+for that org, not a personal Red Hat email:
 
 1. Open **incognito** tab at https://console.redhat.com/openshift
-2. Sign in as `rhoai-jdanek` — top-right must show **Account number: 7081269**
+2. Sign in as `rhoai-<user>` — top-right must show **Account number: 7081269**
 3. `rosa logout` then `rosa login --use-auth-code` in that browser session
 
 If you never received the 7081269 invite, request in **#rhoai-devtestops-requests** Slack.
