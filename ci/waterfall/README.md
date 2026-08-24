@@ -7,10 +7,11 @@ Buildbot-style waterfall view for ODH and RHDS workbench image builds.
 ## Quick start
 
 ```bash
-# Collect data (requires oc login to both clusters + VPN for RHDS; kubectl-ka plugin)
-python3 collect.py
+# One-shot: login (if needed), collect, serve (requires VPN for RHDS; kubectl-ka plugin)
+./serve.sh
 
-# Serve locally
+# Or step by step:
+python3 collect.py
 python3 -m http.server 8888
 
 # Open matrix (latest status per cell)

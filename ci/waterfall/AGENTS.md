@@ -46,6 +46,7 @@ A change is **not done** until the docs below reflect it.
 | [AGENTS.md](AGENTS.md) | Agent rules; keep all `*.md` here in sync with code |
 | [README.md](README.md) | Quick start for humans (keep current) |
 | [collect.py](collect.py) | `oc` + KubeArchive collector → `data.json` |
+| [serve.sh](serve.sh) | `oc login --web` (if needed) → `collect.py` → `http.server` |
 | [index.html](index.html) | Latest-status matrix UI |
 | [waterfall.html](waterfall.html) | Buildbot-style timeline waterfall UI |
 | `data.json` | Generated snapshot (local; not committed) |
@@ -54,7 +55,8 @@ A change is **not done** until the docs below reflect it.
 
 ```bash
 cd ci/waterfall
-python3 collect.py          # refresh data.json
+./serve.sh                  # login (if needed), collect, serve on :8888
+python3 collect.py          # refresh data.json only
 python3 -m http.server 8888   # http://localhost:8888
 ```
 
