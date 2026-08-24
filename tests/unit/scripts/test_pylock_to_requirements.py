@@ -27,6 +27,7 @@ def test_wheel_is_el9_compatible() -> None:
         "https://example.invalid/uv-0.12.5-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
     )
     assert helper.wheel_is_el9_compatible("pkg-1.0-py3-none-any.whl")
+    assert helper.wheel_is_el9_compatible("pkg-1.0-cp312-cp312-manylinux2010_x86_64.whl")
     assert helper.wheel_is_el9_compatible("pkg-1.0-cp312-cp312-manylinux_2_34_x86_64.whl")
     assert not helper.wheel_is_el9_compatible("pkg-1.0-cp312-cp312-manylinux_2_35_x86_64.whl")
     assert not helper.wheel_is_el9_compatible(
