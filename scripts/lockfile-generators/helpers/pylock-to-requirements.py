@@ -30,6 +30,7 @@ Output format:
 
     Pure-Python packages (py3-none-any.whl) have a single hash.
     Native/binary packages have one hash per architecture wheel.
+    Sdist hashes are omitted when at least one EL9-compatible wheel exists.
 
     Packages locked as a direct URL (uv ``archive``) become ``name @ URL`` so
     pip/Hermeto do not look them up on the index (e.g. tensorflow-rocm from AMD).
@@ -44,9 +45,15 @@ import tomllib
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from packaging.utils import InvalidWheelFilename, parse_wheel_filename
+
 # uv pip compile records its index in the first-line comment, e.g.
 #   --default-index=https://pypi.org/simple
 _DEFAULT_INDEX_RE = re.compile(r"--default-index=(https?://\S+)")
+
+# UBI9/EL9 ships glibc 2.34. manylinux_2_35+ wheels cannot be installed there.
+# Target EL9 off-host (this converter does not run on UBI9), so sys_tags() is wrong.
+_MAX_EL9_GLIBC = (2, 34)
 
 
 def strip_format_json_param(index_url: str) -> str:
@@ -58,6 +65,54 @@ def strip_format_json_param(index_url: str) -> str:
     ]
     normalized_query = urlencode(query_items, doseq=True)
     return urlunparse(parsed._replace(query=normalized_query))
+
+
+def wheel_is_el9_compatible(url_or_name: str) -> bool:
+    """Return True if this wheel can install on UBI9/EL9 (glibc 2.34).
+
+    Uses ``parse_wheel_filename`` Tag.platform values only — never the
+    distribution name (e.g. a package named manylinux2010_helper).
+    """
+    try:
+        *_, tags = parse_wheel_filename(url_or_name.rsplit("/", 1)[-1])
+    except InvalidWheelFilename:
+        return False
+
+    for tag in tags:
+        platform = tag.platform
+        if platform == "any" or platform.startswith(("manylinux1_", "manylinux2010_", "manylinux2014_")):
+            return True
+        if platform.startswith("manylinux_"):
+            # PEP 600: manylinux_{major}_{minor}_{arch}
+            parts = platform.split("_")
+            if (
+                len(parts) >= 4
+                and parts[1].isdigit()
+                and parts[2].isdigit()
+                and (int(parts[1]), int(parts[2])) <= _MAX_EL9_GLIBC
+            ):
+                return True
+    return False
+
+
+def collect_index_hashes(pkg: dict) -> list[str]:
+    """Return wheel ``--hash=`` lines; add sdist hashes only when no EL9 wheel exists."""
+    hashes: list[str] = []
+    has_el9_wheel = False
+    for whl in pkg.get("wheels", []):
+        for algo, digest in whl.get("hashes", {}).items():
+            hashes.append(f"--hash={algo}:{digest}")
+        if wheel_is_el9_compatible(whl.get("url", "")):
+            has_el9_wheel = True
+
+    if has_el9_wheel:
+        return hashes
+
+    sdist = pkg.get("sdist")
+    if isinstance(sdist, dict):
+        for algo, digest in sdist.get("hashes", {}).items():
+            hashes.append(f"--hash={algo}:{digest}")
+    return hashes
 
 
 def extract_default_index_from_pylock(pylock_path: Path) -> str:
@@ -110,15 +165,7 @@ def main():
             lines.append(entry)
             continue
 
-        # Collect hashes from wheels and sdist (index-served packages).
-        hashes = []
-        for whl in pkg.get("wheels", []):
-            for algo, digest in whl.get("hashes", {}).items():
-                hashes.append(f"--hash={algo}:{digest}")
-        sdist = pkg.get("sdist")
-        if isinstance(sdist, dict):
-            for algo, digest in sdist.get("hashes", {}).items():
-                hashes.append(f"--hash={algo}:{digest}")
+        hashes = collect_index_hashes(pkg)
 
         entry = f"{name}=={version}"
         if marker:

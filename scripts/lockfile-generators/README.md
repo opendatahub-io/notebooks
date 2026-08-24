@@ -226,7 +226,7 @@ internally. Option 6 (Git submodule) is a manual setup.
 
 | Helper                                          | Used by          | Purpose                                                                                                                                                                                                                                  |
 | ----------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `helpers/pylock-to-requirements.py`             | pip              | Convert `pylock.<flavor>.toml` (PEP 751) to pip-compatible `requirements.<flavor>.txt` with `--hash` lines.                                                                                                                              |
+| `helpers/pylock-to-requirements.py`             | pip              | Convert `pylock.<flavor>.toml` (PEP 751) to pip-compatible `requirements.<flavor>.txt` with `--hash` lines. Omits sdist hashes when an EL9-compatible wheel exists.                                                                      |
 | `helpers/download-pip-packages.py`              | pip              | Standalone pip downloader: downloads wheels/sdists from a `requirements.txt` (with `--hash` lines) into `cachi2/output/deps/pip/`. Not called by `create-requirements-lockfile.sh` (which has its own inline download from pylock.toml). |
 | `helpers/hermeto-fetch-rpm.sh`                  | RPM              | Download RPMs from `rpms.lock.yaml` using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. Handles RHEL entitlement cert extraction for `cdn.redhat.com` auth. Called by `create-rpm-lockfile.sh --download`.        |
 | `helpers/hermeto-fetch-npm.sh`                  | npm              | Alternative npm fetcher using [Hermeto](https://github.com/hermetoproject/hermeto) in a container.                                                                                                                                       |
@@ -733,7 +733,10 @@ The script performs three steps:
 2. **Convert** (`helpers/pylock-to-requirements.py`) — parses the pylock.toml
   and generates `requirements.<flavor>.txt` (with `--index-url` and
    `--hash=sha256:…` lines) for compatibility with pip/uv install and cachi2
-   prefetching.
+   prefetching. Sdist hashes are omitted when an EL9-compatible wheel exists
+   so Hermeto does not download Rust sdists and fail `cargo vendor --locked`
+   (see uv / rpds-py). The sdist hash is kept when no EL9 wheel exists
+   (e.g. ripgrep's manylinux_2_39-only wheel).
 3. **Download** (optional, `--download`) — for local testing with podman,
   downloads every wheel referenced in the pylock.toml into
    `cachi2/output/deps/pip/`, verifying sha256 checksums.  Files already
