@@ -1,7 +1,11 @@
 # arm64 workbench spawn fails with "Exec format error" on ROSA/ARO HCP
 
 Root-caused and fixed live on `jd-arm64-36e1` (ROSA HCP, OCP 4.21.0, arm64
-`g5g.2xlarge`/`m6g.2xlarge` worker NodePools). This is **not an RHOAI bug** —
+`g5g.2xlarge`/`m6g.2xlarge` worker NodePools). Reconfirmed 2026-08-24 on
+`jd-arm64-36` with RHOAI 3.6.0-ea.1 CUDA workbenches
+(`jupyter-pytorch-llmcompressor:3.6`, `tensorflow:3.6`) after
+`oc import-image ... --import-mode=PreserveOriginal --confirm`. This is
+**not an RHOAI bug** —
 it's a core OpenShift behavior gap specific to Hosted Control Plane
 clusters, tracked upstream. Applies to any RHOAI version (GA or EA) on any
 ROSA/ARO HCP cluster with non-amd64 worker NodePools.
@@ -291,4 +295,6 @@ full per-platform detail from `dockerImageManifests` instead.
   `replace-image-registry` policy is a **different** fix (registry
   rewriting for pull-secret routing on EA builds) from this doc's
   `fix-imagestream-import-mode` policy; both can coexist on the same
-  Kyverno install.
+  Kyverno install. On arm64 HCP EA installs, apply this policy **before**
+  spawning workbenches (install-prerelease step 11) — manifest-list
+  arm64 in quay is not enough.

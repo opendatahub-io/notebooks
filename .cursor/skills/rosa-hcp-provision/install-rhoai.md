@@ -207,8 +207,10 @@ EOF
 
 **Component rename in RHOAI 3.6-ea.1+: `datasciencepipelines` → `aipipelines`.**
 The YAML above uses `datasciencepipelines`, correct for GA releases through
-3.5. On a 3.6-ea.1+ EA build the DSC schema instead expects `aipipelines`
-— check with `oc get dsc default-dsc -o json | jq '.spec.components | keys'`
+3.5, and `datasciencecluster.opendatahub.io/v1`. On a 3.6-ea.1+ EA build
+use the DSC in [install-prerelease.md](install-prerelease.md) step 9
+(`v2` + `aipipelines`) instead — check with
+`oc get dsc default-dsc -o json | jq '.spec.components | keys'`
 before assuming either name; applying the wrong key for your version is a
 silent no-op (the DSC just ignores an unrecognized component key), not an
 error. To enable pipelines post-install regardless of which key your
