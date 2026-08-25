@@ -44,7 +44,18 @@ spec:
     value: jupyter/baseline/ubi9-python-3.12/build-args/cpu.conf
   # Phase 1: non-hermetic online RPM + PyPI install (see Dockerfile header).
   - name: hermetic
-    value: 'false'
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: jupyter/baseline/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64, aarch64, ppc64le, s390x
+      requirements_files: [requirements.cpu.txt]
   - name: path-context
     value: .
   - name: additional-tags

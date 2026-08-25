@@ -2314,27 +2314,27 @@ arches:
     name: json-glib
     evr: 1.6.6-1.el9
     sourcerpm: json-glib-1.6.6-1.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/k/kbd-2.4.0-11.el9.aarch64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/k/kbd-2.4.0-12.el9_8.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
-    size: 420178
-    checksum: sha256:11708f1c4bdfefec355521f6a325f8cb32cb4e0be76fc6e3f97d26eb45798d7a
+    size: 419233
+    checksum: sha256:2e9d8fa972d2cea49db46bea3655be88648092780f8be399d613f70ae1f99614
     name: kbd
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/k/kbd-legacy-2.4.0-11.el9.noarch.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/k/kbd-legacy-2.4.0-12.el9_8.noarch.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
-    size: 579544
-    checksum: sha256:8dcc48e93bffc5e2d819f8c8c468648362c13d554f756c421711386c8fadf950
+    size: 581999
+    checksum: sha256:afa9554281da4aee85281208c67f748363da116cd20703cf454ec8348b3e945d
     name: kbd-legacy
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/k/kbd-misc-2.4.0-11.el9.noarch.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/k/kbd-misc-2.4.0-12.el9_8.noarch.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
-    size: 1739470
-    checksum: sha256:f698c807d4805c83b2dc8564427a7c4445d1c41a23d4bdb7988eba489e73932f
+    size: 1741836
+    checksum: sha256:d18d23826f34a8b7b5ad64eacb4e32cbc0fa5f332d64d70e8e0c27e11b0f2506
     name: kbd-misc
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/k/keyutils-libs-1.6.3-1.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 34341
@@ -2867,6 +2867,13 @@ arches:
     name: shared-mime-info
     evr: 2.1-5.el9
     sourcerpm: shared-mime-info-2.1-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/s/sqlite-libs-3.34.1-11.el9_8.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 660770
+    checksum: sha256:0fbb8043f9c02870c831da433f69b856a6674d02b60306d9cc01149ec89ed239
+    name: sqlite-libs
+    evr: 3.34.1-11.el9_8
+    sourcerpm: sqlite-3.34.1-11.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/t/tar-1.34-11.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 904777
@@ -2979,6 +2986,20 @@ arches:
     name: unixODBC-devel
     evr: 2.3.12-1.el9
     sourcerpm: unixODBC-2.3.12-1.el9.src.rpm
+  - url: https://dl.fedoraproject.org/pub/epel/9/Everything/aarch64/Packages/p/pandoc-2.14.0.3-17.el9.aarch64.rpm
+    repoid: epel
+    size: 27890272
+    checksum: sha256:da4afef7b966dd75e3378825c25f1d6900669673f1f6df2d5a2d0c11826da411
+    name: pandoc
+    evr: 2.14.0.3-17.el9
+    sourcerpm: pandoc-2.14.0.3-17.el9.src.rpm
+  - url: https://dl.fedoraproject.org/pub/epel/9/Everything/aarch64/Packages/p/pandoc-common-2.14.0.3-17.el9.noarch.rpm
+    repoid: epel
+    size: 440051
+    checksum: sha256:a823105392d489376fd040a5bdb372373a3e2bae284eefe915bca9d187f52d6d
+    name: pandoc-common
+    evr: 2.14.0.3-17.el9
+    sourcerpm: pandoc-2.14.0.3-17.el9.src.rpm
   - url: https://dl.fedoraproject.org/pub/epel/9/Everything/aarch64/Packages/t/texlive-tcolorbox-20200406-38.el9.noarch.rpm
     repoid: epel
     size: 4824930
@@ -5982,13 +6003,6 @@ arches:
     name: shadow-utils-subid
     evr: 2:4.9-17.el9
     sourcerpm: shadow-utils-4.9-17.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/sqlite-libs-3.34.1-11.el9.aarch64.rpm
-    repoid: baseos
-    size: 654336
-    checksum: sha256:2f65e7f2b71d9f290b3847fdc7aec651e61f867493c8fafa093f94591723f7c5
-    name: sqlite-libs
-    evr: 3.34.1-11.el9
-    sourcerpm: sqlite-3.34.1-11.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/systemd-252-76.el9.aarch64.rpm
     repoid: baseos
     size: 4147251
@@ -8373,27 +8387,27 @@ arches:
     name: json-glib
     evr: 1.6.6-1.el9
     sourcerpm: json-glib-1.6.6-1.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/kbd-2.4.0-11.el9.ppc64le.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/kbd-2.4.0-12.el9_8.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
-    size: 428225
-    checksum: sha256:52033b9adf232f9018119eef0d2add6dc0ed9951cf735abe2220c2aca143182a
+    size: 427399
+    checksum: sha256:21306c7751c2c6e77de70a135e478d8b670b10d2451006f3fd7c44f0e6a8d500
     name: kbd
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/kbd-legacy-2.4.0-11.el9.noarch.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/kbd-legacy-2.4.0-12.el9_8.noarch.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
-    size: 579544
-    checksum: sha256:8dcc48e93bffc5e2d819f8c8c468648362c13d554f756c421711386c8fadf950
+    size: 581999
+    checksum: sha256:afa9554281da4aee85281208c67f748363da116cd20703cf454ec8348b3e945d
     name: kbd-legacy
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/kbd-misc-2.4.0-11.el9.noarch.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/kbd-misc-2.4.0-12.el9_8.noarch.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
-    size: 1739470
-    checksum: sha256:f698c807d4805c83b2dc8564427a7c4445d1c41a23d4bdb7988eba489e73932f
+    size: 1741836
+    checksum: sha256:d18d23826f34a8b7b5ad64eacb4e32cbc0fa5f332d64d70e8e0c27e11b0f2506
     name: kbd-misc
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/keyutils-libs-1.6.3-1.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 35505
@@ -8919,6 +8933,13 @@ arches:
     name: shared-mime-info
     evr: 2.1-5.el9
     sourcerpm: shared-mime-info-2.1-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/s/sqlite-libs-3.34.1-11.el9_8.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 758085
+    checksum: sha256:f51af80eda44e36b51b315a90e44a0bfd2c6c7d4ce4aadd40bac23af3fc43cb8
+    name: sqlite-libs
+    evr: 3.34.1-11.el9_8
+    sourcerpm: sqlite-3.34.1-11.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/t/tar-1.34-11.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 945887
@@ -9045,6 +9066,20 @@ arches:
     name: iptables-legacy-libs
     evr: 1.8.10-11.1.el9
     sourcerpm: iptables-epel-1.8.10-11.1.el9.src.rpm
+  - url: https://dl.fedoraproject.org/pub/epel/9/Everything/ppc64le/Packages/p/pandoc-2.14.0.3-17.el9.ppc64le.rpm
+    repoid: epel
+    size: 28074042
+    checksum: sha256:677fbe359e8c8d81683e33522a8f8490a3b41299d4cd991ae9ec951f0770f5e0
+    name: pandoc
+    evr: 2.14.0.3-17.el9
+    sourcerpm: pandoc-2.14.0.3-17.el9.src.rpm
+  - url: https://dl.fedoraproject.org/pub/epel/9/Everything/ppc64le/Packages/p/pandoc-common-2.14.0.3-17.el9.noarch.rpm
+    repoid: epel
+    size: 440051
+    checksum: sha256:a823105392d489376fd040a5bdb372373a3e2bae284eefe915bca9d187f52d6d
+    name: pandoc-common
+    evr: 2.14.0.3-17.el9
+    sourcerpm: pandoc-2.14.0.3-17.el9.src.rpm
   - url: https://dl.fedoraproject.org/pub/epel/9/Everything/ppc64le/Packages/t/texlive-tcolorbox-20200406-38.el9.noarch.rpm
     repoid: epel
     size: 4824930
@@ -12034,13 +12069,6 @@ arches:
     name: shadow-utils-subid
     evr: 2:4.9-17.el9
     sourcerpm: shadow-utils-4.9-17.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/sqlite-libs-3.34.1-11.el9.ppc64le.rpm
-    repoid: baseos
-    size: 751747
-    checksum: sha256:4091318d42babd95dee26f567083843a46cda2c42136466b4f93d5f3f253d8be
-    name: sqlite-libs
-    evr: 3.34.1-11.el9
-    sourcerpm: sqlite-3.34.1-11.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/systemd-252-76.el9.ppc64le.rpm
     repoid: baseos
     size: 4429294
@@ -14425,27 +14453,27 @@ arches:
     name: json-glib
     evr: 1.6.6-1.el9
     sourcerpm: json-glib-1.6.6-1.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/k/kbd-2.4.0-11.el9.s390x.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/k/kbd-2.4.0-12.el9_8.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
-    size: 417256
-    checksum: sha256:2b7382c963dfafa34f0d4c0c1ac1a054d2446ff0bf37fdfd3ec4a6b94811ebe6
+    size: 416071
+    checksum: sha256:d13ae9539e4898accdc42fa5814a08ec31758bc301878e5249160ce88f1b2ea3
     name: kbd
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/k/kbd-legacy-2.4.0-11.el9.noarch.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/k/kbd-legacy-2.4.0-12.el9_8.noarch.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
-    size: 579544
-    checksum: sha256:8dcc48e93bffc5e2d819f8c8c468648362c13d554f756c421711386c8fadf950
+    size: 581999
+    checksum: sha256:afa9554281da4aee85281208c67f748363da116cd20703cf454ec8348b3e945d
     name: kbd-legacy
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/k/kbd-misc-2.4.0-11.el9.noarch.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/k/kbd-misc-2.4.0-12.el9_8.noarch.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
-    size: 1739470
-    checksum: sha256:f698c807d4805c83b2dc8564427a7c4445d1c41a23d4bdb7988eba489e73932f
+    size: 1741836
+    checksum: sha256:d18d23826f34a8b7b5ad64eacb4e32cbc0fa5f332d64d70e8e0c27e11b0f2506
     name: kbd-misc
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/k/keyutils-libs-1.6.3-1.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 34136
@@ -14964,6 +14992,13 @@ arches:
     name: shared-mime-info
     evr: 2.1-5.el9
     sourcerpm: shared-mime-info-2.1-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/s/sqlite-libs-3.34.1-11.el9_8.s390x.rpm
+    repoid: ubi-9-for-s390x-baseos-rpms
+    size: 653093
+    checksum: sha256:5897571d31b7cc9d3e8ef0e7dc9dbf8230bea207c9e926d4fef9fb635ab16f64
+    name: sqlite-libs
+    evr: 3.34.1-11.el9_8
+    sourcerpm: sqlite-3.34.1-11.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/t/tar-1.34-11.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 907745
@@ -15090,6 +15125,20 @@ arches:
     name: iptables-legacy-libs
     evr: 1.8.10-11.1.el9
     sourcerpm: iptables-epel-1.8.10-11.1.el9.src.rpm
+  - url: https://dl.fedoraproject.org/pub/epel/9/Everything/s390x/Packages/p/pandoc-2.14.0.3-17.el9.s390x.rpm
+    repoid: epel
+    size: 41217239
+    checksum: sha256:f7d13195d393aecacd0c58a78438617a4b4c40626143ec509384d9f08d4cb1ac
+    name: pandoc
+    evr: 2.14.0.3-17.el9
+    sourcerpm: pandoc-2.14.0.3-17.el9.src.rpm
+  - url: https://dl.fedoraproject.org/pub/epel/9/Everything/s390x/Packages/p/pandoc-common-2.14.0.3-17.el9.noarch.rpm
+    repoid: epel
+    size: 440051
+    checksum: sha256:a823105392d489376fd040a5bdb372373a3e2bae284eefe915bca9d187f52d6d
+    name: pandoc-common
+    evr: 2.14.0.3-17.el9
+    sourcerpm: pandoc-2.14.0.3-17.el9.src.rpm
   - url: https://dl.fedoraproject.org/pub/epel/9/Everything/s390x/Packages/t/texlive-tcolorbox-20200406-38.el9.noarch.rpm
     repoid: epel
     size: 4824930
@@ -18072,13 +18121,6 @@ arches:
     name: shadow-utils-subid
     evr: 2:4.9-17.el9
     sourcerpm: shadow-utils-4.9-17.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/sqlite-libs-3.34.1-11.el9.s390x.rpm
-    repoid: baseos
-    size: 645720
-    checksum: sha256:ecf4aaf07ad4cf53b96bf0f9a597936bb333091a3faa4255996227ff0c2073c8
-    name: sqlite-libs
-    evr: 3.34.1-11.el9
-    sourcerpm: sqlite-3.34.1-11.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/systemd-252-76.el9.s390x.rpm
     repoid: baseos
     size: 4161318
@@ -20456,27 +20498,27 @@ arches:
     name: json-glib
     evr: 1.6.6-1.el9
     sourcerpm: json-glib-1.6.6-1.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/k/kbd-2.4.0-11.el9.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/k/kbd-2.4.0-12.el9_8.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
-    size: 428483
-    checksum: sha256:3271c89a49edb384441b749a30b662968f99f66a169dd01bac2b3cb39e2263e9
+    size: 432856
+    checksum: sha256:0c34db3a591e2b407f842a9a88a2dd934e5828fd706298f08b48c8717aeb140f
     name: kbd
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/k/kbd-legacy-2.4.0-11.el9.noarch.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/k/kbd-legacy-2.4.0-12.el9_8.noarch.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
-    size: 579544
-    checksum: sha256:8dcc48e93bffc5e2d819f8c8c468648362c13d554f756c421711386c8fadf950
+    size: 581999
+    checksum: sha256:afa9554281da4aee85281208c67f748363da116cd20703cf454ec8348b3e945d
     name: kbd-legacy
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/k/kbd-misc-2.4.0-11.el9.noarch.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/k/kbd-misc-2.4.0-12.el9_8.noarch.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
-    size: 1739470
-    checksum: sha256:f698c807d4805c83b2dc8564427a7c4445d1c41a23d4bdb7988eba489e73932f
+    size: 1741836
+    checksum: sha256:d18d23826f34a8b7b5ad64eacb4e32cbc0fa5f332d64d70e8e0c27e11b0f2506
     name: kbd-misc
-    evr: 2.4.0-11.el9
-    sourcerpm: kbd-2.4.0-11.el9.src.rpm
+    evr: 2.4.0-12.el9_8
+    sourcerpm: kbd-2.4.0-12.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/k/keyutils-libs-1.6.3-1.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 34363
@@ -21016,6 +21058,13 @@ arches:
     name: shared-mime-info
     evr: 2.1-5.el9
     sourcerpm: shared-mime-info-2.1-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/s/sqlite-libs-3.34.1-11.el9_8.x86_64.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 665095
+    checksum: sha256:e5c20e933ec01f746a6c59a94cb99f46c6138dab3f387f0d02dab47f356e2e98
+    name: sqlite-libs
+    evr: 3.34.1-11.el9_8
+    sourcerpm: sqlite-3.34.1-11.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/t/tar-1.34-11.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 913256
@@ -21128,6 +21177,20 @@ arches:
     name: unixODBC-devel
     evr: 2.3.12-1.el9
     sourcerpm: unixODBC-2.3.12-1.el9.src.rpm
+  - url: https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/Packages/p/pandoc-2.14.0.3-17.el9.x86_64.rpm
+    repoid: epel
+    size: 22073708
+    checksum: sha256:8ae08c900d7940d8624bb65fbcf16e1924231064edff26ac2ab1a10bf9c77df7
+    name: pandoc
+    evr: 2.14.0.3-17.el9
+    sourcerpm: pandoc-2.14.0.3-17.el9.src.rpm
+  - url: https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/Packages/p/pandoc-common-2.14.0.3-17.el9.noarch.rpm
+    repoid: epel
+    size: 440051
+    checksum: sha256:a823105392d489376fd040a5bdb372373a3e2bae284eefe915bca9d187f52d6d
+    name: pandoc-common
+    evr: 2.14.0.3-17.el9
+    sourcerpm: pandoc-2.14.0.3-17.el9.src.rpm
   - url: https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/Packages/t/texlive-tcolorbox-20200406-38.el9.noarch.rpm
     repoid: epel
     size: 4824930
@@ -24124,13 +24187,6 @@ arches:
     name: shadow-utils-subid
     evr: 2:4.9-17.el9
     sourcerpm: shadow-utils-4.9-17.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/sqlite-libs-3.34.1-11.el9.x86_64.rpm
-    repoid: baseos
-    size: 659516
-    checksum: sha256:dfdc4f315ec0723e6c2687f810bcc5a9d3cb83f4d73496734645123bd5a6f3d4
-    name: sqlite-libs
-    evr: 3.34.1-11.el9
-    sourcerpm: sqlite-3.34.1-11.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/systemd-252-76.el9.x86_64.rpm
     repoid: baseos
     size: 4397528

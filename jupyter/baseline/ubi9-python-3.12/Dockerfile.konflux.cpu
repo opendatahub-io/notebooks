@@ -35,22 +35,23 @@ USER 0
 
 ARG RHEL_VERSION=9.8
 
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-RUN subscription-manager release --set="${RHEL_VERSION}"
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-# Runtime installs need the OpenShift layered-product repo for openshift-clients.
-RUN basearch="$(rpm --eval '%{_arch}')" && \
-    dnf config-manager --set-enabled "rhocp-4.16-for-rhel-9-${basearch}-rpms"
-
-# Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
-# compat-openssl11 provides libcrypto.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
+# hadolint ignore=DL3041
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y tar perl mesa-libGL skopeo compat-openssl11 openshift-clients
+BASE_PKGS=(perl mesa-libGL skopeo compat-openssl11 openshift-clients)
+dnf install -y "${BASE_PKGS[@]}"
 dnf clean all
-rm -rf /var/cache/dnf
+rm -rf /var/cache/yum
 EOF
+
 
 # ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
 RUN /bin/bash <<'EOF'
@@ -77,29 +78,18 @@ COPY --chown=1001:0 ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# texlive-tcolorbox is not in AppStream/CRB. Hermetic builds pull it via cachi2
-# (EPEL for ODH, rhelai for RHDS). Phase-1 online builds enable EPEL instead.
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
-EOF
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
 
 ### END Dependencies for PDF export
-
-# Real pandoc binary for nbconvert (PyPI has no pandoc-rhai equivalent).
-# Install while EPEL is still enabled, then drop the release package.
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y pandoc
-dnf remove -y epel-release || true
-dnf clean all
-rm -rf /var/cache/dnf
-pandoc --version
-EOF
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 RUN chmod 755 ./start-notebook.sh
@@ -135,36 +125,29 @@ WORKDIR /opt/app-root/bin
 
 USER 0
 
-# Runtime OS packages for JupyterLab / Elyra / Kale (no DB-connector stack in phase 1).
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-PACKAGES=(jq git-lfs libsndfile libxcrypt-compat protobuf)
-dnf install -y "${PACKAGES[@]}"
-dnf clean all
-rm -rf /var/cache/dnf
-EOF
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install jq git-lfs libsndfile libxcrypt-compat protobuf
+
+COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
-# The raw RHEL Python base does not bootstrap uv the way the AIPCC notebook
-# base does, so install it explicitly for the phase-1 online PyPI install.
-ARG UV_VERSION=0.12.5
-RUN python3 -m pip install --no-cache-dir "uv==${UV_VERSION}"
+USER 1001:0
 
-ENV SHELL=/bin/bash
-# Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
-ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
-
-# Phase 1 Python install: hashed requirements from PyPI (non-hermetic).
-COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
+
 echo "Installing software and packages"
-UV_NO_CACHE=true UV_LINK_MODE=copy \
-uv pip install \
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
 
 pandoc --version
@@ -181,20 +164,10 @@ jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 chmod g+w /opt/app-root/etc/jupyter/labconfig
 /opt/app-root/bin/utils/addons/apply.sh
 /usr/local/bin/ensure-openshift-site-packages.sh
-
-# change ownership to default user (packages were installed as root)
-chown -R 1001:0 /opt/app-root
 EOF
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
 
 USER 1001
-
-# Fix permissions to support pip in OpenShift environments
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
-EOF
 
 WORKDIR /opt/app-root/src
