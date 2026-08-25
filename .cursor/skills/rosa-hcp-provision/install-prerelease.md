@@ -138,10 +138,18 @@ done
 
 Grants the admission/background controllers permission to
 get/list/watch/create/update/patch/delete `secrets` (needed by the
-`sync-secrets` policy below). **Kyverno 1.19 also runs generate
-validation in the admission controller** — without
-`aggregate-to-admission-controller`, `sync-secrets` apply fails even
-though background-controller RBAC looks correct (hit 2026-08-24):
+`sync-secrets` policy below). The admission controller also runs generate
+validation — without `aggregate-to-admission-controller`, `sync-secrets`
+apply fails even though background-controller RBAC looks correct (hit
+2026-08-24 on chart 1.19.0):
+
+Kyverno's documented pattern splits this role (admission-controller:
+read-only get/list/watch; background-controller: the write verbs). Both
+aggregation labels below grant the *same* full read+write rule to both
+controllers, so the admission controller ends up with cluster-wide
+create/update/patch/delete on every Secret, not just read access. Accepted
+here for an ephemeral dev cluster; don't copy this role as-is onto a
+shared/production cluster without splitting the rules.
 
 ```bash
 cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
@@ -231,12 +239,18 @@ spec:
       any:
       - key: "{{ request.object.metadata.name }}"
         operator: AnyIn
+        # INVARIANT: this namespace list must stay identical to the
+        # namespaces used by init-pull-secret-quay and
+        # append-pull-secret-quay below — a namespace missing here has no
+        # pull-secret-quay Secret to inject, so Pods there fail to start
+        # with a missing-Secret error.
+        #
         # openshift-ingress: RHOAI 3.6 Gateway dashboard's kube-auth-proxy
         # lives here (quay.io/rhoai/odh-kube-auth-proxy-rhel9). Include it
-        # on the *first* apply — Kyverno generate match/clone is immutable
-        # after create, so adding this namespace later is rejected. Hit
-        # 2026-08-24: dashboard returned 403 instead of OAuth 302 while
-        # the proxy was ImagePullBackOff.
+        # on the *first* apply — Kyverno generate match/clone/preconditions
+        # are immutable after create, so adding this namespace later is
+        # rejected. Hit 2026-08-24: dashboard returned 403 instead of
+        # OAuth 302 while the proxy was ImagePullBackOff.
         value: ["redhat-ods-applications", "redhat-ods-operator", "redhat-ods-monitoring", "openshift-ingress"]
       - key: '{{ request.object.metadata.labels."opendatahub.io/dashboard" || `""` }}'
         operator: Equals
@@ -264,6 +278,12 @@ spec:
   # with "authentication required" while quay.io sidecars succeed. Hit this
   # on RHOAI 3.6 EA workbenches 2026-08-24. JSON Patch append keeps both.
   rules:
+  # init-pull-secret-quay is defense-in-depth: in practice OpenShift's
+  # ServiceAccount admission plugin already populates a Pod's
+  # imagePullSecrets (with the SA's own dockercfg secret) before Kyverno's
+  # webhook runs, so the `length(@) == 0` precondition below rarely fires
+  # for real workbench Pods. append-pull-secret-quay (next rule) is what
+  # actually handles the common case.
   - name: init-pull-secret-quay
     match:
       any:
@@ -411,10 +431,10 @@ spec:
         # '' for a literal quote, matching the Pod/initContainer rules
         # above) has no escape processing at all, so `\.` survives as a
         # literal backslash-dot, which is what the regex actually needs.
-        # Kyverno 1.19 (2026-08-24): do **not** double the JMESPath quotes
-        # (`''^registry\.redhat\.io/rhoai/''`) — that is what 1.18
-        # sometimes needed after a JSON-patch edit and it SyntaxError's
-        # here. Re-`oc apply` this document; don't JSON-patch the regex.
+        # If a JSON-patch edit to this regex mangles the escaping and
+        # produces a JMESPath SyntaxError, don't try to fix it with another
+        # JSON-patch — re-`oc apply` this whole document instead (see
+        # "JSON-patch SyntaxError" note below).
         patchesJson6902: |-
           - path: "/spec/tags/{{elementIndex}}/from/name"
             op: replace
@@ -449,9 +469,16 @@ that list**. Copy `pull-secret-quay` into `openshift-ingress` by hand
 (same `jq` dance as step 7's `openshift-marketplace` copy) and delete
 the `kube-auth-proxy` pods so `add-imagepullsecrets` (which *is*
 mutable) can inject. `add-imagepullsecrets` itself can be re-applied;
-existing Pods do **not** pick up `imagePullSecrets` changes — delete
-them (`skipBackgroundRequests: true`, and kubelet cannot mutate the
-field in place).
+existing Pods do **not** pick up `imagePullSecrets` changes — the field
+is effectively immutable once a Pod is admitted, so delete and let it
+be recreated.
+
+This hand-copied `openshift-ingress` Secret is **not** tracked by
+`sync-secrets`' `synchronize: true` — it's a one-off `jq` copy, not a
+Kyverno-managed clone. On the next credential rotation in
+`openshift-config`, every namespace `sync-secrets` targets gets the
+update automatically; `openshift-ingress` does not. Re-run the same
+`jq` copy by hand after any `pull-secret-quay` rotation.
 
 **If `dashboard-redirect` (or anything else pulling from
 `registry.redhat.io`) shows `ImagePullBackOff` after applying policies**:
@@ -595,6 +622,12 @@ spec:
     managementState: Managed
     customCABundle: ''
 ---
+# Same shape as install-rhoai.md step 3, except apiVersion v2 and
+# `aipipelines` replacing `datasciencepipelines` — keep both in sync if
+# the component list changes. Components not listed below (e.g. the
+# v2-only feastoperator, llamastackoperator, mlflowoperator, sparkoperator,
+# trainer, aigateway, mcplifecycleoperator, ogx) are left at the operator's
+# own default, which is Removed for all of them on a fresh v2 DSC.
 apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
@@ -608,10 +641,6 @@ spec:
     aipipelines:
       managementState: Removed
     kserve:
-      managementState: Removed
-    modelmeshserving:
-      managementState: Removed
-    codeflare:
       managementState: Removed
     ray:
       managementState: Removed
@@ -799,8 +828,9 @@ Kyverno **injects** `pull-secret-quay` onto Pods (step 6). Do not
 bug (`patchStrategicMerge` replacing `imagePullSecrets`).
 
 After a policy fix, **delete the workbench pod**. `imagePullSecrets`
-cannot be patched on a running pod; `skipBackgroundRequests: true`
-means Kyverno will not rewrite it in the background either.
+cannot be patched on a running pod — it's effectively immutable once
+the Pod is admitted — so only deleting and recreating it lets the
+mutate rule apply.
 
 Signature of the replace-the-list bug: sidecar
 (`quay.io/rhoai/odh-kube-rbac-proxy-rhel9`) pulls fine, notebook
@@ -817,9 +847,9 @@ registry logs `authorized request` as
 `system:serviceaccount:<project>:<notebook-sa>` is progress, not a
 hang. `ErrImagePull` / `authentication required` is not.
 
-**One GPU:** `--replicas 1` on `g5g.2xlarge` is one T4G. A second GPU
-workbench stays `Pending` / `Insufficient nvidia.com/gpu`. Stop one, or
-scale the pool. Not an image-pull failure.
+**One GPU:** see [SKILL.md](SKILL.md#gpu-machine-pools) — `--replicas 1`
+on `g5g.2xlarge` is one GPU; a second workbench `Pending` here is
+capacity, not an image-pull failure.
 
 Verified spawn: `jupyter-pytorch-llmcompressor:3.6` **2/2 Running** on
 the T4G node after append-injection + PreserveOriginal re-import.

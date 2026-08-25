@@ -157,7 +157,7 @@ re-import + Kyverno pull-secret **append** (not replace — see
 3.5/3.6, not 2.25, so this is not a confirmed retraction of the 2.25
 x86_64-only conclusion above — but before assuming "RHOAI 2.25 has no
 arm64 images" again, check `importPolicy.importMode` first
-(`oc get imagestream <name> -o json | jq '.spec.tags[].importPolicy'`);
+(`oc get imagestream "<name>" -o json | jq '.spec.tags[].importPolicy'`);
 the two symptoms are indistinguishable from the crash log alone.
 
 ```bash
@@ -582,7 +582,7 @@ customer-facing workaround tiers.
 | `ErrImagePull` for `quay.io/rhoai/*` | Create `pull-secret-quay` / `rhoai-pull` in the namespace (Option B / [install-prerelease.md](install-prerelease.md)). Dead robot `rhoai+devops_rhoai_readonly_bot` is still dead as of 2026-08-24 — use a personal Quay login that can read `quay.io/rhoai` |
 | Dashboard `https://rh-ai.apps...` returns **403** (not OAuth 302) | `kube-auth-proxy` in `openshift-ingress` ImagePullBackOff on `quay.io/rhoai/odh-kube-auth-proxy-rhel9`. Copy `pull-secret-quay` there (Kyverno `sync-secrets` generate rule is immutable after apply). See [install-prerelease.md](install-prerelease.md) step 10 |
 | Workbench 1/2: sidecar pulled, notebook `authentication required` on `image-registry.openshift-image-registry.svc` | Kyverno `patchStrategicMerge` replaced `imagePullSecrets` and dropped `*-dockercfg-*`. Use JSON Patch **append**. Delete the pod after fixing the policy. [install-prerelease.md](install-prerelease.md) step 6/13 |
-| Two GPU workbenches, one `Pending` `Insufficient nvidia.com/gpu` | One `g5g.2xlarge` replica = one GPU. Expected |
+| Two GPU workbenches, one `Pending` `Insufficient nvidia.com/gpu` | See [GPU Machine Pools](#gpu-machine-pools) above — one `g5g.2xlarge` replica = one GPU. Expected |
 | `oc exec` hangs locally | Use Python kubernetes client — see arm64 skill `gpu-manual-tests.py` |
 | `CLIENT_NOT_FOUND` from kinit | Use `kinit --keychain user@IPA.REDHAT.COM` on macOS |
 | `rh-aws-saml-login` output format | Use `--output env` for shell eval, or wrap command with `-- cmd args` |
