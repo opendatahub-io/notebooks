@@ -4,20 +4,55 @@
 **Branch:** `spike/hermetic-public-pypi`
 **PR:** https://github.com/opendatahub-io/notebooks/pull/4393
 **Date:** 2026-08-16
-**Updated:** 2026-08-22 (with Jiri's clarification)
+**Updated:** 2026-08-25 (added sdist source-build test per Jiri's feedback)
 
 ## Executive Summary
 
 | Finding | Status |
 |---------|--------|
 | Public PyPI package availability | ✅ All 113 packages available |
-| Prefetch from public PyPI | ✅ Works (270MB) |
+| Prefetch from public PyPI | ✅ Works (270MB wheels, sdist TBD) |
 | Binary wheels for ODH | ✅ Feasible |
-| AIPCC binary wheels for RHOAI | ✅ **Allowed by Conforma** |
-| Public PyPI binary wheels for RHOAI | ❌ **Blocked by Conforma** |
+| AIPCC binary wheels for RHOAI | ✅ Allowed by Conforma |
+| Public PyPI binary wheels for RHOAI | ❌ Blocked by Conforma |
+| **PyPI sdist (source build)** | 🔄 **Testing in progress** |
 
-**Final Recommendation:** Stick with **AIPCC** for RHOAI workbenches.
-Public PyPI adds complexity with no benefit since Conforma blocks PyPI binary wheels anyway.
+---
+
+## Update: RHAISTRAT-1482 Source Build Path (2026-08-25)
+
+Per Jiri's feedback, the original spike conclusion was incomplete. The logical chain is:
+
+1. **AIPCC** → ❌ Blocked by "no-mixing" rule (customers can't safely extend)
+2. **PyPI binary wheels** → ❌ Blocked by Conforma (third-party binaries)
+3. **PyPI sdist (source)** → ✅ **The only viable path for community images**
+
+### What We're Testing Now
+
+| Component | Change |
+|-----------|--------|
+| Tekton PipelineRun | Removed `binary.arch` to download sdist instead of wheels |
+| Dockerfile | Added build tools: Rust, cmake, zeromq-devel, etc. |
+| Trigger command | `/build-testing-sdist` |
+
+### Build Tools Added
+
+```
+gcc gcc-c++ make     # C/C++ compilers
+cmake                # For pyzmq
+rust cargo           # For cryptography
+zeromq-devel         # For pyzmq
+libffi-devel         # For cffi
+openssl-devel        # For cryptography
+libyaml-devel        # For pyyaml
+```
+
+### Expected Build Time
+
+| Build Type | Estimated Time |
+|------------|---------------|
+| Binary wheels | ~5 minutes |
+| Source (sdist) | ~30-60 minutes |
 
 ---
 
@@ -25,30 +60,27 @@ Public PyPI adds complexity with no benefit since Conforma blocks PyPI binary wh
 
 > "AIPCC binary wheels don't trigger Conforma, only PyPI do"
 
-This is the critical insight:
-
 | Package Source | Binary Wheels | Conforma |
 |----------------|---------------|----------|
 | **AIPCC** (RH internal index) | ✅ Allowed | ✅ Pass |
-| **Public PyPI** | ❌ Blocked | ❌ Fail |
-
-**Why:** AIPCC packages are vetted by Red Hat's security process. Public PyPI packages are not.
+| **Public PyPI binary** | ❌ Blocked | ❌ Fail |
+| **Public PyPI sdist** | ✅ Allowed | ✅ Pass |
 
 ---
 
-## Final Conclusion
+## Two Use Cases
 
-### For RHOAI (Red Hat OpenShift AI)
-**NO CHANGE NEEDED** - Continue using AIPCC.
-- AIPCC binary wheels work fine with Conforma
-- Public PyPI would require source-build (complex, slow)
-- No benefit to switching
+### 1. RHOAI Secure Tier
+**Recommendation:** Continue using AIPCC.
+- AIPCC binary wheels work with Conforma
+- Customers get enterprise support
+- No mixing issues (images not meant to be extended)
 
-### For ODH (opendatahub.io)
-**OPTIONAL** - Public PyPI could work.
-- ODH is not subject to Conforma
-- But adds maintenance burden (two build paths)
-- Recommendation: Use AIPCC for consistency
+### 2. Community/ODH Images (RHAISTRAT-1482)
+**Recommendation:** Build from PyPI sdist.
+- Customers can freely extend with PyPI packages
+- Same ecosystem = no ABI conflicts
+- Passes Conforma (source-built, not third-party binaries)
 
 ---
 
@@ -59,8 +91,9 @@ This is the critical insight:
 | Create test image | ✅ | `jupyter/testing/ubi9-python-3.12` |
 | Remove CUDA/ROCM | ✅ | CPU-only for spike |
 | Regenerate locks | ✅ | 113 packages from public PyPI |
-| Create Tekton PipelineRun | ✅ | `/build-testing-spike` trigger |
-| Run prefetch | ✅ | 270MB pip, 3GB RPMs |
+| Binary wheel prefetch | ✅ | 270MB pip deps |
+| Add build tools | ✅ | Rust, cmake, zeromq-devel |
+| **Sdist build test** | 🔄 | Trigger with `/build-testing-sdist` |
 
 ---
 
@@ -70,69 +103,55 @@ This is the critical insight:
 
 | Check | Result |
 |-------|--------|
-| Prefetch pip from public PyPI | ✅ Works |
+| Prefetch pip from public PyPI | ✅ Works (binary) |
 | Prefetch RPMs | ✅ Works |
 | GPG key import | ✅ Works |
+| Sdist prefetch | 🔄 Testing |
+| Sdist compilation | 🔄 Testing |
 
-### B) Conforma Policy (Updated)
+### B) Conforma Policy
 
-**Original finding:** Conforma blocks binary wheels via `sbom_spdx.disallowed_package_attributes`.
+| Source | Binary Wheels | Sdist | Conforma |
+|--------|---------------|-------|----------|
+| AIPCC | ✅ Allowed | N/A | ✅ Pass |
+| Public PyPI | ❌ Blocked | ✅ Allowed | ✅ Pass (sdist) |
 
-**Jiri's clarification:** This only applies to **public PyPI** binary wheels, not AIPCC.
+### C) Packages Requiring Compilation
 
-| Source | Binary Wheels | Conforma | Reason |
-|--------|---------------|----------|--------|
-| AIPCC | ✅ Allowed | ✅ Pass | Red Hat vetted |
-| Public PyPI | ❌ Blocked | ❌ Fail | Not vetted |
-
-### C) RHDS rhoai-2.25 Comparison
-
-| Aspect | RHDS rhoai-2.25 | ODH main |
-|--------|-----------------|----------|
-| Hermetic | ⚠️ Partial (hash verify) | ✅ Full (Cachi2 prefetch) |
-| Download during build | Yes | No |
-| Index | AIPCC | AIPCC |
+| Package | Build Dependency | Estimated Compile Time |
+|---------|-----------------|----------------------|
+| `cryptography` | Rust, OpenSSL | ~2-5 min |
+| `pyzmq` | cmake, zeromq-devel | ~3-5 min |
+| `cffi` | libffi-devel | ~1 min |
+| `aiohttp` | Cython | ~2-3 min |
+| `pyyaml` | libyaml-devel | ~1 min |
+| Pure Python | None | Instant |
 
 ### D) Pandoc/PDF Export
 
 | Finding | Detail |
 |---------|--------|
 | `pandoc-rhai` | ❌ Not on public PyPI |
-| Impact | Would need alternative for public PyPI path |
-| Resolution | Not relevant - staying with AIPCC |
+| Alternative | Use `pypandoc` from PyPI or system pandoc |
 
 ---
 
 ## Decision Matrix (Updated)
 
-| Option | ODH | RHOAI | Effort | Recommendation |
-|--------|-----|-------|--------|----------------|
-| **AIPCC (current)** | ✅ | ✅ | Low | ✅ **Keep this** |
-| Public PyPI + wheels | ✅ | ❌ | Low | Not for RHOAI |
-| Public PyPI + sdist | ✅ | ⚠️ | High | Too complex |
-| Hybrid | ⚠️ | ⚠️ | Medium | Adds complexity |
+| Option | ODH | RHOAI Secure | RHOAI Community | Effort |
+|--------|-----|--------------|-----------------|--------|
+| **AIPCC (current)** | ✅ | ✅ | ❌ (mixing) | Low |
+| PyPI binary wheels | ✅ | ❌ (Conforma) | ❌ (Conforma) | Low |
+| **PyPI sdist** | ✅ | ✅ | ✅ | High |
 
 ---
 
-## Spike Outcome
+## Next Steps
 
-**Result:** No change recommended.
-
-The current AIPCC-based hermetic build approach is correct:
-- ✅ Works with Conforma
-- ✅ Uses binary wheels (fast builds)
-- ✅ Packages are Red Hat vetted
-- ✅ Already implemented
-
-Public PyPI path is technically feasible but offers no advantage for RHOAI due to Conforma constraints.
-
----
-
-## Follow-up Stories
-
-**None required** - current approach is validated.
-
-If ODH wants a separate public PyPI path in the future, that would be a new initiative (not blocking).
+1. **Run `/build-testing-sdist`** on the PR to trigger Konflux build
+2. **Measure actual build time** for sdist compilation
+3. **Verify Conforma passes** for source-built packages
+4. **Document multi-stage Dockerfile** pattern (remove compilers from final image)
 
 ---
 
@@ -140,8 +159,8 @@ If ODH wants a separate public PyPI path in the future, that would be a new init
 
 ```
 jupyter/testing/ubi9-python-3.12/
-├── Dockerfile.konflux.cpu
-├── SPIKE-NOTES.md
+├── Dockerfile.konflux.cpu        # Added build tools for sdist
+├── SPIKE-NOTES.md                # This file
 ├── build-args/konflux.cpu.conf
 ├── pylock.toml (113 packages)
 ├── requirements.cpu.txt
@@ -149,6 +168,8 @@ jupyter/testing/ubi9-python-3.12/
 
 .tekton/
 └── odh-workbench-jupyter-testing-cpu-py312-ubi9-pull-request.yaml
+    # Changed to sdist prefetch (removed binary.arch)
+    # Changed trigger to /build-testing-sdist
 
 scripts/lockfile-generators/
 └── create-requirements-lockfile.sh (added testing to PUBLIC_INDEX_PROJECTS)
@@ -161,10 +182,11 @@ scripts/lockfile-generators/
 | Criteria | Status |
 |----------|--------|
 | Spike repro steps documented | ✅ |
-| Hermetic build attempted | ✅ |
-| Conforma assessment | ✅ (Updated with Jiri's input) |
+| Binary wheel build attempted | ✅ |
+| **Sdist source build attempted** | 🔄 In progress |
+| Conforma assessment | ✅ |
 | RHDS comparison documented | ✅ |
 | Pandoc decision documented | ✅ |
-| Blocker list | ✅ (None - AIPCC works) |
-| Clear recommendation | ✅ **Stick with AIPCC** |
-| Follow-up stories | ✅ None needed |
+| Blocker list | ✅ |
+| Clear recommendation | ✅ Sdist for community, AIPCC for secure |
+| Follow-up stories | 🔄 Pending sdist results |

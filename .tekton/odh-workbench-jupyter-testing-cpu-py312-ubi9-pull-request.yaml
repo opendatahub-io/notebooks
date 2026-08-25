@@ -1,6 +1,7 @@
 # yamllint disable-file
-# Hermetic build spike - public PyPI (RHAIENG-6564)
-# This is a testing PipelineRun for spike investigation, NOT for production use.
+# Hermetic build spike - public PyPI SDIST (RHAIENG-6564)
+# This tests building from SOURCE DISTRIBUTIONS (not binary wheels) per RHAISTRAT-1482.
+# Trigger with: /build-testing-sdist
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
@@ -13,7 +14,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: 'true'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     # Only trigger on explicit comment - spike testing only
-    pipelinesascode.tekton.dev/on-comment: ^/build\-testing\-spike
+    pipelinesascode.tekton.dev/on-comment: ^/build\-testing\-sdist
     pipelinesascode.tekton.dev/on-cel-expression: 'false'
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -56,11 +57,11 @@ spec:
     # Generic artifacts (GPG keys, etc.)
     - path: prefetch-input/odh
       type: generic
-    # Pip packages from PUBLIC PyPI (not RH index)
+    # Pip packages from PUBLIC PyPI - SOURCE DISTRIBUTIONS (sdist), not binary wheels
+    # This tests the RHAISTRAT-1482 path: compile from source for Conforma compliance
     - path: jupyter/testing/ubi9-python-3.12
       type: pip
-      binary:
-        arch: x86_64
+      # NO binary section = download sdist (source) packages
       requirements_files: [requirements.cpu.txt]
   taskRunSpecs:
   - pipelineTaskName: prefetch-dependencies

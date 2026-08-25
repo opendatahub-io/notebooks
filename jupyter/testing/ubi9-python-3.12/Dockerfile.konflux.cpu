@@ -29,6 +29,27 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
     bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
+# [SDIST BUILD] Install build tools needed for compiling Python packages from source.
+# This is required for RHAISTRAT-1482: build from PyPI source distributions.
+# These stay in the image for now; a production multi-stage build would remove them.
+# hadolint ignore=DL3041
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install \
+    # C/C++ compilers (already present but ensure)
+    gcc gcc-c++ make \
+    # CMake for packages like pyzmq
+    cmake \
+    # Rust for cryptography (if not using vendored)
+    rust cargo \
+    # ZeroMQ development headers for pyzmq
+    zeromq-devel \
+    # LibFFI for cffi
+    libffi-devel \
+    # OpenSSL development headers
+    openssl-devel \
+    # YAML development headers for pyyaml
+    libyaml-devel
+
 
 ####################
 # jupyter-minimal  #
@@ -85,12 +106,16 @@ RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 umask 0002
 
-echo "Installing software and packages"
-# Install Python packages from lockfile (Cachi2 prefetched pip deps; --no-deps per pylock.toml)
+echo "Installing software and packages from SOURCE (sdist)"
+# [SDIST BUILD] Install Python packages from source distributions.
+# This compiles packages from source - required for RHAISTRAT-1482 Conforma compliance.
+# --no-binary :all: forces source builds even if wheels are available.
+# Note: This is slower than wheel installs (~30-60 min vs ~2 min).
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
     --no-verify-hashes \
+    --no-binary :all: \
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
 
