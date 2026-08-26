@@ -298,6 +298,8 @@ def test_generate_requirements_txt_public_index_uses_root_pylock_without_index_u
     assert captured_cmd == [
         pg.sys.executable,
         str(pg.PYLOCK_TO_REQUIREMENTS),
+        "--sdist-hashes",
+        "prefer",
         str(project_dir / "pylock.toml"),
         str(project_dir / "requirements.cpu.txt"),
     ], f"unexpected public-index pylock-to-requirements command: {captured_cmd}"
@@ -365,6 +367,8 @@ def test_process_directory_public_index_requirements_only(
     assert captured_cmd == [
         pg.sys.executable,
         str(pg.PYLOCK_TO_REQUIREMENTS),
+        "--sdist-hashes",
+        "prefer",
         str(project_dir / "pylock.toml"),
         str(project_dir / "requirements.cpu.txt"),
     ], f"unexpected --requirements-only command: {captured_cmd}"
@@ -403,6 +407,8 @@ def test_process_directory_public_index_generates_requirements_after_lock(
     assert cmds[-1] == [
         pg.sys.executable,
         str(pg.PYLOCK_TO_REQUIREMENTS),
+        "--sdist-hashes",
+        "prefer",
         str(project_dir / "pylock.toml"),
         str(project_dir / "requirements.cpu.txt"),
     ], f"last command should convert root pylock.toml: {cmds[-1]}"
