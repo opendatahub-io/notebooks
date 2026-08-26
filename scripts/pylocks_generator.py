@@ -461,7 +461,7 @@ def parse_max_upload_time_from_lockfile(path: Path) -> str | None:
         return None
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8", errors="replace"))
-    except (OSError, tomllib.TOMLDecodeError):
+    except OSError, tomllib.TOMLDecodeError:
         return None
 
     times = _upload_times_from_lock_data(data)
