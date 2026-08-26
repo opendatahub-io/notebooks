@@ -505,7 +505,7 @@ def compile_command_for_lock_header(cmd: list[str]) -> str:
         if index == 0:
             parts.append("uv")
             continue
-        if arg.startswith("--exclude-newer=") or arg.startswith("--custom-compile-command="):
+        if arg.startswith(("--exclude-newer=", "--custom-compile-command=")):
             continue
         if arg in ("--exclude-newer", "--custom-compile-command"):
             skip_next = True
@@ -1222,9 +1222,7 @@ def main(
     ci_check = os.environ.get("PYLOCKS_CI_CHECK", "") == "1"
     live_ts = utc_now_iso()
     if ci_check and not requirements_only:
-        log.info(
-            "PYLOCKS_CI_CHECK=1: using max artifact upload-time from each lockfile as --exclude-newer cutoff."
-        )
+        log.info("PYLOCKS_CI_CHECK=1: using max artifact upload-time from each lockfile as --exclude-newer cutoff.")
 
     # TARGET DIRECTORIES
     if pr_base is not None:
