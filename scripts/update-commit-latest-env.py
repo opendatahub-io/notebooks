@@ -26,17 +26,17 @@ Pipeline runtime images are intentionally skipped (only odh-workbench-* processe
 Usage (run from the repo root):
 
   # ODH only — quay.io/opendatahub, no auth required:
-  ./uv run scripts/update-commit-latest-env.py --variant odh
+  uv run scripts/update-commit-latest-env.py --variant odh
 
   # RHOAI only — quay.io/rhoai, requires prior skopeo login:
   skopeo login quay.io --username <bot-user> --password <bot-token>
-  ./uv run scripts/update-commit-latest-env.py --variant rhoai
+  uv run scripts/update-commit-latest-env.py --variant rhoai
 
   # Pin a specific RHOAI tag instead of auto-detecting:
-  ./uv run scripts/update-commit-latest-env.py --variant rhoai --rhoai-version-tag rhoai-3.5
+  uv run scripts/update-commit-latest-env.py --variant rhoai --rhoai-version-tag rhoai-3.5
 
   # Both variants at once:
-  ./uv run scripts/update-commit-latest-env.py --variant both
+  uv run scripts/update-commit-latest-env.py --variant both
 """
 
 from __future__ import annotations
