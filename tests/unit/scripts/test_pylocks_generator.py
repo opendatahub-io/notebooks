@@ -110,7 +110,7 @@ def test_parse_max_upload_time_from_wheels(tmp_path: Path) -> None:
         'sdist = { url = "https://example.com/b.tar.gz", upload-time = 2025-06-03T01:02:03Z }\n',
         encoding="utf-8",
     )
-    assert pg.parse_max_upload_time_from_lockfile(p) == "2025-06-03T01:02:03Z"
+    assert pg.parse_max_upload_time_from_lockfile(p) == "2025-06-03T01:02:03.999999Z"
 
 
 def test_parse_max_upload_time_preserves_fractional_seconds(tmp_path: Path) -> None:
@@ -125,7 +125,7 @@ def test_parse_max_upload_time_preserves_fractional_seconds(tmp_path: Path) -> N
         'sdist = { url = "https://example.com/b.tar.gz", upload-time = 2025-06-03T01:02:03.456789Z }\n',
         encoding="utf-8",
     )
-    assert pg.parse_max_upload_time_from_lockfile(p) == "2025-06-03T01:02:03.456789Z"
+    assert pg.parse_max_upload_time_from_lockfile(p) == "2025-06-03T01:02:03.999999Z"
 
 
 def test_parse_max_upload_time_missing(tmp_path: Path) -> None:
@@ -175,7 +175,23 @@ def test_resolve_exclude_newer_ci_parsed(tmp_path: Path) -> None:
         'wheels = [{ url = "https://example.com/a.whl", upload-time = 2099-01-01T00:00:00Z }]\n',
         encoding="utf-8",
     )
-    assert pg.resolve_exclude_newer(p, ci_check=True, live_timestamp="2020-01-01T00:00:00Z") == ("2099-01-01T00:00:00Z")
+    assert pg.resolve_exclude_newer(p, ci_check=True, live_timestamp="2020-01-01T00:00:00Z") == (
+        "2099-01-01T00:00:00.999999Z"
+    )
+
+
+def test_resolve_exclude_newer_ci_end_of_second_for_whole_second_upload_time(tmp_path: Path) -> None:
+    p = tmp_path / "pylock.toml"
+    p.write_text(
+        'lock-version = "1.0"\n'
+        "[[packages]]\n"
+        'name = "llmcompressor"\n'
+        'wheels = [{ url = "https://example.com/llmcompressor.whl", upload-time = 2026-08-20T01:13:38Z }]\n',
+        encoding="utf-8",
+    )
+    assert pg.resolve_exclude_newer(p, ci_check=True, live_timestamp="2020-01-01T00:00:00Z") == (
+        "2026-08-20T01:13:38.999999Z"
+    )
 
 
 def test_resolve_exclude_newer_ci_preserves_fractional_seconds(tmp_path: Path) -> None:
@@ -188,7 +204,7 @@ def test_resolve_exclude_newer_ci_preserves_fractional_seconds(tmp_path: Path) -
         encoding="utf-8",
     )
     assert pg.resolve_exclude_newer(p, ci_check=True, live_timestamp="2020-01-01T00:00:00Z") == (
-        "2099-01-01T00:00:00.123456Z"
+        "2099-01-01T00:00:00.999999Z"
     )
 
 
