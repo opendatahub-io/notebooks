@@ -113,6 +113,21 @@ def test_parse_max_upload_time_from_wheels(tmp_path: Path) -> None:
     assert pg.parse_max_upload_time_from_lockfile(p) == "2025-06-03T01:02:03Z"
 
 
+def test_parse_max_upload_time_preserves_fractional_seconds(tmp_path: Path) -> None:
+    p = tmp_path / "pylock.toml"
+    p.write_text(
+        'lock-version = "1.0"\n'
+        "[[packages]]\n"
+        'name = "a"\n'
+        'wheels = [{ url = "https://example.com/a.whl", upload-time = 2025-06-01T12:30:45.100000Z }]\n'
+        "[[packages]]\n"
+        'name = "b"\n'
+        'sdist = { url = "https://example.com/b.tar.gz", upload-time = 2025-06-03T01:02:03.456789Z }\n',
+        encoding="utf-8",
+    )
+    assert pg.parse_max_upload_time_from_lockfile(p) == "2025-06-03T01:02:03.456789Z"
+
+
 def test_parse_max_upload_time_missing(tmp_path: Path) -> None:
     p = tmp_path / "pylock.toml"
     p.write_text('lock-version = "1.0"\n[[packages]]\nname = "a"\n', encoding="utf-8")
@@ -161,6 +176,20 @@ def test_resolve_exclude_newer_ci_parsed(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert pg.resolve_exclude_newer(p, ci_check=True, live_timestamp="2020-01-01T00:00:00Z") == ("2099-01-01T00:00:00Z")
+
+
+def test_resolve_exclude_newer_ci_preserves_fractional_seconds(tmp_path: Path) -> None:
+    p = tmp_path / "pylock.toml"
+    p.write_text(
+        'lock-version = "1.0"\n'
+        "[[packages]]\n"
+        'name = "a"\n'
+        'wheels = [{ url = "https://example.com/a.whl", upload-time = 2099-01-01T00:00:00.123456Z }]\n',
+        encoding="utf-8",
+    )
+    assert pg.resolve_exclude_newer(p, ci_check=True, live_timestamp="2020-01-01T00:00:00Z") == (
+        "2099-01-01T00:00:00.123456Z"
+    )
 
 
 def test_resolve_exclude_newer_ci_fallback(tmp_path: Path) -> None:

@@ -423,6 +423,19 @@ def utc_now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _format_upload_time_utc(value: datetime) -> str:
+    """Format a lockfile ``upload-time`` as UTC ISO-8601 for ``--exclude-newer``."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    else:
+        value = value.astimezone(UTC)
+    if value.microsecond:
+        seconds = value.strftime("%Y-%m-%dT%H:%M:%S")
+        fraction = f"{value.microsecond:06d}".rstrip("0")
+        return f"{seconds}.{fraction}Z"
+    return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _upload_times_from_lock_data(data: dict) -> list[datetime]:
     times: list[datetime] = []
     for package in data.get("packages", []):
@@ -454,7 +467,7 @@ def parse_max_upload_time_from_lockfile(path: Path) -> str | None:
     times = _upload_times_from_lock_data(data)
     if not times:
         return None
-    return max(times).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return _format_upload_time_utc(max(times))
 
 
 def parse_exclude_newer_from_lockfile(path: Path) -> str | None:
@@ -1210,7 +1223,7 @@ def main(
     live_ts = utc_now_iso()
     if ci_check and not requirements_only:
         log.info(
-            "PYLOCKS_CI_CHECK=1: using max wheel upload-time from each lockfile as --exclude-newer cutoff."
+            "PYLOCKS_CI_CHECK=1: using max artifact upload-time from each lockfile as --exclude-newer cutoff."
         )
 
     # TARGET DIRECTORIES
