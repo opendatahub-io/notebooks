@@ -112,13 +112,21 @@ def _query_build(make_target: str, query: str, env: dict[str, str] | None = None
     pattern = re.compile(r"#\*# " + query + r": <(?P<result>[^>]+)> #\(MACHINE-PARSED LINE\)#\*#\.\.\.")
     try:
         logging.debug(f"Running make in --just-print mode for target {make_target}")
-        for line in subprocess.check_output(
-            [MAKE, make_target, "--just-print", *envs], encoding="utf-8", cwd=PROJECT_ROOT
-        ).splitlines():
+        completed = subprocess.run(
+            [MAKE, make_target, "--just-print", *envs],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=PROJECT_ROOT,
+        )
+        for line in completed.stdout.splitlines():
             if m := pattern.match(line):
                 results.append(m["result"])
     except subprocess.CalledProcessError as e:
-        print(f"make --just-print for target {make_target!r} failed: {e.stderr}\n{e.stdout}")
+        print(
+            f"make --just-print for target {make_target!r} failed (exit code {e.returncode}).\n"
+            f"stdout:\n{e.stdout}\nstderr:\n{e.stderr}",
+        )
         raise
 
     if len(results) != 1:
