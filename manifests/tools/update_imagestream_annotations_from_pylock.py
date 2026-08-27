@@ -595,6 +595,7 @@ def run_variant(variant: str, dry_run: bool) -> int:
 
     changed = 0
     lockfile_errors: list[str] = []
+    updated: list[tuple[Path, list[Any]]] = []
     candidate_dirs = _discover_candidate_dirs()
     for wb in workbenches:
         candidates = _dirs_for_workbench(manifests_dir, wb, candidate_dirs)
@@ -657,12 +658,8 @@ def run_variant(variant: str, dry_run: bool) -> int:
             _update_tag_annotations(tags[idx], pkgs, py_minor)
             changed += 1
 
-        if not dry_run:
-            with path.open("w", encoding="utf-8") as f:
-                if len(docs) > 1:
-                    yml.dump_all(docs, f)
-                else:
-                    yml.dump(docs[0], f)
+        updated.append((path, docs))
+
     if lockfile_errors:
         for err in lockfile_errors:
             print(err, file=sys.stderr)
@@ -671,6 +668,15 @@ def run_variant(variant: str, dry_run: bool) -> int:
             file=sys.stderr,
         )
         return 1
+
+    if not dry_run:
+        for path, docs in updated:
+            with path.open("w", encoding="utf-8") as f:
+                if len(docs) > 1:
+                    yml.dump_all(docs, f)
+                else:
+                    yml.dump(docs[0], f)
+
     print(f"Updated {changed} tag annotation block(s) for variant={variant!r} (dry_run={dry_run})")
     return 0
 
