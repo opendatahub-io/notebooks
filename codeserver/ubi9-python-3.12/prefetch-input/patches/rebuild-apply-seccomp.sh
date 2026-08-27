@@ -118,7 +118,8 @@ PY
 
   for other in x64 arm64; do
     if [[ "${other}" != "${native_dir}" ]]; then
-      rm -f "${pkg}/vendor/seccomp/${other}/apply-seccomp"
+      stale_apply_seccomp="${pkg}/vendor/seccomp/${other}/apply-seccomp"
+      rm -f "${stale_apply_seccomp}"
     fi
   done
 
