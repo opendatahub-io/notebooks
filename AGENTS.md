@@ -83,6 +83,16 @@ make refresh-lock-files
 - Prefer existing docs over guesswork. Read the linked doc before inventing process or policy.
 - Verify bulk edits after scripting them. This repo has generated files and repeated patterns.
 - Update nearby documentation when behavior changes, especially build, dependency, and CI workflows.
+
+### Comments
+
+- **Preserve comments** when editing surrounding code. If the mechanism changed (e.g. `cp` → `install -D`,
+  `chmod` → `umask`), **extend** the existing comment to reflect the new behavior rather than deleting it.
+- Comments explain *why*, not redundant *what*. A comment that exists was added for a reason; do not remove
+  "obvious" comments during a refactor.
+- Avoid comment-only diffs that delete lines without functional benefit.
+- Exception: if a comment is **factually wrong** after your change, replace it with a corrected one —
+  do not simply delete it when the underlying why still matters.
 - Stage explicitly: `git add <file1> <file2> ...`. For genuine bulk-regen output where
   hand-listing every path is impractical (lockfiles from `make refresh-lock-files`, `.tekton/`
   pipeline regen, imagestream manifest updates), a scoped pathspec is fine — but only right
