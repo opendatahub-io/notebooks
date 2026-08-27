@@ -43,6 +43,8 @@ def sanity_check(dockerfile: pathlib.Path, replacements: dict[str, str]):
             for prefix in (begin, end):
                 if line.rstrip().startswith(prefix):
                     suffix = line[len(prefix) + 1 :].rstrip()
+                    if not suffix:
+                        raise ValueError(f"Malformed marker {prefix!r} without a suffix in {dockerfile}:{line_no}")
                     if suffix not in replacements:
                         raise ValueError(
                             f"Expected replacement for '{prefix} {suffix}' not found in {dockerfile}:{line_no}"
