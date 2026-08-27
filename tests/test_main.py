@@ -1053,3 +1053,49 @@ def load_manifests_file_for(
         sw=sw,
         dep=dep,
     )
+
+
+@pytest.mark.parametrize(
+    "base_dir,expected_prefix",
+    [
+        (PROJECT_ROOT / "manifests" / "odh" / "base", "quay.io/opendatahub/"),
+        (PROJECT_ROOT / "manifests" / "rhoai" / "base", "registry.redhat.io/rhoai/"),
+    ],
+)
+def test_imagestream_imported_from_provenance(subtests: pytest.Subtests, base_dir: pathlib.Path, expected_prefix: str):
+    """Validate openshift.io/imported-from annotations against provenance drift (issue #3931)."""
+    bad_prefixes = ("quay.io/opendatahub/workbench-images", "quay.io/modh/")
+
+    for is_file in sorted(base_dir.glob("*-imagestream.yaml")):
+        is_data = yaml.safe_load(is_file.read_text())
+        is_name = is_data["metadata"]["name"]
+        tags = is_data["spec"]["tags"]
+
+        for tag in tags:
+            tag_name = tag["name"]
+            annotations = tag.get("annotations", {})
+            imported_from = annotations.get("openshift.io/imported-from")
+
+            with subtests.test(msg=f"imported-from present in {is_file.name} tag {tag_name}", imagestream=is_file.name, tag=tag_name):
+                assert imported_from, f"{is_file.name} tag {tag_name}: missing openshift.io/imported-from annotation"
+
+                for bad in bad_prefixes:
+                    assert not imported_from.startswith(bad), (
+                        f"{is_file.name} tag {tag_name}: openshift.io/imported-from {imported_from!r} "
+                        f"uses legacy/generic prefix {bad!r}"
+                    )
+
+                assert imported_from.startswith(expected_prefix), (
+                    f"{is_file.name} tag {tag_name}: openshift.io/imported-from {imported_from!r} "
+                    f"does not start with expected prefix {expected_prefix!r} for {base_dir.name}"
+                )
+
+                imported_basename = imported_from.split("/")[-1]
+                from_name = tag["from"]["name"]
+                clean_from_name = from_name.removesuffix("_PLACEHOLDER")
+                normalized_imported_basename = imported_basename.replace("-rhel9", "-ubi9")
+
+                assert clean_from_name.startswith(normalized_imported_basename), (
+                    f"{is_file.name} tag {tag_name}: openshift.io/imported-from basename {imported_basename!r} "
+                    f"(normalized: {normalized_imported_basename!r}) does not match from.name {from_name!r}"
+                )
