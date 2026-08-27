@@ -68,13 +68,13 @@ jobs:
           echo "update_branch=${update_branch}" >> "${GITHUB_OUTPUT}"
 
       - name: Install skopeo
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: skopeo
           update: 'false'
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Configure Quay.io pull auth for RHOAI namespace
         if: env.RHOAI_QUAY_BOT_USERNAME != ''
