@@ -84,8 +84,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
-          # Full history so tests/test_pylock_downgrade.py can `git show origin/main:…/pylock.toml`.
-          fetch-depth: 0
+          # Keep the default shallow clone; the "Fetch downgrade check base ref" step below
+          # fetches the single commit tests/test_pylock_downgrade.py needs on demand.
           # Check out the PR head (not the merge commit) so coverage maps to head.sha, which is
           # what upload-code-coverage attributes the report to (matches the action's README
           # example). On push, head.sha is empty -> falls back to github.sha (unchanged).
@@ -108,6 +108,24 @@ jobs:
       - name: Install deps
         id: install-deps
         run: uv sync --locked
+
+      # Deepen the shallow clone with the single commit tests/test_pylock_downgrade.py
+      # compares against (PR base sha, or previous branch tip on push). Guarded against the
+      # all-zeros github.event.before on the first push of a new branch (github refuses to
+      # fetch it: "upload-pack: not our ref"). If the baseline is unavailable, the test falls
+      # back to origin/main or skips with its existing message (see _resolve_base_ref()).
+      - name: Fetch downgrade check base ref
+        if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
+        run: |
+          NULL_SHA="0000000000000000000000000000000000000000"
+          BASE_SHA="${PULL_REQUEST_BASE_SHA:-$PUSH_BEFORE_SHA}"
+          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != "$NULL_SHA" ] \
+             && ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            git fetch --depth=1 origin "$BASE_SHA"
+          fi
+        env:
+          PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
 
       - name: Static tests (pytest + Dockerfile alignment)
         id: static-tests
