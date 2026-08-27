@@ -28,6 +28,18 @@ and follow linked documents for topic-specific detail.
 | [docs/ai-coding-assistant-project-config.md](docs/ai-coding-assistant-project-config.md) | You need the cross-tool `AGENTS.md` / `CLAUDE.md` / skills layout |
 | [`.agents/skills/`](.agents/skills/) | You are authoring or discovering Agent Skills |
 
+## Plugin skill paths
+
+The following plugin skill directories are not on the default auto‑load path, but agents can read their `SKILL.md` files when needed:
+
+- `.agents/plugins/dev/skills/github-development-linking`
+- `.agents/plugins/dev/skills/github-link-pr-issue`
+- `.agents/plugins/dev/skills/glab-setup`
+- `.agents/plugins/dev/skills/jira-mcp-setup`
+- `.agents/plugins/testing-scenarios/skills/cuda-testing`
+- `.agents/plugins/testing-scenarios/skills/llmcompressor-well-lit-paths`
+- `.agents/plugins/testing-scenarios/skills/notebooks-tfa-signoff`
+
 ## Baseline tools
 
 - Python 3.14
