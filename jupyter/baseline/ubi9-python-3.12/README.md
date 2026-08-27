@@ -29,7 +29,7 @@ Phase 1 uses the public-index lock layout (no `uv.lock.d/` directory):
 
 - `pyproject.toml` is the source of truth
 - `pylock.toml` is generated in place at the image root
-- `requirements.cpu.txt` is generated from that `pylock.toml` (pip/Cachi2 format, `--sdist-hashes prefer` so ppc64le/s390x can install sdists)
+- `requirements.cpu.txt` is generated from that `pylock.toml` (pip/Cachi2 format; default `el9-fallback` omits sdist hashes when EL9 wheels exist)
 - `make refresh-lock-files` and `create-requirements-lockfile.sh` detect this
   layout automatically — a future `runtimes/baseline` image needs no script edit
 - Dockerfiles install with `uv pip install --requirements=./requirements.txt`

@@ -1,0 +1,7 @@
+[openshift-4-12]
+name=OpenShift 4.12 Public - $basearch
+# Note: el8, because that is the only available option for ppc64le and s390x, but it is compatible with el9.
+baseurl=https://mirror.openshift.com/pub/openshift-v4/$basearch/dependencies/rpms/4.12-el8-beta/
+enabled=1
+gpgcheck=0
+skip_if_unavailable=True

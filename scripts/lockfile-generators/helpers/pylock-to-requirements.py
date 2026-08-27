@@ -25,9 +25,10 @@ Arguments:
 
     --sdist-hashes    el9-fallback (default): omit sdist hashes when an EL9-compatible
                       wheel exists (RH-index / Hermeto wheel prefetch).
-                      prefer: always include sdist hashes so ppc64le/s390x (no
-                      manylinux wheels) and Hermeto source-only prefetch can match
-                      artifacts (public-index baseline images).
+                      prefer: same sdist policy as el9-fallback (kept as the
+                      public-index generator flag). Including sdists when an EL9
+                      wheel exists makes Hermeto run cargo vendor on incomplete
+                      Rust sdists such as ripgrep.
 
 Output format:
     Each package entry becomes a line like:
@@ -37,7 +38,8 @@ Output format:
 
     Pure-Python packages (py3-none-any.whl) have a single hash.
     Native/binary packages have one hash per architecture wheel.
-    Sdist hashes follow --sdist-hashes (see above).
+    Sdist hashes follow --sdist-hashes (see above). Both modes omit the sdist
+    when an EL9-compatible wheel exists.
 
     Packages locked as a direct URL (uv ``archive``) become ``name @ URL`` so
     pip/Hermeto do not look them up on the index (e.g. tensorflow-rocm from AMD).
@@ -111,8 +113,10 @@ def wheel_is_el9_compatible(url_or_name: str) -> bool:
 def collect_index_hashes(pkg: dict, *, sdist_hashes: str = SDIST_HASHES_EL9_FALLBACK) -> list[str]:
     """Return wheel ``--hash=`` lines; sdist hashes depend on ``sdist_hashes``.
 
-    ``el9-fallback`` (default): add sdist hashes only when no EL9 wheel exists.
-    ``prefer``: always include sdist hashes when present (ppc64le/s390x, Hermeto).
+    ``el9-fallback`` (default) and ``prefer``: add sdist hashes only when no
+    EL9 wheel exists. ``prefer`` is kept for the public-index generator; it
+    must not re-introduce Rust sdists (ripgrep, uv) that break Hermeto
+    ``cargo vendor``.
     """
     hashes: list[str] = []
     has_el9_wheel = False
@@ -122,7 +126,7 @@ def collect_index_hashes(pkg: dict, *, sdist_hashes: str = SDIST_HASHES_EL9_FALL
         if wheel_is_el9_compatible(whl.get("url", "")):
             has_el9_wheel = True
 
-    include_sdist = sdist_hashes == SDIST_HASHES_PREFER or not has_el9_wheel
+    include_sdist = sdist_hashes in (SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER) and not has_el9_wheel
     if include_sdist:
         sdist = pkg.get("sdist")
         if isinstance(sdist, dict):
@@ -155,7 +159,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--sdist-hashes",
         choices=(SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER),
         default=SDIST_HASHES_EL9_FALLBACK,
-        help="When to emit sdist hashes (default: el9-fallback).",
+        help="When to emit sdist hashes (default: el9-fallback). prefer is an alias.",
     )
     return parser.parse_args(argv)
 
