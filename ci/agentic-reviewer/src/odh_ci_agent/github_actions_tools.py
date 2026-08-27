@@ -13,7 +13,7 @@ from google.antigravity.tools.tool_runner import ToolWithSchema
 from odh_ci_agent.github_api import gh_api_bytes, gh_api_json, gh_job_log, split_repository
 from odh_ci_agent.mcp_github import GITHUB_ACTIONS_READ_TOOLS
 
-ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9:;<=>?]*[ -/]*[@-~]|\x1b\].*?(?:\x07|\x1b\\)")
 DEFAULT_TAIL_LINES = 500
 MAX_TAIL_LINES = 2_000
 # CI summary artifact fallback is for small log bundles; reject larger ZIPs before

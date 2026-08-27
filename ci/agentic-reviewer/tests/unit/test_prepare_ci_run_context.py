@@ -15,6 +15,18 @@ def test_strip_gh_log_prefix_strips_ansi_color_codes() -> None:
     assert prepare.strip_gh_log_prefix(line) == "FAILED tests/test_foo.py::test_bar"
 
 
+def test_strip_gh_log_prefix_strips_csi_sequences() -> None:
+    line = "job\tUNKNOWN STEP\t2026-06-05T17:33:52.4163444Z \x1b[2J\x1b[H\x1b[?25hCLEAN\x1b[K"
+
+    assert prepare.strip_gh_log_prefix(line) == "CLEAN"
+
+
+def test_strip_gh_log_prefix_strips_osc_sequences() -> None:
+    line = "job\tUNKNOWN STEP\t2026-06-05T17:33:52.4163444Z \x1b]0;Title\x07LOG MESSAGE\x1b]8;;http://example.com\x1b\\LINK"
+
+    assert prepare.strip_gh_log_prefix(line) == "LOG MESSAGELINK"
+
+
 def test_failed_step_name_prefers_failed_step() -> None:
     job = {
         "steps": [

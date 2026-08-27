@@ -39,7 +39,7 @@ MAX_PATCH_LINES = 40
 
 GITHUB_ERROR_RE = re.compile(r"##\[error\]")
 LOG_TIMESTAMP_RE = re.compile(r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s?(?P<message>.*)$")
-ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9:;<=>?]*[ -/]*[@-~]|\x1b\].*?(?:\x07|\x1b\\)")
 
 
 def output_path(env_name: str, default_name: str) -> str:
