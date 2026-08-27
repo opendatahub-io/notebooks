@@ -369,30 +369,6 @@ def _resolve_from_base_image_ref(
     )
 
 
-def _resolve_from_explicit_index_url(
-    index_url: str,
-    conf_file: Path,
-    *,
-    flavor: str,
-    product: str,
-    base_image: str,
-) -> ResolvedIndexConfig:
-    """Honor an explicit INDEX_URL (e.g. AIPCC index with a raw RHEL9 BASE_IMAGE)."""
-    validate_label_index_url(index_url, base_image or str(conf_file))
-    selected_index_url = _select_index_url_from_label(index_url, conf_file)
-    release, accelerator = parse_release_and_accelerator_from_url(selected_index_url)
-    return ResolvedIndexConfig(
-        conf_file=conf_file,
-        product=product,
-        index_profile="rhoai",
-        flavor=flavor,
-        base_image=base_image,
-        accelerator=accelerator,
-        release=release,
-        index_url=selected_index_url,
-    )
-
-
 def resolve_index_config(
     conf_file: Path,
     *,
@@ -413,17 +389,6 @@ def resolve_index_config(
         raise IndexResolutionError(f"BASE_IMAGE is missing in {conf_file}")
 
     flavor = resolve_flavor(conf_file, entries)
-
-    # Explicit INDEX_URL wins: needed when BASE_IMAGE is raw RHEL9/UBI (no AIPCC label)
-    # but the image still locks against the AIPCC CPU index.
-    if explicit_index_url := entries.get("INDEX_URL"):
-        return _resolve_from_explicit_index_url(
-            explicit_index_url,
-            conf_file,
-            flavor=flavor,
-            product=product,
-            base_image=base_image,
-        )
 
     if resolved := _resolve_from_label(
         base_image,
