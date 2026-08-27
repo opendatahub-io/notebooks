@@ -69,7 +69,8 @@ def process_template_with_indents(template: templatelib.Template) -> str:
                     parts.append(line if i == 0 else " " * indent + line)
             case str() as item:
                 parts.extend(item.splitlines(keepends=True))
-                indent = len(parts[-1]) - len(parts[-1].lstrip())
+                if parts:
+                    indent = len(parts[-1]) - len(parts[-1].lstrip())
             case _:
                 raise ValueError(f"Cannot happen: Unsupported item type: {type(item)}")
     return "".join(parts)
@@ -89,6 +90,13 @@ class TestProcessTemplateWithIndents:
         for inp, expected, description in test_cases:
             with subtests.test(description):
                 assert process_template_with_indents(inp) == expected
+
+    def test_str_item_without_lines_does_not_raise(self) -> None:
+        # A str item that contributes no lines (e.g. "") used to crash on
+        # parts[-1] when it was the only/first line source. Plain lists are
+        # iterable just like a template, so this exercises the str() case.
+        assert process_template_with_indents(["", "a"]) == "a"
+        assert process_template_with_indents(["", "", "x"]) == "x"
 
 
 def blockinfile(
