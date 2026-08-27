@@ -69,10 +69,10 @@ jobs:
           git config --global user.name "GitHub Actions"
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Install skopeo
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: skopeo
 

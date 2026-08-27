@@ -93,7 +93,7 @@ jobs:
 
       - name: Install missing dependencies
         if: steps.detect-packages.outputs.packages != ''
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: ${{ steps.detect-packages.outputs.packages }}
 
@@ -132,7 +132,7 @@ jobs:
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Run Playwright tests
-        uses: ./.github/actions/playwright-test
+        uses: $/.github/actions/playwright-test
         with:
           test-target: ${{ steps.get-image.outputs.image }}
           playwright-image: ${{ steps.browser-tests-image.outputs.image }}

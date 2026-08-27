@@ -76,10 +76,10 @@ jobs:
           fetch-depth: 0
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Install git-crypt
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: git-crypt
           update: "false"

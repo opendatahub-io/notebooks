@@ -43,7 +43,7 @@ jobs:
 
       - name: Install missing dependencies
         if: steps.detect-packages.outputs.packages != ''
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: ${{ steps.detect-packages.outputs.packages }}
 
@@ -67,7 +67,7 @@ jobs:
           sudo podman images
 
       - name: Test Trivy scan on container image (full scan)
-        uses: ./.github/actions/trivy-scan-action
+        uses: $/.github/actions/trivy-scan-action
         with:
           scan-type: image
           scan-target: ${{ env.TEST_IMAGE }}
@@ -77,7 +77,7 @@ jobs:
       # This is used for CentOS Stream images which are not supported by Trivy
       # See: https://github.com/opendatahub-io/notebooks/issues/2848
       - name: Test Trivy scan on container image (library only, skip OS packages)
-        uses: ./.github/actions/trivy-scan-action
+        uses: $/.github/actions/trivy-scan-action
         with:
           scan-type: image
           scan-target: ${{ env.TEST_IMAGE }}
@@ -92,7 +92,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Test Trivy scan on filesystem
-        uses: ./.github/actions/trivy-scan-action
+        uses: $/.github/actions/trivy-scan-action
         with:
           scan-type: fs
           scan-target: './'

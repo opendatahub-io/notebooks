@@ -42,7 +42,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Validate renovate.json5 semantics
         run: ./uv run python scripts/ci/validate_renovate_config.py
