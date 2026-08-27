@@ -110,7 +110,7 @@ jobs:
       # do this early because it's fast and why not
       - name: Install git-crypt
         if: ${{ inputs.subscription }}
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: git-crypt
 
@@ -413,7 +413,7 @@ jobs:
       # Single place we install from uv.lock (dev deps include structlog for scripts/sandbox.py).
       # Make and later pytest steps all use this venv.
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Install from uv.lock (project + dev deps)
         run: uv sync --group dev --locked
@@ -465,7 +465,7 @@ jobs:
 
       - name: Run Playwright tests
         if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
-        uses: ./.github/actions/playwright-test
+        uses: $/.github/actions/playwright-test
         with:
           test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
           playwright-image: ${{ steps.browser-tests-image.outputs.image }}
@@ -539,7 +539,7 @@ jobs:
       - name: Provision K8s cluster
         id: provision-k8s
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' && steps.have-tests.outputs.tests == 'true' }}
-        uses: ./.github/actions/provision-k8s
+        uses: $/.github/actions/provision-k8s
 
       - name: "Run image tests"
         id: makefile-tests
@@ -632,7 +632,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         if: ${{ !cancelled() && steps.resolve-target.outputs.target }}
-        uses: ./.github/actions/trivy-scan-action
+        uses: $/.github/actions/trivy-scan-action
         with:
           scan-type: ${{ steps.resolve-target.outputs.type }}
           scan-target: ${{ steps.resolve-target.outputs.target }}
@@ -669,6 +669,6 @@ jobs:
 
       - name: Capture kernel logs on failure
         if: "${{ failure() }}"
-        uses: ./.github/actions/capture-kernel-logs
+        uses: $/.github/actions/capture-kernel-logs
         with:
           log-prefix: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}"
