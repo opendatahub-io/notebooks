@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Verify uv version matches pyproject.toml
         run: uv version
