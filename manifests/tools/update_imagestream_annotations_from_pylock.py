@@ -9,6 +9,10 @@ For each workbench ImageStream tag, resolves the git tree-ish as:
   (``--variant odh``) or ``https://github.com/red-hat-data-services/notebooks.git`` (``--variant rhoai``).
 - Older tags (e.g. ``-2025-2``): SHA from ``commit.env`` (``<base>-commit-2025-2``).
 
+If the resolved SHA is not present in the local object database (shallow or backport clone),
+it is fetched from the canonical notebook repo before ``git show`` — for any tag suffix, not
+only ``-n``.
+
 Those SHAs match ``manifests/tools/generate_kustomization.py`` / ConfigMap keys.
 
 Dependency *names* and ordering are taken from the existing manifest; versions are updated from
@@ -79,7 +83,7 @@ _ACCELERATOR_OVERRIDE_FOR_RESOURCE: dict[str, str | None] = {
     "jupyter-pytorch-llmcompressor-imagestream.yaml": "cuda",
 }
 
-# Canonical Git URLs for ``git fetch`` when the ``-n`` tag commit is not already in the local object DB.
+# Canonical Git URLs for ``git fetch`` when a tag's commit is not already in the local object DB.
 _CANONICAL_REPO_URL: dict[str, str] = {
     "odh": "https://github.com/opendatahub-io/notebooks.git",
     "rhoai": "https://github.com/red-hat-data-services/notebooks.git",
@@ -344,8 +348,14 @@ def _git_fetch_commit_from(url: str, rev: str) -> bool:
     return p.returncode == 0
 
 
-def _ensure_n_tag_commit_from_canonical_upstream(variant: str, rev: str) -> bool:
-    """Ensure ``rev`` is available for ``git show`` using the ODH or RHDS canonical ``.git`` URL for ``-n`` tags."""
+def _ensure_commit_from_canonical_upstream(variant: str, rev: str) -> bool:
+    """Ensure ``rev`` is available for ``git show`` using the ODH or RHDS canonical ``.git`` URL.
+
+    Used for any tag whose commit is missing from the local (possibly shallow or
+    backport) clone — most visibly ``-n`` tags pointing at a recent main-branch
+    commit, but also released/historical tags whose build commit is absent. The
+    image was produced from the canonical notebook repo, where the commit lives.
+    """
     url = _CANONICAL_REPO_URL[variant]
     if _git_commit_exists(rev):
         return True
@@ -557,6 +567,50 @@ def _update_tag_annotations(
     ann["opendatahub.io/notebook-python-dependencies"] = _format_notebook_annotation_json(deps)
 
 
+def _resolve_lockfile_for_tag(
+    variant: str,
+    suffix: str,
+    sha: str | None,
+    rel_paths: list[str],
+    base_key: str,
+    path_name: str,
+    idx: int,
+) -> tuple[str, str] | None:
+    """Return ``(rel_path, text)`` of the lockfile for one tag, or ``None`` after logging the reason.
+
+    ``-n`` tags prefer the working-tree lockfile; any tag whose SHA is missing from the local
+    (shallow or backport) clone is fetched from the canonical notebook repo before ``git show``.
+    """
+    shown: tuple[str, str] | None
+    if suffix == "-n":
+        shown = _worktree_read_first_existing(rel_paths)
+    else:
+        shown = None
+
+    if shown is None:
+        if not sha:
+            print(f"skip {path_name} tag {idx}: no SHA for {base_key}{suffix}", file=sys.stderr)
+            return None
+        # The worktree lacks the lockfile, so fall back to git show. For a shallow or backport
+        # clone the commit may be missing; ensure it is present by fetching from the
+        # canonical notebook repo (the image was built from that commit).
+        if not _ensure_commit_from_canonical_upstream(variant, sha):
+            print(
+                f"skip {path_name} tag {idx}: could not resolve commit {sha} via "
+                f"{_CANONICAL_REPO_URL[variant]}",
+                file=sys.stderr,
+            )
+            return None
+        shown = _git_show_first_existing(sha, rel_paths)
+    if shown is None:
+        print(
+            f"skip {path_name} tag {idx}: no lockfile (tried worktree/git {'; '.join(rel_paths)})",
+            file=sys.stderr,
+        )
+        return None
+    return shown
+
+
 def _sha_for_tag(
     base_key: str,
     suffix: str,
@@ -623,29 +677,8 @@ def run_variant(variant: str, dry_run: bool) -> int:
             kind = _pylock_kind_from_tag(wb.resource_file, base_key)
             rel_paths = pylock_candidate_rel_paths(nb_dir, kind)
 
-            shown: tuple[str, str] | None
-            if suffix == "-n":
-                shown = _worktree_read_first_existing(rel_paths)
-            else:
-                shown = None
-
+            shown = _resolve_lockfile_for_tag(variant, suffix, sha, rel_paths, base_key, path.name, idx)
             if shown is None:
-                if not sha:
-                    print(f"skip {path.name} tag {idx}: no SHA for {base_key}{suffix}", file=sys.stderr)
-                    continue
-                if suffix == "-n" and not _ensure_n_tag_commit_from_canonical_upstream(variant, sha):
-                    print(
-                        f"skip {path.name} tag {idx}: could not resolve commit {sha} via "
-                        f"{_CANONICAL_REPO_URL[variant]}",
-                        file=sys.stderr,
-                    )
-                    continue
-                shown = _git_show_first_existing(sha, rel_paths)
-            if shown is None:
-                print(
-                    f"skip {path.name} tag {idx}: no lockfile (tried worktree/git {'; '.join(rel_paths)})",
-                    file=sys.stderr,
-                )
                 continue
             rel_used, text = shown
             py_minor = _python_minor_from_dir(nb_dir)
