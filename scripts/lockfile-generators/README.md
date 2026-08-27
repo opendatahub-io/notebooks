@@ -226,7 +226,7 @@ internally. Option 6 (Git submodule) is a manual setup.
 
 | Helper                                          | Used by          | Purpose                                                                                                                                                                                                                                  |
 | ----------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `helpers/pylock-to-requirements.py`             | pip              | Convert `pylock.<flavor>.toml` (PEP 751) to pip-compatible `requirements.<flavor>.txt` with `--hash` lines.                                                                                                                              |
+| `helpers/pylock-to-requirements.py`             | pip              | Convert `pylock.<flavor>.toml` (PEP 751) to pip-compatible `requirements.<flavor>.txt` with `--hash` lines. Omits sdist hashes when an EL9-compatible wheel exists.                                                                      |
 | `helpers/download-pip-packages.py`              | pip              | Standalone pip downloader: downloads wheels/sdists from a `requirements.txt` (with `--hash` lines) into `cachi2/output/deps/pip/`. Not called by `create-requirements-lockfile.sh` (which has its own inline download from pylock.toml). |
 | `helpers/hermeto-fetch-rpm.sh`                  | RPM              | Download RPMs from `rpms.lock.yaml` using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. Handles RHEL entitlement cert extraction for `cdn.redhat.com` auth. Called by `create-rpm-lockfile.sh --download`.        |
 | `helpers/hermeto-fetch-npm.sh`                  | npm              | Alternative npm fetcher using [Hermeto](https://github.com/hermetoproject/hermeto) in a container.                                                                                                                                       |
@@ -725,15 +725,36 @@ source builds entirely.
 The script performs three steps:
 
 1. **`pylocks_generator.py`** — delegates to `scripts/pylocks_generator.py`
-  (the same script used by CI's `check-generated-code`) to run `uv pip compile`
-   against `pyproject.toml`. RH-index uses the RHOAI index from
-   `build-args/konflux.<flavor>.conf` and writes `uv.lock.d/pylock.<flavor>.toml`.
-   Public-index (no `uv.lock.d/`) uses PyPI and writes root `pylock.toml`.
-   This ensures the generated pylock is always identical to what CI expects.
+  (the same script used by CI's `check-generated-code`). RH-index runs
+  `uv pip compile --universal` against the RHOAI index from
+  `build-args/konflux.<flavor>.conf` and writes `uv.lock.d/pylock.<flavor>.toml`.
+  Public-index baselines (no `uv.lock.d/`) run `uv lock` + `uv export --format pylock.toml`
+  so `[tool.uv] required-environments` and dependency environment markers are honored;
+  output is root `pylock.toml`. This ensures the generated pylock is always identical
+  to what CI expects.
+
+### Public-index baseline architecture policy (Path B)
+
+Images under `*-baseline/` ship on all four Linux architectures in Konflux
+(x86_64, aarch64, ppc64le, s390x) but **PyPI lacks wheels for many Jupyter/native
+packages on ppc64le and s390x**. Baseline `pyproject.toml` files therefore:
+
+- Keep **uv, wheel, setuptools, micropipenv, ripgrep** (etc.) ungated so every arch resolves.
+- Gate **Jupyter / Elyra / Kale stacks** with
+  `sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')`.
+- Set `[tool.uv] required-environments` for all four arches so lock resolution fails early
+  if a truly universal dep is missing a wheel on any platform.
+
+Konflux pip prefetch still requests wheels for all build platforms; marker-gated packages
+are skipped on ppc64le/s390x because they are not required there. **ripgrep** stays pinned
+at `==14.1.0` — the last PyPI release with wheels for all four Linux arches.
 2. **Convert** (`helpers/pylock-to-requirements.py`) — parses the pylock.toml
   and generates `requirements.<flavor>.txt` (with `--index-url` and
    `--hash=sha256:…` lines) for compatibility with pip/uv install and cachi2
-   prefetching.
+   prefetching. Sdist hashes are omitted when an EL9-compatible wheel exists
+   so Hermeto does not download Rust sdists and fail `cargo vendor --locked`
+   (see uv / rpds-py). The sdist hash is kept when no EL9 wheel exists
+   (e.g. ripgrep's manylinux_2_39-only wheel).
 3. **Download** (optional, `--download`) — for local testing with podman,
   downloads every wheel referenced in the pylock.toml into
    `cachi2/output/deps/pip/`, verifying sha256 checksums.  Files already

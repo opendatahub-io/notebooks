@@ -288,7 +288,8 @@ class TestBaseImage:
         ``codeserver-baseline-ubi9-python-*``,
         ``jupyter-baseline-ubi9-python-*``, and
         ``runtime-baseline-ubi9-python-*`` image families are public-index
-        backed and must not advertise the AIPCC config-file contract.
+        backed. Index env vars and any inherited pip.conf / uv.toml must
+        point only at PyPI.
 
         ODH-derived images usually also export PIP_INDEX_URL / UV_INDEX_URL.
         RHOAI/AIPCC base images configure the index via pip.conf and uv.toml,
@@ -322,16 +323,25 @@ class TestBaseImage:
             actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
 
             if public_index_image:
-                with subtests.test("Public-index images do not export AIPCC config file env vars"):
-                    unexpected = {key: actual[key] for key in ("PIP_CONFIG_FILE", "UV_CONFIG_FILE") if key in actual}
-                    assert unexpected == {}, (
-                        f"Public-index images must not export AIPCC config file env vars. Got: {unexpected}"
-                    )
-
                 for key, urls in index_config_utils.env_index_urls(actual).items():
                     with subtests.test(f"{key}, if present, points only to PyPI"):
                         assert index_config_utils.index_urls_are_all_pypi(urls), (
                             f"{key} must point only to PyPI for public-index images"
+                        )
+
+                config_file_parsers = {
+                    "PIP_CONFIG_FILE": index_config_utils.pip_all_index_urls_from_config,
+                    "UV_CONFIG_FILE": index_config_utils.uv_all_index_urls_from_config,
+                }
+                for key, parse_urls in config_file_parsers.items():
+                    if key not in actual:
+                        continue
+                    path = actual[key]
+                    with subtests.test(f"{key}, if present, points only to PyPI"):
+                        urls = parse_urls(read_container_file(path))
+                        assert urls, f"{path} must define an index URL"
+                        assert index_config_utils.index_urls_are_all_pypi(urls), (
+                            f"{key} ({path}) must point only to PyPI for public-index images. Got: {urls}"
                         )
                 return
 
