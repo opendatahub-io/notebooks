@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import tomllib
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -593,11 +594,58 @@ def test_run_lock_appends_extra_alignment_constraints(
     assert "--quiet" in captured_cmds[0]
     assert "--quiet" in captured_cmds[1]
     assert patched_during_lock, "expected patched pyproject during uv lock"
-    assert "constraint-dependencies" in patched_during_lock[0]
-    assert "uv==0.1.0" in patched_during_lock[0]
+    patched_document = tomllib.loads(patched_during_lock[0])
+    patched_constraints = patched_document["tool"]["uv"]["constraint-dependencies"]
+    assert "uv==0.1.0" in patched_constraints
+    assert "constraint-dependencies" not in patched_document
     assert (project_dir / "pyproject.toml").read_text(encoding="utf-8") == original_pyproject, (
         "pyproject.toml must be restored after public-index lock generation"
     )
+
+
+def test_inject_tool_uv_constraint_dependencies_creates_tool_uv_table_before_sources() -> None:
+    original = '[project]\nname = "test"\n\n[tool.uv.sources]\nfoo = "bar"\n'
+    patched = pg._inject_tool_uv_constraint_dependencies(original, ["uv==0.1.0"])
+    document = tomllib.loads(patched)
+    assert document["tool"]["uv"]["constraint-dependencies"] == ["uv==0.1.0"]
+    assert "[tool.uv]" in patched
+    assert patched.index("[tool.uv]") < patched.index("[tool.uv.sources]")
+
+
+def test_inject_tool_uv_constraint_dependencies_merges_into_existing_tool_uv_table() -> None:
+    original = (
+        """
+[tool.uv]
+exclude-dependencies = ["py-spy"]
+constraint-dependencies = [
+    "wheel==0.48.0",
+]
+
+[tool.uv.sources]
+""".strip()
+        + "\n"
+    )
+    patched = pg._inject_tool_uv_constraint_dependencies(original, ["uv==0.1.0", "wheel==0.48.0"])
+    document = tomllib.loads(patched)
+    assert document["tool"]["uv"]["constraint-dependencies"] == ["wheel==0.48.0", "uv==0.1.0"]
+    assert document["tool"]["uv"]["exclude-dependencies"] == ["py-spy"]
+
+
+def test_inject_tool_uv_constraint_dependencies_ignores_comment_mentions() -> None:
+    original = (
+        """
+[project]
+name = "test"
+
+# constraint-dependencies is documented elsewhere
+
+[tool.uv.sources]
+""".strip()
+        + "\n"
+    )
+    patched = pg._inject_tool_uv_constraint_dependencies(original, ["uv==0.1.0"])
+    document = tomllib.loads(patched)
+    assert document["tool"]["uv"]["constraint-dependencies"] == ["uv==0.1.0"]
 
 
 def test_generate_baseline_alignment_constraints_uses_pair_and_alias(

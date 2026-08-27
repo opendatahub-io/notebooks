@@ -621,24 +621,97 @@ def _merged_public_index_constraint_dependencies(
     return merged
 
 
+_TOOL_UV_TABLE_HEADER = "[tool.uv]"
+
+
+def _format_tool_uv_constraint_dependencies_lines(constraints: list[str]) -> list[str]:
+    lines = ["constraint-dependencies = ["]
+    lines.extend(f'    "{item}",' for item in constraints)
+    lines.append("]")
+    return lines
+
+
+def _tool_uv_table_span(lines: list[str]) -> tuple[int, int] | None:
+    """Return ``[start, end)`` line indices for keys in the ``[tool.uv]`` table."""
+    start: int | None = None
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == _TOOL_UV_TABLE_HEADER:
+            start = idx + 1
+            continue
+        if start is not None and stripped.startswith("[") and stripped.endswith("]"):
+            return start, idx
+    if start is not None:
+        return start, len(lines)
+    return None
+
+
+def _constraint_dependencies_key_span(lines: list[str], start: int, end: int) -> tuple[int, int] | None:
+    """Return ``[start, end)`` line indices for ``constraint-dependencies`` inside ``[tool.uv]``."""
+    idx = start
+    while idx < end:
+        stripped = lines[idx].strip()
+        if not stripped.startswith("constraint-dependencies"):
+            idx += 1
+            continue
+        value = stripped.split("=", maxsplit=1)[1].strip() if "=" in stripped else ""
+        if "[" in value and "]" in value:
+            return idx, idx + 1
+        key_end = idx + 1
+        while key_end < end and "]" not in lines[key_end]:
+            key_end += 1
+        if key_end < end:
+            key_end += 1
+        return idx, key_end
+    return None
+
+
+def _insert_tool_uv_table(lines: list[str], insert_at: int, block: list[str]) -> None:
+    if insert_at < len(lines) and lines[insert_at].strip():
+        block = ["", *block]
+    if insert_at > 0 and lines[insert_at - 1].strip():
+        block = ["", *block]
+    lines[insert_at:insert_at] = block
+
+
 def _inject_tool_uv_constraint_dependencies(pyproject_text: str, constraints: list[str]) -> str:
-    """Append ``constraint-dependencies`` under the existing ``[tool.uv]`` table."""
+    """Merge ``constraints`` into ``[tool.uv].constraint-dependencies`` without touching other tables."""
     if not constraints:
         return pyproject_text
     document = tomllib.loads(pyproject_text)
     uv_table = document.get("tool", {}).get("uv", {})
     existing = list(uv_table.get("constraint-dependencies", []))
     combined = existing + [c for c in constraints if c not in existing]
-    entries = ",\n".join(f'    "{item}"' for item in combined)
-    fragment = f"constraint-dependencies = [\n{entries},\n]\n"
-    if "constraint-dependencies" in pyproject_text:
+    if combined == existing:
         return pyproject_text
-    marker = "[tool.uv.sources]"
-    if marker in pyproject_text:
-        return pyproject_text.replace(marker, f"{fragment}\n{marker}", 1)
-    if pyproject_text.endswith("\n"):
-        return pyproject_text + "\n" + fragment
-    return pyproject_text + "\n\n" + fragment
+
+    new_block = _format_tool_uv_constraint_dependencies_lines(combined)
+    lines = pyproject_text.splitlines()
+    trailing_newline = pyproject_text.endswith("\n")
+    table_span = _tool_uv_table_span(lines)
+
+    if table_span is not None:
+        start, end = table_span
+        key_span = _constraint_dependencies_key_span(lines, start, end)
+        if key_span is not None:
+            key_start, key_end = key_span
+            lines[key_start:key_end] = new_block
+        else:
+            _insert_tool_uv_table(lines, end, new_block)
+    else:
+        table_block = [_TOOL_UV_TABLE_HEADER, *new_block]
+        sources_idx = next((idx for idx, line in enumerate(lines) if line.strip() == "[tool.uv.sources]"), None)
+        if sources_idx is not None:
+            _insert_tool_uv_table(lines, sources_idx, table_block)
+        else:
+            if lines and lines[-1].strip():
+                lines.append("")
+            lines.extend(table_block)
+
+    rebuilt = "\n".join(lines)
+    if trailing_newline:
+        rebuilt += "\n"
+    return rebuilt
 
 
 def _run_subprocess(
