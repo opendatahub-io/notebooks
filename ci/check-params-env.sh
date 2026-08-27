@@ -1121,8 +1121,9 @@ process_file() {
         else
             local check_image_ret_code=$?
             if test "${check_image_ret_code}" -eq 2; then
-                echo "WARNING: Image '${IMAGE_VARIABLE}' size increased"
+                echo "ERROR: Image '${IMAGE_VARIABLE}' size changed beyond threshold"
                 echo "------------------------"
+                local_ret_code=1
                 continue
             fi
 
