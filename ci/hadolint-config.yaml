@@ -47,6 +47,3 @@ ignored:
   # DL3066 info: Non-numeric user-id may not be resolvable by host system.
   # Our images intentionally use named users (e.g. USER default) mapped inside the container.
   - DL3066
-  # SC3046 warning: In POSIX sh, 'source' in place of '.' is undefined.
-  # Our RUN commands execute in bash, not POSIX sh.
-  - SC3046
