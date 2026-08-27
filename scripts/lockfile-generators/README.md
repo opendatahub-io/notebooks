@@ -732,6 +732,18 @@ The script performs three steps:
   so `[tool.uv] required-environments` and dependency environment markers are honored;
   output is root `pylock.toml`. This ensures the generated pylock is always identical
   to what CI expects.
+2. **Convert** (`helpers/pylock-to-requirements.py`) — parses the pylock.toml
+  and generates `requirements.<flavor>.txt` (with `--index-url` and
+   `--hash=sha256:…` lines) for compatibility with pip/uv install and cachi2
+   prefetching. Sdist hashes are omitted when an EL9-compatible wheel exists
+   so Hermeto does not download Rust sdists and fail `cargo vendor --locked`
+   (see uv / rpds-py). The sdist hash is kept when no EL9 wheel exists
+   (e.g. ripgrep's manylinux_2_39-only wheel).
+3. **Download** (optional, `--download`) — for local testing with podman,
+  downloads every wheel referenced in the pylock.toml into
+   `cachi2/output/deps/pip/`, verifying sha256 checksums.  Files already
+   present are skipped.  Not needed in Konflux CI (cachi2 prefetches
+   automatically from `requirements.<flavor>.txt`).
 
 ### Public-index baseline architecture policy (Path B)
 
@@ -748,18 +760,6 @@ packages on ppc64le and s390x**. Baseline `pyproject.toml` files therefore:
 Konflux pip prefetch still requests wheels for all build platforms; marker-gated packages
 are skipped on ppc64le/s390x because they are not required there. **ripgrep** stays pinned
 at `==14.1.0` — the last PyPI release with wheels for all four Linux arches.
-2. **Convert** (`helpers/pylock-to-requirements.py`) — parses the pylock.toml
-  and generates `requirements.<flavor>.txt` (with `--index-url` and
-   `--hash=sha256:…` lines) for compatibility with pip/uv install and cachi2
-   prefetching. Sdist hashes are omitted when an EL9-compatible wheel exists
-   so Hermeto does not download Rust sdists and fail `cargo vendor --locked`
-   (see uv / rpds-py). The sdist hash is kept when no EL9 wheel exists
-   (e.g. ripgrep's manylinux_2_39-only wheel).
-3. **Download** (optional, `--download`) — for local testing with podman,
-  downloads every wheel referenced in the pylock.toml into
-   `cachi2/output/deps/pip/`, verifying sha256 checksums.  Files already
-   present are skipped.  Not needed in Konflux CI (cachi2 prefetches
-   automatically from `requirements.<flavor>.txt`).
 
 ### Requirements
 
