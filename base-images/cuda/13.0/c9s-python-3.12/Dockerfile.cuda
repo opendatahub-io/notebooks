@@ -38,8 +38,7 @@ ENV NV_LIBNCCL_PACKAGE=libnccl-2.30.4-1+cuda13.2 \
     NV_LIBNCCL_VERSION=2.30.4
 
 RUN --mount=type=cache,sharing=locked,id=dnf-c9s,target=/var/cache/dnf \
-    dnf install -y --setopt=keepcache=1 "${NV_LIBNCCL_PACKAGE}" \
-    && dnf clean all
+    dnf install -y --setopt=keepcache=1 "${NV_LIBNCCL_PACKAGE}"
 
 RUN \
 --mount=from=buildscripts,source=/mnt,target=/mnt \
