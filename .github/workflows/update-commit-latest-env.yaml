@@ -123,6 +123,7 @@ jobs:
 
           git checkout -B "${{ steps.mode.outputs.update_branch }}"
           git commit -m "ci: update commit SHAs in commit-latest.env"
+          git fetch origin "${{ steps.mode.outputs.update_branch }}" || true
           git push --force-with-lease -u origin "${{ steps.mode.outputs.update_branch }}"
 
           existing_pr="$(gh pr list \
