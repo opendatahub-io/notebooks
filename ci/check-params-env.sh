@@ -58,7 +58,7 @@ function check_variables_uniq() {
     echo "Checking that all variables in the file '${env_file_path_1}' & '${env_file_path_2}' are unique and expected"
 
     local content
-    content=$(sed '/^$/d;/^[[:space:]]*#/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#\(.*\)=.*#\1#' | sort)
+    content=$(sed '/^$/d;/^[[:space:]]*#/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#^\([^=]*\)=.*#\1#' | sort)
 
     local num_records
     num_records=$(echo "${content}" | wc -l)
