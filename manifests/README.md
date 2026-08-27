@@ -89,3 +89,28 @@ These rules are enforced by a test:
 ```bash
 uv run pytest tests/test_main.py::test_imagestream_kustomization_consistency -v
 ```
+
+If your PR touches only these manifests, see [Manifest-only PRs](#manifest-only-prs).
+
+## Manifest-only PRs
+
+A PR that changes only ImageStream YAML under `manifests/` (e.g. annotation
+bumps, tag additions) is still expected to pass validation and carry a short
+test plan. Reviewers use these to confirm the change is annotation/manifest-scoped.
+
+**Required checks:**
+
+```bash
+make test
+uv run pytest tests/test_main.py::test_imagestream_kustomization_consistency -v
+uv run manifests/tools/generate_kustomization.py --check --target odh
+uv run manifests/tools/generate_kustomization.py --check --target rhoai
+```
+
+**Scope guidance:** keep annotation-only changes in their own PR. Do not bundle
+Dockerfile, lockfile, or docs changes into a manifest-only PR — file those as
+separate follow-ups.
+
+**PR body:** include a brief test plan even for YAML-only changes — state what
+you ran (the commands above) and what was intentionally skipped (e.g. no image
+build because no Dockerfile changed).
