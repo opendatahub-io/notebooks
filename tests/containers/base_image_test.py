@@ -336,7 +336,6 @@ class TestBaseImage:
                     path = actual[key]
                     with subtests.test(f"{key}, if present, points only to PyPI"):
                         urls = parse_urls(read_container_file(path))
-                        assert urls, f"{path} must define an index URL"
                         assert index_config_utils.index_urls_are_all_pypi(urls), (
                             f"{key} ({path}) must point only to PyPI for public-index images. Got: {urls}"
                         )

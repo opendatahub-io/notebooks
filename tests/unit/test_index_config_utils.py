@@ -103,3 +103,18 @@ def test_index_urls_are_all_pypi_rejects_non_pypi_indexes():
             "https://packages.example.invalid/simple/",
         )
     )
+
+
+def test_indexless_config_parses_to_empty_and_passes_pypi_check():
+    pip_config_text = """# pip.conf
+[global]
+target=/opt/app-root/src/jupyter-work-dir/python3/
+"""
+    uv_config_text = """# uv.toml
+native-tls = true
+link-mode = "copy"
+"""
+
+    assert pip_all_index_urls_from_config(pip_config_text) == ()
+    assert uv_all_index_urls_from_config(uv_config_text) == ()
+    assert index_urls_are_all_pypi(()), "index-less config (default PyPI) must pass the PyPI check"
