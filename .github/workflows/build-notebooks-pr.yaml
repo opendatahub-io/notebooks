@@ -94,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
-    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    uses: $/.github/workflows/build-notebooks-TEMPLATE.yaml
     if: ${{ fromJson(needs.gen.outputs.has_jobs) && github.repository != 'red-hat-data-services/notebooks' }}
     with:
       target: "${{ matrix.target }}"
@@ -114,7 +114,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
-    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    uses: $/.github/workflows/build-notebooks-TEMPLATE.yaml
     if: ${{ fromJson(needs.gen.outputs.has_jobs) && needs.gen.outputs.is_fork == 'false' }}
     with:
       target: "${{ matrix.target }}"
