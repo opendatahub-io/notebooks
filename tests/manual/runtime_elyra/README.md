@@ -89,7 +89,7 @@ To run Elyra pipelines, you need to create a data science cluster workbench in R
 
       ![Create workbench button][image9]
 
-3. On the workbench creation form, you can put any name you want, but it needs to be, at least, the data science image (you can choose the TensorFlow, PyTorch, among other images \- click [here](https://github.com/search?q=repo%3Aopendatahub-io%2Fnotebooks+COPY+%2F%24%7BDATASCIENCE_SOURCE_CODE%7D%5C%2Fsetup-elyra.sh%2F&type=code) for a full list of images with Elyra):
+3. On the workbench creation form, you can put any name you want, but it needs to be, at least, the data science image (you can choose the TensorFlow, PyTorch, among other images \- click [the repository search for images with Elyra](https://github.com/search?q=repo%3Aopendatahub-io%2Fnotebooks+COPY+%2F%24%7BDATASCIENCE_SOURCE_CODE%7D%5C%2Fsetup-elyra.sh%2F&type=code) for a full list):
 
    	**Name:** elyra-wb
    	**Image Selection:** Jupyter | Data Science | CPU | Python 3.12
