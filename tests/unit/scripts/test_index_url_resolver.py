@@ -422,6 +422,38 @@ def test_error_when_label_missing_and_tag_unusable(tmp_path: Path, monkeypatch: 
         resolver.resolve_index_config(conf_file)
 
 
+def test_resolve_explicit_index_url_with_raw_rhel_base(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AIPCC index + raw RHEL9 BASE_IMAGE: INDEX_URL in konflux conf must win."""
+    index_url = prod_index_url(release="3.6-EA1", accelerator="cpu")
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=registry.redhat.io/rhel9/python-312:9.8-1787081761@sha256:abc",
+            f"INDEX_URL={index_url}",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+            "RELEASE=3.6",
+        ],
+    )
+
+    def stub_no_label(base_image: str) -> str:
+        raise resolver.IndexResolutionError(f"{resolver.INDEX_URL_LABEL} label is missing from {base_image}")
+
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", stub_no_label)
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == index_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == index_url
+    assert resolved.accelerator == "cpu"
+    assert resolved.release == "3.6-EA1"
+    assert resolved.base_image.startswith("registry.redhat.io/rhel9/python-312")
+
+
 def test_inspect_base_image_index_url_parses_config_labels(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

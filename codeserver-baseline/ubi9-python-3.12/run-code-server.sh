@@ -62,7 +62,7 @@ universal_json_settings='// vscode settings are written in json-with-comments
   // RHAIENG-6400 / RHAISTRAT-2209: enable Copilot Chat surfaces for Device Code auth validation.
   // Customer GA still gated by Legal RHAI-113; preferDeviceCodeFlow so UrlHandler/OAuth
   // redirects are not tried first behind Kubeflow OAuth / kube-rbac-proxy.
-  // official doc https://code.visualstudio.com/docs/copilot/faq#_how-can-i-remove-copilot-from-vs-code
+  // https://code.visualstudio.com/docs/copilot/faq#_how-can-i-remove-copilot-from-vs-code
   "chat.disableAIFeatures": false,
   "github-authentication.preferDeviceCodeFlow": true,
 

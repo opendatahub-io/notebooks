@@ -15,7 +15,7 @@ echo
 
 # --- Fetch code-server heartbeat ---
 # Talk to code-server directly on its bind address (nginx upstream workbench_server).
-# Do NOT go through nginx:8888 -- that path is NB_PREFIX-routed for external probes
+# Do NOT go through nginx:8888 — that path is NB_PREFIX-routed for external probes
 # and CGI does not need (or reliably have) NB_PREFIX.
 # Example HEALTHZ JSON: {"status":"alive","lastHeartbeat":1742345025123}
 HEALTHZ=$(curl -sLf --max-time 5 "http://127.0.0.1:8787/healthz") || true
