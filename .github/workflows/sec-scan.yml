@@ -28,7 +28,7 @@ jobs:
           persist-credentials: true
 
       - name: Install Skopeo CLI
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: skopeo
 
