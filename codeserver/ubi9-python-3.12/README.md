@@ -204,17 +204,27 @@ workflow template. Non-codeserver targets skip the prefetch step entirely.
 
 ### How it works
 
-The prefetch step is gated by `contains(inputs.target, 'codeserver')`:
+The step does **not** derive the component directory from the target name by
+string-splitting (an earlier version of the workflow used
+`sed 's|-|/|'`, which broke for targets like `codeserver-baseline-...`).
+Instead, the Makefile is the single source of truth: each image target emits a
+machine-parsed line (`#*# Image build directory: <dir> #(MACHINE-PARSED LINE)#*#`),
+and the step resolves `COMPONENT_DIR` and `DOCKERFILE` from it via
+`ci/cached-builds/gha_pr_changed_files.py` (`get_build_directory` /
+`get_build_dockerfile`). If the target cannot be resolved, the step fails the
+build instead of silently skipping.
 
-```yaml
-- name: "Prefetch hermetic build dependencies"
-  if: ${{ contains(inputs.target, 'codeserver') }}
-  run: |
-    COMPONENT_DIR=$(echo "${{ inputs.target }}" | sed 's|-|/|')
-    if [ -d "$COMPONENT_DIR/prefetch-input" ]; then
-      scripts/lockfile-generators/prefetch-all.sh --component-dir "$COMPONENT_DIR"
-    fi
-```
+Hermetic builds are detected from the resolved files: the step runs
+`prefetch-all.sh --component-dir <dir> --flavor <flavor>` when the component
+ships a `prefetch-input/` directory (the flavor comes from the Dockerfile
+suffix, defaulting to `cpu`), and fails the build when a subscription
+(`inputs.subscription: true`) build is missing its `prefetch-input/rhds/`
+variant. Targets without a `prefetch-input/` directory are unaffected.
+
+The full step is defined in
+[`.github/workflows/build-notebooks-TEMPLATE.yaml`](../../.github/workflows/build-notebooks-TEMPLATE.yaml)
+(search for "Prefetch hermetic build dependencies"); treat that workflow as the
+single source of truth rather than copying its YAML.
 
 ### ARM64 note
 
