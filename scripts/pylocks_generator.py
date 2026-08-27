@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
-"""Generate Python dependency lock files (pylock.toml) using uv pip compile.
+"""Generate Python dependency lock files (pylock.toml) using uv.
 
 This script generates Python dependency lock files (pylock.toml) for multiple
 directories using either internal Red Hat wheel indexes or the public PyPI index.
+
+Public-index images (``*-baseline`` and other root ``pylock.toml`` layouts) use
+``uv lock`` + ``uv export --format pylock.toml`` so ``[tool.uv] required-environments``
+and dependency environment markers are honored. RH-index images continue to use
+``uv pip compile --universal``.
 
 Features:
   - Supports multiple Python project directories, detected by pyproject.toml.
@@ -46,7 +51,7 @@ Usage:
 
 Reproducible CI checks (PYLOCKS_CI_CHECK):
   When ``PYLOCKS_CI_CHECK=1`` (set only by ``check-generated-code`` in CI),
-  ``uv pip compile`` always passes ``--exclude-newer`` parsed from the existing
+  lock generation always passes ``--exclude-newer`` parsed from the existing
   lockfile header when present (CI check mode), else the run's UTC ``now``, so
   regeneration matches the committed tree despite index churn.  Local runs and
   lock renewal omit this variable and use a single UTC ``now`` for the whole run.
@@ -129,6 +134,21 @@ BASELINE_AIPCC_ALIGNMENT_PAIRS: dict[Path, Path] = {
 BASELINE_AIPCC_ALIGNMENT_SOURCE_ALIASES: dict[str, str] = {
     "pandoc": "pandoc-rhai",
 }
+
+# Direct deps that must not inherit the AIPCC pin on public-index baselines.
+# ripgrep: AIPCC ships 15.x EL9 wheels; PyPI 15.x is manylinux_2_39-only (sdist/maturin
+# offline), so codeserver-baseline pins 14.1.0 (manylinux_2_17 multi-arch).
+BASELINE_AIPCC_ALIGNMENT_SKIP_PACKAGES: frozenset[str] = frozenset(
+    {
+        "ripgrep",
+    }
+)
+
+# Public-index baseline images: PyPI lacks ppc64le/s390x wheels for many Jupyter/native
+# packages. Gate those deps to x86_64 + aarch64; images still build on all four arches.
+BASELINE_AMD64_CLASS_MARKER = (
+    "sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')"
+)
 
 # Optimal concurrency is 5-6 based on benchmarks (macOS 12-core, RH PyPI index with
 # no HTTP cache headers).  Each uv process internally uses UV_CONCURRENT_DOWNLOADS
@@ -414,7 +434,7 @@ def parse_exclude_newer_from_lockfile(path: Path) -> str | None:
         stripped = line.strip()
         if not stripped.startswith("#"):
             continue
-        if "uv pip compile" not in stripped:
+        if not any(cmd in stripped for cmd in ("uv pip compile", "uv lock", "uv export")):
             continue
         m = _EXCLUDE_NEWER_HEADER_RE.search(stripped)
         if m:
@@ -489,6 +509,8 @@ def generate_baseline_alignment_constraints(project_dir: Path, log: LogBuffer) -
 
     generated: list[str] = []
     for canonical_name, original_name in sorted(direct_deps.items()):
+        if canonical_name in BASELINE_AIPCC_ALIGNMENT_SKIP_PACKAGES:
+            continue
         source_name = BASELINE_AIPCC_ALIGNMENT_SOURCE_ALIASES.get(canonical_name, canonical_name)
         source_version = source_locked.get(source_name)
         if source_version is None:
@@ -565,6 +587,152 @@ def lock_extra_index_flags_from_env() -> list[str]:
     return flags
 
 
+def _read_constraint_spec_lines(path: Path) -> list[str]:
+    """Return non-comment constraint/override lines from a requirements-style file."""
+    if not path.is_file():
+        return []
+    lines: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        lines.append(stripped)
+    return lines
+
+
+def _merged_public_index_constraint_dependencies(
+    extra_constraints: Path | None,
+) -> list[str]:
+    """Merge repo-wide and per-run constraint inputs for public-index ``uv lock``."""
+    merged: list[str] = []
+    seen: set[str] = set()
+    for path in (CONSTRAINTS_FILE,):
+        for line in _read_constraint_spec_lines(path):
+            if line in seen:
+                continue
+            seen.add(line)
+            merged.append(line)
+    if extra_constraints is not None:
+        for line in _read_constraint_spec_lines(extra_constraints):
+            if line in seen:
+                continue
+            seen.add(line)
+            merged.append(line)
+    return merged
+
+
+def _inject_tool_uv_constraint_dependencies(pyproject_text: str, constraints: list[str]) -> str:
+    """Append ``constraint-dependencies`` under the existing ``[tool.uv]`` table."""
+    if not constraints:
+        return pyproject_text
+    document = tomllib.loads(pyproject_text)
+    uv_table = document.get("tool", {}).get("uv", {})
+    existing = list(uv_table.get("constraint-dependencies", []))
+    combined = existing + [c for c in constraints if c not in existing]
+    entries = ",\n".join(f'    "{item}"' for item in combined)
+    fragment = f"constraint-dependencies = [\n{entries},\n]\n"
+    if "constraint-dependencies" in pyproject_text:
+        return pyproject_text
+    marker = "[tool.uv.sources]"
+    if marker in pyproject_text:
+        return pyproject_text.replace(marker, f"{fragment}\n{marker}", 1)
+    if pyproject_text.endswith("\n"):
+        return pyproject_text + "\n" + fragment
+    return pyproject_text + "\n\n" + fragment
+
+
+def _run_subprocess(
+    cmd: list[str], *, cwd: Path, log: LogBuffer, timeout: int = 600
+) -> subprocess.CompletedProcess[str]:
+    compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+            env=compile_env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        msg = f"Timed out running {' '.join(cmd)} in {cwd}"
+        log.warning(msg)
+        raise TimeoutError(msg) from exc
+    if result.stdout:
+        log.print(result.stdout)
+    if result.stderr:
+        log.print(result.stderr)
+    return result
+
+
+def run_public_index_lock(
+    project_dir: Path,
+    index_flags: list[str],
+    upgrade: bool,
+    ci_check: bool,
+    live_timestamp: str,
+    log: LogBuffer,
+    extra_constraints: Path | None = None,
+) -> bool:
+    """Lock a public-index project via ``uv lock`` + ``uv export --format pylock.toml``."""
+    pylock_path = project_dir / "pylock.toml"
+    uv_lock_path = project_dir / "uv.lock"
+    pyproject_path = project_dir / "pyproject.toml"
+    exclude_newer = resolve_exclude_newer(pylock_path, ci_check=ci_check, live_timestamp=live_timestamp)
+
+    merged_constraints = _merged_public_index_constraint_dependencies(extra_constraints)
+    original_pyproject = pyproject_path.read_text(encoding="utf-8")
+    patched_pyproject = _inject_tool_uv_constraint_dependencies(original_pyproject, merged_constraints)
+    pyproject_path.write_text(patched_pyproject, encoding="utf-8")
+
+    lock_cmd: list[str] = [str(UV), "lock", f"--exclude-newer={exclude_newer}"]
+    if upgrade:
+        lock_cmd.append("--upgrade")
+    lock_cmd.extend(index_flags)
+    extra_idx = lock_extra_index_flags_from_env()
+    if extra_idx:
+        lock_cmd.extend(extra_idx)
+        log.print("  📎 Extra lock indexes from UV_LOCK_EXTRA_INDEX_URL / PIP_LOCK_EXTRA_INDEX_URL")
+    default_index = next(
+        (flag.removeprefix("--default-index=") for flag in index_flags if flag.startswith("--default-index=")),
+        None,
+    )
+    if default_index is not None:
+        log.print(f"  🌐 Lock INDEX_URL: {default_index}")
+
+    export_cmd: list[str] = [
+        str(UV),
+        "export",
+        "--format",
+        "pylock.toml",
+        "--output-file",
+        "pylock.toml",
+        "--no-annotate",
+        "--emit-index-url",
+        f"--exclude-newer={exclude_newer}",
+    ]
+    export_cmd.extend(index_flags)
+
+    try:
+        lock_result = _run_subprocess(lock_cmd, cwd=project_dir, log=log)
+        if lock_result.returncode != 0:
+            pylock_path.unlink(missing_ok=True)
+            uv_lock_path.unlink(missing_ok=True)
+            return False
+
+        export_result = _run_subprocess(export_cmd, cwd=project_dir, log=log)
+        if export_result.returncode != 0:
+            pylock_path.unlink(missing_ok=True)
+            return False
+    finally:
+        pyproject_path.write_text(original_pyproject, encoding="utf-8")
+        uv_lock_path.unlink(missing_ok=True)
+
+    log.ok("pylock.toml (public index) generated successfully.")
+    return True
+
+
 def run_lock(
     project_dir: Path,
     flavor: str,
@@ -577,16 +745,23 @@ def run_lock(
     log: LogBuffer,
     extra_constraints: Path | None = None,
 ) -> bool:
-    """Run uv pip compile to generate a lock file. Returns True on success."""
+    """Run lock generation for one flavor. Returns True on success."""
     if mode == IndexMode.public_index:
-        output = "pylock.toml"
-        desc = "pylock.toml (public index)"
-        log.print("➡️ Generating pylock.toml from public PyPI index...")
-    else:
-        (project_dir / "uv.lock.d").mkdir(exist_ok=True)
-        output = f"uv.lock.d/pylock.{flavor}.toml"
-        desc = f"{flavor.upper()} lock file"
-        log.print(f"➡️ Generating {flavor.upper()} lock file...")
+        log.print("➡️ Generating pylock.toml from public PyPI index (uv lock + export)...")
+        return run_public_index_lock(
+            project_dir,
+            index_flags,
+            upgrade,
+            ci_check,
+            live_timestamp,
+            log,
+            extra_constraints,
+        )
+
+    (project_dir / "uv.lock.d").mkdir(exist_ok=True)
+    output = f"uv.lock.d/pylock.{flavor}.toml"
+    desc = f"{flavor.upper()} lock file"
+    log.print(f"➡️ Generating {flavor.upper()} lock file...")
 
     # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
     # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)

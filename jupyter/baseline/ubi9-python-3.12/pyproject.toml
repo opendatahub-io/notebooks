@@ -7,7 +7,7 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    # Installer/tooling used in Docker/CI
+    # Installer/tooling used in Docker/CI (all supported Linux architectures)
     "uv",
     "micropipenv[toml]",
 
@@ -15,32 +15,40 @@ dependencies = [
     "wheel",
     "setuptools",
 
-    # JupyterLab core (odh-notebooks-meta-jupyterlab-deps)
-    "jupyterlab",
-    "jupyter-server",
-    "jupyter-server-proxy",
-    "jupyter-server-terminals",
-    "jupyterlab-git",
-    "nbdime",
-    "nbgitpuller",
-    "odh-jupyter-trash-cleanup",
+    # JupyterLab core — PyPI lacks ppc64le/s390x wheels for many native deps; x86_64 + aarch64 only.
+    "jupyterlab; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyter-server; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyter-server-proxy; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyter-server-terminals; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyterlab-git; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "nbdime; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "nbgitpuller; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "odh-jupyter-trash-cleanup; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
     # PDF export needs a real pandoc binary on PATH. Hermetic images use
     # pandoc-rhai from the RHAI index; phase-1 public-index installs the EPEL
     # pandoc RPM in the Dockerfile instead (PyPI "pandoc" is only a wrapper).
 
     # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
     # heavy workbench/db-connector Python stack.
-    "odh-elyra",
-    "odh-kale[jupyter]",
-    "jupyter-bokeh",
-    "jupyterlab-lsp",
-    "jupyterlab-widgets",
-    "jupyter-resource-usage",
+    "odh-elyra; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "odh-kale[jupyter]; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyter-bokeh; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyterlab-lsp; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyterlab-widgets; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyter-resource-usage; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
 ]
 
 [tool.uv]
 # FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
 exclude-dependencies = ["py-spy"]
+
+# Image builds on all four Linux architectures; Jupyter-stack deps are marker-gated above.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "sys_platform == 'linux' and platform_machine == 'ppc64le'",
+    "sys_platform == 'linux' and platform_machine == 's390x'",
+]
 
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",

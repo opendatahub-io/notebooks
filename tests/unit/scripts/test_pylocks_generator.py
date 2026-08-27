@@ -330,6 +330,10 @@ def _public_index_project(tmp_path: Path) -> Path:
     project_dir = tmp_path / "jupyter" / "baseline" / "ubi9-python-3.12"
     project_dir.mkdir(parents=True)
     (project_dir / "Dockerfile.konflux.cpu").write_text("FROM scratch\n", encoding="utf-8")
+    (project_dir / "pyproject.toml").write_text(
+        '[project]\nname = "test"\nversion = "0.1.0"\nrequires-python = "==3.12.*"\n',
+        encoding="utf-8",
+    )
     (project_dir / "pylock.toml").write_text('lock-version = "1.0"\n', encoding="utf-8")
     return project_dir
 
@@ -388,7 +392,9 @@ def test_process_directory_public_index_generates_requirements_after_lock(
     )
 
     assert success is True, "public-index lock + requirements generation should succeed"
-    assert cmds, "expected uv pip compile and pylock-to-requirements invocations"
+    assert cmds, "expected uv lock/export and pylock-to-requirements invocations"
+    assert cmds[0][:2] == [str(pg.UV), "lock"], f"first command should be uv lock: {cmds[0]}"
+    assert cmds[1][:2] == [str(pg.UV), "export"], f"second command should be uv export: {cmds[1]}"
     assert cmds[-1] == [
         pg.sys.executable,
         str(pg.PYLOCK_TO_REQUIREMENTS),
@@ -544,14 +550,18 @@ def test_run_lock_appends_extra_alignment_constraints(
 ) -> None:
     project_dir = tmp_path / "jupyter" / "baseline" / "ubi9-python-3.12"
     project_dir.mkdir(parents=True)
-    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\n', encoding="utf-8")
+    original_pyproject = '[project]\nname = "test"\n\n[tool.uv.sources]\n'
+    (project_dir / "pyproject.toml").write_text(original_pyproject, encoding="utf-8")
     extra_constraints = project_dir / ".aipcc-alignment.constraints.txt"
     extra_constraints.write_text("uv==0.1.0\n", encoding="utf-8")
     log = pg.LogBuffer()
-    captured_cmd: list[str] = []
+    captured_cmds: list[list[str]] = []
+    patched_during_lock: list[str] = []
 
     def fake_run(cmd, **kwargs):
-        captured_cmd[:] = cmd
+        captured_cmds.append(list(cmd))
+        if cmd[:2] == [str(pg.UV), "lock"]:
+            patched_during_lock.append((project_dir / "pyproject.toml").read_text(encoding="utf-8"))
         return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(pg.subprocess, "run", fake_run)
@@ -570,10 +580,13 @@ def test_run_lock_appends_extra_alignment_constraints(
     )
 
     assert success is True
-    expected_extra_constraints = os.path.relpath(extra_constraints, project_dir)
-    constraints_values = [captured_cmd[i + 1] for i, arg in enumerate(captured_cmd) if arg == "--constraints"]
-    assert expected_extra_constraints in constraints_values, (
-        f"expected extra constraints path {expected_extra_constraints!r} in {constraints_values!r}"
+    assert captured_cmds, "expected uv lock/export invocations"
+    assert captured_cmds[0][:2] == [str(pg.UV), "lock"]
+    assert patched_during_lock, "expected patched pyproject during uv lock"
+    assert "constraint-dependencies" in patched_during_lock[0]
+    assert "uv==0.1.0" in patched_during_lock[0]
+    assert (project_dir / "pyproject.toml").read_text(encoding="utf-8") == original_pyproject, (
+        "pyproject.toml must be restored after public-index lock generation"
     )
 
 
@@ -595,6 +608,7 @@ version = "0.1.0"
 dependencies = [
   "pandas",
   "pandoc",
+  "ripgrep==14.1.0",
   "uv",
 ]
 """.strip()
@@ -606,6 +620,7 @@ dependencies = [
 --index-url https://example.invalid/simple
 pandas==2.3.3 ; sys_platform == 'linux'
 pandoc-rhai==3.8.0 ; sys_platform == 'linux'
+ripgrep==15.1.0 ; sys_platform == 'linux'
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -613,6 +628,7 @@ pandoc-rhai==3.8.0 ; sys_platform == 'linux'
     monkeypatch.setattr(pg, "ROOT_DIR", root)
     monkeypatch.setattr(pg, "BASELINE_AIPCC_ALIGNMENT_PAIRS", {baseline_rel: source_rel})
     monkeypatch.setattr(pg, "BASELINE_AIPCC_ALIGNMENT_SOURCE_ALIASES", {"pandoc": "pandoc-rhai"})
+    monkeypatch.setattr(pg, "BASELINE_AIPCC_ALIGNMENT_SKIP_PACKAGES", frozenset({"ripgrep"}))
 
     generated = pg.generate_baseline_alignment_constraints(baseline_dir, pg.LogBuffer())
 
@@ -622,6 +638,7 @@ pandoc-rhai==3.8.0 ; sys_platform == 'linux'
     assert "pandas==2.3.3" in content
     assert "pandoc==3.8.0" in content
     assert "uv==" not in content
+    assert "ripgrep==" not in content
     generated.unlink(missing_ok=True)
 
 

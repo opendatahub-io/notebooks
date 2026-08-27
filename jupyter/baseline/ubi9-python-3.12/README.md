@@ -8,6 +8,10 @@ Phase 1 baseline Jupyter workbench image with Python 3.12 on UBI 9.
 - Installs Python packages from `requirements.${PYLOCK_FLAVOR}.txt` using PyPI.
 - Keeps JupyterLab feature set (Elyra, Kale, PDF export) with a lean Python footprint.
 - Keeps hermetic `prefetch-input/` conversion deferred to phase 2.
+- **Multi-arch**: Konflux builds all four Linux arches; JupyterLab/Elyra/Kale Python deps
+  install on **x86_64 + aarch64 only** (PyPI wheel gap on ppc64le/s390x). Other arches
+  get uv/wheel/setuptools/micropipenv only. See `[tool.uv] required-environments` in
+  `pyproject.toml` and regenerated `pylock.toml` markers.
 
 ## Local build
 
