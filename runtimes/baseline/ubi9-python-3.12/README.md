@@ -9,6 +9,9 @@ Phase 1 baseline Elyra pipeline runtime image with Python 3.12 on UBI 9.
 - Keeps Elyra/Kale execution capability with a lean Python footprint (no
   datascience / DB-connector stack).
 - Keeps hermetic `prefetch-input/` conversion deferred to phase 2.
+- **Multi-arch**: Konflux builds all four Linux arches; Elyra/Kale meta-package deps
+  install on **x86_64 + aarch64 only**. ppc64le/s390x get uv/wheel/setuptools/micropipenv.
+  See marker-gated deps and `[tool.uv] required-environments` in `pyproject.toml`.
 
 ## Local build
 
