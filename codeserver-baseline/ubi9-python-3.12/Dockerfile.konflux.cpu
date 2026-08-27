@@ -338,6 +338,21 @@ ENV SHELL=/bin/bash
 # Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
 ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
 
+### BEGIN PyPI pip and uv index
+ENV PIP_INDEX_URL=https://pypi.org/simple
+ENV UV_INDEX_URL=https://pypi.org/simple
+ENV UV_DEFAULT_INDEX=https://pypi.org/simple
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ -f /opt/app-root/pip.conf ]; then
+  sed -i 's|^index-url = .*|index-url = https://pypi.org/simple|' /opt/app-root/pip.conf
+fi
+if [ -f /opt/app-root/uv.toml ]; then
+  sed -i 's|^index-url = .*|index-url = "https://pypi.org/simple"|' /opt/app-root/uv.toml
+fi
+EOF
+### END PyPI pip and uv index
+
 # Copy requirements files (pylock.toml for metadata; requirements.txt used for installation)
 COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./pylock.toml
 COPY ${CODESERVER_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
