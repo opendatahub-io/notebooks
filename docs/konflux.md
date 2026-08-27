@@ -242,7 +242,11 @@ Automated synchronization infrastructure between upstream ODH and downstream RHD
 
 ## Pipeline resource overrides
 
-All PipelineRuns in `.tekton/` override compute resources for several tasks that OOM with Konflux defaults on this repo's large source tree. The standard overrides (4 CPU / 8Gi) cover `prefetch-dependencies`, `build-images`, `clair-scan`, `sast-shell-check`, `sast-unicode-check`, and `sast-snyk-check`. The codeserver pipelines use higher limits (**8 CPU / 32Gi**) for `prefetch-dependencies` and `build-images` because the codeserver image is significantly larger. This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`).
+All PipelineRuns in `.tekton/` override compute resources for tasks that require tailored limits on this repo's large source tree:
+- **Standard and codeserver pipelines**: 3 CPU / 8Gi requests and limits (4 CPU / 8Gi for base images) for `prefetch-dependencies`, `build-images`, `clair-scan`, and `ecosystem-cert-preflight-checks` (with codeserver pipelines additionally specifying `memory: 8Gi` for `prepare-sboms`).
+- **Heavy CUDA/ROCm pipelines**: 3 CPU / 8Gi requests and limits for build steps (`prefetch-dependencies`, `build-images`), while resource-heavy scan steps (`clair-scan` and `ecosystem-cert-preflight-checks`) use 8 CPU / 16Gi requests and 16 CPU / 32Gi limits.
+
+This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`).
 
 ## Triggering builds
 
