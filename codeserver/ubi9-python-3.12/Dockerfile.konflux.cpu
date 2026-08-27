@@ -99,6 +99,9 @@ RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 #   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
 # so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
+# SC3046: `source` is a bash builtin used intentionally here - UBI9 links
+# /bin/sh to /bin/bash, so this RUN effectively executes in bash.
+# hadolint ignore=SC3046
 RUN cd ${CODESERVER_SOURCE_CODE} && \
     source ./patches/setup-offline-binaries.sh && \
     cd ${CODESERVER_SOURCE_PREFETCH} && \
