@@ -669,13 +669,20 @@ def _run_subprocess(
 def run_public_index_lock(
     project_dir: Path,
     index_flags: list[str],
+    python_version: str,
     upgrade: bool,
     ci_check: bool,
     live_timestamp: str,
     log: LogBuffer,
     extra_constraints: Path | None = None,
 ) -> bool:
-    """Lock a public-index project via ``uv lock`` + ``uv export --format pylock.toml``."""
+    """Lock a public-index project via ``uv lock`` + ``uv export --format pylock.toml``.
+
+    ``uv lock`` defaults to the ambient interpreter (repo CI uses Python 3.14 from
+    ``.python-version``). Image ``pyproject.toml`` files declare ``requires-python``
+    for the in-container version (e.g. ``==3.12.*``), so resolution must pin
+    ``--python`` to the directory's ``ubi9-python-X.Y`` suffix.
+    """
     pylock_path = project_dir / "pylock.toml"
     uv_lock_path = project_dir / "uv.lock"
     pyproject_path = project_dir / "pyproject.toml"
@@ -686,7 +693,13 @@ def run_public_index_lock(
     patched_pyproject = _inject_tool_uv_constraint_dependencies(original_pyproject, merged_constraints)
     pyproject_path.write_text(patched_pyproject, encoding="utf-8")
 
-    lock_cmd: list[str] = [str(UV), "lock", f"--exclude-newer={exclude_newer}"]
+    python_flag = f"--python={python_version}"
+    lock_cmd: list[str] = [
+        str(UV),
+        "lock",
+        python_flag,
+        f"--exclude-newer={exclude_newer}",
+    ]
     if upgrade:
         lock_cmd.append("--upgrade")
     lock_cmd.extend(index_flags)
@@ -700,10 +713,12 @@ def run_public_index_lock(
     )
     if default_index is not None:
         log.print(f"  🌐 Lock INDEX_URL: {default_index}")
+    log.print(f"  🐍 Lock Python: {python_version} ({python_flag})")
 
     export_cmd: list[str] = [
         str(UV),
         "export",
+        python_flag,
         "--format",
         "pylock.toml",
         "--output-file",
@@ -751,6 +766,7 @@ def run_lock(
         return run_public_index_lock(
             project_dir,
             index_flags,
+            python_version,
             upgrade,
             ci_check,
             live_timestamp,
