@@ -18,8 +18,7 @@ def test_build_tracker_labels() -> None:
     ]
 
 
-def test_build_tracker_team_extra_fields_default(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_RHAIENG_TEAM_OPTION_ID", raising=False)
+def test_build_tracker_team_extra_fields_default() -> None:
     fields = cct.build_tracker_team_extra_fields()
     assert fields == {cct.RHAIENG_TEAM_CUSTOM_FIELD: cct.RHAIENG_TEAM_OPTION_ID_DEFAULT}
 
