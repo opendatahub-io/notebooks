@@ -62,6 +62,7 @@ RUN dnf module enable nodejs:22 -y
 RUN dnf install -y \
         nodejs nodejs-devel npm \
         jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
+        libseccomp-devel \
         krb5-devel libX11-devel libxkbfile-devel && \
     dnf clean all
 
@@ -80,6 +81,7 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFE
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/code-server-${CODESERVER_VERSION}/ ${CODESERVER_SOURCE_PREFETCH}/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/replace-aipcc-ripgrep.sh ${CODESERVER_SOURCE_CODE}/patches/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/rebuild-apply-seccomp.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/tweak-gha.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
@@ -122,7 +124,9 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESE
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run release && \
-    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}/release"
+    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}/release" && \
+    . /opt/rh/gcc-toolset-14/enable && \
+    "${CODESERVER_SOURCE_CODE}/patches/rebuild-apply-seccomp.sh" "${CODESERVER_SOURCE_PREFETCH}/release"
 
 # Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
 RUN echo "done" > /tmp/control
@@ -212,6 +216,7 @@ RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(
     nodejs
+    libseccomp
     jq git-lfs libsndfile
     # provides envsubst which is required by run-nginx.sh
     gettext
