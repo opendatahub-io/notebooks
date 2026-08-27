@@ -1,5 +1,5 @@
-# Phase 1: baseline build installs Python packages from PyPI using `requirements.${PYLOCK_FLAVOR}.txt`.
-# Hermetic Python input generation stays deferred to phase 2.
+# Hermetic baseline: lean code-server workbench deps locked from PyPI
+# (public-index layout: root pylock.toml + requirements.cpu.txt).
 
 [project]
 name = "notebooks"
@@ -11,30 +11,37 @@ dependencies = [
     "uv",
     "micropipenv[toml]",
 
-    # Base packages
+    # Base packages (all supported Linux architectures)
     "wheel",
     "setuptools",
 
-    # RHAIENG-6157: VS Code Jupyter extension requires these
-    #  ipykernel: raw-kernel gate
-    #  jupyter+notebook: Jupyter-Server gate (s390x/ppc64le, no built-in native zeromq for nodejs)
-    "ipykernel",
-    "jupyter",
-    "notebook",
-    "debugpy",
-    # Used to replace static VS Code ripgrep binaries with a dynamically-linked one.
-    "ripgrep",
+    # RHAIENG-6157: VS Code Jupyter extension gates. PyPI lacks ppc64le/s390x wheels
+    # for the Jupyter/native stack — install on x86_64 + aarch64 only.
+    "ipykernel; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyter; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "notebook; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+
+    # debugpy only has a useful Linux native wheel for x86_64 (PyPI also ships py3-none-any).
+    "debugpy; sys_platform == 'linux' and platform_machine == 'x86_64'",
+
+    # Intentionally pinned: PyPI wheels exist for all supported architectures.
+    # Required at build time by code-server.
+    "ripgrep==14.1.0",
 ]
 
 [tool.uv]
-
-environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+# notebook 7.6.x needs jupyterlab>=4.6.3; jupyter 1.1.1 otherwise caps jupyterlab<4.6.
+override-dependencies = [
+    "jupyterlab>=4.6.3,<4.7",
 ]
 
-override-dependencies = [
-    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
-    "protobuf==6.31.1",
+# Fail resolution if a required package does not have a compatible wheel for any
+# architecture this image ships. Jupyter-stack deps are marker-gated above.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "sys_platform == 'linux' and platform_machine == 'ppc64le'",
+    "sys_platform == 'linux' and platform_machine == 's390x'",
 ]
 
 [tool.uv.sources]

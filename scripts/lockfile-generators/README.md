@@ -725,11 +725,29 @@ source builds entirely.
 The script performs three steps:
 
 1. **`pylocks_generator.py`** — delegates to `scripts/pylocks_generator.py`
-  (the same script used by CI's `check-generated-code`) to run `uv pip compile`
-   against `pyproject.toml`. RH-index uses the RHOAI index from
-   `build-args/konflux.<flavor>.conf` and writes `uv.lock.d/pylock.<flavor>.toml`.
-   Public-index (no `uv.lock.d/`) uses PyPI and writes root `pylock.toml`.
-   This ensures the generated pylock is always identical to what CI expects.
+  (the same script used by CI's `check-generated-code`). RH-index runs
+  `uv pip compile --universal` against the RHOAI index from
+  `build-args/konflux.<flavor>.conf` and writes `uv.lock.d/pylock.<flavor>.toml`.
+  Public-index baselines (no `uv.lock.d/`) run `uv lock` + `uv export --format pylock.toml`
+  so `[tool.uv] required-environments` and dependency environment markers are honored;
+  output is root `pylock.toml`. This ensures the generated pylock is always identical
+  to what CI expects.
+
+### Public-index baseline architecture policy (Path B)
+
+Images under `*-baseline/` ship on all four Linux architectures in Konflux
+(x86_64, aarch64, ppc64le, s390x) but **PyPI lacks wheels for many Jupyter/native
+packages on ppc64le and s390x**. Baseline `pyproject.toml` files therefore:
+
+- Keep **uv, wheel, setuptools, micropipenv, ripgrep** (etc.) ungated so every arch resolves.
+- Gate **Jupyter / Elyra / Kale stacks** with
+  `sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')`.
+- Set `[tool.uv] required-environments` for all four arches so lock resolution fails early
+  if a truly universal dep is missing a wheel on any platform.
+
+Konflux pip prefetch still requests wheels for all build platforms; marker-gated packages
+are skipped on ppc64le/s390x because they are not required there. **ripgrep** stays pinned
+at `==14.1.0` — the last PyPI release with wheels for all four Linux arches.
 2. **Convert** (`helpers/pylock-to-requirements.py`) — parses the pylock.toml
   and generates `requirements.<flavor>.txt` (with `--index-url` and
    `--hash=sha256:…` lines) for compatibility with pip/uv install and cachi2
