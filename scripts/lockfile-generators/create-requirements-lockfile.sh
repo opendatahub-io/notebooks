@@ -146,6 +146,10 @@ echo "=== Step 2: Converting $(basename "$PYLOCK_FILE") → requirements.${FLAVO
 if [[ -n "$REQUIREMENTS_INDEX_URL" ]]; then
   python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
       "$PYLOCK_FILE" "$REQUIREMENTS_FILE" "$REQUIREMENTS_INDEX_URL"
+elif [[ "$PYLOCKS_MODE" == "public-index" ]]; then
+  python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
+      --sdist-hashes prefer \
+      "$PYLOCK_FILE" "$REQUIREMENTS_FILE"
 else
   python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
       "$PYLOCK_FILE" "$REQUIREMENTS_FILE"

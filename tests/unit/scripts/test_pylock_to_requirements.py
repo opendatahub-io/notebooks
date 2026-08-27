@@ -103,3 +103,34 @@ def test_collect_index_hashes_sdist_only() -> None:
         }
     }
     assert helper.collect_index_hashes(pkg) == ["--hash=sha256:sdisthash"]
+
+
+def test_collect_index_hashes_prefer_includes_sdist_when_el9_wheel_exists() -> None:
+    pkg = {
+        "wheels": [
+            {
+                "url": "https://example.invalid/uv-0.12.5-py3-none-manylinux_2_17_x86_64.whl",
+                "hashes": {"sha256": "wheelhash"},
+            }
+        ],
+        "sdist": {
+            "url": "https://example.invalid/uv-0.12.5.tar.gz",
+            "hashes": {"sha256": "sdisthash"},
+        },
+    }
+    assert helper.collect_index_hashes(pkg, sdist_hashes=helper.SDIST_HASHES_PREFER) == [
+        "--hash=sha256:wheelhash",
+        "--hash=sha256:sdisthash",
+    ]
+
+
+def test_collect_index_hashes_prefer_sdist_only() -> None:
+    pkg = {
+        "sdist": {
+            "url": "https://example.invalid/pkg-1.0.tar.gz",
+            "hashes": {"sha256": "sdisthash"},
+        }
+    }
+    assert helper.collect_index_hashes(pkg, sdist_hashes=helper.SDIST_HASHES_PREFER) == [
+        "--hash=sha256:sdisthash",
+    ]

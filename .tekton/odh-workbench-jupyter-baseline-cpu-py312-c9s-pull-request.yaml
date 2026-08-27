@@ -47,8 +47,6 @@ spec:
   #     requirements_files: [requirements.cpu.txt]
   - name: hermetic
     value: false
-  - name: rhel-subscription-activation-key
-    value: custom-notebooks-secret
   - name: additional-tags
     value:
     - 'odh-pr-{{revision}}'
