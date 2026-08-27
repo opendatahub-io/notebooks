@@ -199,13 +199,16 @@ def _fetch_quay_json(url: str) -> dict:
 async def quay_list_matching_tags(repository: str, pattern: re.Pattern) -> list[tuple[str, int]]:
     """Return ``(tag_name, start_ts)`` pairs for active tags matching *pattern*."""
     namespace, repo = parse_quay_repository(repository)
+    # Percent-encode path segments so special characters cannot alter the
+    # requested API path. ``/`` is kept as a literal separator because
+    # parse_quay_repository supports nested repositories (repo = a/b/c).
+    safe_namespace = urllib.parse.quote(namespace, safe="/")
+    safe_repo = urllib.parse.quote(repo, safe="/")
     tags: list[tuple[str, int]] = []
     page = 1
 
     while page <= MAX_QUAY_PAGES:
-        url = (
-            f"{QUAY_API_BASE}/repository/{namespace}/{repo}/tag/?limit={QUAY_PAGE_SIZE}&page={page}&onlyActiveTags=true"
-        )
+        url = f"{QUAY_API_BASE}/repository/{safe_namespace}/{safe_repo}/tag/?limit={QUAY_PAGE_SIZE}&page={page}&onlyActiveTags=true"
         try:
             payload = await asyncio.to_thread(_fetch_quay_json, url)
         except ValueError as exc:
