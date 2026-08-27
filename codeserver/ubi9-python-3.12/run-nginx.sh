@@ -54,4 +54,5 @@ if ! grep -q 'absolute_redirect off' /etc/nginx/nginx.conf; then
     rm -f "$tmp"
 fi
 
-nginx
+# exec so nginx replaces the shell and receives SIGTERM directly for graceful drain.
+exec nginx
