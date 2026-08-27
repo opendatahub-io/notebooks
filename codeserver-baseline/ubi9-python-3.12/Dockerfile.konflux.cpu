@@ -230,7 +230,7 @@ COPY --from=rpm-base /tmp/control /dev/null
 # Path in rpm-base: /root/codeserver-baseline/ubi9-python-3.12/prefetch-input/code-server/release
 COPY --from=rpm-base /root/codeserver-baseline/ubi9-python-3.12/prefetch-input/code-server/release/. /usr/lib/code-server/
 # RHOAIENG-88676 / RHAIENG-6849: drop static apply-seccomp (FIPS ErrNotDynLinked).
-COPY codeserver/ubi9-python-3.12/prefetch-input/patches/strip-apply-seccomp.sh /tmp/strip-apply-seccomp.sh
+COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/patches/strip-apply-seccomp.sh /tmp/strip-apply-seccomp.sh
 RUN bash /tmp/strip-apply-seccomp.sh /usr/lib/code-server && \
     rm -f /tmp/strip-apply-seccomp.sh
 # Wrapper script (from code-server ci/build) that execs /usr/lib/code-server/bin/code-server
