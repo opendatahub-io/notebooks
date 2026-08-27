@@ -160,10 +160,6 @@ after.
 - **`container_fs_usage_bytes` under-reports buildah's real ephemeral-storage usage.**
   `PodEvicted`, not the Prometheus filesystem metric, remains the only reliable signal for
   ephemeral-storage sizing; this should be assumed for any future image added to the fleet.
-- **Follow-up:** [`docs/konflux.md`](../../konflux.md)'s "Pipeline resource overrides" section
-  still documents older, VM-era `stepSpecs` numbers ("32Gi folklore"). It should be refreshed to
-  the peak-aligned numbers from this PR once #3994 merges, so the doc does not silently
-  contradict the checked-in `.tekton/*.yaml` files.
 
 ## References
 
