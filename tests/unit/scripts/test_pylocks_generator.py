@@ -590,20 +590,25 @@ def test_run_lock_appends_extra_alignment_constraints(
         extra_constraints,
     )
 
-    assert success is True
+    assert success is True, f"public-index run_lock should succeed: {captured_cmds}"
     assert captured_cmds, "expected uv lock/export invocations"
-    assert captured_cmds[0][:2] == [str(pg.UV), "lock"]
+    assert captured_cmds[0][:2] == [str(pg.UV), "lock"], f"first command should be uv lock: {captured_cmds[0]}"
+    assert captured_cmds[1][:2] == [str(pg.UV), "export"], f"second command should be uv export: {captured_cmds[1]}"
     assert "--python=3.12" in captured_cmds[0], f"uv lock must pin image Python, not repo CI Python: {captured_cmds[0]}"
     assert "--python=3.12" in captured_cmds[1], (
         f"uv export must pin image Python, not repo CI Python: {captured_cmds[1]}"
     )
-    assert "--quiet" in captured_cmds[0]
-    assert "--quiet" in captured_cmds[1]
+    assert "--quiet" in captured_cmds[0], f"uv lock should be quiet like rh-index pip compile: {captured_cmds[0]}"
+    assert "--quiet" in captured_cmds[1], f"uv export should be quiet like rh-index pip compile: {captured_cmds[1]}"
     assert patched_during_lock, "expected patched pyproject during uv lock"
     patched_document = tomllib.loads(patched_during_lock[0])
     patched_constraints = patched_document["tool"]["uv"]["constraint-dependencies"]
-    assert "uv==0.1.0" in patched_constraints
-    assert "constraint-dependencies" not in patched_document
+    assert "uv==0.1.0" in patched_constraints, (
+        f"extra constraint must be present during lock, got: {patched_constraints}"
+    )
+    assert "constraint-dependencies" not in patched_document, (
+        "top-level [constraint-dependencies] table must not leak into the patched pyproject"
+    )
     assert (project_dir / "pyproject.toml").read_text(encoding="utf-8") == original_pyproject, (
         "pyproject.toml must be restored after public-index lock generation"
     )
@@ -613,9 +618,13 @@ def test_inject_tool_uv_constraint_dependencies_creates_tool_uv_table_before_sou
     original = '[project]\nname = "test"\n\n[tool.uv.sources]\nfoo = "bar"\n'
     patched = pg._inject_tool_uv_constraint_dependencies(original, ["uv==0.1.0"])
     document = tomllib.loads(patched)
-    assert document["tool"]["uv"]["constraint-dependencies"] == ["uv==0.1.0"]
-    assert "[tool.uv]" in patched
-    assert patched.index("[tool.uv]") < patched.index("[tool.uv.sources]")
+    assert document["tool"]["uv"]["constraint-dependencies"] == ["uv==0.1.0"], (
+        f"expected constraint-dependencies under [tool.uv], got: {patched}"
+    )
+    assert "[tool.uv]" in patched, f"missing [tool.uv] table in patched output: {patched}"
+    assert patched.index("[tool.uv]") < patched.index("[tool.uv.sources]"), (
+        f"[tool.uv] must precede [tool.uv.sources] in patched output: {patched}"
+    )
 
 
 def test_inject_tool_uv_constraint_dependencies_merges_into_existing_tool_uv_table() -> None:
@@ -633,8 +642,12 @@ constraint-dependencies = [
     )
     patched = pg._inject_tool_uv_constraint_dependencies(original, ["uv==0.1.0", "wheel==0.48.0"])
     document = tomllib.loads(patched)
-    assert document["tool"]["uv"]["constraint-dependencies"] == ["wheel==0.48.0", "uv==0.1.0"]
-    assert document["tool"]["uv"]["exclude-dependencies"] == ["py-spy"]
+    assert document["tool"]["uv"]["constraint-dependencies"] == ["wheel==0.48.0", "uv==0.1.0"], (
+        f"existing constraints must be preserved and new ones appended, got: {patched}"
+    )
+    assert document["tool"]["uv"]["exclude-dependencies"] == ["py-spy"], (
+        f"unrelated [tool.uv] keys must survive the merge, got: {patched}"
+    )
 
 
 def test_inject_tool_uv_constraint_dependencies_ignores_comment_mentions() -> None:
@@ -651,7 +664,9 @@ name = "test"
     )
     patched = pg._inject_tool_uv_constraint_dependencies(original, ["uv==0.1.0"])
     document = tomllib.loads(patched)
-    assert document["tool"]["uv"]["constraint-dependencies"] == ["uv==0.1.0"]
+    assert document["tool"]["uv"]["constraint-dependencies"] == ["uv==0.1.0"], (
+        f"comment mentions of constraint-dependencies must be ignored, got: {patched}"
+    )
 
 
 def test_generate_baseline_alignment_constraints_uses_pair_and_alias(
@@ -696,13 +711,14 @@ ripgrep==15.1.0 ; sys_platform == 'linux'
 
     generated = pg.generate_baseline_alignment_constraints(baseline_dir, pg.LogBuffer())
 
-    assert generated is not None
-    assert generated == baseline_dir / pg.AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME
+    assert generated is not None, "expected alignment constraints file to be generated"
+    expected_file = baseline_dir / pg.AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME
+    assert generated == expected_file, f"unexpected constraints path: {generated}"
     content = generated.read_text(encoding="utf-8")
-    assert "pandas==2.3.3" in content
-    assert "pandoc==3.8.0" in content
-    assert "uv==" not in content
-    assert "ripgrep==" not in content
+    assert "pandas==2.3.3" in content, f"pandas alignment constraint missing: {content}"
+    assert "pandoc==3.8.0" in content, f"pandoc-rhai alias must map to pandoc==3.8.0 constraint: {content}"
+    assert "uv==" not in content, f"uv must not be aligned: {content}"
+    assert "ripgrep==" not in content, f"ripgrep is in skip list, must not be aligned: {content}"
     generated.unlink(missing_ok=True)
 
 
@@ -729,8 +745,8 @@ dependencies = ["uv"]
 
     generated = pg.generate_baseline_alignment_constraints(baseline_dir, pg.LogBuffer())
 
-    assert generated is None
-    assert not (baseline_dir / ".aipcc-alignment.constraints.txt").exists()
+    assert generated is None, "no constraints file should be generated when the source dir is missing"
+    assert not (baseline_dir / ".aipcc-alignment.constraints.txt").exists(), "no leftover constraints file expected"
 
 
 @pytest.mark.parametrize(
