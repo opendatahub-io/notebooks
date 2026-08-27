@@ -37,6 +37,9 @@ jobs:
             packages: skopeo jq git-crypt
             product: rhoai
     name: validation-of-params-env-${{ matrix.variant }}
+    env:
+      RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
+      RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -65,9 +68,6 @@ jobs:
         if: matrix.variant == 'rhoai' && env.RHOAI_QUAY_BOT_USERNAME != ''
         run: |
           printf '%s' "${RHOAI_QUAY_BOT_PASSWORD}" | skopeo login --username "${RHOAI_QUAY_BOT_USERNAME}" --password-stdin quay.io
-        env:
-          RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
-          RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
 
       - name: Validate the 'manifests/${{ matrix.variant }}/base/params.env' file content
         run: |

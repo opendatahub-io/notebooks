@@ -29,6 +29,9 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-26.04
+    env:
+      RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
+      RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -63,9 +66,6 @@ jobs:
           echo "::add-mask::$QUAY_AUTH"
           echo "QUAY_AUTH=$QUAY_AUTH" >> "$GITHUB_ENV"
           printf '%s' "${RHOAI_QUAY_BOT_PASSWORD}" | skopeo login --username "${RHOAI_QUAY_BOT_USERNAME}" --password-stdin quay.io
-        env:
-          RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
-          RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
 
       - name: Validate manifest annotations against Quay.io Clair scan
         run: |
