@@ -642,7 +642,12 @@ def _inject_tool_uv_constraint_dependencies(pyproject_text: str, constraints: li
 
 
 def _run_subprocess(
-    cmd: list[str], *, cwd: Path, log: LogBuffer, timeout: int = 600
+    cmd: list[str],
+    *,
+    cwd: Path,
+    log: LogBuffer,
+    timeout: int = 600,
+    quiet: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
     try:
@@ -659,10 +664,11 @@ def _run_subprocess(
         msg = f"Timed out running {' '.join(cmd)} in {cwd}"
         log.warning(msg)
         raise TimeoutError(msg) from exc
-    if result.stdout:
-        log.print(result.stdout)
-    if result.stderr:
-        log.print(result.stderr)
+    if result.returncode != 0 or not quiet:
+        if result.stdout:
+            log.print(result.stdout)
+        if result.stderr:
+            log.print(result.stderr)
     return result
 
 
@@ -699,6 +705,7 @@ def run_public_index_lock(
         "lock",
         python_flag,
         f"--exclude-newer={exclude_newer}",
+        "--quiet",
     ]
     if upgrade:
         lock_cmd.append("--upgrade")
@@ -726,17 +733,18 @@ def run_public_index_lock(
         "--no-annotate",
         "--emit-index-url",
         f"--exclude-newer={exclude_newer}",
+        "--quiet",
     ]
     export_cmd.extend(index_flags)
 
     try:
-        lock_result = _run_subprocess(lock_cmd, cwd=project_dir, log=log)
+        lock_result = _run_subprocess(lock_cmd, cwd=project_dir, log=log, quiet=True)
         if lock_result.returncode != 0:
             pylock_path.unlink(missing_ok=True)
             uv_lock_path.unlink(missing_ok=True)
             return False
 
-        export_result = _run_subprocess(export_cmd, cwd=project_dir, log=log)
+        export_result = _run_subprocess(export_cmd, cwd=project_dir, log=log, quiet=True)
         if export_result.returncode != 0:
             pylock_path.unlink(missing_ok=True)
             return False

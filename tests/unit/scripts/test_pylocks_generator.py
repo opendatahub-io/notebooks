@@ -397,6 +397,8 @@ def test_process_directory_public_index_generates_requirements_after_lock(
     assert cmds[1][:2] == [str(pg.UV), "export"], f"second command should be uv export: {cmds[1]}"
     assert "--python=3.12" in cmds[0], f"uv lock must pin image Python, not repo CI Python: {cmds[0]}"
     assert "--python=3.12" in cmds[1], f"uv export must pin image Python, not repo CI Python: {cmds[1]}"
+    assert "--quiet" in cmds[0], f"uv lock should be quiet like rh-index pip compile: {cmds[0]}"
+    assert "--quiet" in cmds[1], f"uv export should be quiet like rh-index pip compile: {cmds[1]}"
     assert cmds[-1] == [
         pg.sys.executable,
         str(pg.PYLOCK_TO_REQUIREMENTS),
@@ -588,6 +590,8 @@ def test_run_lock_appends_extra_alignment_constraints(
     assert "--python=3.12" in captured_cmds[1], (
         f"uv export must pin image Python, not repo CI Python: {captured_cmds[1]}"
     )
+    assert "--quiet" in captured_cmds[0]
+    assert "--quiet" in captured_cmds[1]
     assert patched_during_lock, "expected patched pyproject during uv lock"
     assert "constraint-dependencies" in patched_during_lock[0]
     assert "uv==0.1.0" in patched_during_lock[0]
