@@ -106,7 +106,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Install deps
         run: uv sync --locked
@@ -173,7 +173,7 @@ jobs:
 
       - name: Capture kernel logs on failure
         if: ${{ failure() }}
-        uses: ./.github/actions/capture-kernel-logs
+        uses: $/.github/actions/capture-kernel-logs
         with:
           log-prefix: ${{ matrix.name }}
 
@@ -190,7 +190,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Install deps
         run: uv sync --locked
@@ -203,7 +203,7 @@ jobs:
           platform: linux/amd64
 
       - name: Provision K8s cluster
-        uses: ./.github/actions/provision-k8s
+        uses: $/.github/actions/provision-k8s
 
       - name: Login to GHCR
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
