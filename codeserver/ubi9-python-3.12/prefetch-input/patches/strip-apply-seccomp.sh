@@ -15,24 +15,39 @@ if [[ ! -d "${ROOT}" ]]; then
   exit 1
 fi
 
+# find in process substitution does not propagate its exit status; write
+# results to a temp file so a traversal failure fails the build.
+find_nul_list() {
+  local out="$1"
+  shift
+  find "$@" -print0 >"${out}"
+}
+
+tmp_files="$(mktemp)"
+tmp_dirs="$(mktemp)"
+trap 'rm -f "${tmp_files}" "${tmp_dirs}"' EXIT
+
+find_nul_list "${tmp_files}" "${ROOT}" -type f -name apply-seccomp
+find_nul_list "${tmp_dirs}" "${ROOT}" -type d \( \
+  -path '*/node_modules/@vscode/sandbox-runtime/vendor/seccomp' -o \
+  -path '*/node_modules/@vscode/sandbox-runtime/dist/vendor/seccomp' -o \
+  -path '*/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp' -o \
+  -path '*/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp' \
+\)
+
 deleted=0
 while IFS= read -r -d '' dest; do
   rm -f "${dest}"
   deleted=$((deleted + 1))
   echo "Removed apply-seccomp: ${dest}"
-done < <(find "${ROOT}" -type f -name apply-seccomp -print0 2>/dev/null)
+done <"${tmp_files}"
 
 removed_dirs=0
 while IFS= read -r -d '' dir; do
   rm -rf "${dir}"
   removed_dirs=$((removed_dirs + 1))
   echo "Removed seccomp vendor dir: ${dir}"
-done < <(find "${ROOT}" -type d \( \
-  -path '*/node_modules/@vscode/sandbox-runtime/vendor/seccomp' -o \
-  -path '*/node_modules/@vscode/sandbox-runtime/dist/vendor/seccomp' -o \
-  -path '*/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp' -o \
-  -path '*/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp' \
-\) -print0 2>/dev/null)
+done <"${tmp_dirs}"
 
 if [[ "${deleted}" -eq 0 && "${removed_dirs}" -eq 0 ]]; then
   echo "WARNING: no apply-seccomp files or seccomp vendor dirs under ${ROOT}" >&2
@@ -40,7 +55,7 @@ else
   echo "Removed ${deleted} apply-seccomp file(s) and ${removed_dirs} seccomp vendor dir(s)"
 fi
 
-remaining="$(find "${ROOT}" -type f -name apply-seccomp 2>/dev/null || true)"
+remaining="$(find "${ROOT}" -type f -name apply-seccomp)"
 if [[ -n "${remaining}" ]]; then
   echo "ERROR: apply-seccomp ELF still present after strip:" >&2
   echo "${remaining}" >&2
