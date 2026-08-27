@@ -351,6 +351,7 @@ if [ -f /opt/app-root/uv.toml ]; then
   sed -i 's|^index-url = .*|index-url = "https://pypi.org/simple"|' /opt/app-root/uv.toml
 fi
 EOF
+
 ### END PyPI pip and uv index
 
 # Copy requirements files (pylock.toml for metadata; requirements.txt used for installation)
