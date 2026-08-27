@@ -621,12 +621,31 @@ def _merged_public_index_constraint_dependencies(
     return merged
 
 
+def _merged_public_index_override_dependencies() -> list[str]:
+    """Return repo-wide override lines for public-index ``uv lock``."""
+    merged: list[str] = []
+    seen: set[str] = set()
+    for line in _read_constraint_spec_lines(OVERRIDES_FILE):
+        if line in seen:
+            continue
+        seen.add(line)
+        merged.append(line)
+    return merged
+
+
 _TOOL_UV_TABLE_HEADER = "[tool.uv]"
 
 
 def _format_tool_uv_constraint_dependencies_lines(constraints: list[str]) -> list[str]:
     lines = ["constraint-dependencies = ["]
     lines.extend(f'    "{item}",' for item in constraints)
+    lines.append("]")
+    return lines
+
+
+def _format_tool_uv_override_dependencies_lines(overrides: list[str]) -> list[str]:
+    lines = ["override-dependencies = ["]
+    lines.extend(f'    "{item}",' for item in overrides)
     lines.append("]")
     return lines
 
@@ -714,6 +733,66 @@ def _inject_tool_uv_constraint_dependencies(pyproject_text: str, constraints: li
     return rebuilt
 
 
+def _override_dependencies_key_span(lines: list[str], start: int, end: int) -> tuple[int, int] | None:
+    """Return ``[start, end)`` line indices for ``override-dependencies`` inside ``[tool.uv]``."""
+    idx = start
+    while idx < end:
+        stripped = lines[idx].strip()
+        if not stripped.startswith("override-dependencies"):
+            idx += 1
+            continue
+        value = stripped.split("=", maxsplit=1)[1].strip() if "=" in stripped else ""
+        if "[" in value and "]" in value:
+            return idx, idx + 1
+        key_end = idx + 1
+        while key_end < end and "]" not in lines[key_end]:
+            key_end += 1
+        if key_end < end:
+            key_end += 1
+        return idx, key_end
+    return None
+
+
+def _inject_tool_uv_override_dependencies(pyproject_text: str, overrides: list[str]) -> str:
+    """Merge ``overrides`` into ``[tool.uv].override-dependencies`` without touching other tables."""
+    if not overrides:
+        return pyproject_text
+    document = tomllib.loads(pyproject_text)
+    uv_table = document.get("tool", {}).get("uv", {})
+    existing = list(uv_table.get("override-dependencies", []))
+    combined = existing + [o for o in overrides if o not in existing]
+    if combined == existing:
+        return pyproject_text
+
+    new_block = _format_tool_uv_override_dependencies_lines(combined)
+    lines = pyproject_text.splitlines()
+    trailing_newline = pyproject_text.endswith("\n")
+    table_span = _tool_uv_table_span(lines)
+
+    if table_span is not None:
+        start, end = table_span
+        key_span = _override_dependencies_key_span(lines, start, end)
+        if key_span is not None:
+            key_start, key_end = key_span
+            lines[key_start:key_end] = new_block
+        else:
+            _insert_tool_uv_table(lines, end, new_block)
+    else:
+        table_block = [_TOOL_UV_TABLE_HEADER, *new_block]
+        sources_idx = next((idx for idx, line in enumerate(lines) if line.strip() == "[tool.uv.sources]"), None)
+        if sources_idx is not None:
+            _insert_tool_uv_table(lines, sources_idx, table_block)
+        else:
+            if lines and lines[-1].strip():
+                lines.append("")
+            lines.extend(table_block)
+
+    rebuilt = "\n".join(lines)
+    if trailing_newline:
+        rebuilt += "\n"
+    return rebuilt
+
+
 def _run_subprocess(
     cmd: list[str],
     *,
@@ -768,8 +847,10 @@ def run_public_index_lock(
     exclude_newer = resolve_exclude_newer(pylock_path, ci_check=ci_check, live_timestamp=live_timestamp)
 
     merged_constraints = _merged_public_index_constraint_dependencies(extra_constraints)
+    merged_overrides = _merged_public_index_override_dependencies()
     original_pyproject = pyproject_path.read_text(encoding="utf-8")
     patched_pyproject = _inject_tool_uv_constraint_dependencies(original_pyproject, merged_constraints)
+    patched_pyproject = _inject_tool_uv_override_dependencies(patched_pyproject, merged_overrides)
     pyproject_path.write_text(patched_pyproject, encoding="utf-8")
 
     python_flag = f"--python={python_version}"
@@ -821,6 +902,10 @@ def run_public_index_lock(
         if export_result.returncode != 0:
             pylock_path.unlink(missing_ok=True)
             return False
+    except TimeoutError:
+        pylock_path.unlink(missing_ok=True)
+        uv_lock_path.unlink(missing_ok=True)
+        return False
     finally:
         pyproject_path.write_text(original_pyproject, encoding="utf-8")
         uv_lock_path.unlink(missing_ok=True)

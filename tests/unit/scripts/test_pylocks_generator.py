@@ -750,3 +750,44 @@ def test_resolve_pr_scoped_global_input_expands_to_all(
     all_dirs = pg.discover_all_image_project_dirs()
     assert scoped == all_dirs, f"{global_input} change should expand to all image dirs"
     assert len(scoped) > 1, "expected multiple image project dirs for global-input fallback"
+
+
+def test_inject_tool_uv_override_dependencies() -> None:
+    original = (
+        """
+[project]
+name = "test"
+
+[tool.uv]
+constraint-dependencies = ["foo==1.0"]
+""".strip()
+        + "\n"
+    )
+    patched = pg._inject_tool_uv_override_dependencies(original, ["bar>=2.0"])
+    document = tomllib.loads(patched)
+    assert document["tool"]["uv"]["override-dependencies"] == ["bar>=2.0"]
+    assert document["tool"]["uv"]["constraint-dependencies"] == ["foo==1.0"]
+
+
+def test_run_public_index_lock_handles_timeout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    (project_dir / "pyproject.toml").write_text("[project]\nname = \"p\"\n", encoding="utf-8")
+    log = pg.LogBuffer()
+
+    def mock_run_subprocess(*args, **kwargs):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(pg, "_run_subprocess", mock_run_subprocess)
+    success = pg.run_public_index_lock(
+        project_dir=project_dir,
+        index_flags=[],
+        python_version="3.12",
+        upgrade=False,
+        ci_check=False,
+        live_timestamp="2025-01-01T00:00:00Z",
+        log=log,
+    )
+    assert success is False
+    assert not (project_dir / "pylock.toml").exists()
+    assert not (project_dir / "uv.lock").exists()
