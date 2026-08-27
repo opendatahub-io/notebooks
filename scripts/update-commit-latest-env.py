@@ -477,11 +477,17 @@ async def collect_rhoai_entries(
     rhoai_tag: str,
     semaphore: asyncio.Semaphore,
 ) -> list[tuple[str, str]] | None:
-    async def process_one(variable: str, odh_url: str) -> tuple[str, str] | None:
+    to_process: list[tuple[str, str]] = []
+    for variable, odh_url in workbench_images:
         if _is_rstudio_entry(variable, odh_url):
             log.info("RHOAI: skipping RStudio workbench entry", variable=variable)
-            return "", ""
+            continue
+        to_process.append((variable, odh_url))
+    if not to_process:
+        log.error("RHOAI: no workbench entries to process after filtering")
+        return None
 
+    async def process_one(variable: str, odh_url: str) -> tuple[str, str] | None:
         image_url = f"{rhoai_image_base(variable, odh_url)}:{rhoai_tag}"
         _, cfg = await skopeo_inspect_config(image_url, semaphore)
         if cfg is None:
@@ -493,14 +499,10 @@ async def collect_rhoai_entries(
             return None
         return commit_env_key(variable), vcs_ref[:7]
 
-    results = await asyncio.gather(*[process_one(variable, odh_url) for variable, odh_url in workbench_images])
+    results = await asyncio.gather(*[process_one(variable, odh_url) for variable, odh_url in to_process])
     if any(result is None for result in results):
         return None
-    entries = [entry for entry in results if entry and entry[0]]
-    if not entries:
-        log.error("RHOAI: no workbench entries produced after filtering")
-        return None
-    return entries
+    return list(results)
 
 
 async def main() -> None:
