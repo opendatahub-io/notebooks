@@ -414,6 +414,76 @@ def test_process_directory_public_index_generates_requirements_after_lock(
     ], f"last command should convert root pylock.toml: {cmds[-1]}"
 
 
+def test_run_public_index_lock_export_omits_meta_packages(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    (project_dir / "pyproject.toml").write_text(
+        '[project]\nname = "test"\nversion = "0.1.0"\nrequires-python = "==3.12.*"\n',
+        encoding="utf-8",
+    )
+
+    cmds: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):
+        cmds.append(list(cmd))
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    success = pg.run_public_index_lock(
+        project_dir,
+        ["--default-index=https://pypi.org/simple"],
+        "3.12",
+        False,
+        False,
+        "2026-05-18T00:00:00Z",
+        pg.LogBuffer(),
+    )
+
+    assert success is True, "run_public_index_lock should succeed with fake uv"
+    assert len(cmds) == 2, f"expected uv lock then uv export: {cmds}"
+    lock_cmd, export_cmd = cmds
+    assert "--no-emit-package" not in lock_cmd, f"uv lock must not receive --no-emit-package flags: {lock_cmd}"
+    for pkg in pg.NO_EMIT_PACKAGES:
+        pkg_idx = export_cmd.index(pkg) if pkg in export_cmd else -1
+        assert pkg_idx > 0 and export_cmd[pkg_idx - 1] == "--no-emit-package", (
+            f"uv export must omit meta-package {pkg!r} via --no-emit-package: {export_cmd}"
+        )
+
+
+def test_process_directory_public_index_export_omits_meta_packages(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_dir = _public_index_project(tmp_path)
+    cmds: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):
+        cmds.append(list(cmd))
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    _path, success, _log = pg.process_directory(
+        project_dir,
+        pg.IndexMode.public_index,
+        False,
+        False,
+        "2026-01-01T00:00:00Z",
+        requirements_only=False,
+    )
+
+    assert success is True, "public-index lock + requirements generation should succeed"
+    export_cmds = [cmd for cmd in cmds if cmd[:2] == [str(pg.UV), "export"]]
+    assert len(export_cmds) == 1, f"expected exactly one uv export invocation: {cmds}"
+    export_cmd = export_cmds[0]
+    for pkg in pg.NO_EMIT_PACKAGES:
+        pkg_idx = export_cmd.index(pkg) if pkg in export_cmd else -1
+        assert pkg_idx > 0 and export_cmd[pkg_idx - 1] == "--no-emit-package", (
+            f"uv export must omit meta-package {pkg!r} via --no-emit-package: {export_cmd}"
+        )
+
+
 def test_image_project_dir_for_repo_file_jupyter(repo_root: Path) -> None:
     project = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
     assert pg.image_project_dir_for_repo_file("jupyter/minimal/ubi9-python-3.12/pyproject.toml") == project, (

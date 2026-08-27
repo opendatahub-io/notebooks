@@ -810,6 +810,9 @@ def run_public_index_lock(
     ]
     export_cmd.extend(index_flags)
 
+    for pkg in NO_EMIT_PACKAGES:
+        export_cmd.extend(["--no-emit-package", pkg])
+
     try:
         lock_result = _run_subprocess(lock_cmd, cwd=project_dir, log=log, quiet=True)
         if lock_result.returncode != 0:
