@@ -21,8 +21,8 @@ dependencies = [
     "jupyter; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
     "notebook; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
 
-    # debugpy only has a useful Linux native wheel for x86_64 (PyPI also ships py3-none-any).
-    "debugpy; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    # debugpy has a pure-Python wheel on PyPI (py3-none-any) supporting x86_64 and aarch64.
+    "debugpy; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
 
     # Intentionally pinned: PyPI wheels exist for all supported architectures.
     # Required at build time by code-server.
