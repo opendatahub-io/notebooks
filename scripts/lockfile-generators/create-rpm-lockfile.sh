@@ -21,6 +21,7 @@ set -euo pipefail
 SCRIPTS_PATH="scripts/lockfile-generators"
 UBI9_IMAGE="registry.redhat.io/ubi9:9.8"
 ODH_BASE_IMAGE="quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest"
+CONTAINER_ENGINE="${CONTAINER_ENGINE:-podman}"
 
 RPM_INPUT=""
 ACTIVATION_KEY=""
@@ -115,13 +116,13 @@ if [[ -n "${CONTAINER_BUILD_CACHE_ARGS:-}" ]]; then
   CACHE_ARGS=($CONTAINER_BUILD_CACHE_ARGS)
 fi
 
-if podman image exists localhost/notebook-rpm-lockfile:latest 2>/dev/null; then
+if "${CONTAINER_ENGINE}" image inspect localhost/notebook-rpm-lockfile:latest >/dev/null 2>&1; then
   echo "--- Reusing existing Lockfile Generator Image ---"
 else
   echo "--- Building Lockfile Generator Image ---"
   # CACHE_ARGS may be empty; with set -u, bare "${CACHE_ARGS[@]}" errors.
   # "${arr[@]}" is unbound under bash 3.2 + set -u when empty (macOS /bin/bash).
-  podman build \
+  "${CONTAINER_ENGINE}" build \
       -f "$SCRIPTS_PATH/Dockerfile.rpm-lockfile" \
       --platform=linux/x86_64 \
       --build-arg RHEL_VERSION="$RHEL_VERSION" \
@@ -129,15 +130,15 @@ else
       --build-arg ACTIVATION_KEY="$ACTIVATION_KEY" \
       --build-arg ORG="$ORG" \
       ${CACHE_ARGS[@]+"${CACHE_ARGS[@]}"} \
-      -t notebook-rpm-lockfile "$SCRIPTS_PATH"
+      -t localhost/notebook-rpm-lockfile:latest "$SCRIPTS_PATH"
 fi
 
 # Second run rpm-lockfile-prototype to generate the lockfile
 CONTAINER_WORKDIR="/workspace/$SCRIPTS_PATH"
 echo "--- Generating Lockfile using rpm-lockfile-prototype --"
-podman_run_args=(--rm -i)
-[[ -t 1 ]] && podman_run_args+=(-t)
-podman run "${podman_run_args[@]}" \
+engine_run_args=(--rm -i)
+[[ -t 1 ]] && engine_run_args+=(-t)
+"${CONTAINER_ENGINE}" run "${engine_run_args[@]}" \
     -v "$(pwd):/workspace" \
     --platform=linux/x86_64 \
     -w "$CONTAINER_WORKDIR" \
