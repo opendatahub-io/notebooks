@@ -189,7 +189,9 @@ def main() -> None:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(("localhost", server.get_actual_port()))
 
-        yield client_socket
+        # Test-only helper: if the with-block raises, the mock server thread/socket leak,
+        # but the test process is torn down shortly after, so this is acceptable.
+        yield client_socket  # ruff: ignore[fallible-context-manager]
 
         client_socket.close()
         server.join()
