@@ -123,6 +123,10 @@ packages:
   - krb5-devel
 
   # Utilities
+  # patch: installed by Dockerfile.konflux.cpu; listed explicitly so the ODH
+  # manifest does not rely on odh-base-image-cpu-py312-c9s shipping it via SCL.
+  # (RHDS lists it under "Missing these in RHEL".)
+  - patch
   - bind-utils
   - cpio
   - diffutils
