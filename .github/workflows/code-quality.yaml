@@ -32,10 +32,10 @@ jobs:
           git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Install skopeo
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: skopeo
 
@@ -100,7 +100,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Check uv is installed correctly
         run: uv version
@@ -257,7 +257,7 @@ jobs:
         run: rm -rf ./ci/secrets
 
       - name: Install linting tools
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: yamllint yajl-tools wget
 
@@ -307,7 +307,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup-uv
+      - uses: $/.github/actions/setup-uv
       - name: "Install workspace packages for prek"
         run: uv sync --locked --all-packages
       - name: "Cache prek"
