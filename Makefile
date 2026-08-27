@@ -615,6 +615,14 @@ update-imagestream-annotations:
 scan-image-vulnerabilities:
 	python ci/security-scan/quay_security_analysis.py
 
+.PHONY: trivy-scan
+trivy-scan:
+	@echo "🔍 Running Trivy filesystem vulnerability scan using trivy.yaml"
+	$(CONTAINER_ENGINE) run --rm \
+		-v "$(shell pwd):/workspace" \
+		docker.io/aquasec/trivy:0.73.0 \
+		fs --config /workspace/trivy.yaml /workspace
+
 # This is used primarily for gen_gha_matrix_jobs.py to we know the set of all possible images we may want to build
 .PHONY: all-images
 ifeq ($(RELEASE_PYTHON_VERSION), 3.12)

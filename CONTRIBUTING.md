@@ -94,6 +94,14 @@ A bot will comment with instructions for re-creating the PR from a same-repo bra
     ```
 - If you like, you can install prek to run automatically using `uvx prek install -f`, as per its [install instructions](https://prek.j178.dev/quickstart)
 
+#### Running local Trivy security scans
+
+To run a local Trivy filesystem vulnerability scan using the repository's `trivy.yaml` configuration:
+
+```bash
+make trivy-scan
+```
+
 ### CI configuration for a new notebook
 
 Each notebook image is built as an independent Konflux component with its own Tekton
