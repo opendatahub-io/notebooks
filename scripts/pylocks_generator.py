@@ -821,6 +821,11 @@ def run_public_index_lock(
         if export_result.returncode != 0:
             pylock_path.unlink(missing_ok=True)
             return False
+    except TimeoutError:
+        log.warning(f"Timed out generating pylock.toml (public index) in {project_dir}")
+        pylock_path.unlink(missing_ok=True)
+        uv_lock_path.unlink(missing_ok=True)
+        return False
     finally:
         pyproject_path.write_text(original_pyproject, encoding="utf-8")
         uv_lock_path.unlink(missing_ok=True)
