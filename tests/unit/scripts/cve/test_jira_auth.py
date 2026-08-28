@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
 import sys
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -127,10 +128,31 @@ def test_get_auth_headers_basic_auth() -> None:
     assert decoded == "user@redhat.com:my-api-token"
 
 
+def test_get_auth_headers_basic_auth_from_env(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("JIRA_EMAIL", "user@redhat.com")
+    monkeypatch.setenv("JIRA_API_TOKEN", "my-api-token")
+
+    config = JiraAuthConfig.from_env(os.environ)
+    headers = get_auth_headers(config, "https://redhat.atlassian.net")
+    assert "Authorization" in headers
+    assert headers["Authorization"].startswith("Basic ")
+    decoded = base64.b64decode(headers["Authorization"].split(" ", 1)[1]).decode("utf-8")
+    assert decoded == "user@redhat.com:my-api-token"
+
+
 def test_get_auth_headers_bearer(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
 
     config = JiraAuthConfig(legacy_token="legacy-bearer-token")  # ruff: ignore[hardcoded-password-func-arg]
+    headers = get_auth_headers(config, "https://issues.redhat.com")
+    assert headers == {"Authorization": "Bearer legacy-bearer-token"}
+
+
+def test_get_auth_headers_bearer_from_env(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("JIRA_TOKEN", "legacy-bearer-token")
+    monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
+
+    config = JiraAuthConfig.from_env(os.environ)
     headers = get_auth_headers(config, "https://issues.redhat.com")
     assert headers == {"Authorization": "Bearer legacy-bearer-token"}
 
@@ -140,11 +162,26 @@ def test_get_auth_headers_raises_when_only_email() -> None:
         JiraAuthConfig(email="user@redhat.com")
 
 
+def test_get_auth_headers_raises_when_only_email_from_env(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("JIRA_EMAIL", "user@redhat.com")
+
+    with pytest.raises(JiraAuthError, match=r"JIRA_EMAIL.*JIRA_API_TOKEN"):
+        JiraAuthConfig.from_env(os.environ)
+
+
 def test_get_auth_headers_raises_when_only_token(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
 
     with pytest.raises(JiraAuthError, match="JIRA_EMAIL"):
         JiraAuthConfig(api_token="my-api-token")  # ruff: ignore[hardcoded-password-func-arg]
+
+
+def test_get_auth_headers_raises_when_only_token_from_env(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("JIRA_API_TOKEN", "my-api-token")
+    monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
+
+    with pytest.raises(JiraAuthError, match="JIRA_EMAIL"):
+        JiraAuthConfig.from_env(os.environ)
 
 
 def test_get_auth_headers_raises_when_no_creds(monkeypatch: MonkeyPatch) -> None:
