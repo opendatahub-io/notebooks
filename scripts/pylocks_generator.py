@@ -633,6 +633,16 @@ def _merged_public_index_override_dependencies() -> list[str]:
     return merged
 
 
+def _override_package_name(spec: object) -> str | None:
+    """Return the PEP 503-normalized package name of an override spec, if parseable."""
+    if not isinstance(spec, str):
+        return None
+    match = re.match(r"^\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)", spec)
+    if match is None:
+        return None
+    return re.sub(r"[-_.]+", "-", match.group(1)).lower()
+
+
 _TOOL_UV_TABLE_HEADER = "[tool.uv]"
 
 
@@ -754,13 +764,27 @@ def _override_dependencies_key_span(lines: list[str], start: int, end: int) -> t
 
 
 def _inject_tool_uv_override_dependencies(pyproject_text: str, overrides: list[str]) -> str:
-    """Merge ``overrides`` into ``[tool.uv].override-dependencies`` without touching other tables."""
+    """Merge ``overrides`` into ``[tool.uv].override-dependencies`` without touching other tables.
+
+    An existing entry already covering a package takes precedence over an
+    incoming one for the same package: uv rejects multiple overrides for the
+    same package, and image-specific overrides must win over repo-wide ones
+    (see ``dependencies/README.md``).
+    """
     if not overrides:
         return pyproject_text
     document = tomllib.loads(pyproject_text)
     uv_table = document.get("tool", {}).get("uv", {})
     existing = list(uv_table.get("override-dependencies", []))
-    combined = existing + [o for o in overrides if o not in existing]
+    existing_names = {name for name in map(_override_package_name, existing) if name is not None}
+    combined = list(existing)
+    for override in overrides:
+        if override in existing:
+            continue
+        name = _override_package_name(override)
+        if name is not None and name in existing_names:
+            continue
+        combined.append(override)
     if combined == existing:
         return pyproject_text
 

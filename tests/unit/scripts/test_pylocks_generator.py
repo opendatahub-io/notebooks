@@ -769,10 +769,31 @@ constraint-dependencies = ["foo==1.0"]
     assert document["tool"]["uv"]["constraint-dependencies"] == ["foo==1.0"]
 
 
+def test_inject_tool_uv_override_dependencies_keeps_image_specific_override() -> None:
+    # codeserver-baseline declares a local jupyterlab override (notebook 7.6.x /
+    # jupyter 1.1.1 need jupyterlab>=4.6.3); the repo-wide pin must not shadow it,
+    # because uv rejects two overrides for the same package.
+    original = (
+        """
+[project]
+name = "test"
+
+[tool.uv]
+override-dependencies = [
+    "jupyterlab>=4.6.3,<4.7",
+]
+""".strip()
+        + "\n"
+    )
+    patched = pg._inject_tool_uv_override_dependencies(original, ["jupyterlab>=4.5.7,<4.6", "protobuf==6.31.1"])
+    document = tomllib.loads(patched)
+    assert document["tool"]["uv"]["override-dependencies"] == ["jupyterlab>=4.6.3,<4.7", "protobuf==6.31.1"]
+
+
 def test_run_public_index_lock_handles_timeout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project_dir = tmp_path / "project"
     project_dir.mkdir()
-    (project_dir / "pyproject.toml").write_text("[project]\nname = \"p\"\n", encoding="utf-8")
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "p"\n', encoding="utf-8")
     log = pg.LogBuffer()
 
     def mock_run_subprocess(*args, **kwargs):
