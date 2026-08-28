@@ -9,7 +9,7 @@ import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig, types
+from google.antigravity import Agent, CapabilitiesConfig, CustomSystemInstructions, LocalAgentConfig, types
 
 from odh_ci_agent import mcp_github
 from odh_ci_agent.env import bool_env, required_env
@@ -168,7 +168,7 @@ def build_config(inputs: ReviewInputs) -> tuple[LocalAgentConfig, GitHubReviewCl
     tools, client = make_github_review_tools(inputs.repository, inputs.pull_request_number)
     config = LocalAgentConfig(
         model=inputs.model,
-        system_instructions=SYSTEM_INSTRUCTION,
+        system_instructions=CustomSystemInstructions(text=SYSTEM_INSTRUCTION),
         workspaces=[],
         capabilities=CapabilitiesConfig(enable_subagents=False, enabled_tools=[]),
         tools=tools,
