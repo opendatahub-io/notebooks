@@ -20,6 +20,9 @@ env:
 
 jobs:
   sync-commit-latest:
+    env:
+      RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
+      RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
     if: |
       !(github.repository == 'red-hat-data-services/notebooks' && (github.event_name == 'workflow_dispatch' && inputs.target_branch || 'main') == 'main') &&
       !(github.repository == 'opendatahub-io/notebooks' && github.event_name == 'workflow_dispatch' && inputs.target_branch != 'main') &&
@@ -80,9 +83,6 @@ jobs:
         if: env.RHOAI_QUAY_BOT_USERNAME != ''
         run: |
           printf '%s' "${RHOAI_QUAY_BOT_PASSWORD}" | skopeo login --username "${RHOAI_QUAY_BOT_USERNAME}" --password-stdin quay.io
-        env:
-          RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
-          RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
 
       - name: Use main branch updater script for RHDS on-demand runs
         if: github.repository == 'red-hat-data-services/notebooks' && github.event_name == 'workflow_dispatch' && inputs.target_branch != 'main'
