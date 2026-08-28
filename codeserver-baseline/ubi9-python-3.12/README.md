@@ -248,6 +248,8 @@ container builds.
 
 ---
 
+- **Note**: Konflux builds for pull requests are currently configured as non-hermetic (`hermetic: "false"`).
+
 ## Building on Konflux
 
 In the downstream Konflux environment, hermetic builds use a different
