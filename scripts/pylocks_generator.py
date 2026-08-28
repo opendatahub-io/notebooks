@@ -1019,6 +1019,11 @@ def run_public_index_lock(
             pylock_path.unlink(missing_ok=True)
             return False
         _strip_exclude_newer_from_lock_header(pylock_path, export_cmd)
+    except TimeoutError:
+        log.warning(f"Timed out generating pylock.toml (public index) in {project_dir}")
+        pylock_path.unlink(missing_ok=True)
+        uv_lock_path.unlink(missing_ok=True)
+        return False
     finally:
         pyproject_path.write_text(original_pyproject, encoding="utf-8")
         uv_lock_path.unlink(missing_ok=True)
