@@ -33,6 +33,7 @@ COPY --from=buildscripts /mnt/usr/bin/ /usr/bin/
 # Midstream CUDA 13.0 ships NCCL 2.28.3; PyTorch 2.11 requires ncclWaitSignal (NCCL 2.29+).
 # NVIDIA does not publish NCCL for every CUDA 13.x minor; use the 13.2 RPM on 13.0 (RHAIBI AIPCC-19837).
 # Temporary until base-containers bumps cuda/13.0 (see notebooks c07802c0b).
+# NOTE: This DNF install relies on live repo access and is non-hermetic (not in cachi2 prefetch-input).
 ENV NV_LIBNCCL_PACKAGE=libnccl-2.30.4-1+cuda13.2 \
     NCCL_VERSION=2.30.4 \
     NV_LIBNCCL_VERSION=2.30.4
