@@ -9,7 +9,7 @@ COPY base-images/utils/fix-permissions /mnt/usr/bin/
 ####################
 # ROCm packages, repos, env vars, and SDK are provided by the midstream image.
 # Source: https://github.com/opendatahub-io/base-containers (rocm/7.14/)
-FROM quay.io/opendatahub/odh-midstream-rocm-base-7-14:1.20260810.0 AS base
+FROM quay.io/opendatahub/odh-midstream-rocm-base-7-14:1.20260810.0@sha256:37ddb8286199d39ca5aa91521af3abbe5f05e713a72cbde5a67eef13287c26a8 AS base
 
 USER 0
 ARG TARGETARCH
