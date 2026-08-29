@@ -24,18 +24,31 @@ _VERSION_RE = re.compile(
     (                         # capture group: semver x.y.z
         [0-9]+ \. [0-9]+ \. [0-9]+
     )
+    ['"]                      # closing quote
     """,
     re.VERBOSE,
 )
 _DEFAULT_MANIFEST = Path("tests/browser/package.json5")
 
 
+def strip_json5_comments(text: str) -> str:
+    """Strip single-line (//) and multi-line (/* ... */) comments from JSON5 text."""
+    # Remove block comments
+    text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
+    # Remove line comments
+    text = re.sub(r'//.*', '', text)
+    return text
+
+
 def extract_playwright_version(manifest: Path) -> str:
     text = manifest.read_text(encoding="utf-8")
-    match = _VERSION_RE.search(text)
-    if match is None:
+    cleaned_text = strip_json5_comments(text)
+    matches = _VERSION_RE.findall(cleaned_text)
+    if not matches:
         raise ValueError(f"Failed to extract valid @playwright/test version from {manifest}")
-    return match.group(1)
+    if len(matches) > 1:
+        raise ValueError(f"Ambiguous @playwright/test versions found in {manifest}: {matches}")
+    return matches[0]
 
 
 def main(argv: list[str] | None = None) -> int:
