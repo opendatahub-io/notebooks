@@ -344,8 +344,8 @@ def _git_fetch_commit_from(url: str, rev: str) -> bool:
     return p.returncode == 0
 
 
-def _ensure_n_tag_commit_from_canonical_upstream(variant: str, rev: str) -> bool:
-    """Ensure ``rev`` is available for ``git show`` using the ODH or RHDS canonical ``.git`` URL for ``-n`` tags."""
+def _ensure_tag_commit_from_canonical_upstream(variant: str, rev: str) -> bool:
+    """Ensure ``rev`` is available for ``git show`` using the ODH or RHDS canonical ``.git`` URL."""
     url = _CANONICAL_REPO_URL[variant]
     if _git_commit_exists(rev):
         return True
@@ -633,7 +633,7 @@ def run_variant(variant: str, dry_run: bool) -> int:
                 if not sha:
                     print(f"skip {path.name} tag {idx}: no SHA for {base_key}{suffix}", file=sys.stderr)
                     continue
-                if suffix == "-n" and not _ensure_n_tag_commit_from_canonical_upstream(variant, sha):
+                if not _ensure_tag_commit_from_canonical_upstream(variant, sha):
                     print(
                         f"skip {path.name} tag {idx}: could not resolve commit {sha} via "
                         f"{_CANONICAL_REPO_URL[variant]}",
