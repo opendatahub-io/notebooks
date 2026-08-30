@@ -396,8 +396,8 @@ validate-runtime-image: bin/kubectl
 		if [ $$cmd == "python3" ]; then
 			echo "=> Checking notebook execution..."
 			if ! $(KUBECTL_BIN) cp "$(CURDIR)/ci/requirements-elyra.txt" runtime-pod:/tmp/requirements-elyra.txt || \
-				! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /tmp/requirements-elyra.txt > /dev/null && \
-					python3 -m papermill \$$(python3 -c \"import papermill, pathlib; print(pathlib.Path(papermill.__file__).parent / 'tests/notebooks/simple_execute.ipynb')\") /tmp/output.ipynb > /dev/null" ; then
+				! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c 'python3 -m pip install -r /tmp/requirements-elyra.txt > /dev/null && \
+					python3 -m papermill "$$(python3 -c '"'"'import papermill, pathlib; print(pathlib.Path(papermill.__file__).parent / "tests/notebooks/simple_execute.ipynb")'"'"')" /tmp/output.ipynb > /dev/null' ; then
 				echo "ERROR: Image does not meet Python requirements criteria in pipfile"
 				fail=1
 			fi
@@ -466,9 +466,11 @@ refresh-lock-files:
 SYNC_BUILD_ARGS_ARGS ?=
 SYNC_BUILD_ARGS_ALLOWED := --dry-run --check --rhds-stable-repo-override=%
 SYNC_BUILD_ARGS_INVALID := $(strip $(filter-out $(SYNC_BUILD_ARGS_ALLOWED),$(value SYNC_BUILD_ARGS_ARGS)))
+ifneq ($(SYNC_BUILD_ARGS_INVALID),)
+$(error Invalid SYNC_BUILD_ARGS_ARGS token(s): $(SYNC_BUILD_ARGS_INVALID) (allowed: $(SYNC_BUILD_ARGS_ALLOWED)))
+endif
 .PHONY: sync-build-args-from-versions
 sync-build-args-from-versions:
-	$(if $(SYNC_BUILD_ARGS_INVALID),$(error Invalid SYNC_BUILD_ARGS_ARGS token(s): $(SYNC_BUILD_ARGS_INVALID) (allowed: $(SYNC_BUILD_ARGS_ALLOWED))))
 	@echo "==================================================================="
 	@echo "🔁 Syncing build-args BASE_IMAGE values from versions_config.yml"
 	@echo "==================================================================="
