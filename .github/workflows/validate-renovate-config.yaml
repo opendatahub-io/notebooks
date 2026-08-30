@@ -45,9 +45,9 @@ jobs:
         uses: ./.github/actions/setup-uv
 
       - name: Validate renovate.json5 semantics
-        run: ./uv run python scripts/ci/validate_renovate_config.py
+        run: uv run python scripts/ci/validate_renovate_config.py
 
       - name: Remote Renovate dry-run prefix checks
         env:
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
-        run: ./uv run python scripts/ci/validate_renovate_dry_run.py
+        run: uv run python scripts/ci/validate_renovate_dry_run.py

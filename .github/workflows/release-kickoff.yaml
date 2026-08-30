@@ -150,7 +150,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          ./uv run python - <<'PY'
+          uv run python - <<'PY'
           from __future__ import annotations
 
           import os
@@ -312,7 +312,7 @@ jobs:
           if [[ -n "${RELEASE_FULL_VERSION_INPUT}" ]]; then
             RELEASE_FULL_VERSION="${RELEASE_FULL_VERSION_INPUT}"
           else
-            RELEASE_FULL_VERSION="$(./uv run python -c "import yaml; print(yaml.safe_load(open('versions_config.yml', encoding='utf-8'))['release']['full_version'])")"
+            RELEASE_FULL_VERSION="$(uv run python -c "import yaml; print(yaml.safe_load(open('versions_config.yml', encoding='utf-8'))['release']['full_version'])")"
           fi
 
           git commit -m "Kick off release updates for ${RELEASE_FULL_VERSION}"

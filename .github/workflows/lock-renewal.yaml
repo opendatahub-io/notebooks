@@ -262,7 +262,7 @@ jobs:
               continue
             fi
             echo "=== Generating lockfile from $rpm_input ==="
-            ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+            scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
           done
 
           for lockfile in \
@@ -349,7 +349,7 @@ jobs:
               continue
             fi
             echo "=== Generating lockfile from $rpm_input ==="
-            ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+            scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
           done
 
           for lockfile in \
