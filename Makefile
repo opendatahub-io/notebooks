@@ -465,15 +465,17 @@ refresh-lock-files:
 # ======================================================================================
 SYNC_BUILD_ARGS_ARGS ?=
 SYNC_BUILD_ARGS_ALLOWED := --dry-run --check --rhds-stable-repo-override=%
-SYNC_BUILD_ARGS_INVALID := $(strip $(filter-out $(SYNC_BUILD_ARGS_ALLOWED),$(value SYNC_BUILD_ARGS_ARGS)))
-ifneq ($(SYNC_BUILD_ARGS_INVALID),)
-$(error Invalid SYNC_BUILD_ARGS_ARGS token(s): $(SYNC_BUILD_ARGS_INVALID) (allowed: $(SYNC_BUILD_ARGS_ALLOWED)))
-endif
 .PHONY: sync-build-args-from-versions
 sync-build-args-from-versions:
 	@echo "==================================================================="
 	@echo "🔁 Syncing build-args BASE_IMAGE values from versions_config.yml"
 	@echo "==================================================================="
+	@for arg in $(value SYNC_BUILD_ARGS_ARGS); do \
+		case "$$arg" in \
+			--dry-run|--check|--rhds-stable-repo-override=*) ;; \
+			*) echo "ERROR: Invalid SYNC_BUILD_ARGS_ARGS token: '$$arg' (allowed: $(SYNC_BUILD_ARGS_ALLOWED))" >&2; exit 1 ;; \
+		esac; \
+	done
 	@cd "$(ROOT_DIR)" && ./uv run scripts/update_build_args_from_versions.py $(value SYNC_BUILD_ARGS_ARGS)
 
 # ======================================================================================
