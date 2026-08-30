@@ -84,12 +84,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
-          # Full history so tests/test_pylock_downgrade.py can `git show origin/main:…/pylock.toml`.
-          fetch-depth: 0
           # Check out the PR head (not the merge commit) so coverage maps to head.sha, which is
           # what upload-code-coverage attributes the report to (matches the action's README
           # example). On push, head.sha is empty -> falls back to github.sha (unchanged).
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Fetch origin/main for pylock downgrade tests
+        run: git fetch --depth=1 origin main
 
       - name: Login to GitHub Container Registry
         if: ${{ github.repository != 'opendatahub-io/notebooks' }}

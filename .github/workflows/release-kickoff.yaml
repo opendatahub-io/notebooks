@@ -54,7 +54,6 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           persist-credentials: false
-          fetch-depth: 0
 
       - name: Configure Git
         run: |

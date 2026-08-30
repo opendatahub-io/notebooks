@@ -62,7 +62,6 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           persist-credentials: false
-          fetch-depth: 0  # update_imagestream_annotations_from_pylock.py uses git show for tag SHAs
 
       - name: Configure Git
         run: |
