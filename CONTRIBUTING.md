@@ -34,7 +34,7 @@ dependencies. To add a new notebook:
     - `Dockerfile.cpu` (and/or `.cuda`, `.rocm`) with multi-stage build instructions
     - `build-args/` directory with `cpu.conf`, `konflux.cpu.conf`, etc.
 - Add a Makefile target (no dependency on another notebook target):
-    ```
+    ```makefile
     .PHONY: jupyter-${NOTEBOOK_NAME}-ubi9-python-$(RELEASE_PYTHON_VERSION)
     jupyter-${NOTEBOOK_NAME}-ubi9-python-$(RELEASE_PYTHON_VERSION):
     	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)

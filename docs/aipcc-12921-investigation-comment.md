@@ -40,7 +40,7 @@ curl -D - -o /dev/null \
 
 **uv 0.10.9 with --exclude-newer against AIPCC index (no workaround):**
 
-```
+```text
 warning: debugpy-1.8.20-2-cp312-cp312-linux_aarch64.whl is missing an upload date, but user provided: 2026-03-23T20:00:00Z
 warning: debugpy-1.8.20-2-cp312-cp312-linux_ppc64le.whl is missing an upload date, but user provided: 2026-03-23T20:00:00Z
 warning: debugpy-1.8.20-2-cp312-cp312-linux_s390x.whl is missing an upload date, but user provided: 2026-03-23T20:00:00Z
@@ -51,7 +51,7 @@ warning: debugpy-1.8.20-2-cp312-cp312-linux_x86_64.whl is missing an upload date
 
 **uv 0.10.9 with ?format=json workaround — succeeds:**
 
-```
+```text
 TRACE Fetching metadata for debugpy from .../simple/debugpy/?format=json
 DEBUG Searching for a compatible version of debugpy (*)
 TRACE Found candidate for package debugpy with range * after 1 steps: 1.8.20 version
@@ -80,7 +80,7 @@ def get_renderers(self):
 
 uv hardcodes the Accept header in `crates/uv-client/src/registry_client.rs` (MediaType::pypi()). No env var, CLI flag, or config to change it:
 
-```
+```http
 Accept: application/vnd.pypi.simple.v1+json, application/vnd.pypi.simple.v1+html;q=0.2, text/html;q=0.01
 ```
 
@@ -109,7 +109,7 @@ DRF's `URL_FORMAT_OVERRIDE` setting (enabled by default) allows `?format=<render
 
 uv preserves query parameters from the index URL when constructing per-package URLs:
 
-```
+```text
 Index URL: https://packages.redhat.com/.../simple/?format=json
 Per-package: https://packages.redhat.com/.../simple/debugpy/?format=json  ← preserved ✓
 ```

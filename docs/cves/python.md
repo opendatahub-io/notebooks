@@ -185,7 +185,7 @@ lock refresh will fail. Instead, request the build and revisit once it is availa
 If the direct dependency can't be upgraded but the transitive package version is flexible:
 
 1. Add to `dependencies/constraints.txt` (CVE section):
-   ```
+   ```text
    # RHAIENG-2448: CVE-XXXX-YYYY tornado quadratic DoS
    tornado>=6.5.3
    ```
@@ -245,7 +245,7 @@ make jupyter-datascience-ubi9-python-3.12
 
 **Solution**:
 1. Add to `dependencies/constraints.txt` for general protection:
-   ```
+   ```text
    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
    urllib3>=2.7.0
    ```

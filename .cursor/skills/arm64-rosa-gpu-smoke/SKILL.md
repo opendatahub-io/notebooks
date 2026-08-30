@@ -477,7 +477,7 @@ DSPA/pipeline-server was actually configured with. Against a backend that
 enforces strict AWS SigV4 region-scope matching (Garage does), clicking
 *Run Pipeline* in the Pipeline Editor fails at the pre-flight connectivity
 check:
-```
+```text
 Error connecting to cloud storage: S3 operation failed; code: AuthorizationHeaderMalformed,
 message: Authorization header malformed, unexpected scope: '<date>/us-east-1/s3/aws4_request',
 expected: '<date>/<actual-region>/s3/aws4_request', ...

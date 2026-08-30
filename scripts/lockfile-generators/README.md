@@ -292,7 +292,7 @@ python3 scripts/lockfile-generators/create-artifact-lockfile.py \
 
 After running these, the generated files are:
 
-```
+```text
 codeserver/ubi9-python-3.12/
 ├── requirements.cpu.txt                      # pinned pip packages (generated from pylock.cpu.toml)
 ├── uv.lock.d/
