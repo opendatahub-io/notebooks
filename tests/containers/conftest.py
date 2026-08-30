@@ -360,9 +360,15 @@ def test_frame():
         def destroy(self):
             """Runs __exit__() on the registered resources as a cleanup."""
             for resource, cleanup_func in reversed(self.resources):
-                if cleanup_func is not None:
-                    cleanup_func(resource)
-                resource.__exit__(None, None, None)  # don't use named args, there are inconsistencies
+                try:
+                    if cleanup_func is not None:
+                        cleanup_func(resource)
+                    resource.__exit__(None, None, None)  # don't use named args, there are inconsistencies
+                except Exception:
+                    # Transient podman API failures (e.g. RemoteDisconnected during
+                    # IPv6 network removal) should not abort teardown of remaining
+                    # resources. The orphaned resource will be GC'd by podman.
+                    logging.exception("Cleanup failed for %r (continuing teardown)", resource)
 
     t = TestFrame()
     yield t
