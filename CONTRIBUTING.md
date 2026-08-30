@@ -143,6 +143,17 @@ make test-${NOTEBOOK_NAME}
 - When renaming image labels or similar CI metadata, update only the current `-n`
   entries in `ci/check-params-env.sh` and `ci/expected-image-metadata.yaml`. Historical
   entries intentionally keep old names.
+- **macOS python.org SSL certificates:** If your default `python3` is the python.org
+  framework build (e.g. `/Library/Frameworks/Python.framework/...`), ad-hoc scripts that
+  use `urllib` or `requests` may fail with
+  `ssl.SSLCertVerificationError: certificate verify failed`. This is because the
+  python.org installer does not wire up CA certificates automatically. Fix once by
+  running:
+  ```bash
+  "/Applications/Python 3.12/Install Certificates.command"
+  ```
+  (adjust the version number to match your install). Alternatively, use the
+  `uv`-managed Python (`python3.14`) which uses the system trust store.
 
 #### ODH vs RHOAI local builds
 
