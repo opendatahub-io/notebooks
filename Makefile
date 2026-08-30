@@ -16,9 +16,9 @@ empty :=
 
 # todo: leave the default recipe prefix for now
 # .RECIPEPREFIX requires GNU Make 4.0+; fall back to tab recipes if unavailable.
-ifeq ($(origin .RECIPEPREFIX), undefined)
-  # Older make: keep default tab-based recipes (no .RECIPEPREFIX)
-else
+MAKE_VERSION_MAJOR := $(word 1,$(subst ., ,$(MAKE_VERSION)))
+MAKE_VERSION_MINOR := $(word 2,$(subst ., ,$(MAKE_VERSION)))
+ifneq (,$(filter 4 5 6 7 8 9,$(MAKE_VERSION_MAJOR)))
   .RECIPEPREFIX =
 endif
 
