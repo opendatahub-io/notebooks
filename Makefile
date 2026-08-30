@@ -15,10 +15,12 @@ MAKEFLAGS += --no-builtin-rules
 empty :=
 
 # todo: leave the default recipe prefix for now
+# .RECIPEPREFIX requires GNU Make 4.0+; fall back to tab recipes if unavailable.
 ifeq ($(origin .RECIPEPREFIX), undefined)
-$(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or later)
+  # Older make: keep default tab-based recipes (no .RECIPEPREFIX)
+else
+  .RECIPEPREFIX =
 endif
-.RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 3.6
