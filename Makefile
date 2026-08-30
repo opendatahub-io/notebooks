@@ -17,9 +17,7 @@ empty :=
 # todo: leave the default recipe prefix for now
 # .RECIPEPREFIX requires GNU Make 4.0+; fall back to tab recipes if unavailable.
 MAKE_VERSION_MAJOR := $(word 1,$(subst ., ,$(MAKE_VERSION)))
-ifeq ($(MAKE_VERSION_MAJOR),)
-  # Non-GNU make or unknown version: assume no .RECIPEPREFIX support.
-else ifneq (,$(filter 4 5 6 7 8 9 10 11 12,$(MAKE_VERSION_MAJOR)))
+ifeq ($(shell test -n "$(MAKE_VERSION_MAJOR)" && test "$(MAKE_VERSION_MAJOR)" -ge 4 2>/dev/null && echo yes),yes)
   .RECIPEPREFIX =
 endif
 
