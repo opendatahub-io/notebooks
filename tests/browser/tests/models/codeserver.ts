@@ -82,8 +82,8 @@ export class CodeServer {
 
         await this.page.keyboard.type(command)
 
-        await this.page.hover(`text=${command}`)
-        await this.page.click(`text=${command}`)
+        await this.page.waitForSelector(".quick-input-list .monaco-list-row", {state: "visible", timeout: 5000})
+        await this.page.click(".quick-input-list .monaco-list-row")
     }
 
     /**
