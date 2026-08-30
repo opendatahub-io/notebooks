@@ -7,6 +7,7 @@ import testcontainers.core.network
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.mysql import MySqlContainer
 
+from tests.containers import docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if typing.TYPE_CHECKING:
@@ -138,6 +139,8 @@ except Exception as e:
         with WorkbenchContainer(image=datascience_image.name, user=4321, group_add=[0]) as container:
             container.with_network(network).with_command("/bin/sh -c 'sleep infinity'")
             container.start(wait_for_readiness=False)
+            notebook = docker_utils.NotebookContainer(container)
+            notebook.require_running(context="after start")
 
             # Use same interpreter for pip and -c so runtime-installed package is visible (PYTHONPATH).
             # Code-server image uses /opt/app-root/bin/python3; others use default python.
@@ -150,7 +153,7 @@ except Exception as e:
 
             # RHOAIENG-140: code-server image users are expected to install their own db clients
             if is_codeserver:
-                exit_code, output = container.exec(
+                exit_code, output = notebook.exec(
                     [python_exe, "-m", "pip", "install", f"mysql-connector-python=={MYSQL_CONNECTOR_PYTHON_VERSION}"]
                 )
                 output_str = output.decode()
@@ -158,7 +161,7 @@ except Exception as e:
                 assert exit_code == 0, f"Failed to install mysql-connector-python: {output_str}"
 
             with subtests.test("Setting the user..."):
-                exit_code, output = container.exec([python_exe, "-c", setup_mysql_user])
+                exit_code, output = notebook.exec([python_exe, "-c", setup_mysql_user])
                 output_str = output.decode()
 
                 print(output_str)
@@ -167,7 +170,7 @@ except Exception as e:
                 assert exit_code == 0
 
             with subtests.test("Checking the output of the clearpassuser script..."):
-                exit_code, output = container.exec([python_exe, "-c", clearpassuser])
+                exit_code, output = notebook.exec([python_exe, "-c", clearpassuser])
                 output_str = output.decode()
 
                 print(output_str)
