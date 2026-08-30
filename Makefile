@@ -498,7 +498,7 @@ KICKOFF_STATE_FILE ?= $(ROOT_DIR).kickoff-release.state
 .PHONY: clean-rpm-lockfile-cache
 clean-rpm-lockfile-cache:
 	@echo "🧹 Removing cached RPM lockfile generator image (if present)"
-	@podman image rm -f localhost/notebook-rpm-lockfile:latest >/dev/null 2>&1 || true
+	@$(CONTAINER_ENGINE) image rm -f localhost/notebook-rpm-lockfile:latest >/dev/null 2>&1 || true
 
 .PHONY: kickoff-release
 kickoff-release:
