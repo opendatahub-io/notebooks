@@ -53,6 +53,27 @@ ARG CODESERVER_VERSION=v4.122.1
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
+# Enable CodeReady Builder before installing -devel packages from CRB.
+# ODH/UBI: cachi2 ubi.repo already enables codeready-builder-for-ubi-9-*.
+# ODH/CentOS: enable the crb stream (same pattern as base-images/utils/aipcc.sh).
+# RHOAI/RHEL: RHSM does not enable CRB by default.
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+basearch="$(rpm --eval '%{_arch}')"
+if command -v subscription-manager &>/dev/null && subscription-manager identity &>/dev/null; then
+    for repo in \
+        "codeready-builder-for-rhel-9-${basearch}-eus-rpms" \
+        "codeready-builder-for-rhel-9-${basearch}-rpms"; do
+        if subscription-manager repos --enable="${repo}"; then
+            break
+        fi
+    done
+elif grep -qE '^ID="?centos"?$' /etc/os-release 2>/dev/null; then
+    dnf install -y dnf-plugins-core
+    dnf config-manager --set-enabled crb
+fi
+EOF
+
 # [HERMETIC] Enable nodejs:22 module stream so DNF can resolve nodejs-devel
 # and other modular packages. The hermeto repos include module metadata
 # (modules.yaml) because rpms.in.yaml declares moduleEnable: [nodejs:22].
@@ -145,6 +166,24 @@ USER 0
 # CentOS key imported only if prefetched (may be absent in some Konflux paths).
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Enable CodeReady Builder (see rpm-base comment).
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+basearch="$(rpm --eval '%{_arch}')"
+if command -v subscription-manager &>/dev/null && subscription-manager identity &>/dev/null; then
+    for repo in \
+        "codeready-builder-for-rhel-9-${basearch}-eus-rpms" \
+        "codeready-builder-for-rhel-9-${basearch}-rpms"; do
+        if subscription-manager repos --enable="${repo}"; then
+            break
+        fi
+    done
+elif grep -qE '^ID="?centos"?$' /etc/os-release 2>/dev/null; then
+    dnf install -y dnf-plugins-core
+    dnf config-manager --set-enabled crb
+fi
+EOF
 
 # [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
 RUN dnf module enable nodejs:22 -y
