@@ -24,7 +24,7 @@ the schema with `bash ci/generate_code.sh` (or
 The sync flow manages:
 
 - `BASE_IMAGE` in image-tree `build-args/*.conf` files under `jupyter/`,
-  `runtimes/`, and `codeserver/`
+  `runtimes/`, `codeserver/`, and `codeserver-baseline/`
 - `RELEASE` in managed `build-args/*.conf` files when that key is already present
 - root `Makefile` `RELEASE`
 - root `Makefile` `RELEASE_PYTHON_VERSION`
@@ -137,6 +137,29 @@ artifacts:
 Validation is strict. Unexpected keys, missing required keys, invalid channel or
 origin values, malformed versions, and invalid distribution-specific combinations
 fail before any file is rewritten.
+
+### Baseline CPU policy (`baseline_cpu`)
+
+Baseline images (`jupyter/baseline/`, `runtimes/baseline/`, `codeserver-baseline/`)
+use a separate policy block:
+
+```yaml
+baseline_cpu:
+  odh:
+    origin: in-house
+    version: latest
+  rhds:
+    channel: rhel
+```
+
+- **ODH** (`cpu.conf`): same resolution as `artifacts.base_image.cpu.odh`
+  (`quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest`).
+- **RHDS** (`konflux.cpu.conf`): bare RHEL Python base from
+  `registry.redhat.io/rhel9/python-<compact-python>`. Tags follow the OS stream
+  derived from `release.rhds_os_base` without the `el` prefix (`el9.8` → `9.8-*`
+  tags such as `9.8-1787081761`). The sync picks the highest published build for
+  that stream via `skopeo list-tags`. Baseline RHDS targets do not participate in
+  RHDS fast bundle-phase inference.
 
 ## RHDS Resolution Rules
 

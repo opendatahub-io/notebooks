@@ -133,6 +133,22 @@ class CpuArtifact(StrictModel):
     odh: OdhCpuPolicy
 
 
+class RhdsRhelCpuPolicy(StrictModel):
+    """RHDS baseline CPU policy: bare RHEL Python base image (OS-stream tags)."""
+
+    channel: Literal["rhel"] = Field(
+        title="Channel",
+        description='Must be "rhel" for baseline images that start from registry.redhat.io/rhel9/python-*.',
+    )
+
+
+class BaselineCpuArtifact(StrictModel):
+    """Shared CPU base-image policy for baseline workbench/runtime images."""
+
+    rhds: RhdsRhelCpuPolicy
+    odh: OdhCpuPolicy
+
+
 class RhdsFastGpuPolicy(StrictModel):
     """RHDS GPU policy for the progressing (fast) channel. Stream comes from flavor-level acc_version."""
 
@@ -179,6 +195,9 @@ class BaseImageArtifacts(StrictModel):
     """Managed base-image policy tree."""
 
     cpu: CpuArtifact = Field(description="Shared CPU policy for all managed CPU workbenches.")
+    baseline_cpu: BaselineCpuArtifact = Field(
+        description="CPU policy for baseline images (public-index, hermetic builds).",
+    )
     cuda: CudaFlavors = Field(
         title="CUDA flavors",
         description="CUDA flavor map keyed by image/flavor ID (open keys; sync enforces the managed inventory).",
@@ -231,6 +250,10 @@ def build_json_schema() -> dict[str, Any]:
             "base_image": {
                 "cpu": {
                     "rhds": {"channel": "fast", "version": "<full_version>"},
+                    "odh": {"origin": "in-house", "version": "latest"},
+                },
+                "baseline_cpu": {
+                    "rhds": {"channel": "rhel"},
                     "odh": {"origin": "in-house", "version": "latest"},
                 },
                 "cuda": {
