@@ -25,6 +25,10 @@ spec:
   timeouts:
     pipeline: 6h
   params:
+  - name: event-type
+    value: '{{event_type}}'
+  - name: enable-cache-proxy
+    value: 'true'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -33,8 +37,9 @@ spec:
     value: quay.io/opendatahub/odh-workbench-codeserver-baseline-cpu-py312-c9s:odh-stable
   - name: build-platforms
     value:
+    # https://github.com/redhat-appstudio/infra-deployments/blob/main/components/multi-platform-controller/production-downstream/stone-prod-p02/host-config.yaml
     - linux/x86_64
-    - linux-m2xlarge/arm64
+    - linux-d160-m4xlarge/arm64
     - linux/ppc64le
     - linux/s390x
   - name: dockerfile
@@ -263,14 +268,7 @@ spec:
       limits:
         memory: 8Gi
   pipelineRef:
-    resolver: git
-    params:
-    - name: url
-      value: https://github.com/opendatahub-io/odh-konflux-central.git
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: pipeline/multi-arch-container-build.yaml
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-codeserver-baseline-cpu-py312-c9s-ci
   workspaces:

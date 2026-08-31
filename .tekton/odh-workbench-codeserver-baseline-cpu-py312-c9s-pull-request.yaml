@@ -1,12 +1,16 @@
+# yamllint disable-file
+---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
-    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/cancel-in-progress: 'true'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    pipelinesascode.tekton.dev/on-comment: ^/(kfbuild\-all|build\-konflux|build\-codeserver-baseline)
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "pull_request" && target_branch == "main" &&
       !("manifests/base/params-latest.env".pathChanged()) &&
@@ -15,7 +19,6 @@ metadata:
         "codeserver-baseline/ubi9-python-3.12/**".pathChanged() ||
         "codeserver-baseline/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
       ) && body.repository.full_name == "opendatahub-io/notebooks"
-  creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-builds
     appstudio.openshift.io/component: odh-workbench-codeserver-baseline-cpu-py312-c9s-ci
@@ -23,25 +26,34 @@ metadata:
   name: odh-workbench-codeserver-baseline-cpu-py312-c9s-on-pull-request
   namespace: open-data-hub-tenant
 spec:
+  timeouts:
+    pipeline: 6h
   params:
+  - name: event-type
+    value: '{{event_type}}'
+  - name: enable-cache-proxy
+    value: 'true'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-codeserver-baseline-cpu-py312-c9s:odh-pr
+    value: quay.io/opendatahub/odh-workbench-codeserver-baseline-cpu-py312-c9s:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
+  - name: build-platforms
+    value:
+    # https://github.com/redhat-appstudio/infra-deployments/blob/main/components/multi-platform-controller/production-downstream/stone-prod-p02/host-config.yaml
+    - linux/x86_64
+    - linux-d160-m4xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
   - name: dockerfile
     value: codeserver-baseline/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: path-context
     value: .
   - name: build-args-file
     value: codeserver-baseline/ubi9-python-3.12/build-args/cpu.conf
-  - name: build-platforms
-    value:
-    - linux/x86_64
-    - linux-m2xlarge/arm64
-    - linux/ppc64le
-    - linux/s390x
   - name: hermetic
     value: 'true'
   - name: prefetch-input
@@ -189,11 +201,6 @@ spec:
     # Registry-only npm deps (ProdSec); @parcel/watcher, @emmetio/css-parser, @playwright/browser-chromium in custom-packages/package.json
     - path: codeserver-baseline/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/custom-packages
       type: npm
-  - name: additional-tags
-    value:
-    - 'odh-pr-{{revision}}'
-  - name: pipeline-type
-    value: pull-request
   taskRunSpecs:
   - pipelineTaskName: prefetch-dependencies
     computeResources:
@@ -264,14 +271,7 @@ spec:
       limits:
         memory: 8Gi
   pipelineRef:
-    resolver: git
-    params:
-    - name: url
-      value: https://github.com/opendatahub-io/odh-konflux-central.git
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: pipeline/multi-arch-container-build.yaml
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-codeserver-baseline-cpu-py312-c9s-ci
   workspaces:
