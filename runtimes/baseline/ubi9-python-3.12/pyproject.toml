@@ -1,5 +1,5 @@
-# Phase 1: baseline build resolves Python packages from PyPI using `pylock.toml`.
-# Hermetic Python input generation stays deferred to phase 2.
+# Hermetic baseline: lean runtime deps locked from PyPI
+# (public-index layout: root pylock.toml + requirements.cpu.txt).
 
 [project]
 name = "runtime-baseline-notebook"
@@ -8,9 +8,9 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Elyra / Kale execution deps — PyPI lacks ppc64le/s390x wheels for many native
-    # packages in these stacks; install on x86_64 + aarch64 only.
-    "odh-notebooks-meta-runtime-elyra-deps; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "odh-notebooks-meta-runtime-kale-deps; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    # packages in these stacks; allowlist x86_64 + aarch64 only.
+    "odh-notebooks-meta-runtime-elyra-deps; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
+    "odh-notebooks-meta-runtime-kale-deps; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
 
     # Base packages (all supported Linux architectures)
     "setuptools",
@@ -33,13 +33,17 @@ required-environments = [
     "sys_platform == 'linux' and platform_machine == 's390x'",
 ]
 
+# Four arch-specific environments so uv export emits allowlist markers on gated deps.
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 
 override-dependencies = [
-    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
-    "protobuf==6.31.1",
+    # GHSA-7gcm-g887-7qv7 / CVE-2026-0994 / PYSEC-2026-1805 (RHAIENG-6304):
+    # JSON recursion-depth bypass; fixed in protobuf 6.33.5.
+    # AIPCC images stay on protobuf==6.31.1 (AIPCC-13675). Elyra/Kale (and thus
+    # protobuf) install only on x86_64/aarch64 in this image.
+    "protobuf>=6.33.5,<7.0; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
 ]
 
 [tool.uv.sources]

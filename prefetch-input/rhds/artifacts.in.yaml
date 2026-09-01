@@ -1,15 +1,12 @@
 ---
 # artifacts.in.yaml - Generic (non-RPM, non-pip) artifacts to prefetch
 #
-# This manifest tells cachi2 to download these URLs before the build starts.
-# They are stored at /cachi2/output/deps/generic/<filename>. The corresponding lock file (artifacts.lock.yaml)
-# is auto-generated and contains integrity hashes for each URL.
+# Shared RHDS generic inputs for repo-root prefetch-input/ consumers (e.g.
+# jupyter-baseline). Component-local trees (codeserver-baseline) may carry
+# their own copy; keep this aligned when adding URLs here.
 
 input:
-    # CentOS Stream 9 GPG key (needed for ppc64le/s390x dnf install from CentOS repos;
-    # from CentOS baseos/appstream/crb repos; UBI9 images only ship the Red Hat key)
     - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
-    # EPEL 9 GPG key (for verifying RPMs from EPEL, e.g. texlive-tcolorbox, pandoc)
     - url: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
     # Pandoc Linux binaries for jupyter/baseline PDF export (public-index;
     # pandoc-rhai is RHAI-only). PDF export is skipped on ppc64le/s390x.

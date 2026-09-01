@@ -444,7 +444,21 @@ files = ["/usr/bin/launcher-v2"]
 
 # py-spy is excluded from images via exclude-dependencies (RHAIENG-58916), so
 # it never appears in a local scan; no waiver needed here.
-# pandoc-rhai 3.9.0.2 is dynamically linked (RHAIENG-5765) — no waiver needed.
+# AIPCC workbenches use dynamically linked pandoc-rhai 3.9.0.2 (RHAIENG-5765).
+# Public-index jupyter-baseline installs pandoc from prefetched GitHub tarballs
+# (artifacts.in.yaml) on x86_64/aarch64.
+
+# odh-workbench-jupyter-baseline-cpu-py312-c9s
+[[payload.odh-workbench-jupyter-baseline-cpu-py312-c9s.ignore]]
+# Pandoc: bundled for notebook PDF/LaTeX export; not a crypto boundary. Track: RHOAIENG-58626.
+error = "ErrNotDynLinked"
+files = ["/usr/local/pandoc/bin/pandoc"]
+
+# odh-workbench-jupyter-baseline-cpu-py312-rhel9
+[[payload.odh-workbench-jupyter-baseline-cpu-py312-rhel9.ignore]]
+# Pandoc: bundled for notebook PDF/LaTeX export; not a crypto boundary. Track: RHOAIENG-58626.
+error = "ErrNotDynLinked"
+files = ["/usr/local/pandoc/bin/pandoc"]
 
 # when scanning with `scan local --path`
 [[ignore]]
