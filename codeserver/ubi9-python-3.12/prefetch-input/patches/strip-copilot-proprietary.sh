@@ -38,8 +38,10 @@ for sub in lib/vscode node_modules; do
     find "${ROOT}/${sub}/node_modules/@anthropic-ai" -maxdepth 1 -type d \
       -name 'claude-agent-sdk*' -exec rm -rf {} + 2>/dev/null || true
   fi
-  rm -rf "${ROOT}/${sub}/node_modules/@vscode/copilot-api" 2>/dev/null || true
-  rm -rf "${ROOT}/${sub}/extensions/copilot" 2>/dev/null || true
+  copilot_api="${ROOT}/${sub}/node_modules/@vscode/copilot-api"
+  extensions_copilot="${ROOT}/${sub}/extensions/copilot"
+  rm -rf "${copilot_api}" 2>/dev/null || true
+  rm -rf "${extensions_copilot}" 2>/dev/null || true
 done
 
 echo "==> Verification (should print nothing):"
