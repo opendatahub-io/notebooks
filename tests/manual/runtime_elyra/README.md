@@ -5,6 +5,7 @@
 # Table of contents
 
 - [Overview](#overview)
+- [Baseline runtime smoke test](#baseline-runtime-smoke-test)
 - [Elyra Testing](#elyra-testing)
 - [Setup AWS Credentials](#setup-aws-credentials)
 - [Pipeline setup](#pipeline-setup)
@@ -18,6 +19,12 @@ Elyra enhances JupyterLab with AI-centric features, streamlining AI model develo
 The Notebooks team is responsible for maintaining these runtime container images. This ensures Elyra pipelines can be executed using RHOAI images specifically crafted for this purpose, including accelerator support (NVIDIA and AMD GPUs), AI frameworks (pre-installed PyTorch and TensorFlow), and Python support.
 
 This ensures ML engineers can focus on AI model development with reliable and efficient pipeline execution in RHOAI.
+
+## Baseline runtime smoke test
+
+For **runtime-baseline** images (lean Elyra/Kale executor, no datascience stack), use the
+stdlib-only pipeline in [`baseline/`](baseline/README.md) instead of the iris sample below.
+The iris example requires pandas and scikit-learn and will fail on baseline runtimes.
 
 ## Elyra Testing
 

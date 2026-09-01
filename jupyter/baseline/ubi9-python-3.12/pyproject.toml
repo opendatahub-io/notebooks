@@ -1,5 +1,5 @@
-# Phase 1: baseline build installs Python packages from PyPI using `requirements.${PYLOCK_FLAVOR}.txt`.
-# Hermetic Python input generation stays deferred to phase 2.
+# Hermetic baseline: lean jupyter deps locked from PyPI
+# (public-index layout: root pylock.toml + requirements.cpu.txt).
 
 [project]
 name = "jupyter-baseline-notebook"
@@ -15,34 +15,22 @@ dependencies = [
     "wheel",
     "setuptools",
 
-    # JupyterLab core — PyPI lacks ppc64le/s390x wheels for many native deps; x86_64 + aarch64 only.
-    "jupyterlab; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "jupyter-server; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "jupyter-server-proxy; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "jupyter-server-terminals; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "jupyterlab-git; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "nbdime; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "nbgitpuller; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "odh-jupyter-trash-cleanup; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    # PDF export needs a real pandoc binary on PATH. Hermetic images use
-    # pandoc-rhai from the RHAI index; phase-1 public-index installs the EPEL
-    # pandoc RPM in the Dockerfile instead (PyPI "pandoc" is only a wrapper).
+    # JupyterLab core — PyPI lacks ppc64le/s390x wheels for many native deps.
+    # Allowlist x86_64 + aarch64 so new arches do not inherit the Jupyter stack.
+    "odh-notebooks-meta-jupyterlab-deps; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
+    # PDF export uses the EPEL pandoc RPM installed in Dockerfile.konflux.cpu.
 
     # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
     # heavy workbench/db-connector Python stack.
-    "odh-elyra; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "odh-kale[jupyter]; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "jupyter-bokeh; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "jupyterlab-lsp; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "jupyterlab-widgets; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    "jupyter-resource-usage; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "odh-notebooks-meta-jupyterlab-datascience-deps; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
 ]
 
 [tool.uv]
 # FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
 exclude-dependencies = ["py-spy"]
 
-# Image builds on all four Linux architectures; Jupyter-stack deps are marker-gated above.
+# Four arch-specific environments so uv export emits ``== x86_64 or == aarch64``
+# allowlist markers on gated deps instead of ``!= ppc64le`` denylist markers.
 required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
     "sys_platform == 'linux' and platform_machine == 'aarch64'",
@@ -57,12 +45,20 @@ environments = [
 override-dependencies = [
     # odh-elyra pins jupyter-resource-usage<1.2.dev0, but 1.1.1 needs psutil<6 while
     # ipython 9.14+ on the RH index needs psutil>=7. Index ships 1.2.1.
-    "jupyter-resource-usage>=1.2.1,<1.3",
+    # Keep the same arch markers as the direct dep: an ungated override pulls
+    # jupyter-server → argon2-cffi-bindings onto ppc64le/s390x, which Konflux
+    # cannot install from PyPI (no manylinux wheel; hermetic builds cannot compile).
+    "jupyter-resource-usage>=1.2.1,<1.3; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
     # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
     # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
     "urllib3>=2.7.0",
-    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
-    "protobuf==6.31.1",
+    # GHSA-7gcm-g887-7qv7 / CVE-2026-0994 / PYSEC-2026-1805 (RHAIENG-6304):
+    # JSON recursion-depth bypass; fixed in protobuf 6.33.5.
+    # AIPCC images stay on protobuf==6.31.1 (AIPCC-13675: UPB segfault on s390x
+    # for 6.33.0–7.34.x). This image installs protobuf only on x86_64/aarch64.
+    "protobuf>=6.33.5,<7.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 ]
 
 [tool.uv.sources]
+odh-notebooks-meta-jupyterlab-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
+odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-datascience-deps" }

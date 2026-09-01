@@ -7,24 +7,20 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-comment: ^/(kfbuild\-all|build\-konflux|build\-jupyter\-baseline)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main" &&
+      event == "push" && target_branch == "stable" &&
       !("manifests/base/params-latest.env".pathChanged()) &&
       (
-        ".tekton/odh-workbench-jupyter-baseline-cpu-py312-c9s-pull-request.yaml".pathChanged() ||
-        "jupyter/baseline/ubi9-python-3.12/**".pathChanged() ||
-        "jupyter/baseline/ubi9-python-3.12/build-args/cpu.conf".pathChanged() ||
-        "jupyter/utils/**".pathChanged() ||
-        "jupyter/minimal/ubi9-python-3.12/start-notebook.sh".pathChanged() ||
-        "prefetch-input/odh/**".pathChanged()
-      ) && body.repository.full_name == "opendatahub-io/notebooks"
+        ".tekton/odh-pipeline-runtime-baseline-cpu-py312-c9s-push.yaml".pathChanged() ||
+        "runtimes/baseline/ubi9-python-3.12/**".pathChanged() ||
+        "runtimes/baseline/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
+      )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-workbench-jupyter-baseline-cpu-py312-c9s-ci
+    appstudio.openshift.io/component: odh-pipeline-runtime-baseline-cpu-py312-c9s-ci
     pipelines.appstudio.openshift.io/type: build
-  name: odh-workbench-jupyter-baseline-cpu-py312-c9s-on-pull-request
+  name: odh-pipeline-runtime-baseline-cpu-py312-c9s-on-push
   namespace: open-data-hub-tenant
 spec:
   params:
@@ -33,13 +29,13 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-jupyter-baseline-cpu-py312-c9s:odh-pr
+    value: quay.io/opendatahub/odh-pipeline-runtime-baseline-cpu-py312-c9s:odh-stable
   - name: dockerfile
-    value: jupyter/baseline/ubi9-python-3.12/Dockerfile.konflux.cpu
+    value: runtimes/baseline/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: path-context
     value: .
   - name: build-args-file
-    value: jupyter/baseline/ubi9-python-3.12/build-args/cpu.conf
+    value: runtimes/baseline/ubi9-python-3.12/build-args/cpu.conf
   - name: build-platforms
     value:
     - linux/x86_64
@@ -54,7 +50,7 @@ spec:
       type: rpm
     - path: prefetch-input/odh
       type: generic
-    - path: jupyter/baseline/ubi9-python-3.12
+    - path: runtimes/baseline/ubi9-python-3.12
       type: pip
       binary:
         arch: "x86_64,aarch64,ppc64le,s390x"
@@ -62,9 +58,6 @@ spec:
   - name: additional-tags
     value:
     - 3.6_ea2-v1.49
-    - 'odh-pr-{{revision}}'
-  - name: pipeline-type
-    value: pull-request
   pipelineRef:
     resolver: git
     params:
@@ -75,7 +68,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-workbench-jupyter-baseline-cpu-py312-c9s-ci
+    serviceAccountName: build-pipeline-odh-pipeline-runtime-baseline-cpu-py312-c9s-ci
   workspaces:
   - name: git-auth
     secret:
