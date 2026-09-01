@@ -17,12 +17,12 @@ dependencies = [
 
     # JupyterLab core — PyPI lacks ppc64le/s390x wheels for many native deps.
     # Allowlist x86_64 + aarch64 so new arches do not inherit the Jupyter stack.
-    "odh-notebooks-meta-jupyterlab-deps; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
+    "odh-notebooks-meta-jupyterlab-deps; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
     # PDF export uses the EPEL pandoc RPM installed in Dockerfile.konflux.cpu.
 
     # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
     # heavy workbench/db-connector Python stack.
-    "odh-notebooks-meta-jupyterlab-datascience-deps; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
+    "odh-notebooks-meta-jupyterlab-datascience-deps; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
 ]
 
 [tool.uv]
@@ -48,7 +48,7 @@ override-dependencies = [
     # Keep the same arch markers as the direct dep: an ungated override pulls
     # jupyter-server → argon2-cffi-bindings onto ppc64le/s390x, which Konflux
     # cannot install from PyPI (no manylinux wheel; hermetic builds cannot compile).
-    "jupyter-resource-usage>=1.2.1,<1.3; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
+    "jupyter-resource-usage>=1.2.1,<1.3; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
     # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
     # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
     "urllib3>=2.7.0",
@@ -56,7 +56,7 @@ override-dependencies = [
     # JSON recursion-depth bypass; fixed in protobuf 6.33.5.
     # AIPCC images stay on protobuf==6.31.1 (AIPCC-13675: UPB segfault on s390x
     # for 6.33.0–7.34.x). This image installs protobuf only on x86_64/aarch64.
-    "protobuf>=6.33.5,<7.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "protobuf>=6.33.5,<7.0; sys_platform == 'linux' and (sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64'))",
 ]
 
 [tool.uv.sources]

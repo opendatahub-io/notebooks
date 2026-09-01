@@ -145,9 +145,7 @@ BASELINE_AIPCC_ALIGNMENT_SKIP_PACKAGES: frozenset[str] = frozenset(
 )
 
 # Public-index baseline images: PyPI lacks ppc64le/s390x wheels for many Jupyter/native
-# packages. Allowlist those deps to x86_64 + aarch64; images still build on all four arches.
-# Do not use != ppc64le/s390x: uv export spreads that onto transitives that should stay
-# universal, and a new arch would inherit the Jupyter stack.
+# packages. Gate those deps to x86_64 + aarch64; images still build on all four arches.
 BASELINE_AMD64_CLASS_MARKER = (
     "sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')"
 )

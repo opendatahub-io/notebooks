@@ -11,7 +11,3 @@ input:
     - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
     # EPEL 9 GPG key (for verifying RPMs from EPEL, e.g. texlive-tcolorbox, pandoc)
     - url: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
-    # Pandoc Linux binaries for jupyter/baseline PDF export (public-index;
-    # pandoc-rhai is RHAI-only). PDF export is skipped on ppc64le/s390x.
-    - url: https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-amd64.tar.gz
-    - url: https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-arm64.tar.gz

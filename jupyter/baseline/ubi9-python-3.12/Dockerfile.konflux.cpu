@@ -52,20 +52,26 @@ EOF
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-RUN /bin/bash <<'EOF'
+# Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
+# compat-openssl11 provides libcrypto.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y perl mesa-libGL skopeo compat-openssl11 openshift-clients
+BASE_PKGS=(tar perl mesa-libGL skopeo compat-openssl11 openshift-clients)
+dnf install -y "${BASE_PKGS[@]}"
 dnf clean all
-rm -rf /var/cache/dnf
+rm -rf /var/cache/yum
 EOF
 
+
 # ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
-RUN /bin/bash <<'EOF'
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-    dnf install -y openblas-threads
-    dnf clean all
-    rm -rf /var/cache/dnf
+   dnf install -y openblas-threads
+   dnf clean all
+   rm -rf /var/cache/yum /var/cache/dnf
 fi
 EOF
 
@@ -97,24 +103,6 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 RUN ./utils/install_pdf_deps.sh
 
 ### END Dependencies for PDF export
-
-# Pandoc for nbconvert PDF export (prefetched GitHub tarball in artifacts.in.yaml).
-# Public-index baseline cannot use pandoc-rhai (RHAI-only).
-ENV PATH="/usr/local/pandoc/bin:${PATH}"
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-if [[ "$(uname -m)" == "s390x" || "$(uname -m)" == "ppc64le" ]]; then
-    echo "PDF export is not supported on $(uname -m); skipping pandoc install."
-    exit 0
-fi
-declare -A UNAME_TO_GOARCH=(["x86_64"]="amd64" ["aarch64"]="arm64")
-ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
-PANDOC_VERSION="3.7.0.2"
-PANDOC_TGZ="/cachi2/output/deps/generic/pandoc-${PANDOC_VERSION}-linux-${ARCH}.tar.gz"
-mkdir -p /usr/local/pandoc
-tar xzvf "${PANDOC_TGZ}" --strip-components 1 -C /usr/local/pandoc/
-pandoc --version
-EOF
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 RUN chmod 755 ./start-notebook.sh
@@ -154,12 +142,8 @@ USER 0
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y jq git-lfs libsndfile libxcrypt-compat protobuf
-dnf clean all
-rm -rf /var/cache/dnf
-EOF
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install jq git-lfs libsndfile libxcrypt-compat protobuf pandoc
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
