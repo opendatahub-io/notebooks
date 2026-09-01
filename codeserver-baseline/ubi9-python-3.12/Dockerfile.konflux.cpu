@@ -44,7 +44,6 @@ ENV CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-ser
 
 ARG BASE_IMAGE
 ARG GHA_BUILD=false
-ARG PRODUCT=odh
 
 ARG NODE_VERSION=22.22.0
 ARG CODESERVER_VERSION=v4.122.1
@@ -53,26 +52,6 @@ ARG CODESERVER_VERSION=v4.122.1
 # CentOS key imported only if prefetched (may be absent in some Konflux paths).
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
-# Enable CodeReady Builder before installing -devel packages from CRB.
-# PRODUCT=rhoai (konflux.cpu.conf): RHEL via RHSM — CRB is not enabled by default.
-# PRODUCT=odh (cpu.conf): skip — hermeto ubi.repo/centos.repo already enable CRB.
-# Do not key off subscription-manager identity alone: GHA mounts RHSM certs on ODH too.
-RUN /bin/bash <<EOF
-set -Eeuxo pipefail
-if [[ "${PRODUCT}" == "rhoai" ]]; then
-    basearch="\$(rpm --eval '%{_arch}')"
-    if command -v subscription-manager &>/dev/null; then
-        for repo in \
-            "codeready-builder-for-rhel-9-\${basearch}-eus-rpms" \
-            "codeready-builder-for-rhel-9-\${basearch}-rpms"; do
-            if subscription-manager repos --enable="\${repo}" 2>/dev/null; then
-                break
-            fi
-        done
-    fi
-fi
-EOF
 
 # [HERMETIC] Enable nodejs:22 module stream so DNF can resolve nodejs-devel
 # and other modular packages. The hermeto repos include module metadata
@@ -157,8 +136,6 @@ RUN echo "done" > /tmp/control
 ############################################################################################
 FROM ${BASE_IMAGE} AS cpu-base
 
-ARG PRODUCT=odh
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
@@ -168,23 +145,6 @@ USER 0
 # CentOS key imported only if prefetched (may be absent in some Konflux paths).
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
-# Enable CodeReady Builder (see rpm-base comment).
-RUN /bin/bash <<EOF
-set -Eeuxo pipefail
-if [[ "${PRODUCT}" == "rhoai" ]]; then
-    basearch="\$(rpm --eval '%{_arch}')"
-    if command -v subscription-manager &>/dev/null; then
-        for repo in \
-            "codeready-builder-for-rhel-9-\${basearch}-eus-rpms" \
-            "codeready-builder-for-rhel-9-\${basearch}-rpms"; do
-            if subscription-manager repos --enable="\${repo}" 2>/dev/null; then
-                break
-            fi
-        done
-    fi
-fi
-EOF
 
 # [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
 RUN dnf module enable nodejs:22 -y
