@@ -17,9 +17,9 @@ dependencies = [
 
     # RHAIENG-6157: VS Code Jupyter extension gates. PyPI lacks ppc64le/s390x wheels
     # for the Jupyter/native stack — install on x86_64 + aarch64 only.
-    "ipykernel; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "jupyter; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "notebook; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "ipykernel; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "jupyter; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    "notebook; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
 
     # debugpy only has a useful Linux native wheel for x86_64 (PyPI also ships py3-none-any).
     "debugpy; platform_machine == 'x86_64'",
@@ -32,7 +32,7 @@ dependencies = [
 [tool.uv]
 # notebook 7.6.x needs jupyterlab>=4.6.3; jupyter 1.1.1 otherwise caps jupyterlab<4.6.
 override-dependencies = [
-    "jupyterlab>=4.6.3,<4.7; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "jupyterlab>=4.6.3,<4.7; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
 ]
 
 

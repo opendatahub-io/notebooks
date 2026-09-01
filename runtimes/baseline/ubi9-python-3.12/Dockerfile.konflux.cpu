@@ -51,20 +51,15 @@ EOF
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y perl mesa-libGL skopeo compat-openssl11 openshift-clients
-dnf clean all
-rm -rf /var/cache/dnf
-EOF
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
 # ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
-RUN /bin/bash <<'EOF'
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-    dnf install -y openblas-threads
-    dnf clean all
-    rm -rf /var/cache/dnf
+    bash /utils/dnf-helper.sh install openblas-threads
 fi
 EOF
 
@@ -99,12 +94,8 @@ USER 0
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y jq git-lfs libsndfile libxcrypt-compat protobuf
-dnf clean all
-rm -rf /var/cache/dnf
-EOF
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install jq git-lfs libsndfile libxcrypt-compat protobuf
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/utils ./utils/
