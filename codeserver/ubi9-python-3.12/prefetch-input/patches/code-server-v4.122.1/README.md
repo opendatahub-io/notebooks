@@ -29,6 +29,8 @@ High/critical runtime CVEs cleared via npm overrides (refresh locks after changi
   AIPCC/RHOAI `ripgrep` Python wheel and overwrite those binaries via
   `../replace-aipcc-ripgrep.sh` after `npm ci` / `build:vscode` / `release` (FIPS).
 - Built-in Copilot requires `compile-copilot-extension-full-build` during `build:vscode`
-- RHAIENG-6400 spike: `run-code-server.sh` sets `chat.disableAIFeatures: false` and
-  `github-authentication.preferDeviceCodeFlow: true`. Customer GA still gated by Legal (RHAI-113).
+  (VS Code 1.122+); proprietary bits are removed post-release by
+  `../strip-copilot-proprietary.sh` before the image ships.
+- Shipped images default to `chat.disableAIFeatures: true`. Users with their own
+  Copilot subscription run `/opt/app-root/bin/install-byo-copilot.sh` (see component README).
 - Upstream dropped `release:standalone`; use `KEEP_MODULES=1 npm run release` → `./release`

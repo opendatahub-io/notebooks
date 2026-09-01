@@ -320,23 +320,67 @@ After building (e.g. `make codeserver-ubi9-python-3.12` or `podman build ...`), 
 image with Podman and open code-server in your browser:
 
 ```bash
-podman run -d --name codeserver -p 8080:8080 <your-image-name>:latest
+podman run -d --name codeserver -p 8888:8888 <your-image-name>:latest
 ```
 
-Then open **http://localhost:8080**. The container serves the UI via nginx on port 8080
-(proxying to code-server on 8787).
+Then open **http://localhost:8888/codeserver/**. Nginx listens on 8888 and proxies to
+code-server on 8787.
 
 To bind a local directory as the workspace (e.g. for development):
 
 ```bash
 podman run -d --name codeserver \
-  -p 8080:8080 \
+  -p 8888:8888 \
   -v /path/to/your/workspace:/opt/app-root/src:Z \
   <your-image-name>:latest
 ```
 
 Use `:Z` on Fedora/RHEL for SELinux; omit on macOS. Stop with `podman stop codeserver`
 and remove with `podman rm codeserver`.
+
+---
+
+## Copilot: stripped image + bring-your-own (BYO)
+
+The image **does not ship** proprietary GitHub Copilot or Claude agent SDK binaries.
+VS Code still **compiles** Copilot during the hermetic build (required on 1.122+), then
+`strip-copilot-proprietary.sh` removes those artifacts from the `release/` tree before
+the image is assembled. AI chat is **disabled by default** (`chat.disableAIFeatures: true`).
+
+### Verify after build
+
+```bash
+chmod +x codeserver/ubi9-python-3.12/scripts/verify-no-copilot.sh
+./codeserver/ubi9-python-3.12/scripts/verify-no-copilot.sh \
+  quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12-3.6_$(date +%Y%m%d)
+```
+
+### Run locally
+
+```bash
+podman run -d --name codeserver -p 8888:8888 <image-tag>
+# Open http://localhost:8888/codeserver/
+```
+
+### Enable Copilot (user BYO — your license, not redistributed)
+
+On **first launch**, the workbench opens `README.md` with these instructions. Opening a
+**terminal** also prints a short hint until `install-byo-copilot.sh` has been run.
+
+Inside the workbench terminal (or via `podman exec`):
+
+```bash
+install-byo-copilot.sh
+podman restart codeserver   # from host — gallery config loads at startup
+```
+
+Then reload the browser, sign in to GitHub, and use Copilot with your subscription.
+
+**Important:** run `install-byo-copilot.sh` **before** signing in. If you already
+signed in and see *"extension cannot be installed because it was not found"*, run the
+script, restart the workbench, and retry setup.
+
+Options: `install-byo-copilot.sh --help`, `--offline` for air-gapped VSIX sideload.
 
 ---
 
