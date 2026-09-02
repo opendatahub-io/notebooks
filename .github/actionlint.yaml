@@ -19,10 +19,10 @@ paths:
   .github/workflows/**/*.{yml,yaml}:
     ignore:
       # Baseline shellcheck findings in historical scripts, enumerated per
-      # code (count): SC2059 info "Don't use variables in the printf format
-      # string. Use printf '..%s..' "$foo"" (1), SC2086 info "Double quote to
-      # prevent globbing and word splitting" (49), SC2129 style "Consider
-      # using { cmd1; cmd2; } >> file instead of individual redirects" (2).
+      # code (count):
+      # - SC2059 info "Don't use variables in the printf format string. Use printf '..%s..' "$foo"" (1),
+      # - SC2086 info "Double quote to prevent globbing and word splitting" (49),
+      # - SC2129 style "Consider using { cmd1; cmd2; } >> file instead of individual redirects" (2).
       # The gate still fails on any other code and on warning/error-level
       # findings; fix new scripts instead of extending this list.
       - 'shellcheck reported issue in this script: SC(2059|2086|2129):(info|style):.+'
