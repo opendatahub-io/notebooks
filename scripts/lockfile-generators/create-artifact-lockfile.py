@@ -173,8 +173,7 @@ def main():
             artifacts.append(result)
 
     if not artifacts:
-        print("Error: No artifacts were processed.", file=sys.stderr)
-        sys.exit(1)
+        print("No artifacts to process; writing empty lockfile.")
 
     # Write lockfile
     lock_data = {
