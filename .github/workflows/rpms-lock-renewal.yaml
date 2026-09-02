@@ -68,28 +68,11 @@ jobs:
       # RHDS secrets and registry auth must be configured before Install Podman.
       # install-podman-action runs `sudo podman system reset`, which can leave
       # root-owned files under $HOME/.config/containers and break a later cp.
-      - name: Install git-crypt
+      - name: Unlock git-crypt and configure registry auth
         if: env.VARIANT == 'rhds'
-        uses: ./.github/actions/apt-install
+        uses: ./.github/actions/git-crypt-auth
         with:
-          packages: git-crypt
-
-      - name: Unlock encrypted secrets with git-crypt
-        if: env.VARIANT == 'rhds'
-        run: |
-          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
-          trap 'rm -f ./git-crypt-key' EXIT
-          git-crypt unlock ./git-crypt-key
-        env:
-          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
-
-      - name: Configure registry auth from pull-secret
-        if: env.VARIANT == 'rhds'
-        run: |
-          mkdir -p "$HOME/.config/containers"
-          # Don't use sudo here. Credentials must be runner-readable; after install-podman-action,
-          # CONTAINER_HOST makes podman a remote client that forwards auth to the rootful server.
-          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+          git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
 
       - name: Mask subscription credentials
         if: env.VARIANT == 'rhds'

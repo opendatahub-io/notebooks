@@ -1,0 +1,138 @@
+---
+name: Test Git-Crypt Auth Action
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths: &git-crypt-auth-paths
+      - '.github/actions/git-crypt-auth/**'
+      - '.github/workflows/test-git-crypt-auth.yaml'
+      - 'ci/secrets/**'
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths: *git-crypt-auth-paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gate:
+    name: Check GIT_CRYPT_KEY availability
+    runs-on: ubuntu-26.04
+    permissions: {}
+    outputs:
+      has_key: ${{ steps.check.outputs.has_key }}
+    steps:
+      - name: Detect secret
+        id: check
+        env:
+          # Empty when the secret is unavailable (e.g. pull requests from forks).
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+        run: |
+          set -Eeuxo pipefail
+          if [[ -n "$GIT_CRYPT_KEY" ]]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::GIT_CRYPT_KEY is not available in this run (fork pull request?). Skipping the git-crypt-auth self-test."
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test-default-auth-path:
+    name: Default registry auth path
+    needs: [gate]
+    if: needs.gate.outputs.has_key == 'true'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # No skopeo is installed here on purpose: if the action's optional
+      # quay-login step condition ever regresses, the job fails with
+      # "skopeo: command not found" instead of silently running a login.
+      - name: Unlock git-crypt and configure registry auth
+        uses: ./.github/actions/git-crypt-auth
+        with:
+          git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Verify pull-secret is decrypted
+        run: |
+          set -Eeuxo pipefail
+          # A git-crypt-encrypted file is binary; after unlock it must parse as JSON.
+          python3 - <<'PY'
+          import json
+          with open("ci/secrets/pull-secret.json") as f:
+              data = json.load(f)
+          assert data.get("auths"), "pull-secret must contain registry auths"
+          print(f"pull-secret OK: {len(data['auths'])} registries")
+          PY
+
+      - name: Verify default registry auth config
+        run: |
+          set -Eeuxo pipefail
+          AUTH_FILE="$HOME/.config/containers/auth.json"
+          test -f "$AUTH_FILE"
+          # The action copies the pull-secret; the files must be byte-identical.
+          cmp -s "ci/secrets/pull-secret.json" "$AUTH_FILE"
+          echo "default auth config OK: $AUTH_FILE"
+
+      - name: Verify git-crypt key cleanup
+        run: |
+          set -Eeuxo pipefail
+          leftover="$(find "$RUNNER_TEMP" -name 'git-crypt-key*' -print -quit)"
+          if [[ -n "$leftover" ]]; then
+            echo "::error::git-crypt key file left behind: $leftover"
+            exit 1
+          fi
+          echo "no git-crypt key residue in $RUNNER_TEMP"
+
+  test-custom-auth-path:
+    name: Custom registry auth path
+    needs: [gate]
+    if: needs.gate.outputs.has_key == 'true'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Unlock git-crypt and configure registry auth
+        uses: ./.github/actions/git-crypt-auth
+        with:
+          git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
+          auth-config-path: /tmp/renovate-self-test-docker-config/config.json
+
+      - name: Verify custom registry auth config
+        run: |
+          set -Eeuxo pipefail
+          CUSTOM_FILE="/tmp/renovate-self-test-docker-config/config.json"
+          test -f "$CUSTOM_FILE"
+          cmp -s "ci/secrets/pull-secret.json" "$CUSTOM_FILE"
+          # The default location must stay untouched when a custom path is given.
+          test ! -e "$HOME/.config/containers/auth.json"
+          echo "custom auth config OK: $CUSTOM_FILE"
+
+  test-missing-pull-secret:
+    name: Missing pull-secret tolerance
+    needs: [gate]
+    if: needs.gate.outputs.has_key == 'true'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Unlock git-crypt and configure registry auth
+        uses: ./.github/actions/git-crypt-auth
+        with:
+          git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
+          pull-secret-path: ci/secrets/missing-pull-secret.json
+
+      - name: Verify no auth config was written
+        run: |
+          set -Eeuxo pipefail
+          test ! -e "$HOME/.config/containers/auth.json"
+          echo "no auth config written for missing pull-secret"
