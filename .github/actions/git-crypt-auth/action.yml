@@ -34,34 +34,24 @@ runs:
         packages: git-crypt
         update: 'false'
 
-    - name: Decode git-crypt key
-      id: decode-key
-      shell: bash
-      env:
-        GIT_CRYPT_KEY: ${{ inputs.git-crypt-key }}
-      run: |
-        set -Eeuxo pipefail
-        KEY_FILE="${{ runner.temp }}/git-crypt-key"
-        echo "$GIT_CRYPT_KEY" | base64 --decode > "$KEY_FILE"
-        chmod 0600 "$KEY_FILE"
-        # Store the key file path for cleanup tracking
-        echo "key_file=${KEY_FILE}" >> "${GITHUB_OUTPUT}"
-
-    - name: Unlock git-crypt
+    - name: Decode and unlock git-crypt
       id: unlock
       shell: bash
       env:
         GIT_CRYPT_KEY: ${{ inputs.git-crypt-key }}
       run: |
         set -Eeuxo pipefail
-        KEY_FILE="${{ runner.temp }}/git-crypt-key"
-        trap 'rm -f "$KEY_FILE"' EXIT ERR INT TERM
-        git-crypt unlock "$KEY_FILE"
-        # Decrypt the pull-secret after unlock
+        # mktemp creates the file atomically (O_EXCL) with mode 0600, so the key
+        # never sits at a predictable path or with loose permissions.
+        KEY_FILE="$(mktemp "${RUNNER_TEMP}/git-crypt-key.XXXXXX")"
+        printf '%s' "${GIT_CRYPT_KEY}" | base64 --decode > "${KEY_FILE}"
+        trap 'rm -f "${KEY_FILE}"' EXIT ERR INT TERM
+        git-crypt unlock "${KEY_FILE}"
+        # Report pull-secret availability after unlock
         if [ -f "${{ inputs.pull-secret-path }}" ]; then
           echo "Pull-secret decrypted at ${{ inputs.pull-secret-path }}"
         else
-          echo "WARNING: Pull-secret not found at ${{ inputs.pull-secret-path }}, skipping skopeo auth configuration"
+          echo "WARNING: Pull-secret not found at ${{ inputs.pull-secret-path }}, skipping registry auth configuration"
         fi
 
     - name: Configure registry auth from pull-secret
