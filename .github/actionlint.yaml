@@ -1,7 +1,27 @@
 ---
-# actionlint 1.7.12 (used by CodeRabbit) does not yet list ubuntu-26.04 hosted
-# runners; register them here until upstream adds GA preview labels.
+# actionlint configuration, shared by the code-static-analysis CI job and
+# CodeRabbit's actionlint review. See
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+#
+# The ignores below are baseline exceptions for historical code and
+# actionlint false positives. Every entry is commented with why it exists
+# and when it can be dropped; do not add new ignores for new code - fix the
+# workflow instead.
+
+# actionlint 1.7.12 does not yet list ubuntu-26.04 hosted runners; register
+# them here until upstream adds GA preview labels.
 self-hosted-runner:
   labels:
     - ubuntu-26.04
     - ubuntu-26.04-arm
+
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      # Info/style-level shellcheck noise in historical scripts (e.g. SC2086,
+      # SC2129); the gate still fails on warning/error-level findings.
+      - 'shellcheck reported issue in this script: SC\d+:(info|style):.+'
+      # 'code-quality' is a valid GitHub token scope (required by
+      # actions/upload-code-coverage) that actionlint's known-scope list has
+      # not caught up with; drop once a newer actionlint recognizes it.
+      - 'unknown permission scope "code-quality"'

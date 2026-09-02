@@ -28,6 +28,21 @@ GITHUB_TOKEN=$(gh auth token) pinact run --check --verify
 Install pinact: `brew install pinact` (macOS/Linux) or
 `go install github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.0`.
 
+## Workflow linting (actionlint)
+
+The `code-static-analysis` job lints every file in `.github/workflows/` with
+actionlint (binary version pinned in the workflow, same pattern as hadolint).
+Run it locally:
+
+```bash
+actionlint .github/workflows/*.yaml .github/workflows/*.yml
+```
+
+Install actionlint: `brew install actionlint`; shellcheck must be on PATH for
+the shell-script checks. Baseline exceptions live in `.github/actionlint.yaml`
+(picked up automatically) - every entry is commented with why it exists and
+when to drop it. Do not add new ignores for new code; fix the workflow instead.
+
 ## Comment spacing
 
 Use **two spaces** before `#` in version comments (yamllint `comments` rule):
