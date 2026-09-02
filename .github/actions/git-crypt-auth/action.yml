@@ -55,7 +55,7 @@ runs:
       shell: bash
       run: |
         set -Eeuxo pipefail
-        PULL_SECRET="${{ inputs.pull-secret-path }}"
+        PULL_SECRET="${{ inputs.pull-secret-path }}"  # nosemgrep: generic-hardcoded-secret
         AUTH_CONFIG="${{ inputs.auth-config-path }}"
         if [ -f "$PULL_SECRET" ]; then
           mkdir -p "$(dirname "$AUTH_CONFIG")"
