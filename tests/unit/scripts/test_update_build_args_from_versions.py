@@ -3,12 +3,9 @@ from __future__ import annotations
 import importlib
 import subprocess
 import textwrap
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def load_updater():
@@ -131,7 +128,7 @@ def stub_matching_rhds_stable_acc_version(monkeypatch: pytest.MonkeyPatch, updat
 
 
 def write_conf(path: Path, *lines: str) -> None:
-    path.parent.mkdir(parents=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -217,6 +214,13 @@ def write_versions_config(
               rhds:
                 channel: fast
                 version: "<full_version>"
+              odh:
+                origin: in-house
+                version: "latest"
+
+            baseline_cpu:
+              rhds:
+                channel: rhel
               odh:
                 origin: in-house
                 version: "latest"
@@ -451,6 +455,12 @@ def test_load_versions_config_rejects_non_scalar_cpu_version(tmp_path: Path) -> 
                     channel: fast
                     version:
                       major: 3
+                  odh:
+                    origin: in-house
+                    version: "latest"
+                baseline_cpu:
+                  rhds:
+                    channel: rhel
                   odh:
                     origin: in-house
                     version: "latest"
@@ -2209,3 +2219,80 @@ def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
         "PYLOCK_FLAVOR=cuda",
         "RELEASE=3.5",
     ]
+
+
+def test_is_baseline_conf_path_detects_baseline_families() -> None:
+    updater = load_updater()
+    assert updater.is_baseline_conf_path(Path("jupyter/baseline/ubi9-python-3.12/build-args/cpu.conf"))
+    assert updater.is_baseline_conf_path(Path("runtimes/baseline/ubi9-python-3.12/build-args/konflux.cpu.conf"))
+    assert updater.is_baseline_conf_path(Path("codeserver-baseline/ubi9-python-3.12/build-args/konflux.cpu.conf"))
+    assert not updater.is_baseline_conf_path(Path("jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf"))
+
+
+def test_select_latest_rhel_python_tag_picks_highest_build() -> None:
+    updater = load_updater()
+    tags = ("9.7-100", "9.8-200", "9.8-50", "9.8-300", "9.9-400")
+    assert updater.select_latest_rhel_python_tag(tags, "9.8") == "9.8-300"
+
+
+def test_plan_updates_resolves_baseline_cpu_conf_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    updater = load_updater()
+    write_versions_config(tmp_path / "versions_config.yml", rhds_os_base="el9.8")
+
+    odh_conf = tmp_path / "jupyter/baseline/ubi9-python-3.12/build-args/cpu.conf"
+    rhds_conf = tmp_path / "jupyter/baseline/ubi9-python-3.12/build-args/konflux.cpu.conf"
+    write_conf(
+        odh_conf,
+        "BASE_IMAGE=registry.redhat.io/rhel9/python-312:9.8-1",
+        "RELEASE=3.6",
+    )
+    write_conf(
+        rhds_conf,
+        "BASE_IMAGE=registry.redhat.io/rhel9/python-312:9.8-1",
+        "RELEASE=3.6",
+    )
+
+    rhel_repo = "registry.redhat.io/rhel9/python-312"
+    stub_rhds_repository_tags(
+        monkeypatch,
+        updater,
+        {
+            rhel_repo: ("9.8-100", "9.8-300", "9.9-400"),
+        },
+    )
+
+    updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+    by_path = {update.path: update for update in updates}
+
+    assert (
+        pinned_base_image("quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest") in by_path[odh_conf].updated_text
+    )
+    assert pinned_base_image(f"{rhel_repo}:9.8-300") in by_path[rhds_conf].updated_text
+
+
+def test_plan_updates_includes_codeserver_baseline_conf_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    updater = load_updater()
+    write_versions_config(tmp_path / "versions_config.yml", rhds_os_base="el9.8")
+
+    rhds_conf = tmp_path / "codeserver-baseline/ubi9-python-3.12/build-args/konflux.cpu.conf"
+    write_conf(rhds_conf, "BASE_IMAGE=registry.redhat.io/rhel9/python-312:9.8-1", "RELEASE=3.6")
+
+    rhel_repo = "registry.redhat.io/rhel9/python-312"
+    stub_rhds_repository_tags(monkeypatch, updater, {rhel_repo: ("9.8-250",)})
+
+    updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+    by_path = {update.path: update for update in updates}
+
+    assert rhds_conf in by_path
+    assert pinned_base_image(f"{rhel_repo}:9.8-250") in by_path[rhds_conf].updated_text
+
+
+def test_load_versions_config_rejects_invalid_baseline_cpu_rhds_channel(tmp_path: Path) -> None:
+    updater = load_updater()
+    config = tmp_path / "versions_config.yml"
+    write_versions_config(config)
+    text = config.read_text(encoding="utf-8")
+    config.write_text(text.replace("channel: rhel", "channel: fast", 1), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid baseline_cpu rhds channel"):
+        updater.load_versions_config(config)
