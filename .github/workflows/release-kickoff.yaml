@@ -68,10 +68,10 @@ jobs:
           echo "KICKOFF_BRANCH=$BRANCH_NAME" >> "${GITHUB_ENV}"
 
       - name: Setup uv and Python
-        uses: ./.github/actions/setup-uv
+        uses: $/.github/actions/setup-uv
 
       - name: Install skopeo and git-crypt
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: skopeo git-crypt
 
@@ -271,7 +271,7 @@ jobs:
           fi
 
       - name: Install Podman
-        uses: ./.github/actions/install-podman-action
+        uses: $/.github/actions/install-podman-action
         with:
           platform: linux/amd64
 

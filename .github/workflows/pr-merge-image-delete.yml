@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Install skopeo
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: skopeo
       - name: Get Pull Request Number

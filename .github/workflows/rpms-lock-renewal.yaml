@@ -70,7 +70,7 @@ jobs:
       # root-owned files under $HOME/.config/containers and break a later cp.
       - name: Install git-crypt
         if: env.VARIANT == 'rhds'
-        uses: ./.github/actions/apt-install
+        uses: $/.github/actions/apt-install
         with:
           packages: git-crypt
 
@@ -114,7 +114,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Podman
-        uses: ./.github/actions/install-podman-action
+        uses: $/.github/actions/install-podman-action
         with:
           platform: linux/amd64
 

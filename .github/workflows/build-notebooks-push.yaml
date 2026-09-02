@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
-    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    uses: $/.github/workflows/build-notebooks-TEMPLATE.yaml
     if: ${{ (inputs.odh || (github.event_name != 'workflow_dispatch' && github.repository != 'red-hat-data-services/notebooks')) && fromJson(needs.gen.outputs.has_jobs) }}
     with:
       target: "${{ matrix.target }}"
@@ -83,7 +83,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
-    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    uses: $/.github/workflows/build-notebooks-TEMPLATE.yaml
     if: ${{ (inputs.rhds || (github.event_name != 'workflow_dispatch' && github.repository == 'red-hat-data-services/notebooks')) && fromJson(needs.gen.outputs.has_jobs) }}
     with:
       target: "${{ matrix.target }}"

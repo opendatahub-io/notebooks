@@ -5,7 +5,7 @@ runs:
   using: "composite"
   steps:
     - name: Install prerequisites
-      uses: ./.github/actions/apt-install
+      uses: $/.github/actions/apt-install
       with:
         packages: software-properties-common curl
 

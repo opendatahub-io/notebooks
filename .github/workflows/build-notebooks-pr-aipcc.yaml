@@ -121,7 +121,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
-    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    uses: $/.github/workflows/build-notebooks-TEMPLATE.yaml
     if: ${{ fromJson(needs.gen.outputs.has_jobs) }}
     with:
       target: "${{ matrix.target }}"

@@ -30,6 +30,6 @@ jobs:
 
       - name: Capture kernel logs
         # condition this if: ${{ failure() }}
-        uses: ./.github/actions/capture-kernel-logs
+        uses: $/.github/actions/capture-kernel-logs
         with:
           log-prefix: test-capture
