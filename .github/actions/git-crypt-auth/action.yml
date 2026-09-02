@@ -28,7 +28,6 @@ runs:
       uses: ./.github/actions/apt-install
       with:
         packages: git-crypt
-        update: 'false'
 
     - name: Decode and unlock git-crypt
       id: unlock

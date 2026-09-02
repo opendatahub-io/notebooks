@@ -6,9 +6,9 @@ inputs:
     description: 'Space-separated list of packages to install'
     required: true
   update:
-    description: 'Run apt-get update before installing'
+    description: 'Update policy: auto (default) updates only when the apt index is missing or older than the apt configuration; true always; false never'
     required: false
-    default: 'true'
+    default: 'auto'
 runs:
   using: composite
   steps:
@@ -47,11 +47,60 @@ runs:
         EOF
 
     - name: Update package index
-      if: ${{ inputs.update == 'true' }}
-      shell: bash
+      if: ${{ inputs.update != 'false' }}
+      # -sS: the script is stdlib-only; skip the site import for faster startup.
+      shell: python -sS {0}
+      env:
+        APT_UPDATE_MODE: ${{ inputs.update }}
       run: |
-        set -Eeuxo pipefail
-        sudo apt-get update
+        # Sentinel for the apt package index, verified against a fresh
+        # ubuntu:26.04 container: apt-get update writes per-repo index files
+        # (InRelease, *.lz4) into /var/lib/apt/lists and touches nothing
+        # else; /var/cache/apt is only populated by apt-get install.
+        # Runner images ship a populated index, so 'auto' skips the update;
+        # it runs when the index is missing (clean container) or the apt
+        # configuration is newer than the index (a repo added since).
+        import os
+        import subprocess
+        import time
+
+        LISTS_DIR = "/var/lib/apt/lists"
+        CONFIG_PATHS = (
+            "/etc/apt/sources.list",
+            "/etc/apt/sources.list.d",
+            "/etc/apt/preferences.d",
+            "/etc/os-release",
+        )
+
+        def newest(*paths):
+            stamp = 0.0
+            for path in paths:
+                if os.path.isfile(path):
+                    stamp = max(stamp, os.path.getmtime(path))
+                elif os.path.isdir(path):
+                    for entry in os.listdir(path):
+                        full = os.path.join(path, entry)
+                        if os.path.isfile(full):
+                            stamp = max(stamp, os.path.getmtime(full))
+            return stamp
+
+        if os.environ["APT_UPDATE_MODE"] == "true":
+            print("update=true: refreshing the apt package index.")
+        else:
+            index = [
+                os.path.join(LISTS_DIR, entry)
+                for entry in (os.listdir(LISTS_DIR) if os.path.isdir(LISTS_DIR) else [])
+                if entry != "lock" and os.path.isfile(os.path.join(LISTS_DIR, entry))
+            ]
+            if not index:
+                print("Apt index is empty; running apt-get update.")
+            elif newest(*CONFIG_PATHS) > newest(*index):
+                print("Apt configuration is newer than the index; running apt-get update.")
+            else:
+                age_days = (time.time() - newest(*index)) / 86400
+                print(f"Apt index fresh ({len(index)} files, {age_days:.1f} days old); skipping apt-get update.")
+                raise SystemExit(0)
+        subprocess.run(["sudo", "apt-get", "update"], check=True)
 
     - name: Install packages
       shell: bash
