@@ -1,0 +1,92 @@
+---
+name: 'Git-crypt unlock and registry auth bootstrap'
+description: 'Unlock git-crypt encrypted secrets and configure container registry authentication'
+inputs:
+  git-crypt-key:
+    description: 'Base64-encoded git-crypt key (from GIT_CRYPT_KEY secret)'
+    required: true
+  pull-secret-path:
+    description: 'Path to the git-crypt-encrypted pull-secret file'
+    required: false
+    default: 'ci/secrets/pull-secret.json'
+  auth-config-path:
+    description: 'Destination registry auth file (container auth.json or Docker config.json)'
+    required: false
+    default: '${HOME}/.config/containers/auth.json'
+  quay-username:
+    description: 'Quay.io username for skopeo login (optional)'
+    required: false
+    default: ''
+  quay-password:
+    description: 'Quay.io password for skopeo login (optional)'
+    required: false
+    default: ''
+outputs:
+  unlocked:
+    description: 'Whether git-crypt unlock succeeded'
+    value: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Install git-crypt
+      uses: ./.github/actions/apt-install
+      with:
+        packages: git-crypt
+        update: 'false'
+
+    - name: Decode git-crypt key
+      id: decode-key
+      shell: bash
+      env:
+        GIT_CRYPT_KEY: ${{ inputs.git-crypt-key }}
+      run: |
+        set -Eeuxo pipefail
+        KEY_FILE="${{ runner.temp }}/git-crypt-key"
+        echo "$GIT_CRYPT_KEY" | base64 --decode > "$KEY_FILE"
+        chmod 0600 "$KEY_FILE"
+        # Store the key file path for cleanup tracking
+        echo "key_file=${KEY_FILE}" >> "${GITHUB_OUTPUT}"
+
+    - name: Unlock git-crypt
+      id: unlock
+      shell: bash
+      env:
+        GIT_CRYPT_KEY: ${{ inputs.git-crypt-key }}
+      run: |
+        set -Eeuxo pipefail
+        KEY_FILE="${{ runner.temp }}/git-crypt-key"
+        trap 'rm -f "$KEY_FILE"' EXIT ERR INT TERM
+        git-crypt unlock "$KEY_FILE"
+        # Decrypt the pull-secret after unlock
+        if [ -f "${{ inputs.pull-secret-path }}" ]; then
+          echo "Pull-secret decrypted at ${{ inputs.pull-secret-path }}"
+        else
+          echo "WARNING: Pull-secret not found at ${{ inputs.pull-secret-path }}, skipping skopeo auth configuration"
+        fi
+
+    - name: Configure registry auth from pull-secret
+      id: registry-auth
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+        PULL_SECRET="${{ inputs.pull-secret-path }}"
+        AUTH_CONFIG="${{ inputs.auth-config-path }}"
+        if [ -f "$PULL_SECRET" ]; then
+          mkdir -p "$(dirname "$AUTH_CONFIG")"
+          cp "$PULL_SECRET" "$AUTH_CONFIG"
+          echo "Configured registry auth from $PULL_SECRET to $AUTH_CONFIG"
+        else
+          echo "SKOPEO_AUTH=skipped" >> "${GITHUB_OUTPUT}"
+        fi
+
+    - name: Configure Quay.io pull auth
+      id: quay-login
+      if: inputs.quay-username != '' && inputs.quay-password != ''
+      shell: bash
+      env:
+        QUAY_USERNAME: ${{ inputs.quay-username }}
+        QUAY_PASSWORD: ${{ inputs.quay-password }}
+      run: |
+        set -Eeuxo pipefail
+        printf '%s' "${QUAY_PASSWORD}" | skopeo login --username "${QUAY_USERNAME}" --password-stdin quay.io
+        echo "Configured Quay.io pull auth"

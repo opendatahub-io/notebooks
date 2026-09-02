@@ -78,24 +78,11 @@ jobs:
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
 
-      - name: Install git-crypt
-        uses: ./.github/actions/apt-install
+      - name: Unlock git-crypt and configure registry auth
+        uses: ./.github/actions/git-crypt-auth
         with:
-          packages: git-crypt
-          update: "false"
-
-      - name: Unlock encrypted secrets with git-crypt
-        run: |
-          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
-          trap 'rm -f ./git-crypt-key' EXIT
-          git-crypt unlock ./git-crypt-key
-        env:
-          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
-
-      - name: Configure registry auth for Renovate (pull-secret)
-        run: |
-          mkdir -p "${DOCKER_CONFIG}"
-          cp ci/secrets/pull-secret.json "${DOCKER_CONFIG}/config.json"
+          git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
+          auth-config-path: "${{ env.DOCKER_CONFIG }}/config.json"
 
       - name: Login to quay.io/aipcc (if secrets present)
         shell: bash
