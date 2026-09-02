@@ -270,6 +270,17 @@ jobs:
           find . -name "*.yaml" | grep -v "./.tekton/" | grep -v "./.github/workflows/insta-merge.yaml" | grep -v "\.lock\.yaml$" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
           find . -name "*.yml" | grep -v "./.tekton/" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
 
+      # The version is pinned in the URL (same pattern as hadolint above). The
+      # config at .github/actionlint.yaml is picked up automatically.
+      - name: Validate GitHub workflows (actionlint)
+        if: ${{ !cancelled() }}
+        id: validate-github-workflows
+        run: |
+          wget --output-document=actionlint.tar.gz https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          tar -xzf actionlint.tar.gz actionlint
+          chmod a+x actionlint
+          ./actionlint .github/workflows/*.yaml .github/workflows/*.yml
+
       # In some YAML files we use JSON strings, let's check these
       - name: Validate JSON strings in YAML files (just syntax)
         if: ${{ !cancelled() }}
@@ -289,7 +300,7 @@ jobs:
           wget --output-document=hadolint https://github.com/hadolint/hadolint/releases/download/v2.15.0/hadolint-Linux-x86_64
           chmod a+x hadolint
           echo "Starting Hadolint"
-          find . -name "Dockerfile*" | xargs ./hadolint --config ./ci/hadolint-config.yaml
+          find . -name "Dockerfile*" -print0 | xargs -0 ./hadolint --config ./ci/hadolint-config.yaml
           echo "Hadolint done"
 
       # This simply checks that the manifests and respective kustomization.yaml finishes without an error.
