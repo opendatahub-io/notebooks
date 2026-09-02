@@ -48,8 +48,9 @@ runs:
 
     - name: Update package index
       if: ${{ inputs.update != 'false' }}
-      # -sS: the script is stdlib-only; skip the site import for faster startup.
-      shell: python -sS {0}
+      # -u: unbuffered stdout so the decision line is logged before the update
+      # output; -sS: the script is stdlib-only, skip the site import.
+      shell: python -usS {0}
       env:
         APT_UPDATE_MODE: ${{ inputs.update }}
       run: |
@@ -57,9 +58,10 @@ runs:
         # ubuntu:26.04 container: apt-get update writes per-repo index files
         # (InRelease, *.lz4) into /var/lib/apt/lists and touches nothing
         # else; /var/cache/apt is only populated by apt-get install.
-        # Runner images ship a populated index, so 'auto' skips the update;
-        # it runs when the index is missing (clean container) or the apt
-        # configuration is newer than the index (a repo added since).
+        # Runner images ship a populated index, so 'auto' usually skips the
+        # update; it runs when the index is missing (clean container) or the
+        # apt configuration is newer than the index (a repo added since, or an
+        # image committed after its last apt-get update).
         import os
         import subprocess
         import time
