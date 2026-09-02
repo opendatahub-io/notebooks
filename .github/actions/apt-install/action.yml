@@ -6,7 +6,7 @@ inputs:
     description: 'Space-separated list of packages to install'
     required: true
   update:
-    description: 'Update policy: auto (default) updates only when the apt index is missing or older than the apt configuration; true always; false never'
+    description: 'Update policy: auto (default) updates when the apt index is missing, newer apt configuration, or over 1 h old; true always; false never'
     required: false
     default: 'auto'
 runs:
@@ -58,10 +58,12 @@ runs:
         # ubuntu:26.04 container: apt-get update writes per-repo index files
         # (InRelease, *.lz4) into /var/lib/apt/lists and touches nothing
         # else; /var/cache/apt is only populated by apt-get install.
-        # Runner images ship a populated index, so 'auto' usually skips the
-        # update; it runs when the index is missing (clean container) or the
-        # apt configuration is newer than the index (a repo added since, or an
-        # image committed after its last apt-get update).
+        # 'auto' skips the update only when the index exists, no apt
+        # configuration file is newer than it (a repo added since), and it is
+        # at most one hour old. GitHub runner images ship a days-old index
+        # and their provisioning rewrites the apt config, so on hosted
+        # runners auto effectively always updates, as GitHub's hosted-runner
+        # docs recommend; the skip path serves reused self-hosted runners.
         import os
         import subprocess
         import time
@@ -73,6 +75,7 @@ runs:
             "/etc/apt/preferences.d",
             "/etc/os-release",
         )
+        MAX_INDEX_AGE_SECONDS = 3600
 
         def newest(*paths):
             stamp = 0.0
@@ -96,12 +99,16 @@ runs:
             ]
             if not index:
                 print("Apt index is empty; running apt-get update.")
-            elif newest(*CONFIG_PATHS) > newest(*index):
-                print("Apt configuration is newer than the index; running apt-get update.")
             else:
-                age_days = (time.time() - newest(*index)) / 86400
-                print(f"Apt index fresh ({len(index)} files, {age_days:.1f} days old); skipping apt-get update.")
-                raise SystemExit(0)
+                index_newest = newest(*index)
+                index_age = time.time() - index_newest
+                if newest(*CONFIG_PATHS) > index_newest:
+                    print("Apt configuration is newer than the index; running apt-get update.")
+                elif index_age > MAX_INDEX_AGE_SECONDS:
+                    print(f"Apt index is {index_age / 3600:.1f} h old (max {MAX_INDEX_AGE_SECONDS // 3600} h); running apt-get update.")
+                else:
+                    print(f"Apt index fresh ({len(index)} files, {index_age / 60:.0f} min old); skipping apt-get update.")
+                    raise SystemExit(0)
         subprocess.run(["sudo", "apt-get", "update"], check=True)
 
     - name: Install packages
