@@ -37,7 +37,9 @@ jobs:
       github: ${{ toJson(github) }}
       platform: linux/amd64
       # ODH midstream vs RHDS downstream: avoid exercising stale odh lockfiles on RHDS.
-      product: ${{ github.repository == 'red-hat-data-services/notebooks' && 'rhoai' || 'odh' }}
+      # Fork PRs do not receive RHDS secrets (GIT_CRYPT_KEY / subscription), so fall
+      # back to the ODH path — same policy as build-notebooks-pr.yaml fork skips.
+      product: ${{ github.repository == 'red-hat-data-services/notebooks' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'rhoai' || 'odh' }}
       # jupyter-minimal PDF deps need RHEL AppStream on RHDS (RHAIENG-2345 / #2310).
-      subscription: ${{ github.repository == 'red-hat-data-services/notebooks' }}
+      subscription: ${{ github.repository == 'red-hat-data-services/notebooks' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     secrets: inherit
