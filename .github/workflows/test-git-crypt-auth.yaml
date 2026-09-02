@@ -48,6 +48,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
+      # No skopeo is installed here on purpose: if the action's optional
+      # quay-login step condition ever regresses, the job fails with
+      # "skopeo: command not found" instead of silently running a login.
       - name: Unlock git-crypt and configure registry auth
         uses: ./.github/actions/git-crypt-auth
         with:
@@ -133,3 +136,40 @@ jobs:
           set -Eeuxo pipefail
           test ! -e "$HOME/.config/containers/auth.json"
           echo "no auth config written for missing pull-secret"
+
+  test-wrong-key:
+    name: Wrong key fails and cleans up
+    needs: [gate]
+    if: needs.gate.outputs.has_key == 'true'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # Valid base64, but not a git-crypt key: the action must fail here.
+      - name: Unlock git-crypt and configure registry auth
+        id: bad-unlock
+        uses: ./.github/actions/git-crypt-auth
+        with:
+          git-crypt-key: ZGVmaW5pdGVseS1ub3QtYS1naXQtY3J5cHQta2V5
+
+      # Must be the final step: with continue-on-error the job follows the
+      # last step's result, so a regression (action succeeds, or key residue
+      # left behind) turns this job red.
+      - name: Assert failure and key cleanup
+        if: always()
+        run: |
+          set -Eeuxo pipefail
+          if [[ "${{ steps.bad-unlock.outcome }}" != "failure" ]]; then
+            echo "::error::action did not fail with a bogus key (outcome: ${{ steps.bad-unlock.outcome }})"
+            exit 1
+          fi
+          leftover="$(find "$RUNNER_TEMP" -name 'git-crypt-key*' -print -quit)"
+          if [[ -n "$leftover" ]]; then
+            echo "::error::git-crypt key file left behind after failed unlock: $leftover"
+            exit 1
+          fi
+          echo "action failed as expected and cleaned up its key file"

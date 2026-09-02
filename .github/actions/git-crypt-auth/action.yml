@@ -21,10 +21,6 @@ inputs:
     description: 'Quay.io password for skopeo login (optional)'
     required: false
     default: ''
-outputs:
-  unlocked:
-    description: 'Whether git-crypt unlock succeeded'
-    value: 'true'
 runs:
   using: composite
   steps:
@@ -66,7 +62,7 @@ runs:
           cp "$PULL_SECRET" "$AUTH_CONFIG"
           echo "Configured registry auth from $PULL_SECRET to $AUTH_CONFIG"
         else
-          echo "SKOPEO_AUTH=skipped" >> "${GITHUB_OUTPUT}"
+          echo "WARNING: pull-secret not found at $PULL_SECRET, registry auth not configured"
         fi
 
     - name: Configure Quay.io pull auth
