@@ -6,9 +6,9 @@ inputs:
     description: 'Space-separated list of packages to install'
     required: true
   update:
-    description: 'Update policy: auto (default) updates when the apt index is missing, newer apt configuration, or over 1 h old; true always; false never'
+    description: 'Run apt-get update before installing'
     required: false
-    default: 'auto'
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -22,7 +22,7 @@ runs:
         # the Microsoft repo's kubelet does not provide /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
         #  [Service]
         #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
-        #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
+        #  ExecStart=/usr/bin/kubelet $KUBLET_KUBEADM_ARGS
         # and otherwise fetching from microsoft-prod wastes time
         sudo rm -f /etc/apt/sources.list.d/microsoft-prod.{list,sources}
         sudo rm -f /etc/apt/sources.list.d/azure-cli.{list,sources}
@@ -47,70 +47,21 @@ runs:
         EOF
 
     - name: Update package index
-      if: ${{ inputs.update != 'false' }}
-      # -u: unbuffered stdout so the decision line is logged before the update
-      # output; -sS: the script is stdlib-only, skip the site import.
-      shell: python -usS {0}
-      env:
-        APT_UPDATE_MODE: ${{ inputs.update }}
+      if: ${{ inputs.update == 'true' }}
+      shell: bash
       run: |
-        # Sentinel for the apt package index, verified against a fresh
-        # ubuntu:26.04 container: apt-get update writes per-repo index files
-        # (InRelease, *.lz4) into /var/lib/apt/lists and touches nothing
-        # else; /var/cache/apt is only populated by apt-get install.
-        # 'auto' skips the update only when the index exists, no apt
-        # configuration file is newer than it (a repo added since), and it is
-        # at most one hour old. GitHub runner images ship a days-old index
-        # and their provisioning rewrites the apt config, so on hosted
-        # runners auto effectively always updates, as GitHub's hosted-runner
-        # docs recommend; the skip path serves reused self-hosted runners.
-        import os
-        import subprocess
-        import time
-
-        LISTS_DIR = "/var/lib/apt/lists"
-        CONFIG_PATHS = (
-            "/etc/apt/sources.list",
-            "/etc/apt/sources.list.d",
-            "/etc/apt/preferences.d",
-            "/etc/os-release",
-        )
-        MAX_INDEX_AGE_SECONDS = 3600
-
-        def newest(*paths):
-            stamp = 0.0
-            for path in paths:
-                if os.path.isfile(path):
-                    stamp = max(stamp, os.path.getmtime(path))
-                elif os.path.isdir(path):
-                    for entry in os.listdir(path):
-                        full = os.path.join(path, entry)
-                        if os.path.isfile(full):
-                            stamp = max(stamp, os.path.getmtime(full))
-            return stamp
-
-        if os.environ["APT_UPDATE_MODE"] == "true":
-            print("update=true: refreshing the apt package index.")
-        else:
-            index = [
-                os.path.join(LISTS_DIR, entry)
-                for entry in (os.listdir(LISTS_DIR) if os.path.isdir(LISTS_DIR) else [])
-                if entry != "lock" and os.path.isfile(os.path.join(LISTS_DIR, entry))
-            ]
-            if not index:
-                print("Apt index is empty; running apt-get update.")
-            else:
-                index_newest = newest(*index)
-                index_age = time.time() - index_newest
-                if newest(*CONFIG_PATHS) > index_newest:
-                    print("Apt configuration is newer than the index; running apt-get update.")
-                elif index_age > MAX_INDEX_AGE_SECONDS:
-                    print(f"Apt index is {index_age / 3600:.1f} h old (max {MAX_INDEX_AGE_SECONDS // 3600} h); running apt-get update.")
-                else:
-                    print(f"Apt index fresh ({len(index)} files, {index_age / 60:.0f} min old); skipping apt-get update.")
-                    raise SystemExit(0)
-        subprocess.run(["sudo", "apt-get", "update"], check=True)
+        set -Eeuxo pipefail
+        sudo apt-get update
 
     - name: Install packages
       shell: bash
-      run: sudo apt-get install ${{ inputs.packages }}
+      run: |
+        set -Eeuxo pipefail
+        if ! sudo apt-get install ${{ inputs.packages }}; then
+          # Runner images ship a pre-populated apt index that can lag the
+          # mirrors (a replaced or removed .deb then fails the install);
+          # refresh the index and retry once before failing the job.
+          echo "apt install failed against the current index; refreshing and retrying once"
+          sudo apt-get update
+          sudo apt-get install ${{ inputs.packages }}
+        fi
