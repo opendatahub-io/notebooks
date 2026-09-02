@@ -37,11 +37,17 @@ runs:
         GIT_CRYPT_KEY: ${{ inputs.git-crypt-key }}
       run: |
         set -Eeuxo pipefail
+        if [[ -z "${GIT_CRYPT_KEY}" ]]; then
+          echo "GIT_CRYPT_KEY repository secret is required." >&2
+          exit 1
+        fi
         # mktemp creates the file atomically (O_EXCL) with mode 0600, so the key
         # never sits at a predictable path or with loose permissions.
         KEY_FILE="$(mktemp "${RUNNER_TEMP}/git-crypt-key.XXXXXX")"
-        printf '%s' "${GIT_CRYPT_KEY}" | base64 --decode > "${KEY_FILE}"
+        # Register cleanup before writing key material so a mid-decode failure
+        # still removes the file (opendatahub-io/notebooks#4235).
         trap 'rm -f "${KEY_FILE}"' EXIT ERR INT TERM
+        printf '%s' "${GIT_CRYPT_KEY}" | base64 --decode > "${KEY_FILE}"
         git-crypt unlock "${KEY_FILE}"
         # Report pull-secret availability after unlock
         if [ -f "${{ inputs.pull-secret-path }}" ]; then
