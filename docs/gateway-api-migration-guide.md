@@ -15,7 +15,7 @@ Example `NB_PREFIX`: `/notebook/<namespace>/<workbench-name>`
 ## Key Architectural Difference
 
 ### OpenShift Route (Old)
-```
+```text
 External: /notebook/user/workbench/app/
            ↓
 Route strips prefix
@@ -30,7 +30,7 @@ Container receives: /app/
 Both approaches work because the Route **forwards all traffic** to the pod regardless of path.
 
 ### Gateway API (New)
-```
+```text
 External: /notebook/user/workbench/app/
            ↓
 Gateway preserves full path (path-based routing)
@@ -42,7 +42,7 @@ Container receives: /notebook/user/workbench/app/
 
 ### Why Old Approaches Fail with Gateway API
 
-```
+```text
 App redirects: /notebook/user/workbench/app → /app
                                                ↓
 Browser follows redirect to: /app
@@ -66,7 +66,7 @@ These requirements apply **regardless of whether you use nginx or application-le
 
 Your workbench **must** respond to health checks at:
 
-```
+```http
 GET /{NB_PREFIX}/api
 ```
 
@@ -118,7 +118,7 @@ app.get(`${nbPrefix}/api/terminals`, (req, res) => {
 
 If your workbench supports culling idle workbenches, you must handle:
 
-```
+```http
 GET /{NB_PREFIX}/api/kernels
 GET /{NB_PREFIX}/api/terminals
 ```

@@ -52,7 +52,7 @@ python scripts/new_python_based_image.py --context-dir . --source 3.9 --target 3
 
 Updates Dockerfile* blocks demarked using comment blocks of the form
 
-```
+```text
 # <prefix> begin
 [... ...]
 # <prefix> end
@@ -75,7 +75,7 @@ python scripts/cve/sbom_analyze.py sbom.json esbuild
 ```
 
 Output:
-```
+```text
 === Searching for 'esbuild' ===
   Found 1 matching package(s):
 

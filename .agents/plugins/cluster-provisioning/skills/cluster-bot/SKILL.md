@@ -66,50 +66,50 @@ Slack app for spinning up short-lived OpenShift/ROSA clusters for manual testing
 See [recipes/rhoai-3.4-minimal-bench.md](recipes/rhoai-3.4-minimal-bench.md), `scripts/cluster-bot-rhoai-bench.sh`, and `scripts/cluster-bot-prow-watch.sh` (Prow log state machine during provision).
 
 **Quick amd64 AWS cluster, latest 4.19 nightly:**
-```
+```text
 launch 4.19 aws
 ```
 
 **ARM64 on GCP:**
-```
+```text
 launch 4.19 gcp,arm64
 ```
 
 **GPU cluster (AWS only):**
-```
+```text
 workflow-launch openshift-psap-e2e-aws-gpu 4.19
 ```
 
 **IBM Power via PowerVS:**
-```
+```text
 launch 4.19 hypershift-hosted-powervs
 ```
 
 **Build from one or more PRs, then launch it:**
-```
+```text
 build 4.19,openshift/installer#123
 launch 4.19,openshift/installer#123 aws
 ```
 
 **Real ROSA HCP cluster with auto-teardown (max 8h):**
-```
+```text
 rosa create 4.19 3h
 # or: rosa create 4.20 8h
 ```
 
 **Custom node count via a named workflow (params need double quotes):**
-```
+```text
 workflow-launch hypershift-hostedcluster-workflow 4.19 "HYPERSHIFT_NODE_COUNT=4"
 ```
 
 **Check current capacity before launching:**
-```
+```text
 list
 ```
 Read the header line (e.g. `20/80 clusters up`, `26/30 ROSA Clusters up`) for pool caps and current usage. If a pool shows 0 active, it's wide open.
 
 **Get creds / clean up:**
-```
+```text
 auth
 done
 ```

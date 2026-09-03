@@ -13,7 +13,7 @@ Since startup script creates some symlinks that then lead nginx to attempt to re
 
 Here's how it looks like in the Konflux container:
 
-```
+```text
 (app-root) cd /var/log/nginx/
 (app-root) ls -al
 total 20
@@ -24,7 +24,7 @@ lrwxrwxrwx. 1 default root   11 Sep 17 17:18 access.log -> /dev/stdout
 lrwxrwxrwx. 1 default root   11 Sep 17 17:18 error.log -> /dev/stderr
 ```
 
-```
+```text
 lrwxrwxrwx. 1 root root 15 Sep 12 11:24 /dev/stderr -> /proc/self/fd/2
 l-wx------. 1 default root 64 Sep 17 17:38 /proc/self/fd/2 -> pipe:[9523152]
 ls: cannot access '/dev/pts/0': No such file or directory
@@ -32,7 +32,7 @@ ls: cannot access '/dev/pts/0': No such file or directory
 
 On a regular Linux machine, we have `/dev/pts/0`
 
-```
+```text
 lrwx------. 1 default root 64 Sep 17 17:34 /proc/self/fd/2 -> /dev/pts/0
 ```
 
