@@ -818,7 +818,10 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 name = "pandas"
 version = "2.3.3"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9/pandas-2.3.3-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-14T07:40:51Z, size = 12761083, hashes = { sha256 = "22f61dca84beed5b41f59cc67f39f13b283019f2492e2248361d2ead9de1cfbc" } }]
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9/pandas-2.3.3-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-14T07:40:51Z, size = 12761083, hashes = { sha256 = "22f61dca84beed5b41f59cc67f39f13b283019f2492e2248361d2ead9de1cfbc" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9/pandas-2.3.3-4-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-28T00:56:33Z, size = 12742531, hashes = { sha256 = "d7197b45ce7baa4d574d8b00ab2e52daa36a62b132363dc908d8d53daba0651e" } },
+]
 
 [[packages]]
 name = "pandocfilters"
@@ -1292,7 +1295,10 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 name = "triton"
 version = "3.6.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9/triton-3.6.0-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-14T05:00:03Z, size = 119953429, hashes = { sha256 = "bec93d1406724ccdf70207e198b6dc91091de5ec53b6384a86f0d311d7896ccc" } }]
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9/triton-3.6.0-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-14T05:00:03Z, size = 119953429, hashes = { sha256 = "bec93d1406724ccdf70207e198b6dc91091de5ec53b6384a86f0d311d7896ccc" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/rocm7.14-ubi9/triton-3.6.0-4-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-27T02:12:20Z, size = 119953509, hashes = { sha256 = "c7333666cc776e6fe0087e8762af79afc53d28de51b078350cf907a2acdae60c" } },
+]
 
 [[packages]]
 name = "typeguard"
