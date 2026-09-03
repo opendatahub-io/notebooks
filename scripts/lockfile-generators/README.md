@@ -94,7 +94,7 @@ and a full walkthrough (including jupyter datascience).
 | Step                 | Condition                                                   | Script called                                                                                  |
 | -------------------- | ----------------------------------------------------------- |------------------------------------------------------------------------------------------------|
 | 1. Generic artifacts | `prefetch-input/<variant>/artifacts.in.yaml` exists         | `create-artifact-lockfile.py`                                                                  |
-| 2. Pip wheels        | `pyproject.toml` exists in component dir                    | `download-pip-packages.py` from committed `requirements.<flavor>.txt` (no lockfile generation) |
+| 2. Pip wheels        | `pyproject.toml` exists; missing `requirements.<flavor>.txt` fails prefetch | `download-pip-packages.py` from committed `requirements.<flavor>.txt` (no lockfile generation) |
 | 3. NPM packages      | Tekton PipelineRun found for component (see below)          | `download-npm.sh --tekton-file`                                                                |
 | 4. RPMs              | `prefetch-input/<variant>/rpms.in.yaml` exists              | `hermeto-fetch-rpm.sh` (if lockfile committed) or `create-rpm-lockfile.sh --download`          |
 | 5. Go modules        | Tekton file has `prefetch-input` entries with `type: gomod` | `create-go-lockfile.sh --tekton-file`                                                          |
