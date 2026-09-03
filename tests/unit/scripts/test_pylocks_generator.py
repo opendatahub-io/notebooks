@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import re
 import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -42,9 +44,17 @@ def test_discover_all_image_project_dirs_skips_unversioned_pyproject(repo_root: 
 
 def test_utc_now_iso_format() -> None:
     s = pg.utc_now_iso()
-    assert len(s) == 20
-    assert s.endswith("Z")
-    assert "T" in s
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.999999Z", s), s
+
+
+def test_end_of_second_cutoff() -> None:
+    assert pg._end_of_second_cutoff(datetime(2026, 8, 20, 1, 13, 38, tzinfo=UTC)) == ("2026-08-20T01:13:38.999999Z")
+    # fractional seconds collapse to the end of the same second
+    assert pg._end_of_second_cutoff(datetime(2026, 8, 20, 1, 13, 38, 123456, tzinfo=UTC)) == (
+        "2026-08-20T01:13:38.999999Z"
+    )
+    # naive datetimes are treated as UTC
+    assert pg._end_of_second_cutoff(datetime(2026, 8, 20, 1, 13, 38)) == "2026-08-20T01:13:38.999999Z"
 
 
 def test_parse_exclude_newer_equals_form(tmp_path: Path) -> None:
