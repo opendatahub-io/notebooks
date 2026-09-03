@@ -11,6 +11,14 @@ Validated end-to-end on a real ROSA HCP cluster (`jd-arm64-36e1`, OCP
 4.21.0, 2026-08-10): RHOAI 3.6.0-ea.1, `dashboard`+`workbenches`, arm64
 (`m6g.2xlarge`) workers + a `g5g.2xlarge` GPU pool.
 
+Revalidated 2026-08-24 on `jd-arm64-36` (same OCP / 3.6.0-ea.1 / pool
+shape): dashboard OAuth via Gateway, CUDA PyTorch workbench
+(`jupyter-pytorch-llmcompressor:3.6`) **2/2 Running** on the T4G node
+after the Kyverno/importMode fixes below. That day's catalog:
+`quay.io/rhoai/rhoai-fbc-fragment@sha256:b78eedb878bf9522266013634e86d557722e380a691d08df812d4ac9039778c5`
+(`rhods-operator.3.6.0-ea.1`, channel `beta`) — always re-pin from
+`#rhoai-build-notifications`, don't reuse this digest blindly.
+
 ## 0. Pin the cluster context — do this before anything else
 
 `~/.kube/config`'s `current-context` is shared, mutable, machine-wide
@@ -83,10 +91,13 @@ helm --kube-context "$CLUSTER_CONTEXT" install kyverno kyverno/kyverno -n kyvern
   --set admissionController.initContainer.securityContext=null
 ```
 
-Verified working end-to-end on OCP 4.21 (2026-08-10). **Fallback if `helm`
-truly isn't available**:
+Verified working end-to-end on OCP 4.21 (2026-08-10 with chart 1.18.x;
+2026-08-24 with **chart 1.19.0** unpinned `helm install kyverno/kyverno`).
+Kyverno 1.19 prints `ClusterPolicy (kyverno.io) is deprecated` on apply —
+noise, the v1 policies below still work. **Fallback if `helm` truly isn't
+available**:
 ```bash
-KYVERNO_VERSION=v1.18.0   # pin a version — this session used v1.18.0
+KYVERNO_VERSION=v1.18.0   # pin a version — Helm path used 1.19.0 (2026-08-24); raw YAML fallback last proven on 1.18.0
 curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
 less /tmp/kyverno-install.yaml   # skim before applying cluster-scoped RBAC/webhooks — see cost-optimization.md item 5 on why a checksum here wouldn't help
 kubectl --context "$CLUSTER_CONTEXT" apply --server-side -f /tmp/kyverno-install.yaml
@@ -127,7 +138,18 @@ done
 
 Grants the admission/background controllers permission to
 get/list/watch/create/update/patch/delete `secrets` (needed by the
-`sync-secrets` policy below):
+`sync-secrets` policy below). The admission controller also runs generate
+validation — without `aggregate-to-admission-controller`, `sync-secrets`
+apply fails even though background-controller RBAC looks correct (hit
+2026-08-24 on chart 1.19.0):
+
+Kyverno's documented pattern splits this role (admission-controller:
+read-only get/list/watch; background-controller: the write verbs). Both
+aggregation labels below grant the *same* full read+write rule to both
+controllers, so the admission controller ends up with cluster-wide
+create/update/patch/delete on every Secret, not just read access. Accepted
+here for an ephemeral dev cluster; don't copy this role as-is onto a
+shared/production cluster without splitting the rules.
 
 ```bash
 cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
@@ -138,6 +160,7 @@ metadata:
   labels:
     app.kubernetes.io/component: background-controller
     rbac.kyverno.io/aggregate-to-background-controller: "true"
+    rbac.kyverno.io/aggregate-to-admission-controller: "true"
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
@@ -168,12 +191,14 @@ username blank at the prompt to omit it entirely if you don't have a
 working credential for it yet.)
 
 **If the cached `quay.io/rhoai` robot credential is dead** (`"Could not
-find robot with username..."` — hit exactly this in the 2026-08-10 run):
-fall back to a personal `quay.io` account credential if it has org read
-access. Verify with a plain `skopeo inspect docker://quay.io/rhoai/<image>`
-*before* wiring it into any cluster object — don't assume it works.
+find robot with username..."` — `rhoai+devops_rhoai_readonly_bot` was
+dead 2026-08-10 and **still dead 2026-08-24**): fall back to a personal
+`quay.io` account credential if it has org read access. Write the same
+credential under **both** `quay.io` and `quay.io/rhoai` keys. Verify with
+a plain `skopeo inspect docker://quay.io/rhoai/<image>` *before* wiring
+it into any cluster object — don't assume it works.
 
-## 6. The 3 ClusterPolicies — **with one deviation from the source doc**
+## 6. The 3 ClusterPolicies — **deviations from the source doc**
 
 Sourced from the internal Google Doc linked above, adapted to the
 `pull-secret-quay` name from step 5. **One correction applied and verified
@@ -214,7 +239,19 @@ spec:
       any:
       - key: "{{ request.object.metadata.name }}"
         operator: AnyIn
-        value: ["redhat-ods-applications", "redhat-ods-operator", "redhat-ods-monitoring"]
+        # INVARIANT: this namespace list must stay identical to the
+        # namespaces used by init-pull-secret-quay and
+        # append-pull-secret-quay below — a namespace missing here has no
+        # pull-secret-quay Secret to inject, so Pods there fail to start
+        # with a missing-Secret error.
+        #
+        # openshift-ingress: RHOAI 3.6 Gateway dashboard's kube-auth-proxy
+        # lives here (quay.io/rhoai/odh-kube-auth-proxy-rhel9). Include it
+        # on the *first* apply — Kyverno generate match/clone/preconditions
+        # are immutable after create, so adding this namespace later is
+        # rejected. Hit 2026-08-24: dashboard returned 403 instead of
+        # OAuth 302 while the proxy was ImagePullBackOff.
+        value: ["redhat-ods-applications", "redhat-ods-operator", "redhat-ods-monitoring", "openshift-ingress"]
       - key: '{{ request.object.metadata.labels."opendatahub.io/dashboard" || `""` }}'
         operator: Equals
         value: "true"
@@ -234,19 +271,45 @@ kind: ClusterPolicy
 metadata:
   name: add-imagepullsecrets
 spec:
+  # Pod admission is the injection path (kubelet reads pod.spec.imagePullSecrets).
+  # Do NOT use patchStrategicMerge on imagePullSecrets — it replaces the whole
+  # list, dropping OpenShift's auto-generated *-dockercfg-* secret. Workbench
+  # pods then fail to pull from image-registry.openshift-image-registry.svc
+  # with "authentication required" while quay.io sidecars succeed. Hit this
+  # on RHOAI 3.6 EA workbenches 2026-08-24. JSON Patch append keeps both.
   rules:
-  - name: add-pull-secret-quay
+  # init-pull-secret-quay is defense-in-depth: in practice OpenShift's
+  # ServiceAccount admission plugin already populates a Pod's
+  # imagePullSecrets (with the SA's own dockercfg secret) before Kyverno's
+  # webhook runs, so the `length(@) == 0` precondition below rarely fires
+  # for real workbench Pods. append-pull-secret-quay (next rule) is what
+  # actually handles the common case.
+  - name: init-pull-secret-quay
     match:
       any:
       - resources:
           kinds: ["Pod"]
-          # Must match sync-secrets' namespace scope above — pull-secret-quay
-          # only exists in these namespaces. Without this, a Pod in ANY
-          # namespace pulling a public quay.io/registry.redhat.io image
-          # (common, unrelated to RHOAI) gets a reference to a Secret that
-          # doesn't exist there and fails to start.
-          namespaces: ["redhat-ods-applications", "redhat-ods-operator", "redhat-ods-monitoring"]
+          # Must match sync-secrets' clone targets — pull-secret-quay only
+          # exists in these namespaces. Without this, a Pod in ANY namespace
+          # pulling a public quay.io/registry.redhat.io image (common,
+          # unrelated to RHOAI) gets a reference to a Secret that doesn't
+          # exist there and fails to start.
+          namespaces: ["redhat-ods-applications", "redhat-ods-operator", "redhat-ods-monitoring", "openshift-ingress"]
+      # Same DSP opt-in as sync-secrets. match.resources.namespaces is
+      # literals-only; namespaceSelector is how Kyverno injects into Data
+      # Science Project namespaces without listing them. Do **not**
+      # `oc secrets link` workbench SAs as the injection path — Pod
+      # admission is what kubelet reads.
+      - resources:
+          kinds: ["Pod"]
+          namespaceSelector:
+            matchLabels:
+              opendatahub.io/dashboard: "true"
     preconditions:
+      all:
+      - key: "{{ request.object.spec.imagePullSecrets || `[]` | length(@) }}"
+        operator: Equals
+        value: 0
       any:
       - key: "{{ request.object.spec.containers[?contains(image, 'quay.io') || contains(image, 'registry.redhat.io')] | length(@) }}"
         operator: GreaterThan
@@ -258,16 +321,45 @@ spec:
         operator: GreaterThan
         value: 0
     mutate:
-      patchStrategicMerge:
-        spec:
-          imagePullSecrets:
-          - name: pull-secret-quay
-    # Note: the namespace list above is a static subset of sync-secrets'
-    # scope — it doesn't cover the label-matched ("opendatahub.io/dashboard")
-    # Data Science Project namespaces, since Kyverno match.resources.namespaces
-    # only accepts literal names/globs, not a label selector on the Pod's
-    # own namespace. A Pod needing this secret in a DS Project namespace
-    # still needs pull-secret-quay attached manually there for now.
+      patchesJson6902: |-
+        - op: add
+          path: /spec/imagePullSecrets
+          value:
+            - name: pull-secret-quay
+    skipBackgroundRequests: true
+  - name: append-pull-secret-quay
+    match:
+      any:
+      - resources:
+          kinds: ["Pod"]
+          namespaces: ["redhat-ods-applications", "redhat-ods-operator", "redhat-ods-monitoring", "openshift-ingress"]
+      - resources:
+          kinds: ["Pod"]
+          namespaceSelector:
+            matchLabels:
+              opendatahub.io/dashboard: "true"
+    preconditions:
+      all:
+      - key: "{{ request.object.spec.imagePullSecrets || `[]` | length(@) }}"
+        operator: GreaterThan
+        value: 0
+      - key: "{{ request.object.spec.imagePullSecrets[?name=='pull-secret-quay'] || `[]` | length(@) }}"
+        operator: Equals
+        value: 0
+      any:
+      - key: "{{ request.object.spec.containers[?contains(image, 'quay.io') || contains(image, 'registry.redhat.io')] | length(@) }}"
+        operator: GreaterThan
+        value: 0
+      - key: "{{ request.object.spec.initContainers[?contains(image, 'quay.io') || contains(image, 'registry.redhat.io')] || `[]` | length(@) }}"
+        operator: GreaterThan
+        value: 0
+    mutate:
+      patchesJson6902: |-
+        - op: add
+          path: /spec/imagePullSecrets/-
+          value:
+            name: pull-secret-quay
+    skipBackgroundRequests: true
 ---
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -339,6 +431,10 @@ spec:
         # '' for a literal quote, matching the Pod/initContainer rules
         # above) has no escape processing at all, so `\.` survives as a
         # literal backslash-dot, which is what the regex actually needs.
+        # If a JSON-patch edit to this regex mangles the escaping and
+        # produces a JMESPath SyntaxError, don't try to fix it with another
+        # JSON-patch — re-`oc apply` this whole document instead (see
+        # "JSON-patch SyntaxError" note below).
         patchesJson6902: |-
           - path: "/spec/tags/{{elementIndex}}/from/name"
             op: replace
@@ -365,6 +461,24 @@ If a JSON-patch edit to an *already-applied* policy fails with a JMESPath
 escaping getting mangled through both JSON-patch and Kyverno's JMESPath
 template layers — don't fight the patch. Re-`oc apply -f -` the whole
 corrected YAML document instead; that's reliable.
+
+**Generate-rule immutability:** after `sync-secrets` exists, Kyverno
+rejects edits to the generate `match`/`clone`/`preconditions`. If you
+omitted `openshift-ingress` on the first apply, **do not try to patch
+that list**. Copy `pull-secret-quay` into `openshift-ingress` by hand
+(same `jq` dance as step 7's `openshift-marketplace` copy) and delete
+the `kube-auth-proxy` pods so `add-imagepullsecrets` (which *is*
+mutable) can inject. `add-imagepullsecrets` itself can be re-applied;
+existing Pods do **not** pick up `imagePullSecrets` changes — the field
+is effectively immutable once a Pod is admitted, so delete and let it
+be recreated.
+
+This hand-copied `openshift-ingress` Secret is **not** tracked by
+`sync-secrets`' `synchronize: true` — it's a one-off `jq` copy, not a
+Kyverno-managed clone. On the next credential rotation in
+`openshift-config`, every namespace `sync-secrets` targets gets the
+update automatically; `openshift-ingress` does not. Re-run the same
+`jq` copy by hand after any `pull-secret-quay` rotation.
 
 **If `dashboard-redirect` (or anything else pulling from
 `registry.redhat.io`) shows `ImagePullBackOff` after applying policies**:
@@ -485,7 +599,61 @@ oc --context "$CLUSTER_CONTEXT" delete csv "rhods-operator.<version>" -n redhat-
 
 ## 9. Apply minimal DSCI/DSC
 
-Reuse [install-rhoai.md](install-rhoai.md) step 3's YAML verbatim.
+Do **not** reuse [install-rhoai.md](install-rhoai.md) step 3's YAML
+verbatim on 3.6-ea.1+. That snippet is `datasciencecluster.opendatahub.io/v1`
+with `datasciencepipelines` — 3.6 EA (2026-08-24) expects **`v2`** and
+**`aipipelines`**. The wrong key is a silent no-op; see install-rhoai.md's
+rename note. DSCI stays `dscinitialization.opendatahub.io/v1`.
+
+```bash
+cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
+apiVersion: dscinitialization.opendatahub.io/v1
+kind: DSCInitialization
+metadata:
+  name: default-dsci
+spec:
+  applicationsNamespace: redhat-ods-applications
+  monitoring:
+    managementState: Managed
+    namespace: redhat-ods-monitoring
+  serviceMesh:
+    managementState: Removed
+  trustedCABundle:
+    managementState: Managed
+    customCABundle: ''
+---
+# Same shape as install-rhoai.md step 3, except apiVersion v2 and
+# `aipipelines` replacing `datasciencepipelines` — keep both in sync if
+# the component list changes. Components not listed below (e.g. the
+# v2-only feastoperator, llamastackoperator, mlflowoperator, sparkoperator,
+# trainer, aigateway, mcplifecycleoperator, ogx) are left at the operator's
+# own default, which is Removed for all of them on a fresh v2 DSC.
+apiVersion: datasciencecluster.opendatahub.io/v2
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+spec:
+  components:
+    dashboard:
+      managementState: Managed
+    workbenches:
+      managementState: Managed
+    aipipelines:
+      managementState: Removed
+    kserve:
+      managementState: Removed
+    ray:
+      managementState: Removed
+    kueue:
+      managementState: Removed
+    trainingoperator:
+      managementState: Removed
+    trustyai:
+      managementState: Removed
+    modelregistry:
+      managementState: Removed
+EOF
+```
 
 ## 10. RHOAI 3.6-ea.1 specific: the dashboard needs Gateway API → Service Mesh 3
 
@@ -591,7 +759,29 @@ oc --context "$CLUSTER_CONTEXT" get dsc default-dsc -o jsonpath='{.status.phase}
 not the `https://rhods-dashboard-redhat-ods-applications.apps.<cluster-domain>`
 Route hostname `install-rhoai.md` documents for the GA/Route-based path.
 
-## 11. arm64 verification recipe
+**Dashboard 403 instead of OAuth 302** (2026-08-24): DSC `Ready` is not
+enough. The Gateway answers 403 when `kube-auth-proxy` in
+`openshift-ingress` is `ImagePullBackOff` on
+`quay.io/rhoai/odh-kube-auth-proxy-rhel9`. Confirm with
+`oc --context "$CLUSTER_CONTEXT" get pods -n openshift-ingress`.
+Healthy login is **302 to OpenShift OAuth**. If `sync-secrets` already
+exists without `openshift-ingress`, copy the secret by hand (generate
+rule is immutable — step 6) then delete the proxy pods so Kyverno can
+inject `pull-secret-quay`. Do not treat this as an OAuth/IdP misconfig.
+
+## 11. arm64 ImageStream importMode — required before spawning
+
+Manifest-list arm64 (step 12) does **not** mean the ImageStream imported
+arm64. On ROSA/ARO HCP the API server is amd64, so tags default to
+`importMode: Legacy` and workbenches crash-loop with `Exec format error`.
+Apply [arm64-imagestream-importmode.md](arm64-imagestream-importmode.md)
+(Tier 3 Kyverno `fix-imagestream-import-mode` is already available —
+this install already has Kyverno) and re-import tags with
+`--import-mode=PreserveOriginal`. Confirmed again 2026-08-24:
+`jupyter-pytorch-llmcompressor:3.6` and `tensorflow:3.6` listed
+`linux/arm64` only after that re-import.
+
+## 12. arm64 verification recipe
 
 The actual payoff of installing an EA build on arm64 workers — confirm
 the images really ship arm64 variants, don't assume from the release
@@ -631,11 +821,41 @@ still on `registry.redhat.io/rhoai/*`, and every tag has a
 `status.tags[].items` entry (i.e. actually imported, not just silently
 unattempted).
 
-## 12. Known gaps — explicitly not verified
+## 13. Workbench spawn (verified 2026-08-24 on `jd-arm64-36`)
 
-- No notebook was actually spawned from the dashboard UI on arm64
-  workers — only image-manifest-level arm64 presence (step 11) is
-  confirmed, not that a spawn actually works end-to-end on this EA build.
-- No GPU smoke pod was run against the `gpu-arm`/`g5g.2xlarge` pool for
-  this specific build — see [arm64-rosa-gpu-smoke](../arm64-rosa-gpu-smoke/SKILL.md)
-  Phase 3 for the procedure once you're ready to close this gap.
+Kyverno **injects** `pull-secret-quay` onto Pods (step 6). Do not
+`oc secrets link` notebook SAs as the workaround — that hid the real
+bug (`patchStrategicMerge` replacing `imagePullSecrets`).
+
+After a policy fix, **delete the workbench pod**. `imagePullSecrets`
+cannot be patched on a running pod — it's effectively immutable once
+the Pod is admitted — so only deleting and recreating it lets the
+mutate rule apply.
+
+Signature of the replace-the-list bug: sidecar
+(`quay.io/rhoai/odh-kube-rbac-proxy-rhel9`) pulls fine, notebook
+container is `ImagePullBackOff` on
+`image-registry.openshift-image-registry.svc:5000/...` with
+`authentication required`. Pod has only `pull-secret-quay`; the SA
+still has `*-dockercfg-*` **and** `pull-secret-quay`. JSON Patch
+append keeps both.
+
+First pull of a CUDA workbench is **slow even when auth is correct** —
+the integrated registry pull-through-caches from quay (~12 GB;
+individual blobs of 2–3 GB taking ~1 min each). `ContainerCreating` +
+registry logs `authorized request` as
+`system:serviceaccount:<project>:<notebook-sa>` is progress, not a
+hang. `ErrImagePull` / `authentication required` is not.
+
+**One GPU:** see [SKILL.md](SKILL.md#gpu-machine-pools) — `--replicas 1`
+on `g5g.2xlarge` is one GPU; a second workbench `Pending` here is
+capacity, not an image-pull failure.
+
+Verified spawn: `jupyter-pytorch-llmcompressor:3.6` **2/2 Running** on
+the T4G node after append-injection + PreserveOriginal re-import.
+
+## 14. Known gaps
+
+- Full [arm64-rosa-gpu-smoke](../arm64-rosa-gpu-smoke/SKILL.md) Phase 3
+  (`nvidia-smi` / nbconvert / Elyra UI) was not run this session — only
+  the dashboard-spawned CUDA workbench reaching Ready.
