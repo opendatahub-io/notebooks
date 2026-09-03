@@ -69,20 +69,13 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
     await codeServer.isEditorVisible()
   })
 
-  test('wait for workspace readme on startup', async ({codeServer, page}, testInfo) => {
+  test('wait for startup surface to load', async ({codeServer, page}, testInfo) => {
     await page.goto(codeServer.url);
 
     await codeServer.isEditorVisible()
     page.on("console", (msg) => log.info(msg.text()))
 
-    // workbench.startupEditor is "readme"; README opens in markdown preview.
-    // Assert the onboarding surface itself instead of waiting for a stable DOM.
-    await expect(page.getByRole('tab', { name: /README\.md/i })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Code Server workbench', level: 1 })).toBeVisible()
-    await expect(page.getByText(/does not ship.*GitHub Copilot/i)).toBeVisible()
-    await utils.waitForNextRender(page)
-
-    await utils.takeScreenshot(page, testInfo, "workspace-readme.png")
+    await utils.assertStartupSurface(page, testInfo)
   })
 
   test('use the terminal to run command', async ({codeServer, page}, _testInfo) => {
