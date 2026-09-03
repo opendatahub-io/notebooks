@@ -18,13 +18,13 @@ arches:
     name: texlive-tcolorbox
     evr: 20200406-1.el9ai
     sourcerpm: texlive-tcolorbox-20200406-1.el9ai.src.rpm
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9.aarch64.rpm
     repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
-    size: 54080966
-    checksum: sha256:aca8538e130743bdd3aeae1ec02732402ed7d71840d6ac7016bd27cd63c7540c
+    size: 54160127
+    checksum: sha256:51e8a599b800c1f8d1758030557aa28cf65e335d00b555e50b2f048ad0393444
     name: openshift-clients
-    evr: 4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9
-    sourcerpm: openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.src.rpm
+    evr: 4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9
+    sourcerpm: openshift-clients-4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/a/abattis-cantarell-fonts-0.301-4.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 377278
@@ -53,13 +53,6 @@ arches:
     name: adobe-mappings-pdf
     evr: 20180407-10.el9
     sourcerpm: adobe-mappings-pdf-20180407-10.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/a/adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.noarch.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 856543
-    checksum: sha256:cfb5e8fddaed92b1b22c957183d0ea626a4468f42a46dae4e68a795cb8c20393
-    name: adobe-source-code-pro-fonts
-    evr: 2.030.1.050-12.el9.1
-    sourcerpm: adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/a/adwaita-cursor-theme-40.1.1-3.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 671139
@@ -207,20 +200,20 @@ arches:
     name: cpp
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/c/criu-3.19-3.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/c/criu-3.19-4.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 555523
-    checksum: sha256:376aca78a8d78a052503fc4406ee84e4d0607c047e8486190b06ed3acd19a6c7
+    size: 552955
+    checksum: sha256:2f4934b17b8fb4bca5f418f383075c37ab3485f2db4e83d78bee808865e5bbd8
     name: criu
-    evr: 3.19-3.el9
-    sourcerpm: criu-3.19-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/c/criu-libs-3.19-3.el9.aarch64.rpm
+    evr: 3.19-4.el9_8
+    sourcerpm: criu-3.19-4.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/c/criu-libs-3.19-4.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 31064
-    checksum: sha256:34b7c037743e730a07117d9627725517d60ed356f945c9f42880573f552b7c4f
+    size: 36419
+    checksum: sha256:0c636b32a97822573321095b02d113735b93701d9ccbd3f12bd66dc7c0eee807
     name: criu-libs
-    evr: 3.19-3.el9
-    sourcerpm: criu-3.19-3.el9.src.rpm
+    evr: 3.19-4.el9_8
+    sourcerpm: criu-3.19-4.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/c/crun-1.27-1.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 251772
@@ -501,20 +494,20 @@ arches:
     name: gstreamer1-plugins-base
     evr: 1.22.12-8.el9_8
     sourcerpm: gstreamer1-plugins-base-1.22.12-8.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/g/gtk-update-icon-cache-3.24.31-8.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/g/gtk-update-icon-cache-3.24.31-9.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 33656
-    checksum: sha256:ad066dac4a6391ef4e1f85642d69fab7e82c9d39f09bfa2b4dd8ebc8663b9129
+    size: 38978
+    checksum: sha256:7d1d11b6358d689fdf7720b2e0fbeb00e7d792e0d8c26a0cac8a0c3c80e5d9cb
     name: gtk-update-icon-cache
-    evr: 3.24.31-8.el9
-    sourcerpm: gtk3-3.24.31-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/g/gtk3-3.24.31-8.el9.aarch64.rpm
+    evr: 3.24.31-9.el9_8
+    sourcerpm: gtk3-3.24.31-9.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/g/gtk3-3.24.31-9.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 5017131
-    checksum: sha256:183fc3bb1856661adbb8f3c6f038e394ce587d82a9e095edcab1d95d65204f52
+    size: 5023218
+    checksum: sha256:4f438c6c66444d25b060d2551c1dfd12325380b5b42b2ccf563a849ed7c8cf07
     name: gtk3
-    evr: 3.24.31-8.el9
-    sourcerpm: gtk3-3.24.31-8.el9.src.rpm
+    evr: 3.24.31-9.el9_8
+    sourcerpm: gtk3-3.24.31-9.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/h/hicolor-icon-theme-0.17-13.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 228180
@@ -564,13 +557,13 @@ arches:
     name: jbigkit-libs
     evr: 2.1-23.el9
     sourcerpm: jbigkit-2.1-23.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/k/kernel-headers-5.14.0-687.41.1.el9_8.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/k/kernel-headers-5.14.0-687.44.1.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2872021
-    checksum: sha256:badc73a635a0552aa4d86eeaba804ccbbe811065e4fbbf3531fe1f9cf646fcd9
+    size: 2878589
+    checksum: sha256:87eed21015538c9fade652055715872c8a1d7fc5d38df349a3c44e6f27530804
     name: kernel-headers
-    evr: 5.14.0-687.41.1.el9_8
-    sourcerpm: kernel-5.14.0-687.41.1.el9_8.src.rpm
+    evr: 5.14.0-687.44.1.el9_8
+    sourcerpm: kernel-5.14.0-687.44.1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/k/kernel-srpm-macros-1.0-14.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 14098
@@ -975,13 +968,6 @@ arches:
     size: 598835
     checksum: sha256:8920fa4680e70bd8ab820ac3cc24285f38cdc377d5b5622eab2f805b3e08a224
     name: libtool
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.aarch64.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 37581
-    checksum: sha256:85f38e641398438f7f08526d7003f47e47a14369798464fd67c465134258e964
-    name: libtool-ltdl
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/l/libtracker-sparql-3.1.2-3.el9_1.aarch64.rpm
@@ -2944,48 +2930,48 @@ arches:
     name: perl-vmsish
     evr: 1.04-481.1.el9_6
     sourcerpm: perl-5.32.1-481.1.el9_6.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-1.4.11-1.el9_8.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-1.4.11-1.el9_8.2.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 140478
-    checksum: sha256:fca9401ca3b273613454c2c0174a76abc400d8b3c5dcbd5d190ea6e072a0cf33
+    size: 140721
+    checksum: sha256:36906da20cfcf0c0f040960741bc9a0fe157da7be400ccc01f1dc455ade4268b
     name: pipewire
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-alsa-1.4.11-1.el9_8.aarch64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-alsa-1.4.11-1.el9_8.2.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 70666
-    checksum: sha256:d11b9df2953ec27b3992c184d83e00943296fc8fccd535903dbf320eb8355812
+    size: 70901
+    checksum: sha256:972a6651714a6ee2a6a0029251c6be0c7daff85ee402cf28cc41114e08dd40a6
     name: pipewire-alsa
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-1.4.11-1.el9_8.aarch64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-1.4.11-1.el9_8.2.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 14093
-    checksum: sha256:51653770b9cf3bd56f50817b5a82e9111b2ee84a9f63cc41333bc9c6643513eb
+    size: 14362
+    checksum: sha256:30fa5f9ecfbcab8c833c05a9dc96da642d00ecaa515f2b9c086a314132b691ff
     name: pipewire-jack-audio-connection-kit
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.11-1.el9_8.aarch64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.11-1.el9_8.2.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 149775
-    checksum: sha256:9d3381693a6f818f889e5ed32830528e84c6512f1bdd94b60fdd8b81f9ea7fbe
+    size: 150063
+    checksum: sha256:edff6093b0c7d4c725aaac44672eefdb1991cb2ccc5fa2bd5b90cf2f209bbfea
     name: pipewire-jack-audio-connection-kit-libs
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-libs-1.4.11-1.el9_8.aarch64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-libs-1.4.11-1.el9_8.2.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2482528
-    checksum: sha256:a87e59e34e05014bd68d7a787b0e74f4c1e35cb08b8a0549f540d6ee98191383
+    size: 2482678
+    checksum: sha256:7f7d8271e55205aca8c0dd7c50395179961ab944c5204d0281bd013e01f2d781
     name: pipewire-libs
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-pulseaudio-1.4.11-1.el9_8.aarch64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pipewire-pulseaudio-1.4.11-1.el9_8.2.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 214427
-    checksum: sha256:b3e17b6d79d9cf5008fd4be84387d606900ada4a463cdb7d1eb830bfe1ad0b34
+    size: 214443
+    checksum: sha256:66d5e471e21aec4355a1651a9ccd5d6b133270943e2231fa49448c7ef6d4be69
     name: pipewire-pulseaudio
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/appstream/os/Packages/p/pixman-0.40.0-6.el9_3.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 173063
@@ -4561,6 +4547,13 @@ arches:
     name: acl
     evr: 2.4.0-1.el9_8
     sourcerpm: acl-2.4.0-1.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/a/adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.noarch.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms
+    size: 856543
+    checksum: sha256:cfb5e8fddaed92b1b22c957183d0ea626a4468f42a46dae4e68a795cb8c20393
+    name: adobe-source-code-pro-fonts
+    evr: 2.030.1.050-12.el9.1
+    sourcerpm: adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/a/alternatives-1.24-2.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 42137
@@ -4617,13 +4610,13 @@ arches:
     name: binutils-gold
     evr: 2.35.2-72.el9
     sourcerpm: binutils-2.35.2-72.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/b/bluez-libs-5.85-1.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/b/bluez-libs-5.87+1.git30db66dc971b-1.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 93548
-    checksum: sha256:556b1999878c71d5a0ff3751d1a2059d7a843e34ec163212c75f6a088af3909d
+    size: 93644
+    checksum: sha256:2c595f3dfa66d06bcd7904b09c4440e61db5535e9b6f57ccc4d93468253be6d4
     name: bluez-libs
-    evr: 5.85-1.el9
-    sourcerpm: bluez-5.85-1.el9.src.rpm
+    evr: 5.87+1.git30db66dc971b-1.el9_8
+    sourcerpm: bluez-5.87+1.git30db66dc971b-1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/b/bubblewrap-0.6.3-1.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 57133
@@ -4729,13 +4722,13 @@ arches:
     name: dbus
     evr: 1:1.12.20-8.el9
     sourcerpm: dbus-1.12.20-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/d/dbus-broker-28-7.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/d/dbus-broker-28-9.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 173303
-    checksum: sha256:342af53fbf4254e34b5f19a6be6f22c67551c26dd0c49016edc93e806621b75d
+    size: 174219
+    checksum: sha256:ffebc8de0cd9ed86122973be161b617aa46ce1e020f61f9e8e5a42246d4bd495
     name: dbus-broker
-    evr: 28-7.el9
-    sourcerpm: dbus-broker-28-7.el9.src.rpm
+    evr: 28-9.el9_8
+    sourcerpm: dbus-broker-28-9.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/d/dbus-common-1.12.20-8.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 18551
@@ -4988,13 +4981,13 @@ arches:
     name: gsettings-desktop-schemas
     evr: 40.0-8.el9_7
     sourcerpm: gsettings-desktop-schemas-40.0-8.el9_7.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/g/gzip-1.12-1.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/g/gzip-1.12-2.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 169809
-    checksum: sha256:45710df49b439ddc4a2848fd3877367761b574234ae28b6be46f1cf54f3fcdca
+    size: 171305
+    checksum: sha256:efafc848fdaa3a8e5e77baddc07abc7d800dc973efd44ecf492bc64dca4fabe6
     name: gzip
-    evr: 1.12-1.el9
-    sourcerpm: gzip-1.12-1.el9.src.rpm
+    evr: 1.12-2.el9_8
+    sourcerpm: gzip-1.12-2.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/h/harfbuzz-2.7.4-10.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 643882
@@ -5114,13 +5107,13 @@ arches:
     name: libatomic
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libattr-2.5.1-3.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libattr-2.6.0-1.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 20696
-    checksum: sha256:b6a73c9da522df55690b886c0a9af39338571d34ee6f0d4d9b994c8289df3412
+    size: 23276
+    checksum: sha256:ec08036348dbe2ee41645bdb96eb485b9db5121ec0524258b0639426a22a49bc
     name: libattr
-    evr: 2.5.1-3.el9
-    sourcerpm: attr-2.5.1-3.el9.src.rpm
+    evr: 2.6.0-1.el9_8
+    sourcerpm: attr-2.6.0-1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libblkid-2.37.4-25.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 113931
@@ -5394,20 +5387,20 @@ arches:
     name: libsmartcols
     evr: 2.37.4-25.el9
     sourcerpm: util-linux-2.37.4-25.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libssh-0.10.4-18.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libssh-0.10.4-19.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 222382
-    checksum: sha256:6d529b3f31dee553349277c9f72da4f14ae54a2d48d10aa3088b45fbe90f99c2
+    size: 223114
+    checksum: sha256:80f3962d3eb780ca6d6d4f8c6841b003a907d758ad8ad1c3d785e9cf327672f6
     name: libssh
-    evr: 0.10.4-18.el9
-    sourcerpm: libssh-0.10.4-18.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libssh-config-0.10.4-18.el9.noarch.rpm
+    evr: 0.10.4-19.el9_8
+    sourcerpm: libssh-0.10.4-19.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libssh-config-0.10.4-19.el9_8.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 14685
-    checksum: sha256:ab353cbff2269677fc7364bfcddb8e11537ea83361a0ad642e60eac87ed67fbb
+    size: 14764
+    checksum: sha256:ce06b99793b9e5abc50a58ebc3ef11037f2efbdb5f819a25f8de4994613194d4
     name: libssh-config
-    evr: 0.10.4-18.el9
-    sourcerpm: libssh-0.10.4-18.el9.src.rpm
+    evr: 0.10.4-19.el9_8
+    sourcerpm: libssh-0.10.4-19.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libstdc++-11.5.0-14.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 723913
@@ -5429,6 +5422,13 @@ arches:
     name: libtdb
     evr: 1.4.14-1.el9
     sourcerpm: libtdb-1.4.14-1.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.aarch64.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms
+    size: 37581
+    checksum: sha256:85f38e641398438f7f08526d7003f47e47a14369798464fd67c465134258e964
+    name: libtool-ltdl
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libunistring-0.9.10-15.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 503151
@@ -5471,13 +5471,13 @@ arches:
     name: libxcrypt
     evr: 4.4.18-3.el9
     sourcerpm: libxcrypt-4.4.18-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libxml2-2.9.13-14.el9_8.2.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libxml2-2.9.13-14.el9_8.4.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 754623
-    checksum: sha256:e78f201e1cbab2bbce30991a1618f3b79d8afc9ef8bb9bf41046e314c5f30f0e
+    size: 754646
+    checksum: sha256:10417dde519f111c6248fae0eb6fb9889efd3e68c575caced652823d7ef4f169
     name: libxml2
-    evr: 2.9.13-14.el9_8.2
-    sourcerpm: libxml2-2.9.13-14.el9_8.2.src.rpm
+    evr: 2.9.13-14.el9_8.4
+    sourcerpm: libxml2-2.9.13-14.el9_8.4.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/l/libzstd-1.5.5-1.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 283159
@@ -5527,13 +5527,13 @@ arches:
     name: mpfr
     evr: 4.1.0-10.el9
     sourcerpm: mpfr-4.1.0-10.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/n/NetworkManager-libnm-1.54.3-4.el9_8.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/n/NetworkManager-libnm-1.54.3-5.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 1973738
-    checksum: sha256:183e7cadd069029e884dce16a9e1c23c62e7e4ae81af63356ac896dc476124b1
+    size: 1972674
+    checksum: sha256:3d1780f2c56ad7abb550202cebdad44a3b4fbc31e959842c6f4b0216c93a5958
     name: NetworkManager-libnm
-    evr: 1:1.54.3-4.el9_8
-    sourcerpm: NetworkManager-1.54.3-4.el9_8.src.rpm
+    evr: 1:1.54.3-5.el9_8
+    sourcerpm: NetworkManager-1.54.3-5.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/n/ncurses-6.2-12.20210508.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 414136
@@ -5842,13 +5842,13 @@ arches:
     name: shared-mime-info
     evr: 2.1-5.el9
     sourcerpm: shared-mime-info-2.1-5.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/s/sqlite-libs-3.34.1-10.el9_8.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/s/sqlite-libs-3.34.1-11.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 660260
-    checksum: sha256:dda4c59309d47d73d64291c53078cce330b8d5a9d95c903e133d9f37ec0e0a68
+    size: 660770
+    checksum: sha256:0fbb8043f9c02870c831da433f69b856a6674d02b60306d9cc01149ec89ed239
     name: sqlite-libs
-    evr: 3.34.1-10.el9_8
-    sourcerpm: sqlite-3.34.1-10.el9_8.src.rpm
+    evr: 3.34.1-11.el9_8
+    sourcerpm: sqlite-3.34.1-11.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/s/systemd-252-67.el9_8.4.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 4156431
@@ -5884,13 +5884,13 @@ arches:
     name: systemd-udev
     evr: 252-67.el9_8.4
     sourcerpm: systemd-252-67.el9_8.4.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/t/tar-1.34-11.el9.aarch64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/t/tar-1.34-13.el9_8.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 904777
-    checksum: sha256:62f985a87e048caa3ef883966d6176448398abc42df00ebff07e7311ff5f425d
+    size: 909271
+    checksum: sha256:ee4fa57c4bb87613f6fbd4b785a9e6162d43f046d1bbdd5022771652b931e9d0
     name: tar
-    evr: 2:1.34-11.el9
-    sourcerpm: tar-1.34-11.el9.src.rpm
+    evr: 2:1.34-13.el9_8
+    sourcerpm: tar-1.34-13.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/aarch64/baseos/os/Packages/t/tpm2-tss-3.2.3-1.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 572170
@@ -6042,13 +6042,13 @@ arches:
     name: texlive-tcolorbox
     evr: 20200406-1.el9ai
     sourcerpm: texlive-tcolorbox-20200406-1.el9ai.src.rpm
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/ppc64le/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/ppc64le/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9.ppc64le.rpm
     repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
-    size: 51126038
-    checksum: sha256:eadbf175188502377555dc98a03d2359ba7c03ed14bc1b788bbfd3a83cddbab1
+    size: 51128429
+    checksum: sha256:ac85191b03d4889030e6e26e7d51b0fefc8a0b243bcc86a5e7fa6ca0ed7e7e84
     name: openshift-clients
-    evr: 4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9
-    sourcerpm: openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.src.rpm
+    evr: 4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9
+    sourcerpm: openshift-clients-4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/a/abattis-cantarell-fonts-0.301-4.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 377278
@@ -6077,13 +6077,6 @@ arches:
     name: adobe-mappings-pdf
     evr: 20180407-10.el9
     sourcerpm: adobe-mappings-pdf-20180407-10.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/a/adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.noarch.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 856543
-    checksum: sha256:cfb5e8fddaed92b1b22c957183d0ea626a4468f42a46dae4e68a795cb8c20393
-    name: adobe-source-code-pro-fonts
-    evr: 2.030.1.050-12.el9.1
-    sourcerpm: adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/a/adwaita-cursor-theme-40.1.1-3.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 671139
@@ -6231,20 +6224,20 @@ arches:
     name: cpp
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/c/criu-3.19-3.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/c/criu-3.19-4.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 603115
-    checksum: sha256:127155d8ccc2e3b1971631e251b6bcf788072302b36d85d0cd9b86e5488327a0
+    size: 608553
+    checksum: sha256:7f091d686c20f52a1f70a28c9ca7f3aed796202fb2ab4f9af8398d38fe683649
     name: criu
-    evr: 3.19-3.el9
-    sourcerpm: criu-3.19-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/c/criu-libs-3.19-3.el9.ppc64le.rpm
+    evr: 3.19-4.el9_8
+    sourcerpm: criu-3.19-4.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/c/criu-libs-3.19-4.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 33613
-    checksum: sha256:f004060055d65ee045db9f4a445d9de0ca824a7b41bb48458bb9ac449a558ce0
+    size: 38994
+    checksum: sha256:84c3af47dc5270662f91eab5b8457c2372186ed7c751ba89ac05771a0f3763c2
     name: criu-libs
-    evr: 3.19-3.el9
-    sourcerpm: criu-3.19-3.el9.src.rpm
+    evr: 3.19-4.el9_8
+    sourcerpm: criu-3.19-4.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/c/crun-1.27-1.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 292788
@@ -6525,20 +6518,20 @@ arches:
     name: gstreamer1-plugins-base
     evr: 1.22.12-8.el9_8
     sourcerpm: gstreamer1-plugins-base-1.22.12-8.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/g/gtk-update-icon-cache-3.24.31-8.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/g/gtk-update-icon-cache-3.24.31-9.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 35213
-    checksum: sha256:5f8957034e9565acf2f69e08190d026d3baf9b795880c36c80d0f83a4d79406a
+    size: 40650
+    checksum: sha256:4973ef64ca6bea56c308c029946a4a2ab4aacbfee266ba84030dd41bf8f52061
     name: gtk-update-icon-cache
-    evr: 3.24.31-8.el9
-    sourcerpm: gtk3-3.24.31-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/g/gtk3-3.24.31-8.el9.ppc64le.rpm
+    evr: 3.24.31-9.el9_8
+    sourcerpm: gtk3-3.24.31-9.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/g/gtk3-3.24.31-9.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 5290549
-    checksum: sha256:02e3d79ce5501bf4b0c246be59085640af14dbc71efc157288cc6268a792f950
+    size: 5297107
+    checksum: sha256:4b767368d4dd7b93facc427711512a95ea27e2ca5a35e88a4e79d61f41ed4095
     name: gtk3
-    evr: 3.24.31-8.el9
-    sourcerpm: gtk3-3.24.31-8.el9.src.rpm
+    evr: 3.24.31-9.el9_8
+    sourcerpm: gtk3-3.24.31-9.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/h/hicolor-icon-theme-0.17-13.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 228180
@@ -6588,13 +6581,13 @@ arches:
     name: jbigkit-libs
     evr: 2.1-23.el9
     sourcerpm: jbigkit-2.1-23.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/k/kernel-headers-5.14.0-687.41.1.el9_8.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/k/kernel-headers-5.14.0-687.44.1.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2895853
-    checksum: sha256:77cd0483c762c111190ae1b006ec02cb176aba064c1846f733c7edf859eed410
+    size: 2902293
+    checksum: sha256:0784f765e44b42d297bc6cbcdaa2e9a8970b7d1e909d0e2aa87c75f8c65197c3
     name: kernel-headers
-    evr: 5.14.0-687.41.1.el9_8
-    sourcerpm: kernel-5.14.0-687.41.1.el9_8.src.rpm
+    evr: 5.14.0-687.44.1.el9_8
+    sourcerpm: kernel-5.14.0-687.44.1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/k/kernel-srpm-macros-1.0-14.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 14098
@@ -6999,13 +6992,6 @@ arches:
     size: 598794
     checksum: sha256:96046b39bc6272ea8453c7b6da58781ce8be2976fcd6583ac739df055c52f5c5
     name: libtool
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.ppc64le.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 41941
-    checksum: sha256:1aeb1dd5ed52720e71481871150b8feed52d0fed307d38fefb636a2065854107
-    name: libtool-ltdl
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/l/libtracker-sparql-3.1.2-3.el9_1.ppc64le.rpm
@@ -8968,48 +8954,48 @@ arches:
     name: perl-vmsish
     evr: 1.04-481.1.el9_6
     sourcerpm: perl-5.32.1-481.1.el9_6.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-1.4.11-1.el9_8.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-1.4.11-1.el9_8.2.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 140593
-    checksum: sha256:d6c09afc5f9b26cde4c7d1b39c031b56a7743bac9e9b4a3aea37cfa66756474e
+    size: 140813
+    checksum: sha256:d6271354bee4d4250d472b6a0a5da5e9db9833ee3a3f17cc1f2d53b7a50d03dd
     name: pipewire
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-alsa-1.4.11-1.el9_8.ppc64le.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-alsa-1.4.11-1.el9_8.2.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 74569
-    checksum: sha256:6ce396d008bbc1ee28fb013ed0420bbfa6c665d994facd6c14e4ea437c280fd3
+    size: 74931
+    checksum: sha256:f3c51e8b6107c7a38e53eec220b0ada4209e676c8e60dc306dbf499ef315af68
     name: pipewire-alsa
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-1.4.11-1.el9_8.ppc64le.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-1.4.11-1.el9_8.2.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 14117
-    checksum: sha256:0c224cfa44bee084ea09b4dbc6be35cebcba5bfea323eabf78f36db624719b3b
+    size: 14394
+    checksum: sha256:747d1f568f0f03e9c675253f1372822eca9d148b4984c7933dd8d1c0a026d6ed
     name: pipewire-jack-audio-connection-kit
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.11-1.el9_8.ppc64le.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.11-1.el9_8.2.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 163766
-    checksum: sha256:ed2b57934daf36fa7638498f3403ba03f19d667f738e931bcd2c25cf468ef1db
+    size: 164195
+    checksum: sha256:62a0d679c346f857b9de6babd054a9152ce90af09b3b26d670f9878421598360
     name: pipewire-jack-audio-connection-kit-libs
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-libs-1.4.11-1.el9_8.ppc64le.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-libs-1.4.11-1.el9_8.2.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2657472
-    checksum: sha256:743e546c8303d65f3ebbd8faa7a9d3dfce8a7a24f9da4b6e48e1c9b7f0b6c014
+    size: 2657115
+    checksum: sha256:33221abc29b9679dc968189513417cd4bfc41c938f99f99cb4d059d2d1c48b67
     name: pipewire-libs
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-pulseaudio-1.4.11-1.el9_8.ppc64le.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pipewire-pulseaudio-1.4.11-1.el9_8.2.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 237486
-    checksum: sha256:b9604919b9266b25de53e4937763b2466f17905545976ad4621d5f3dedb1f7a0
+    size: 237845
+    checksum: sha256:06f4601956d314109961b9d3ed309fa07a3175b17d96aaba950ce1555e0bd93b
     name: pipewire-pulseaudio
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/appstream/os/Packages/p/pixman-0.40.0-6.el9_3.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 218875
@@ -10585,6 +10571,13 @@ arches:
     name: acl
     evr: 2.4.0-1.el9_8
     sourcerpm: acl-2.4.0-1.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/a/adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.noarch.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms
+    size: 856543
+    checksum: sha256:cfb5e8fddaed92b1b22c957183d0ea626a4468f42a46dae4e68a795cb8c20393
+    name: adobe-source-code-pro-fonts
+    evr: 2.030.1.050-12.el9.1
+    sourcerpm: adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/a/alternatives-1.24-2.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 44269
@@ -10641,13 +10634,13 @@ arches:
     name: binutils-gold
     evr: 2.35.2-72.el9
     sourcerpm: binutils-2.35.2-72.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/b/bluez-libs-5.85-1.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/b/bluez-libs-5.87+1.git30db66dc971b-1.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 96977
-    checksum: sha256:d9a82fd7d19337937d9c1b75030594d067f9cf0eea466376d770a1c8b476a306
+    size: 97433
+    checksum: sha256:743128f94341956167731a3be34af15f08b4e975bbe27f3e3f46cbad6d9938ce
     name: bluez-libs
-    evr: 5.85-1.el9
-    sourcerpm: bluez-5.85-1.el9.src.rpm
+    evr: 5.87+1.git30db66dc971b-1.el9_8
+    sourcerpm: bluez-5.87+1.git30db66dc971b-1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/b/bubblewrap-0.6.3-1.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 59922
@@ -10753,13 +10746,13 @@ arches:
     name: dbus
     evr: 1:1.12.20-8.el9
     sourcerpm: dbus-1.12.20-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/d/dbus-broker-28-7.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/d/dbus-broker-28-9.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 192179
-    checksum: sha256:dfe710f3a07cd31fd144f439deaed0ef78b5ea65caecb754bc69959908191af7
+    size: 192671
+    checksum: sha256:62f23c1c9a1354c21b0b2d4c4013874b8c60f11e134f8cdf6f0314adb4bf3bbe
     name: dbus-broker
-    evr: 28-7.el9
-    sourcerpm: dbus-broker-28-7.el9.src.rpm
+    evr: 28-9.el9_8
+    sourcerpm: dbus-broker-28-9.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/d/dbus-common-1.12.20-8.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 18551
@@ -11012,13 +11005,13 @@ arches:
     name: gsettings-desktop-schemas
     evr: 40.0-8.el9_7
     sourcerpm: gsettings-desktop-schemas-40.0-8.el9_7.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/g/gzip-1.12-1.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/g/gzip-1.12-2.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 175705
-    checksum: sha256:55b983f08d8b2a0741b07f114cdba89a8ecb207064c001e90e4c76a13836d458
+    size: 176201
+    checksum: sha256:6303a915e54bf2df02c788387d44b4e08882c1431b896483482fa87a2b799972
     name: gzip
-    evr: 1.12-1.el9
-    sourcerpm: gzip-1.12-1.el9.src.rpm
+    evr: 1.12-2.el9_8
+    sourcerpm: gzip-1.12-2.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/h/harfbuzz-2.7.4-10.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 721789
@@ -11138,13 +11131,13 @@ arches:
     name: libatomic
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libattr-2.5.1-3.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libattr-2.6.0-1.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 21501
-    checksum: sha256:a2398158adad2016fca3d0d2c272e027b8279020992a349664caf6a2299ec50b
+    size: 24709
+    checksum: sha256:9931133a1f833d158bc8098815924c1b15cf6c024bc89e0f55571ef906ae8f43
     name: libattr
-    evr: 2.5.1-3.el9
-    sourcerpm: attr-2.5.1-3.el9.src.rpm
+    evr: 2.6.0-1.el9_8
+    sourcerpm: attr-2.6.0-1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libblkid-2.37.4-25.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 130845
@@ -11432,20 +11425,20 @@ arches:
     name: libsmartcols
     evr: 2.37.4-25.el9
     sourcerpm: util-linux-2.37.4-25.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libssh-0.10.4-18.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libssh-0.10.4-19.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 250594
-    checksum: sha256:15cff94afc4645b00c917abd7780a6a3ee1b476dff3eaccaaed93b88298a2ca1
+    size: 252645
+    checksum: sha256:44d3d65ac69d08e4ce6053e477b236772065f48c4be8162370976d3bd0f3e82f
     name: libssh
-    evr: 0.10.4-18.el9
-    sourcerpm: libssh-0.10.4-18.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libssh-config-0.10.4-18.el9.noarch.rpm
+    evr: 0.10.4-19.el9_8
+    sourcerpm: libssh-0.10.4-19.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libssh-config-0.10.4-19.el9_8.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 14685
-    checksum: sha256:ab353cbff2269677fc7364bfcddb8e11537ea83361a0ad642e60eac87ed67fbb
+    size: 14764
+    checksum: sha256:ce06b99793b9e5abc50a58ebc3ef11037f2efbdb5f819a25f8de4994613194d4
     name: libssh-config
-    evr: 0.10.4-18.el9
-    sourcerpm: libssh-0.10.4-18.el9.src.rpm
+    evr: 0.10.4-19.el9_8
+    sourcerpm: libssh-0.10.4-19.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libstdc++-11.5.0-14.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 856889
@@ -11467,6 +11460,13 @@ arches:
     name: libtdb
     evr: 1.4.14-1.el9
     sourcerpm: libtdb-1.4.14-1.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.ppc64le.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms
+    size: 41941
+    checksum: sha256:1aeb1dd5ed52720e71481871150b8feed52d0fed307d38fefb636a2065854107
+    name: libtool-ltdl
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libunistring-0.9.10-15.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 519115
@@ -11509,13 +11509,13 @@ arches:
     name: libxcrypt
     evr: 4.4.18-3.el9
     sourcerpm: libxcrypt-4.4.18-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libxml2-2.9.13-14.el9_8.2.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libxml2-2.9.13-14.el9_8.4.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 849350
-    checksum: sha256:5619a069a8cb47e97b7b97594c2df330a42198588f0bdfda115b726f569032e8
+    size: 848848
+    checksum: sha256:6f6b25cf2206acdbaeb27722aeac871c415adb4c72a09c0fdbaae59b410bd68e
     name: libxml2
-    evr: 2.9.13-14.el9_8.2
-    sourcerpm: libxml2-2.9.13-14.el9_8.2.src.rpm
+    evr: 2.9.13-14.el9_8.4
+    sourcerpm: libxml2-2.9.13-14.el9_8.4.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/l/libzstd-1.5.5-1.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 329280
@@ -11565,13 +11565,13 @@ arches:
     name: mpfr
     evr: 4.1.0-10.el9
     sourcerpm: mpfr-4.1.0-10.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/n/NetworkManager-libnm-1.54.3-4.el9_8.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/n/NetworkManager-libnm-1.54.3-5.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 2049426
-    checksum: sha256:2002a27dd612935800cc1bb0bed259d0e2fc6c14d33165c8ea66d0beee3bd38c
+    size: 2047180
+    checksum: sha256:42d016e19277dc17ae7f711dbb127b78eabfe406032778559cc3a4dc0a9bf5cf
     name: NetworkManager-libnm
-    evr: 1:1.54.3-4.el9_8
-    sourcerpm: NetworkManager-1.54.3-4.el9_8.src.rpm
+    evr: 1:1.54.3-5.el9_8
+    sourcerpm: NetworkManager-1.54.3-5.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/n/ncurses-6.2-12.20210508.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 422717
@@ -11880,13 +11880,13 @@ arches:
     name: shared-mime-info
     evr: 2.1-5.el9
     sourcerpm: shared-mime-info-2.1-5.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/s/sqlite-libs-3.34.1-10.el9_8.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/s/sqlite-libs-3.34.1-11.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 758081
-    checksum: sha256:6eac353037fe537e4639455a4ce8595b6b8c345913f84868b2a3288c6b54000a
+    size: 758085
+    checksum: sha256:f51af80eda44e36b51b315a90e44a0bfd2c6c7d4ce4aadd40bac23af3fc43cb8
     name: sqlite-libs
-    evr: 3.34.1-10.el9_8
-    sourcerpm: sqlite-3.34.1-10.el9_8.src.rpm
+    evr: 3.34.1-11.el9_8
+    sourcerpm: sqlite-3.34.1-11.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/s/systemd-252-67.el9_8.4.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 4435450
@@ -11922,13 +11922,13 @@ arches:
     name: systemd-udev
     evr: 252-67.el9_8.4
     sourcerpm: systemd-252-67.el9_8.4.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/t/tar-1.34-11.el9.ppc64le.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/t/tar-1.34-13.el9_8.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 945887
-    checksum: sha256:cb2fe4ca6c89e1a9fff648629cc7b9b7f33a7853a8ae74c10baa1d5b731d2447
+    size: 947907
+    checksum: sha256:d1edfa14f40d3556861be567c693a18cf025f7d1a1e041142a8a7cae6f7b32f7
     name: tar
-    evr: 2:1.34-11.el9
-    sourcerpm: tar-1.34-11.el9.src.rpm
+    evr: 2:1.34-13.el9_8
+    sourcerpm: tar-1.34-13.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/ppc64le/baseos/os/Packages/t/tpm2-tss-3.2.3-1.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 548711
@@ -12080,13 +12080,13 @@ arches:
     name: texlive-tcolorbox
     evr: 20200406-1.el9ai
     sourcerpm: texlive-tcolorbox-20200406-1.el9ai.src.rpm
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/s390x/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/s390x/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9.s390x.rpm
     repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
-    size: 52969532
-    checksum: sha256:f64c95c9dbb421beddef5dcaa741d2765c5303f872e9eb7d19c337a5cda3cd6b
+    size: 53235751
+    checksum: sha256:4db0881f22ab8b470ed49749e9ec27b7272bf6b993e12cf5106082efac395194
     name: openshift-clients
-    evr: 4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9
-    sourcerpm: openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.src.rpm
+    evr: 4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9
+    sourcerpm: openshift-clients-4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/a/abattis-cantarell-fonts-0.301-4.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 377278
@@ -12115,13 +12115,6 @@ arches:
     name: adobe-mappings-pdf
     evr: 20180407-10.el9
     sourcerpm: adobe-mappings-pdf-20180407-10.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/a/adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.noarch.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 856543
-    checksum: sha256:cfb5e8fddaed92b1b22c957183d0ea626a4468f42a46dae4e68a795cb8c20393
-    name: adobe-source-code-pro-fonts
-    evr: 2.030.1.050-12.el9.1
-    sourcerpm: adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/a/adwaita-cursor-theme-40.1.1-3.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 671139
@@ -12269,20 +12262,20 @@ arches:
     name: cpp
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/c/criu-3.19-3.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/c/criu-3.19-4.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 534901
-    checksum: sha256:4bda534498f502506bb2eff2fa9fdddefe37e3a20bfdeb70a401f3c662e6d037
+    size: 542784
+    checksum: sha256:c3bacbbbb008a63fd384b79c4575d9200db72175d5042de52f6fae3ae2a6d6e6
     name: criu
-    evr: 3.19-3.el9
-    sourcerpm: criu-3.19-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/c/criu-libs-3.19-3.el9.s390x.rpm
+    evr: 3.19-4.el9_8
+    sourcerpm: criu-3.19-4.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/c/criu-libs-3.19-4.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 31157
-    checksum: sha256:fad9de9210d49010e73da6b23544bb759ee8d314b0200ae095b5b2ba7a96d7bb
+    size: 36524
+    checksum: sha256:442e1b3384e4694977918354a81945528b6f2631fcb819696db9f52fc204ff9d
     name: criu-libs
-    evr: 3.19-3.el9
-    sourcerpm: criu-3.19-3.el9.src.rpm
+    evr: 3.19-4.el9_8
+    sourcerpm: criu-3.19-4.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/c/crun-1.27-1.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 249046
@@ -12584,20 +12577,20 @@ arches:
     name: gstreamer1-plugins-base
     evr: 1.22.12-8.el9_8
     sourcerpm: gstreamer1-plugins-base-1.22.12-8.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/g/gtk-update-icon-cache-3.24.31-8.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/g/gtk-update-icon-cache-3.24.31-9.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 33952
-    checksum: sha256:40ffc48e4a5c0980230a8e936d41aaa67b34d0045b7b8870b23d97adfd17484a
+    size: 39386
+    checksum: sha256:a7f5582c5cf791fe692fa65a4cc7c564c68be4e8998bd1f758b92cabe0396b05
     name: gtk-update-icon-cache
-    evr: 3.24.31-8.el9
-    sourcerpm: gtk3-3.24.31-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/g/gtk3-3.24.31-8.el9.s390x.rpm
+    evr: 3.24.31-9.el9_8
+    sourcerpm: gtk3-3.24.31-9.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/g/gtk3-3.24.31-9.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 4979882
-    checksum: sha256:464ab17f6cb84e3a2381a272e34fda535314904f64ca51d5642bacb5b309871b
+    size: 4985793
+    checksum: sha256:886b0b3570a5f234989d3b515eb7736a58de0de01c98e07c9baa36b786b2fbdb
     name: gtk3
-    evr: 3.24.31-8.el9
-    sourcerpm: gtk3-3.24.31-8.el9.src.rpm
+    evr: 3.24.31-9.el9_8
+    sourcerpm: gtk3-3.24.31-9.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/h/harfbuzz-2.7.4-10.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 631278
@@ -12654,13 +12647,13 @@ arches:
     name: jbigkit-libs
     evr: 2.1-23.el9
     sourcerpm: jbigkit-2.1-23.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/k/kernel-headers-5.14.0-687.41.1.el9_8.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/k/kernel-headers-5.14.0-687.44.1.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2902017
-    checksum: sha256:5078b1c5b552c0f2f738e8aae65d87bac7d3060f4eaa028d3d6c31b69603b292
+    size: 2908493
+    checksum: sha256:e2b6ad52e6746e5a0311be5cdd15298888d1f5af72088b724db7303657c08b72
     name: kernel-headers
-    evr: 5.14.0-687.41.1.el9_8
-    sourcerpm: kernel-5.14.0-687.41.1.el9_8.src.rpm
+    evr: 5.14.0-687.44.1.el9_8
+    sourcerpm: kernel-5.14.0-687.44.1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/k/kernel-srpm-macros-1.0-14.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 14098
@@ -13065,13 +13058,6 @@ arches:
     size: 598814
     checksum: sha256:33fa067a7f3aa0f51bf0f777a6648f853871bc32bf6742c671db1d90b2596af2
     name: libtool
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.s390x.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 38223
-    checksum: sha256:eb4af423c05fa567c3886feb8598da24a0c31de2010aa92ea21b871fbb9f8e31
-    name: libtool-ltdl
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/l/libtracker-sparql-3.1.2-3.el9_1.s390x.rpm
@@ -15034,48 +15020,48 @@ arches:
     name: perl-vmsish
     evr: 1.04-481.1.el9_6
     sourcerpm: perl-5.32.1-481.1.el9_6.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-1.4.11-1.el9_8.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-1.4.11-1.el9_8.2.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 140279
-    checksum: sha256:496f8fa0efcf173e21d3b64b9b4825a102326e445f2f02717ea2772a121e9b4a
+    size: 140600
+    checksum: sha256:397ce866392b415e44605cfc42a13bfd88e2c913b21046660ca9d0980842a245
     name: pipewire
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-alsa-1.4.11-1.el9_8.s390x.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-alsa-1.4.11-1.el9_8.2.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 67595
-    checksum: sha256:da6a07484a02efe26ff8d0ac4cb1c5d552227829af6a3daeecd292b56ff9213a
+    size: 67746
+    checksum: sha256:e5ad5723d01f53f23a8f38899938016718014896526d4bf51fc0341cc7444176
     name: pipewire-alsa
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-1.4.11-1.el9_8.s390x.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-1.4.11-1.el9_8.2.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 14119
-    checksum: sha256:594b8035d99355b0e532ddfb3ee385f760d1b682ab65e4f3811e10f6e1145d36
+    size: 14383
+    checksum: sha256:ec73aee37cde551810d4dc79f2156758ad38142ee70aa2c818cf8f40fc529443
     name: pipewire-jack-audio-connection-kit
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.11-1.el9_8.s390x.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.11-1.el9_8.2.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 152481
-    checksum: sha256:5f7ab9e0eb9ba574e3d8dd92954deed9199fe16a6763184fd4df6d3bf6c2551b
+    size: 152752
+    checksum: sha256:1741d819420c301788bdde0daff25fadd60b6a0f83a07a7b263158a63186707e
     name: pipewire-jack-audio-connection-kit-libs
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-libs-1.4.11-1.el9_8.s390x.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-libs-1.4.11-1.el9_8.2.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2422383
-    checksum: sha256:cca68b78819e4014d4bb2d35533e12f7776bbd6a038e746755ea197a09e6cd3c
+    size: 2424021
+    checksum: sha256:489f7e0e3b6d5d379d56ff589220b2a11c96c54b57ac96bdceafca25b0ab880a
     name: pipewire-libs
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-pulseaudio-1.4.11-1.el9_8.s390x.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pipewire-pulseaudio-1.4.11-1.el9_8.2.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 206657
-    checksum: sha256:c4850d90f26f80fa614dae24f4a8e6103e6d8369347841e454bf9a228b7d5083
+    size: 206770
+    checksum: sha256:04da57fc385f9ca29d00c6ab78a72bc12bbd101130a1db961241175543cd2acb
     name: pipewire-pulseaudio
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/appstream/os/Packages/p/pixman-0.40.0-6.el9_3.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 180463
@@ -16651,6 +16637,13 @@ arches:
     name: acl
     evr: 2.4.0-1.el9_8
     sourcerpm: acl-2.4.0-1.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/a/adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.noarch.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms
+    size: 856543
+    checksum: sha256:cfb5e8fddaed92b1b22c957183d0ea626a4468f42a46dae4e68a795cb8c20393
+    name: adobe-source-code-pro-fonts
+    evr: 2.030.1.050-12.el9.1
+    sourcerpm: adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/a/alternatives-1.24-2.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 42270
@@ -16707,13 +16700,13 @@ arches:
     name: binutils-gold
     evr: 2.35.2-72.el9
     sourcerpm: binutils-2.35.2-72.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/b/bluez-libs-5.85-1.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/b/bluez-libs-5.87+1.git30db66dc971b-1.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 87022
-    checksum: sha256:6970e916a9a50d22e3779091b6cd7df3bc863cf8b3e7026a09591a08957b0cac
+    size: 87444
+    checksum: sha256:c9fff6fe149b9ce6a475eb8caba8375728b054c44b8f903dcaff1afbe6b8d21c
     name: bluez-libs
-    evr: 5.85-1.el9
-    sourcerpm: bluez-5.85-1.el9.src.rpm
+    evr: 5.87+1.git30db66dc971b-1.el9_8
+    sourcerpm: bluez-5.87+1.git30db66dc971b-1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/b/bubblewrap-0.6.3-1.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 57199
@@ -16819,13 +16812,13 @@ arches:
     name: dbus
     evr: 1:1.12.20-8.el9
     sourcerpm: dbus-1.12.20-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/d/dbus-broker-28-7.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/d/dbus-broker-28-9.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 169208
-    checksum: sha256:68a4e64a8591df9ae3086014572da3d3b5eb2316a0c2c5e78aaed576c359fd81
+    size: 170185
+    checksum: sha256:d366b1927ddd1322a8b2ad5e9c54a9f7c0ce69be227a20c86a4a660b404991c0
     name: dbus-broker
-    evr: 28-7.el9
-    sourcerpm: dbus-broker-28-7.el9.src.rpm
+    evr: 28-9.el9_8
+    sourcerpm: dbus-broker-28-9.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/d/dbus-common-1.12.20-8.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 18551
@@ -17064,13 +17057,13 @@ arches:
     name: gsettings-desktop-schemas
     evr: 40.0-8.el9_7
     sourcerpm: gsettings-desktop-schemas-40.0-8.el9_7.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/g/gzip-1.12-1.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/g/gzip-1.12-2.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 173101
-    checksum: sha256:50034ee6281864a218a5f3bc47de5afb434400fb8415907fd31d8351adbdc5a6
+    size: 174286
+    checksum: sha256:6a78d3ceeb859f4be0ae548a63556ede364b89cc9e984063e011086e497ae24d
     name: gzip
-    evr: 1.12-1.el9
-    sourcerpm: gzip-1.12-1.el9.src.rpm
+    evr: 1.12-2.el9_8
+    sourcerpm: gzip-1.12-2.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/h/hwdata-0.348-9.22.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 1773961
@@ -17183,13 +17176,13 @@ arches:
     name: libatomic
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libattr-2.5.1-3.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libattr-2.6.0-1.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 20575
-    checksum: sha256:4013df08b49661a8592c2c57428f8040f8e2397379dfc02fa9a125cbf8de44c6
+    size: 23584
+    checksum: sha256:a0bb5b85dfc28983f2522c860fcde0792ec03398f1d39ef019d134b840f88165
     name: libattr
-    evr: 2.5.1-3.el9
-    sourcerpm: attr-2.5.1-3.el9.src.rpm
+    evr: 2.6.0-1.el9_8
+    sourcerpm: attr-2.6.0-1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libblkid-2.37.4-25.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 111331
@@ -17456,20 +17449,20 @@ arches:
     name: libsmartcols
     evr: 2.37.4-25.el9
     sourcerpm: util-linux-2.37.4-25.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libssh-0.10.4-18.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libssh-0.10.4-19.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 212889
-    checksum: sha256:363b892f5c1a3b50916f93cbc942cb1526d08bace674b9499fe7aeab00637a4c
+    size: 214570
+    checksum: sha256:d8f81f77d6fa830d001ea0336b7b4dfa955bd94e885205f8eb62b21e9439b264
     name: libssh
-    evr: 0.10.4-18.el9
-    sourcerpm: libssh-0.10.4-18.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libssh-config-0.10.4-18.el9.noarch.rpm
+    evr: 0.10.4-19.el9_8
+    sourcerpm: libssh-0.10.4-19.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libssh-config-0.10.4-19.el9_8.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 14685
-    checksum: sha256:ab353cbff2269677fc7364bfcddb8e11537ea83361a0ad642e60eac87ed67fbb
+    size: 14764
+    checksum: sha256:ce06b99793b9e5abc50a58ebc3ef11037f2efbdb5f819a25f8de4994613194d4
     name: libssh-config
-    evr: 0.10.4-18.el9
-    sourcerpm: libssh-0.10.4-18.el9.src.rpm
+    evr: 0.10.4-19.el9_8
+    sourcerpm: libssh-0.10.4-19.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libstdc++-11.5.0-14.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 795149
@@ -17491,6 +17484,13 @@ arches:
     name: libtdb
     evr: 1.4.14-1.el9
     sourcerpm: libtdb-1.4.14-1.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.s390x.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms
+    size: 38223
+    checksum: sha256:eb4af423c05fa567c3886feb8598da24a0c31de2010aa92ea21b871fbb9f8e31
+    name: libtool-ltdl
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libunistring-0.9.10-15.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 504493
@@ -17533,13 +17533,13 @@ arches:
     name: libxcrypt
     evr: 4.4.18-3.el9
     sourcerpm: libxcrypt-4.4.18-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libxml2-2.9.13-14.el9_8.2.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libxml2-2.9.13-14.el9_8.4.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 734000
-    checksum: sha256:71af3c02d41bd79243266b8119921daee21f0912b92dad15bf118947ee5724a7
+    size: 734166
+    checksum: sha256:1ad6ef220ab2ca03325ba296fdb0e345c3f56fbfb261c18278dccdf3145ff300
     name: libxml2
-    evr: 2.9.13-14.el9_8.2
-    sourcerpm: libxml2-2.9.13-14.el9_8.2.src.rpm
+    evr: 2.9.13-14.el9_8.4
+    sourcerpm: libxml2-2.9.13-14.el9_8.4.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/l/libzstd-1.5.5-1.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 283786
@@ -17589,13 +17589,13 @@ arches:
     name: mpfr
     evr: 4.1.0-10.el9
     sourcerpm: mpfr-4.1.0-10.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/n/NetworkManager-libnm-1.54.3-4.el9_8.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/n/NetworkManager-libnm-1.54.3-5.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 1978800
-    checksum: sha256:8db69fd8686faae9c0cab0863ba67709b308448ad0d35f70eb9d0dd4d300b22a
+    size: 1977525
+    checksum: sha256:1d03db955cad205a3213c198a851c7696d7c2000524a530b58a6710f42f4163d
     name: NetworkManager-libnm
-    evr: 1:1.54.3-4.el9_8
-    sourcerpm: NetworkManager-1.54.3-4.el9_8.src.rpm
+    evr: 1:1.54.3-5.el9_8
+    sourcerpm: NetworkManager-1.54.3-5.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/n/ncurses-6.2-12.20210508.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 417044
@@ -17904,13 +17904,13 @@ arches:
     name: shared-mime-info
     evr: 2.1-5.el9
     sourcerpm: shared-mime-info-2.1-5.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/s/sqlite-libs-3.34.1-10.el9_8.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/s/sqlite-libs-3.34.1-11.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 652115
-    checksum: sha256:d773b3c1eac55a53efd669c87906804b31cf065a8f9885e6370b739c8f213f9d
+    size: 653093
+    checksum: sha256:5897571d31b7cc9d3e8ef0e7dc9dbf8230bea207c9e926d4fef9fb635ab16f64
     name: sqlite-libs
-    evr: 3.34.1-10.el9_8
-    sourcerpm: sqlite-3.34.1-10.el9_8.src.rpm
+    evr: 3.34.1-11.el9_8
+    sourcerpm: sqlite-3.34.1-11.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/s/systemd-252-67.el9_8.4.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 4167506
@@ -17946,13 +17946,13 @@ arches:
     name: systemd-udev
     evr: 252-67.el9_8.4
     sourcerpm: systemd-252-67.el9_8.4.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/t/tar-1.34-11.el9.s390x.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/t/tar-1.34-13.el9_8.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 907745
-    checksum: sha256:2eee88e1c470b033bd44432f4ed5b1a41ffc7132ebe51f8ce12fa9268314e841
+    size: 910326
+    checksum: sha256:811cba7426379544fd3fbf6e5a8638bed49132e447b0c536c91e6fd315fac6a0
     name: tar
-    evr: 2:1.34-11.el9
-    sourcerpm: tar-1.34-11.el9.src.rpm
+    evr: 2:1.34-13.el9_8
+    sourcerpm: tar-1.34-13.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/s390x/baseos/os/Packages/t/tpm2-tss-3.2.3-1.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 557484
@@ -18104,13 +18104,13 @@ arches:
     name: texlive-tcolorbox
     evr: 20200406-1.el9ai
     sourcerpm: texlive-tcolorbox-20200406-1.el9ai.src.rpm
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9.x86_64.rpm
     repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
-    size: 54964214
-    checksum: sha256:ee71ce72f2b9a1804559527a18c68dd2430394425f9ad64e3fe6384fdb28e00b
+    size: 54962756
+    checksum: sha256:f54ee03ff8005b69bc15955e5ceb8b648cedd122fa39b391c33c44adde1bf291
     name: openshift-clients
-    evr: 4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9
-    sourcerpm: openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.src.rpm
+    evr: 4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9
+    sourcerpm: openshift-clients-4.16.0-202608111505.p2.g6f88b58.assembly.stream.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/a/abattis-cantarell-fonts-0.301-4.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 377278
@@ -18139,13 +18139,6 @@ arches:
     name: adobe-mappings-pdf
     evr: 20180407-10.el9
     sourcerpm: adobe-mappings-pdf-20180407-10.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/a/adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.noarch.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 856543
-    checksum: sha256:cfb5e8fddaed92b1b22c957183d0ea626a4468f42a46dae4e68a795cb8c20393
-    name: adobe-source-code-pro-fonts
-    evr: 2.030.1.050-12.el9.1
-    sourcerpm: adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/a/adwaita-cursor-theme-40.1.1-3.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 671139
@@ -18293,20 +18286,20 @@ arches:
     name: cpp
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/c/criu-3.19-3.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/c/criu-3.19-4.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 569988
-    checksum: sha256:991367e0ca6f3b1672f98ffccc32d43c2b959bf8b82562b79e9f9ff5be23642b
+    size: 575825
+    checksum: sha256:8b5d9ead51b4543ed5368b969ad0764f463a5ab448f552610c44cd8e4cde3acf
     name: criu
-    evr: 3.19-3.el9
-    sourcerpm: criu-3.19-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/c/criu-libs-3.19-3.el9.x86_64.rpm
+    evr: 3.19-4.el9_8
+    sourcerpm: criu-3.19-4.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/c/criu-libs-3.19-4.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 31913
-    checksum: sha256:37144e6c13da6a622fb1f15d0ff3a36fc359477db916a157fefb5d1934881614
+    size: 37299
+    checksum: sha256:3a9f645c6d495fc465fd65bfe02170e93552567bb45745bc6b8bf1402cd35464
     name: criu-libs
-    evr: 3.19-3.el9
-    sourcerpm: criu-3.19-3.el9.src.rpm
+    evr: 3.19-4.el9_8
+    sourcerpm: criu-3.19-4.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/c/crun-1.27-1.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 268116
@@ -18594,20 +18587,20 @@ arches:
     name: gstreamer1-plugins-base
     evr: 1.22.12-8.el9_8
     sourcerpm: gstreamer1-plugins-base-1.22.12-8.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/g/gtk-update-icon-cache-3.24.31-8.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/g/gtk-update-icon-cache-3.24.31-9.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 33934
-    checksum: sha256:c1c2a0a251acef431df04a008faf3636ff3c4d4cb9a45f8ded70fc062b12f0a7
+    size: 39365
+    checksum: sha256:68f784c1b1ad2a3e13824709b8cf45e42219755260febd9b4948c0c4b3ef85f7
     name: gtk-update-icon-cache
-    evr: 3.24.31-8.el9
-    sourcerpm: gtk3-3.24.31-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/g/gtk3-3.24.31-8.el9.x86_64.rpm
+    evr: 3.24.31-9.el9_8
+    sourcerpm: gtk3-3.24.31-9.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/g/gtk3-3.24.31-9.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 5114586
-    checksum: sha256:549fbb89c58d18acdd316ffce424916f04af04bd0f789a3c1f7e1d5569ce6310
+    size: 5120859
+    checksum: sha256:1e2ca2a8a0d0bc271004c5dbd1bdcca7090b365ca9868710608a70f023b871e7
     name: gtk3
-    evr: 3.24.31-8.el9
-    sourcerpm: gtk3-3.24.31-8.el9.src.rpm
+    evr: 3.24.31-9.el9_8
+    sourcerpm: gtk3-3.24.31-9.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/h/hicolor-icon-theme-0.17-13.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 228180
@@ -18657,13 +18650,13 @@ arches:
     name: jbigkit-libs
     evr: 2.1-23.el9
     sourcerpm: jbigkit-2.1-23.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/k/kernel-headers-5.14.0-687.41.1.el9_8.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/k/kernel-headers-5.14.0-687.44.1.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2911313
-    checksum: sha256:7fab4963bb2f80e238051586a6df2b0ffea787daf7ef59659ba8d0fa3648f46e
+    size: 2917773
+    checksum: sha256:e97b12ed737d41e2e34db2d3f3659a5f250ef940fcc9c4dd97235009c8706e7f
     name: kernel-headers
-    evr: 5.14.0-687.41.1.el9_8
-    sourcerpm: kernel-5.14.0-687.41.1.el9_8.src.rpm
+    evr: 5.14.0-687.44.1.el9_8
+    sourcerpm: kernel-5.14.0-687.44.1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/k/kernel-srpm-macros-1.0-14.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 14098
@@ -19061,13 +19054,6 @@ arches:
     size: 598907
     checksum: sha256:29e3e75c1037c5335fd6f9f4029e2dcdcd27d8870fd72b18bd7c16bf51a0db8c
     name: libtool
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.x86_64.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 38043
-    checksum: sha256:44f7303229bdb4c2975f9829e3dd13dc7984e2cb53ef0f85baf894b39f605c38
-    name: libtool-ltdl
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/l/libtracker-sparql-3.1.2-3.el9_1.x86_64.rpm
@@ -21023,48 +21009,48 @@ arches:
     name: perl-vmsish
     evr: 1.04-481.1.el9_6
     sourcerpm: perl-5.32.1-481.1.el9_6.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-1.4.11-1.el9_8.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-1.4.11-1.el9_8.2.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 140482
-    checksum: sha256:299f3ee9fdc8d1687c6f8121d27f88ba57e2ca6d38f11dd273173477746e75e8
+    size: 140739
+    checksum: sha256:384829530b6385b0a079b392cadd95db0ed4d388578e3966e914dccf4f276a69
     name: pipewire
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-alsa-1.4.11-1.el9_8.x86_64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-alsa-1.4.11-1.el9_8.2.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 73649
-    checksum: sha256:5f59805b31a22b618d9a63c8dd2569915162bbbb98356960bbdc6545c8c12211
+    size: 73897
+    checksum: sha256:53231a19cf18c46e98c8db9d0b10beacc218166e49568bfa2eb36fc6705b4974
     name: pipewire-alsa
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-1.4.11-1.el9_8.x86_64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-1.4.11-1.el9_8.2.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 14138
-    checksum: sha256:79f439fe0fc1e9019b8d734ce3631f7bf577af34726b0e5b015976c9c1040d29
+    size: 14415
+    checksum: sha256:5a353fc3e9bb5533930093bdea915153d9fbe599cf90323c748cd7610b4684d9
     name: pipewire-jack-audio-connection-kit
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.11-1.el9_8.x86_64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.11-1.el9_8.2.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 161932
-    checksum: sha256:5339e1de1935487df363e360e246a3ab5a64d532426cb67275e276bf1f5b1c01
+    size: 162245
+    checksum: sha256:db20f99f326b2a043abefa387417c3af59da61b5ca40bd8f3acbd4ea09ab5f62
     name: pipewire-jack-audio-connection-kit-libs
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-libs-1.4.11-1.el9_8.x86_64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-libs-1.4.11-1.el9_8.2.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2647397
-    checksum: sha256:bd99af5ead9b724d8fd86cb36d9f45cb66950916564f724c86c81f83fdf3b650
+    size: 2647603
+    checksum: sha256:6b29d77e65ffd28b8fab29e3da0682c75fada1e1df90fc21e1286c8a0bceab1c
     name: pipewire-libs
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-pulseaudio-1.4.11-1.el9_8.x86_64.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pipewire-pulseaudio-1.4.11-1.el9_8.2.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 221990
-    checksum: sha256:2a46bea8386483f93089021a0e91d776c5ccf2a1f823d61c7f525b8c04e41437
+    size: 221944
+    checksum: sha256:9ff8f6daa88d2b798286da3461a062f3d2137fe9a56aeb6dedd3ea16de5055c2
     name: pipewire-pulseaudio
-    evr: 1.4.11-1.el9_8
-    sourcerpm: pipewire-1.4.11-1.el9_8.src.rpm
+    evr: 1.4.11-1.el9_8.2
+    sourcerpm: pipewire-1.4.11-1.el9_8.2.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/Packages/p/pixman-0.40.0-6.el9_3.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 277483
@@ -22640,6 +22626,13 @@ arches:
     name: acl
     evr: 2.4.0-1.el9_8
     sourcerpm: acl-2.4.0-1.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/a/adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.noarch.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms
+    size: 856543
+    checksum: sha256:cfb5e8fddaed92b1b22c957183d0ea626a4468f42a46dae4e68a795cb8c20393
+    name: adobe-source-code-pro-fonts
+    evr: 2.030.1.050-12.el9.1
+    sourcerpm: adobe-source-code-pro-fonts-2.030.1.050-12.el9.1.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/a/alternatives-1.24-2.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 42874
@@ -22696,13 +22689,13 @@ arches:
     name: binutils-gold
     evr: 2.35.2-72.el9
     sourcerpm: binutils-2.35.2-72.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/b/bluez-libs-5.85-1.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/b/bluez-libs-5.87+1.git30db66dc971b-1.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 89917
-    checksum: sha256:209d7663297fa9d6ed1a14a5b6e417046389af448d1c071723636511cdb1873f
+    size: 90292
+    checksum: sha256:d6759b40579963396af8b377044043fd088e9a1fdae897e8b38a60ca584884bd
     name: bluez-libs
-    evr: 5.85-1.el9
-    sourcerpm: bluez-5.85-1.el9.src.rpm
+    evr: 5.87+1.git30db66dc971b-1.el9_8
+    sourcerpm: bluez-5.87+1.git30db66dc971b-1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/b/bubblewrap-0.6.3-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 58418
@@ -22808,13 +22801,13 @@ arches:
     name: dbus
     evr: 1:1.12.20-8.el9
     sourcerpm: dbus-1.12.20-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/d/dbus-broker-28-7.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/d/dbus-broker-28-9.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 179634
-    checksum: sha256:de9869c08df7f6952787d0335b9bf1a09b328bea920556a59af07c8e085dd3cb
+    size: 180434
+    checksum: sha256:2c3b853f8548394af581f487d3682e3e6a4fd27bb451088ce278c7f00af454db
     name: dbus-broker
-    evr: 28-7.el9
-    sourcerpm: dbus-broker-28-7.el9.src.rpm
+    evr: 28-9.el9_8
+    sourcerpm: dbus-broker-28-9.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/d/dbus-common-1.12.20-8.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 18551
@@ -23067,13 +23060,13 @@ arches:
     name: gsettings-desktop-schemas
     evr: 40.0-8.el9_7
     sourcerpm: gsettings-desktop-schemas-40.0-8.el9_7.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/g/gzip-1.12-1.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/g/gzip-1.12-2.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 171206
-    checksum: sha256:c8b3e0414d55b1eedb0185a564ac6cb2368bee2fd5f995447d045f6a714488ac
+    size: 172571
+    checksum: sha256:a87bdcce45011f232758c01bd99c564b5f6b549d391646cc573a132d22604b85
     name: gzip
-    evr: 1.12-1.el9
-    sourcerpm: gzip-1.12-1.el9.src.rpm
+    evr: 1.12-2.el9_8
+    sourcerpm: gzip-1.12-2.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/h/harfbuzz-2.7.4-10.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 643610
@@ -23186,13 +23179,13 @@ arches:
     name: libassuan
     evr: 2.5.5-3.el9
     sourcerpm: libassuan-2.5.5-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libattr-2.5.1-3.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libattr-2.6.0-1.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 20786
-    checksum: sha256:6519f028915fbd7ee0474f0bf4e98e35f04b5d0cf7be9f66c0cb9eafac0b8c5a
+    size: 23752
+    checksum: sha256:9e37537f690c748f7f05faa80966072f118ec722e38ef332fe19cf22b087349f
     name: libattr
-    evr: 2.5.1-3.el9
-    sourcerpm: attr-2.5.1-3.el9.src.rpm
+    evr: 2.6.0-1.el9_8
+    sourcerpm: attr-2.6.0-1.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libblkid-2.37.4-25.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 114192
@@ -23480,20 +23473,20 @@ arches:
     name: libsmartcols
     evr: 2.37.4-25.el9
     sourcerpm: util-linux-2.37.4-25.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libssh-0.10.4-18.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libssh-0.10.4-19.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 225119
-    checksum: sha256:4a3ec8a0cc0d4f693a876c522d3e4bc2296180b9ec05f958f6a0aa8658702458
+    size: 225821
+    checksum: sha256:10d0ecb7cef182f8d11eb4bc772943a60c48b8171f602ffd83bb79b9edf5eb44
     name: libssh
-    evr: 0.10.4-18.el9
-    sourcerpm: libssh-0.10.4-18.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libssh-config-0.10.4-18.el9.noarch.rpm
+    evr: 0.10.4-19.el9_8
+    sourcerpm: libssh-0.10.4-19.el9_8.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libssh-config-0.10.4-19.el9_8.noarch.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 14685
-    checksum: sha256:ab353cbff2269677fc7364bfcddb8e11537ea83361a0ad642e60eac87ed67fbb
+    size: 14764
+    checksum: sha256:ce06b99793b9e5abc50a58ebc3ef11037f2efbdb5f819a25f8de4994613194d4
     name: libssh-config
-    evr: 0.10.4-18.el9
-    sourcerpm: libssh-0.10.4-18.el9.src.rpm
+    evr: 0.10.4-19.el9_8
+    sourcerpm: libssh-0.10.4-19.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libstdc++-11.5.0-14.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 763021
@@ -23515,6 +23508,13 @@ arches:
     name: libtdb
     evr: 1.4.14-1.el9
     sourcerpm: libtdb-1.4.14-1.el9.src.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.x86_64.rpm
+    repoid: rhel-9-for-x86_64-baseos-eus-rpms
+    size: 38043
+    checksum: sha256:44f7303229bdb4c2975f9829e3dd13dc7984e2cb53ef0f85baf894b39f605c38
+    name: libtool-ltdl
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libunistring-0.9.10-15.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 510558
@@ -23557,13 +23557,13 @@ arches:
     name: libxcrypt
     evr: 4.4.18-3.el9
     sourcerpm: libxcrypt-4.4.18-3.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libxml2-2.9.13-14.el9_8.2.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libxml2-2.9.13-14.el9_8.4.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 772164
-    checksum: sha256:8bc57807fd307c504dd53a1d047215abb9892130943d29023765d2acd9af09a4
+    size: 772646
+    checksum: sha256:3b2b7f705584d2aa9dc1a110ef1b00dbefb3305285877a24a24605fcb9567eb0
     name: libxml2
-    evr: 2.9.13-14.el9_8.2
-    sourcerpm: libxml2-2.9.13-14.el9_8.2.src.rpm
+    evr: 2.9.13-14.el9_8.4
+    sourcerpm: libxml2-2.9.13-14.el9_8.4.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/l/libzstd-1.5.5-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 304135
@@ -23613,13 +23613,13 @@ arches:
     name: mpfr
     evr: 4.1.0-10.el9
     sourcerpm: mpfr-4.1.0-10.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/n/NetworkManager-libnm-1.54.3-4.el9_8.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/n/NetworkManager-libnm-1.54.3-5.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 1996981
-    checksum: sha256:bb9acb34a06ca0111c28fcac6fb098d32e5d587e53af23fc914bc985cfb60476
+    size: 1995811
+    checksum: sha256:6ed6ccb23ac7b78574fb3b8ac665f65baf6aa73bc377d4037bb63a1c943e8f53
     name: NetworkManager-libnm
-    evr: 1:1.54.3-4.el9_8
-    sourcerpm: NetworkManager-1.54.3-4.el9_8.src.rpm
+    evr: 1:1.54.3-5.el9_8
+    sourcerpm: NetworkManager-1.54.3-5.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/n/ncurses-6.2-12.20210508.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 416252
@@ -23928,13 +23928,13 @@ arches:
     name: shared-mime-info
     evr: 2.1-5.el9
     sourcerpm: shared-mime-info-2.1-5.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/s/sqlite-libs-3.34.1-10.el9_8.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/s/sqlite-libs-3.34.1-11.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 664960
-    checksum: sha256:7dc2202e08184890c851dcb2218a9abce14da150f12dfb8663ca306416e1d8d4
+    size: 665095
+    checksum: sha256:e5c20e933ec01f746a6c59a94cb99f46c6138dab3f387f0d02dab47f356e2e98
     name: sqlite-libs
-    evr: 3.34.1-10.el9_8
-    sourcerpm: sqlite-3.34.1-10.el9_8.src.rpm
+    evr: 3.34.1-11.el9_8
+    sourcerpm: sqlite-3.34.1-11.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/s/systemd-252-67.el9_8.4.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 4401138
@@ -23970,13 +23970,13 @@ arches:
     name: systemd-udev
     evr: 252-67.el9_8.4
     sourcerpm: systemd-252-67.el9_8.4.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/t/tar-1.34-11.el9.x86_64.rpm
+  - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/t/tar-1.34-13.el9_8.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
-    size: 913256
-    checksum: sha256:58b622ab7bc225731a2473e677f16c9eb51b1ed218a86a7aa039a6fed665f245
+    size: 914200
+    checksum: sha256:913d84cd94463e3f0400d80c6742a2974eeab6445ac71ff9eb802a70779c146f
     name: tar
-    evr: 2:1.34-11.el9
-    sourcerpm: tar-1.34-11.el9.src.rpm
+    evr: 2:1.34-13.el9_8
+    sourcerpm: tar-1.34-13.el9_8.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/baseos/os/Packages/t/tpm2-tss-3.2.3-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-eus-rpms
     size: 621714
