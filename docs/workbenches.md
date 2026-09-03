@@ -58,7 +58,7 @@ Use the TrustyAI notebook image to leverage your data science work with model ex
 
 [2023b Packages](https://github.com/opendatahub-io/notebooks/blob/2023b/jupyter/trustyai/ubi9-python-3.9/Pipfile) || [2023a Packages](https://github.com/opendatahub-io/notebooks/blob/2023a/jupyter/trustyai/ubi9-python-3.9/Pipfile)
 
- ## code-server
+## code-server
 
 code-server provides a browser-based integrated development environment (IDE) where you can write, edit, and debug code using the familiar interface and features of code-server. It is particularly useful for collaborating with team members, as everyone can access the same development environment from their own devices.
 
