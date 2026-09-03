@@ -120,15 +120,18 @@ jobs:
 
           git commit -m "Update pylock lock files"
 
-      - name: Commit manifest annotation updates
+      - name: Regenerate Dockerfile fragments
         run: |
           set -euo pipefail
-
-          # Regenerate Dockerfiles after lockfile changes.
           # Lockfiles may bump package versions (e.g. uv) that dockerfile_fragments.py
           # derives and embeds in Dockerfiles. Without this step, Dockerfiles drift
           # out of sync and check-generated-code fails.
           uv run scripts/dockerfile_fragments.py
+
+      - name: Commit manifest annotation updates
+        run: |
+          set -euo pipefail
+
           uv run manifests/tools/generate_kustomization.py
 
           uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh

@@ -152,8 +152,11 @@ COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-package
 # The raw RHEL Python base does not bootstrap uv the way AIPCC notebook bases
 # do. Install uv from the hermeto/cachi2 pip cache (offline) before the main
 # package install. Online `pip install uv` would break hermetic Konflux builds.
-# UV_VERSION is derived from this image's pylock by scripts/dockerfile_fragments.py.
+# UV_VERSION is derived from this image's requirements.cpu.txt by scripts/dockerfile_fragments.py.
+### BEGIN UV version
 ARG UV_VERSION=0.12.5
+
+### END UV version
 RUN python3 -m pip install --no-cache-dir --no-index \
     --find-links /cachi2/output/deps/pip \
     "uv==${UV_VERSION}"

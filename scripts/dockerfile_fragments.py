@@ -14,6 +14,7 @@ We could also support files, or maybe even `### BEGIN funcname("param1", "param2
 
 from __future__ import annotations
 
+import re
 import textwrap
 from typing import TYPE_CHECKING
 
@@ -24,6 +25,10 @@ if TYPE_CHECKING:
 
     from pyfakefs.fake_filesystem import FakeFilesystem
 
+UV_VERSION_PREFIX = "UV version"
+UV_REQUIREMENT_RE = re.compile(r"^uv==([^\\\s;]+)")
+REQUIREMENTS_CPU = "requirements.cpu.txt"
+
 # restricting to the relevant directories significantly speeds up the processing
 docker_directories = (
     ntb.ROOT_DIR / "base-images",
@@ -32,6 +37,35 @@ docker_directories = (
     ntb.ROOT_DIR / "codeserver-baseline",
     ntb.ROOT_DIR / "runtimes",
 )
+
+
+def uv_version_from_requirements(requirements: pathlib.Path) -> str:
+    """Return the pinned ``uv`` version from a hashed requirements file."""
+    versions: set[str] = set()
+    with open(requirements, "rt") as fp:
+        for line in fp:
+            match = UV_REQUIREMENT_RE.match(line.strip())
+            if match:
+                versions.add(match.group(1))
+    if not versions:
+        raise ValueError(f"No uv== pin found in {requirements}")
+    if len(versions) > 1:
+        raise ValueError(f"Conflicting uv pins in {requirements}: {sorted(versions)}")
+    return next(iter(versions))
+
+
+def uv_version_replacement(dockerfile: pathlib.Path) -> dict[str, str]:
+    """Fill ``ARG UV_VERSION`` from the Dockerfile's sibling ``requirements.cpu.txt``."""
+    begin = f"### BEGIN {UV_VERSION_PREFIX}"
+    with open(dockerfile, "rt") as fp:
+        has_marker = any(line.rstrip() == begin for line in fp)
+    if not has_marker:
+        return {}
+    requirements = dockerfile.parent / REQUIREMENTS_CPU
+    if not requirements.is_file():
+        raise ValueError(f"{dockerfile} has '{begin}' but {requirements} is missing")
+    version = uv_version_from_requirements(requirements)
+    return {UV_VERSION_PREFIX: f"ARG UV_VERSION={version}\n"}
 
 
 def sanity_check(dockerfile: pathlib.Path, replacements: dict[str, str]):
@@ -192,9 +226,10 @@ def main():
             if dockerfile.is_relative_to(ntb.ROOT_DIR / "examples"):
                 continue
 
-            sanity_check(dockerfile, replacements)
+            replacements_for_file = {**replacements, **uv_version_replacement(dockerfile)}
+            sanity_check(dockerfile, replacements_for_file)
 
-            for prefix, contents in replacements.items():
+            for prefix, contents in replacements_for_file.items():
                 ntb.blockinfile(
                     filename=dockerfile,
                     contents=contents,
