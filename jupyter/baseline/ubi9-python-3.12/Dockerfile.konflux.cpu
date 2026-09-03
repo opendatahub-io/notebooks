@@ -1,14 +1,9 @@
 ############################################################################################
-# Phase 1 Dockerfile for jupyter/baseline/ubi9-python-3.12
+# Hermetic Dockerfile for jupyter/baseline/ubi9-python-3.12
 #
-# This baseline image intentionally uses a non-hermetic build path for phase 1:
-# - RPMs are resolved online during the image build
-# - Python packages are installed from requirements.${PYLOCK_FLAVOR}.txt via PyPI
-#
-# [PHASE 2 HERMETIC]
-# The copied jupyter/datascience Dockerfile used cachi2-managed RPM/pip inputs.
-# That logic is intentionally deferred for the later hermetic conversion of
-# jupyter/baseline.
+# RPMs and Python packages are installed from Cachi2 prefetch inputs:
+# - RPMs: prefetch-input/odh (see rpms.in.yaml / rpms.lock.yaml)
+# - Python: --no-index --find-links /cachi2/output/deps/pip
 #
 # Multi-stage layout:
 #   cpu-base         -> installs OS packages + tools (oc client)
@@ -23,8 +18,6 @@ ARG BASE_IMAGE
 
 ############################################################################################
 # cpu-base: Runtime base image with OS packages, tools (oc)
-#
-# Phase 1 online runtime base.
 ############################################################################################
 FROM ${BASE_IMAGE} AS cpu-base
 
@@ -35,29 +28,50 @@ USER 0
 
 ARG RHEL_VERSION=9.8
 
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-RUN subscription-manager release --set="${RHEL_VERSION}"
+### BEGIN PyPI pip and uv index
+ENV PIP_INDEX_URL=https://pypi.org/simple
+ENV UV_INDEX_URL=https://pypi.org/simple
+ENV UV_DEFAULT_INDEX=https://pypi.org/simple
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ -f /opt/app-root/pip.conf ]; then
+  sed -i 's|^index-url = .*|index-url = https://pypi.org/simple|' /opt/app-root/pip.conf
+fi
+if [ -f /opt/app-root/uv.toml ]; then
+  sed -i 's|^index-url = .*|index-url = "https://pypi.org/simple"|' /opt/app-root/uv.toml
+fi
+EOF
 
-# Runtime installs need the OpenShift layered-product repo for openshift-clients.
-RUN basearch="$(rpm --eval '%{_arch}')" && \
-    dnf config-manager --set-enabled "rhocp-4.16-for-rhel-9-${basearch}-rpms"
+### END PyPI pip and uv index
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 # Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
 # compat-openssl11 provides libcrypto.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
-RUN /bin/bash <<'EOF'
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y tar perl mesa-libGL skopeo compat-openssl11 openshift-clients
+BASE_PKGS=(tar perl mesa-libGL skopeo compat-openssl11 openshift-clients)
+dnf install -y "${BASE_PKGS[@]}"
 dnf clean all
-rm -rf /var/cache/dnf
+rm -rf /var/cache/yum
 EOF
 
+
 # ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
-RUN /bin/bash <<'EOF'
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-    dnf install -y openblas-threads
-    dnf clean all
+   dnf install -y openblas-threads
+   dnf clean all
+   rm -rf /var/cache/yum /var/cache/dnf
 fi
 EOF
 
@@ -77,29 +91,18 @@ COPY --chown=1001:0 ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# texlive-tcolorbox is not in AppStream/CRB. Hermetic builds pull it via cachi2
-# (EPEL for ODH, rhelai for RHDS). Phase-1 online builds enable EPEL instead.
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
-EOF
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
 
 ### END Dependencies for PDF export
-
-# Real pandoc binary for nbconvert (PyPI has no pandoc-rhai equivalent).
-# Install while EPEL is still enabled, then drop the release package.
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y pandoc
-dnf remove -y epel-release || true
-dnf clean all
-rm -rf /var/cache/dnf
-pandoc --version
-EOF
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 RUN chmod 755 ./start-notebook.sh
@@ -135,66 +138,64 @@ WORKDIR /opt/app-root/bin
 
 USER 0
 
-# Runtime OS packages for JupyterLab / Elyra / Kale (no DB-connector stack in phase 1).
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-PACKAGES=(jq git-lfs libsndfile libxcrypt-compat protobuf)
-dnf install -y "${PACKAGES[@]}"
-dnf clean all
-rm -rf /var/cache/dnf
-EOF
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install jq git-lfs libsndfile libxcrypt-compat protobuf pandoc
+
+COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
-# The raw RHEL Python base does not bootstrap uv the way the AIPCC notebook
-# base does, so install it explicitly for the phase-1 online PyPI install.
+# The raw RHEL Python base does not bootstrap uv the way AIPCC notebook bases
+# do. Install uv from the hermeto/cachi2 pip cache (offline) before the main
+# package install. Online `pip install uv` would break hermetic Konflux builds.
+# UV_VERSION is derived from this image's pylock by scripts/dockerfile_fragments.py.
 ARG UV_VERSION=0.12.5
-RUN python3 -m pip install --no-cache-dir "uv==${UV_VERSION}"
+RUN python3 -m pip install --no-cache-dir --no-index \
+    --find-links /cachi2/output/deps/pip \
+    "uv==${UV_VERSION}"
 
-ENV SHELL=/bin/bash
-# Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
-ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
+USER 1001:0
 
-# Phase 1 Python install: hashed requirements from PyPI (non-hermetic).
-COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
+
+# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index).
+# /cachi2/output/deps/pip/ contains AIPCC wheels (and uv itself).
 echo "Installing software and packages"
-UV_NO_CACHE=true UV_LINK_MODE=copy \
-uv pip install \
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
+    --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
 
-pandoc --version
-
-mkdir -p /opt/app-root/runtimes
-mkdir -p /opt/app-root/pipeline-runtimes
-rm -f /opt/app-root/share/jupyter/metadata/runtime-images/*.json
-sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" \
-    /opt/app-root/share/jupyter/kernels/python3/kernel.json
-# copy jupyter configuration (install -m 0664 for OpenShift gid 0 g+w)
-install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
-  /opt/app-root/etc/jupyter/jupyter_server_config.py
-jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-chmod g+w /opt/app-root/etc/jupyter/labconfig
-/opt/app-root/bin/utils/addons/apply.sh
+# JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist; no
+# PyPI wheels for argon2-cffi-bindings and other native deps). Skip Jupyter
+# post-install on ppc64le/s390x — kernel.json and labextension do not exist.
+if [[ "$(uname -m)" != "s390x" && "$(uname -m)" != "ppc64le" ]]; then
+    mkdir -p /opt/app-root/runtimes
+    mkdir -p /opt/app-root/pipeline-runtimes
+    rm -f /opt/app-root/share/jupyter/metadata/runtime-images/*.json
+    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" \
+        /opt/app-root/share/jupyter/kernels/python3/kernel.json
+    # copy jupyter configuration (install -m 0664 for OpenShift gid 0 g+w)
+    install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
+      /opt/app-root/etc/jupyter/jupyter_server_config.py
+    jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+    chmod g+w /opt/app-root/etc/jupyter/labconfig
+    /opt/app-root/bin/utils/addons/apply.sh
+else
+    echo "JupyterLab stack is not installed on $(uname -m); skipping Jupyter post-install."
+fi
 /usr/local/bin/ensure-openshift-site-packages.sh
-
-# change ownership to default user (packages were installed as root)
-chown -R 1001:0 /opt/app-root
 EOF
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
 
 USER 1001
-
-# Fix permissions to support pip in OpenShift environments
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
-EOF
 
 WORKDIR /opt/app-root/src

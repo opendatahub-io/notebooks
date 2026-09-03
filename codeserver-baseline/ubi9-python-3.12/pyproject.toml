@@ -22,7 +22,7 @@ dependencies = [
     "notebook; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
 
     # debugpy only has a useful Linux native wheel for x86_64 (PyPI also ships py3-none-any).
-    "debugpy; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "debugpy; platform_machine == 'x86_64'",
 
     # Intentionally pinned: PyPI wheels exist for all supported architectures.
     # Required at build time by code-server.
@@ -32,17 +32,21 @@ dependencies = [
 [tool.uv]
 # notebook 7.6.x needs jupyterlab>=4.6.3; jupyter 1.1.1 otherwise caps jupyterlab<4.6.
 override-dependencies = [
-    "jupyterlab>=4.6.3,<4.7",
+    "jupyterlab>=4.6.3,<4.7; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
 ]
 
 
-# Fail resolution if a required package does not have a compatible wheel for any
-# architecture this image ships. Jupyter-stack deps are marker-gated above.
+# Same ``environments`` as AIPCC datascience so uv writes python_full_version /
+# implementation_name / sys_platform markers. Jupyter-stack deps use exclusion
+# markers so native transitives stay off ppc64le/s390x.
 required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
     "sys_platform == 'linux' and platform_machine == 'aarch64'",
     "sys_platform == 'linux' and platform_machine == 'ppc64le'",
     "sys_platform == 'linux' and platform_machine == 's390x'",
+]
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 
 [tool.uv.sources]

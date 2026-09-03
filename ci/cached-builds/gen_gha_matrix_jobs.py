@@ -40,17 +40,9 @@ S390X_COMPATIBLE = {
     # add more here
 }
 
-# Targets that need the GHA "Add subscriptions" step even though their make
-# target names do not contain the historical "rhel" marker.
-SUBSCRIPTION_BACKED_TARGETS = {
-    "jupyter-baseline-ubi9-python-3.12",
-    "codeserver-baseline-ubi9-python-3.12",
-    "runtime-baseline-ubi9-python-3.12",
-}
-
 
 def target_needs_subscription(target: str) -> bool:
-    return "rhel" in target or target in SUBSCRIPTION_BACKED_TARGETS
+    return "rhel" in target
 
 
 def extract_image_targets(
@@ -228,13 +220,13 @@ if __name__ == "__main__":
 
 class TestSelf(unittest.TestCase):
     def test_target_needs_subscription(self):
-        assert target_needs_subscription("jupyter-baseline-ubi9-python-3.12") is True
-        assert target_needs_subscription("codeserver-baseline-ubi9-python-3.12") is True
-        assert target_needs_subscription("runtime-baseline-ubi9-python-3.12") is True
+        assert target_needs_subscription("jupyter-baseline-ubi9-python-3.12") is False
+        assert target_needs_subscription("codeserver-baseline-ubi9-python-3.12") is False
+        assert target_needs_subscription("runtime-baseline-ubi9-python-3.12") is False
         assert target_needs_subscription("cuda-jupyter-minimal-ubi9-python-3.12") is False
         assert target_needs_subscription("runtime-rhel-cuda-tensorflow-ubi9-python-3.12") is True
 
-    def test_filter_rhel_targets_excludes_subscription_backed_baseline(self):
+    def test_filter_rhel_targets_excludes_rhel_marked_targets(self):
         targets = [
             "jupyter-baseline-ubi9-python-3.12",
             "codeserver-baseline-ubi9-python-3.12",
@@ -243,9 +235,14 @@ class TestSelf(unittest.TestCase):
             "runtime-rhel-cuda-tensorflow-ubi9-python-3.12",
         ]
 
-        assert filter_rhel_targets(targets, RhelImages.EXCLUDE) == ["jupyter-minimal-ubi9-python-3.12"]
+        assert filter_rhel_targets(targets, RhelImages.EXCLUDE) == [
+            "jupyter-baseline-ubi9-python-3.12",
+            "codeserver-baseline-ubi9-python-3.12",
+            "runtime-baseline-ubi9-python-3.12",
+            "jupyter-minimal-ubi9-python-3.12",
+        ]
 
-    def test_filter_rhel_targets_include_only_keeps_subscription_backed_baseline(self):
+    def test_filter_rhel_targets_include_only_keeps_rhel_marked_targets(self):
         targets = [
             "jupyter-baseline-ubi9-python-3.12",
             "codeserver-baseline-ubi9-python-3.12",
@@ -255,9 +252,6 @@ class TestSelf(unittest.TestCase):
         ]
 
         assert filter_rhel_targets(targets, RhelImages.INCLUDE_ONLY) == [
-            "jupyter-baseline-ubi9-python-3.12",
-            "codeserver-baseline-ubi9-python-3.12",
-            "runtime-baseline-ubi9-python-3.12",
             "runtime-rhel-cuda-tensorflow-ubi9-python-3.12",
         ]
 

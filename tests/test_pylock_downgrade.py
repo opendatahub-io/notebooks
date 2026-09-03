@@ -113,6 +113,7 @@ def _parse_pylock_versions_for_linux(pylock_text: str, python_full: str) -> dict
         "python_version": python_full,
         "implementation_name": "cpython",
         "sys_platform": "linux",
+        "platform_machine": "x86_64",
     }
     out: dict[str, str] = {}
     for p in doc.get("packages", []):

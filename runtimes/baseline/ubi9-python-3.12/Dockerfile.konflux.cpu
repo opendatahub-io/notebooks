@@ -1,14 +1,9 @@
 ############################################################################################
-# Phase 1 Dockerfile for runtimes/baseline/ubi9-python-3.12
+# Hermetic Dockerfile for runtimes/baseline/ubi9-python-3.12
 #
-# This baseline image intentionally uses a non-hermetic build path for phase 1:
-# - RPMs are resolved online during the image build
-# - Python packages are installed from requirements.${PYLOCK_FLAVOR}.txt via PyPI
-#
-# [PHASE 2 HERMETIC]
-# The copied runtimes/datascience Dockerfile used cachi2-managed RPM/pip inputs.
-# That logic is intentionally deferred for the later hermetic conversion of
-# runtimes/baseline.
+# RPMs and Python packages are installed from Cachi2 prefetch inputs:
+# - RPMs: prefetch-input/odh (see rpms.in.yaml / rpms.lock.yaml)
+# - Python: --no-index --find-links /cachi2/output/deps/pip
 #
 # Multi-stage layout:
 #   cpu-base         -> installs OS packages + tools (oc client)
@@ -22,8 +17,6 @@ ARG BASE_IMAGE
 
 ############################################################################################
 # cpu-base: Runtime base image with OS packages, tools (oc)
-#
-# Phase 1 online runtime base.
 ############################################################################################
 FROM ${BASE_IMAGE} AS cpu-base
 
@@ -34,29 +27,39 @@ USER 0
 
 ARG RHEL_VERSION=9.8
 
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-RUN subscription-manager release --set="${RHEL_VERSION}"
-
-# Runtime installs need the OpenShift layered-product repo for openshift-clients.
-RUN basearch="$(rpm --eval '%{_arch}')" && \
-    dnf config-manager --set-enabled "rhocp-4.16-for-rhel-9-${basearch}-rpms"
-
-# Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
-# compat-openssl11 provides libcrypto.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
+### BEGIN PyPI pip and uv index
+ENV PIP_INDEX_URL=https://pypi.org/simple
+ENV UV_INDEX_URL=https://pypi.org/simple
+ENV UV_DEFAULT_INDEX=https://pypi.org/simple
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y tar perl mesa-libGL skopeo compat-openssl11 openshift-clients
-dnf clean all
-rm -rf /var/cache/dnf
+if [ -f /opt/app-root/pip.conf ]; then
+  sed -i 's|^index-url = .*|index-url = https://pypi.org/simple|' /opt/app-root/pip.conf
+fi
+if [ -f /opt/app-root/uv.toml ]; then
+  sed -i 's|^index-url = .*|index-url = "https://pypi.org/simple"|' /opt/app-root/uv.toml
+fi
 EOF
 
+### END PyPI pip and uv index
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+
 # ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
-RUN /bin/bash <<'EOF'
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-    dnf install -y openblas-threads
-    dnf clean all
+    bash /utils/dnf-helper.sh install openblas-threads
 fi
 EOF
 
@@ -87,53 +90,41 @@ WORKDIR /opt/app-root/bin
 
 USER 0
 
-# Lean OS package set for Elyra/Kale execution (no DB-connector stack in phase 1).
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-PACKAGES=(jq git-lfs libsndfile libxcrypt-compat protobuf)
-dnf install -y "${PACKAGES[@]}"
-dnf clean all
-rm -rf /var/cache/dnf
-EOF
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install jq git-lfs libsndfile libxcrypt-compat protobuf
+
+COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/app-root/bin/utils/bootstrapper.py
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
-# The raw RHEL Python base does not bootstrap uv the way the AIPCC notebook
-# base does, so install it explicitly for the phase-1 online PyPI sync.
-ARG UV_VERSION=0.12.5
-RUN python3 -m pip install --no-cache-dir "uv==${UV_VERSION}"
+USER 1001:0
 
-ENV SHELL=/bin/bash
-# Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
-ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
 ENV ELYRA_INSTALL_PACKAGES="false"
 
-# Phase 1 Python install: hashed requirements from PyPI (non-hermetic).
-COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
+
 echo "Installing software and packages"
-UV_NO_CACHE=true UV_LINK_MODE=copy \
-uv pip install \
+# rhel9/python-312 does not ship uv (ODH/AIPCC bases do). Bootstrap it from
+# the Cachi2 pip cache, then install the rest of the lockfile with uv.
+python3 -m pip install --no-index --no-cache-dir --no-deps \
+    --find-links /cachi2/output/deps/pip \
+    uv
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
+    --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
 
 /usr/local/bin/ensure-openshift-site-packages.sh
-
-# change ownership to default user (packages were installed as root)
-chown -R 1001:0 /opt/app-root
 EOF
 
 USER 1001
-
-# Fix permissions to support pip in OpenShift environments
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
-EOF
 
 WORKDIR /opt/app-root/src
