@@ -103,7 +103,8 @@ and a full walkthrough (including jupyter datascience).
 **Variant directory:** Lockfiles live under `prefetch-input/odh/` (upstream) or
 `prefetch-input/rhds/` (downstream). If that directory is missing, steps 1 and 4
 are skipped; steps 2 (pip), 3 (npm), and 5 (gomod) still run when their inputs exist
-(`pyproject.toml`, a Tekton file for the component, or gomod-type prefetch-input).
+(`pyproject.toml` and `requirements.<flavor>.txt`, a Tekton file for the
+component, or gomod-type prefetch-input).
 
 **Step 3 (NPM):** The script finds the Tekton file automatically via
 `find_tekton_yaml`: it looks for a `.tekton/*pull-request*.yaml` whose
@@ -119,9 +120,11 @@ directory containing `go.mod` and `go.sum`, `create-go-lockfile.sh` runs Hermeto
 to fetch Go modules into `cachi2/output/deps/gomod/`. If there are no gomod
 entries, the step is skipped.
 
-Steps are skipped if their input files don't exist. For RPMs, if
-`rpms.lock.yaml` is already committed, it downloads directly (skipping
-lockfile regeneration) — this avoids cross-platform issues on arm64 CI runners.
+Steps are skipped if their input files don't exist, except Step 2, which fails
+if the committed `requirements.<flavor>.txt` is missing (run
+`make refresh-lock-files`). For RPMs, if `rpms.lock.yaml` is already committed,
+it downloads directly (skipping lockfile regeneration) — this avoids
+cross-platform issues on arm64 CI runners.
 
 ### GitHub Actions integration
 
