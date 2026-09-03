@@ -15,7 +15,7 @@ Open Data Hub contains the following workbench images with different variations:
 
 These notebooks are incorporated to be used in conjunction with Open Data Hub, specifically utilizing the ODH Notebook Controller as the launching platform. The table above provides insights into the characteristics of each notebook, including their availability in both ODH and OpenShift AI environments, GPU support, and whether they are offered as runtimes ie without the JupyterLab UI.
 
-All the notebooks are available on the[ Quay.io registry](https://quay.io/repository/opendatahub/workbench-images?tab=tags&tag=latest); please filter the results by using the tag "2023b" for the latest release and "2023a" for the n-1.
+All the notebooks are available on the [Quay.io registry](https://quay.io/repository/opendatahub/workbench-images?tab=tags&tag=latest); please filter the results by using the tag "2023b" for the latest release and "2023a" for the n-1.
 
 ## Jupyter Minimal
 Jupyter Minimal provides a browser-based integrated development environment where you can write, edit, and debug code using the familiar interface and features of JupyterLab.
