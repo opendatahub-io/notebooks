@@ -14,5 +14,10 @@
     "MD040": true,
     "MD014": true
   },
-  "globs": ["**/*.md"]
+  "globs": ["**/*.md"],
+  // markdownlint-cli2 unions these globs with the files pre-commit passes
+  // (--all-files), so it would otherwise also lint untracked vendored READMEs
+  // under .venv/ (created by `uv sync`) and node_modules/. Exclude both so the
+  // hook only checks files in the repository.
+  "ignores": [".venv/**", "venv/**", "node_modules/**"]
 }
