@@ -1,0 +1,38 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/codeserver-baseline"
+    opendatahub.io/notebook-image-name: "Code Server | Baseline | CPU | Python 3.12"
+    opendatahub.io/notebook-image-desc: "Lean code-server workbench with Python 3.12 and a minimal public-index dependency set for VS Code-based development."
+    opendatahub.io/notebook-image-order: "23"
+  name: code-server-baseline-notebook
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "code-server", "version": "4.122"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"},
+            {"name": "ipykernel", "version": "7.3"}
+          ]
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-codeserver-baseline-cpu-py312-rhel9
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-baseline-cpu-py312-c9s-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-codeserver-baseline-cpu-py312-c9s-n_PLACEHOLDER
+      name: "3.6"
+      referencePolicy:
+        type: Source
