@@ -1,7 +1,7 @@
 // Copyright (c) 2019 Coder Technologies Inc.
 // https://github.com/coder/code-server/blob/main/test/e2e/models/CodeServer.ts
 
-import {Page} from "@playwright/test";
+import {expect, Page} from "@playwright/test";
 import * as path from "node:path";
 
 import {log as rootLog} from "../logger";
@@ -34,6 +34,20 @@ export class CodeServer {
      */
     async waitForTab(file: string): Promise<void> {
         await this.page.waitForSelector(`.tab :text("${path.basename(file)}")`)
+    }
+
+    /**
+     * Close the workspace README preview opened on first launch
+     * (workbench.startupEditor = "readme").
+     */
+    async dismissStartupReadme(): Promise<void> {
+        const readmeTab = this.page.getByRole("tab", {name: /README\.md/i})
+        if (!(await readmeTab.isVisible())) {
+            return
+        }
+        await readmeTab.click()
+        await this.page.keyboard.press("Control+W")
+        await expect(readmeTab).not.toBeVisible({timeout: 5000})
     }
 
     /**
