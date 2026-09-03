@@ -28,6 +28,12 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/aiosignal-1.4.0-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 9140, hashes = { sha256 = "1c7350f826518aee08b77722670980ad426cac6772f574c9d66a4ad4c634867d" } }]
 
 [[packages]]
+name = "anyio"
+version = "4.14.2"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/anyio-4.14.2-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 126078, hashes = { sha256 = "982d481dc430ecf619d63c5dd77b534442795acdd713344c5f405a69c20aadaa" } }]
+
+[[packages]]
 name = "argon2-cffi"
 version = "25.1.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -45,6 +51,12 @@ wheels = [
 ]
 
 [[packages]]
+name = "arrow"
+version = "1.4.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/arrow-1.4.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 70409, hashes = { sha256 = "fd6661e8bebee4e62a704e5d59854e82870743fb261633ac45fab5b2f0e67241" } }]
+
+[[packages]]
 name = "astor"
 version = "0.8.1"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -57,6 +69,12 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/asttokens-3.0.2-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 29413, hashes = { sha256 = "c56de98b4bbcd9b28697fedb1381679afa3c9a237071cbd7e50a343840ff1e4e" } }]
 
 [[packages]]
+name = "async-lru"
+version = "2.3.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/async_lru-2.3.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 10054, hashes = { sha256 = "b36060caf6ef63db88f23b53aab4c7ccb8fe471cf4b75da5e6bd2ef04429efa3" } }]
+
+[[packages]]
 name = "attrs"
 version = "26.1.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -67,6 +85,12 @@ name = "autopep8"
 version = "2.3.2"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/autopep8-2.3.2-1-py2.py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 47527, hashes = { sha256 = "712cee22ee81cd31e5bfbee2a66da356f714ce4aee97c774de64f9b8e64d323b" } }]
+
+[[packages]]
+name = "babel"
+version = "2.18.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/babel-2.18.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 10198502, hashes = { sha256 = "53f2e369782200a613927eff62c18fefedd66d9ac113cbb5dee4115ff94b936a" } }]
 
 [[packages]]
 name = "beautifulsoup4"
@@ -110,10 +134,27 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/click-8.4.2-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 120858, hashes = { sha256 = "6e18eed0a727a8a903729a024b94912fb3636fadae097ea79ddcf2697d233a2f" } }]
 
 [[packages]]
+name = "click-option-group"
+version = "0.5.7"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/click_option_group-0.5.7-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 13199, hashes = { sha256 = "b48288d7abe1ab1f28dcea6e84597743e09b8a43345c1f30e04e772bbfaad24a" } }]
+
+[[packages]]
 name = "comm"
 version = "0.2.3"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/comm-0.2.3-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 8887, hashes = { sha256 = "9ccd14add1c584c4e22566362e7719d7160255468e660d98ca2a3a8080bb5ec7" } }]
+
+[[packages]]
+name = "cryptography"
+version = "50.0.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/cryptography-50.0.1-1-cp312-abi3-linux_aarch64.whl", upload-time = 2026-08-29T00:38:33Z, size = 2150271, hashes = { sha256 = "558f64d5e321422716e83f573ffda0539aee4df2eef2c1442bcf62aa8957d204" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/cryptography-50.0.1-1-cp312-abi3-linux_ppc64le.whl", upload-time = 2026-08-31T16:36:28Z, size = 2254742, hashes = { sha256 = "cbfd8106711fa3284a3ee7b0beba311125a3e32678b47db019921ad95050a0ff" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/cryptography-50.0.1-1-cp312-abi3-linux_s390x.whl", upload-time = 2026-08-29T01:21:57Z, size = 2623821, hashes = { sha256 = "4892f6455f7aed026606fc7b1af3d9603ee193f62d1955f189d4cd62ce1488f1" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/cryptography-50.0.1-1-cp312-abi3-linux_x86_64.whl", upload-time = 2026-08-29T00:34:31Z, size = 2114770, hashes = { sha256 = "cbab34813a87e21ef5fc14a049859984e8b0bb6da890d4fedd2cd941c316f05d" } },
+]
 
 [[packages]]
 name = "debugpy"
@@ -139,6 +180,18 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/dill-0.4.1-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 121747, hashes = { sha256 = "dfabac0123f51ca3bdd613902a9580eb086a1448ddb4d3d7b42af753f633853b" } }]
 
 [[packages]]
+name = "docstring-parser"
+version = "0.18.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/docstring_parser-0.18.0-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 24249, hashes = { sha256 = "9c5320c27124b926c7c44ed569788bed1efc1c74b3cf544f710c2fe384404694" } }]
+
+[[packages]]
+name = "durationpy"
+version = "0.11"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/durationpy-0.11-1-py3-none-any.whl", upload-time = 2026-08-31T18:55:37Z, size = 5782, hashes = { sha256 = "c5d7083e29197532d32ba19f669461b1934721390a5f75bbcf2abaac1b2cc225" } }]
+
+[[packages]]
 name = "entrypoints"
 version = "0.4"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -157,6 +210,12 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/fastjsonschema-2.22.2-1-py3-none-any.whl", upload-time = 2026-08-19T01:10:11Z, size = 29162, hashes = { sha256 = "811a7f325cea611d1666a2d7b87671a5ca4fc99737017c0326cf18fd5ae32799" } }]
 
 [[packages]]
+name = "fqdn"
+version = "1.5.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/fqdn-1.5.1-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 5292, hashes = { sha256 = "209fed349f2c3d9499d3b1d199ebb10bea342b9db106b66718c864ba315e5f12" } }]
+
+[[packages]]
 name = "frozenlist"
 version = "1.8.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -166,6 +225,66 @@ wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/frozenlist-1.8.0-1-cp312-cp312-linux_s390x.whl", upload-time = 2026-08-14T02:14:48Z, size = 243497, hashes = { sha256 = "f8c8c62f91d0eea7fccfa913b0ca2dbd46aa314cd290a57f642366f94e80dc0e" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/frozenlist-1.8.0-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-14T00:51:06Z, size = 212275, hashes = { sha256 = "28cd1e39bf5a8cbe5fe4d7279a97ca15ab3aa0f90e792aa4986ab56c042d011e" } },
 ]
+
+[[packages]]
+name = "google-api-core"
+version = "2.34.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/google_api_core-2.34.0-1-py3-none-any.whl", upload-time = 2026-08-15T00:43:23Z, size = 182296, hashes = { sha256 = "f05f245bf71918de2f5bfee3ccdfcf38522fc87af32b8296f2af1aae3af399fe" } }]
+
+[[packages]]
+name = "google-auth"
+version = "2.57.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/google_auth-2.57.0-1-py3-none-any.whl", upload-time = 2026-08-29T00:34:31Z, size = 261421, hashes = { sha256 = "b429f39024a115c261d1f7d72cfaeb4fbd34a7644a7587f3ff11565dd8022ffa" } }]
+
+[[packages]]
+name = "google-cloud-core"
+version = "2.7.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/google_cloud_core-2.7.0-1-py3-none-any.whl", upload-time = 2026-08-31T16:58:41Z, size = 32812, hashes = { sha256 = "189a300f2de463e563649860d4c131f26db251c15ead1b65f37c27eedd30f379" } }]
+
+[[packages]]
+name = "google-cloud-storage"
+version = "3.13.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/google_cloud_storage-3.13.1-1-py3-none-any.whl", upload-time = 2026-08-15T00:43:23Z, size = 343298, hashes = { sha256 = "e2d41e879f0cf1b0fbb3de5a222965911dc7badb0b2132c07bc92e1c7445b359" } }]
+
+[[packages]]
+name = "google-crc32c"
+version = "1.8.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/google_crc32c-1.8.0-1-py3-none-any.whl", upload-time = 2026-08-15T00:43:23Z, size = 15529, hashes = { sha256 = "6f62c011e01848fcbd0f4e51b45fe8680d40880b8f3b1245dca4df175bfff48b" } }]
+
+[[packages]]
+name = "google-resumable-media"
+version = "2.10.2"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/google_resumable_media-2.10.2-1-py3-none-any.whl", upload-time = 2026-08-31T16:58:41Z, size = 83369, hashes = { sha256 = "626c12dd7db75040a738d5153657a8717ff632234f0baaf008a8b71981818e78" } }]
+
+[[packages]]
+name = "googleapis-common-protos"
+version = "1.75.2"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/googleapis_common_protos-1.75.2-1-py3-none-any.whl", upload-time = 2026-08-29T00:34:31Z, size = 308856, hashes = { sha256 = "6b909664310afcd123e982e200925e686ba1998a94eeac24371675a62218d56b" } }]
+
+[[packages]]
+name = "h11"
+version = "0.16.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/h11-0.16.0-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 39148, hashes = { sha256 = "e44ad99adcda4c6141fdf245e22a6b506959df7fcb89d1f8f08e675e60eaf782" } }]
+
+[[packages]]
+name = "httpcore"
+version = "1.0.9"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/httpcore-1.0.9-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 80434, hashes = { sha256 = "c5597b774a5e1061731601fe2a5e84ec2336af935a2aa964943efcdb8ef85a2f" } }]
+
+[[packages]]
+name = "httpx"
+version = "0.28.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/httpx-0.28.1-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 75162, hashes = { sha256 = "efca1a86438747d4ba695232764a5b3b0d134ddcd64e09abe946dc4295319547" } }]
 
 [[packages]]
 name = "idna"
@@ -198,6 +317,12 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/ipython_pygments_lexers-1.1.1-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 9951, hashes = { sha256 = "53735aa64313d30e3daa300e467a120b02ff61006db6ca2c3d3dca5fe165be2a" } }]
 
 [[packages]]
+name = "isoduration"
+version = "20.11.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/isoduration-20.11.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 13136, hashes = { sha256 = "7ae1d18f8ce0713d7a9857d2c9c3d6d95eb11114000c924bb018019a6b91bd74" } }]
+
+[[packages]]
 name = "jedi"
 version = "0.20.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -208,6 +333,18 @@ name = "jinja2"
 version = "3.1.6"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jinja2-3.1.6-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 136515, hashes = { sha256 = "fba973f3495c14a0ddfa2f1bbae1195a65ff3d8fe43147111779f9fd2d6710c1" } }]
+
+[[packages]]
+name = "json5"
+version = "0.15.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/json5-0.15.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 38187, hashes = { sha256 = "1699d884ff6e97b4f0fce0823fb118e29660751af61fd9a0a47e4f88210b8f85" } }]
+
+[[packages]]
+name = "jsonpointer"
+version = "3.1.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jsonpointer-3.1.1-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 9358, hashes = { sha256 = "57c05b6c42f8fbb4c98cd735cc995eea3f19a31ec126c94f58e1ddad6765761b" } }]
 
 [[packages]]
 name = "jsonschema"
@@ -222,6 +359,12 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jsonschema_specifications-2025.9.1-1-py3-none-any.whl", upload-time = 2026-08-14T01:04:01Z, size = 20295, hashes = { sha256 = "15b04b8b340156cde62f352b33a1605a9eae565708e6fc475f90d3a53dd8f6e4" } }]
 
 [[packages]]
+name = "jupyter-builder"
+version = "1.2.2"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyter_builder-1.2.2-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 917003, hashes = { sha256 = "294548f7c4515523860fe7a71b50c4aed4706b48f1771f1a16922720670339c4" } }]
+
+[[packages]]
 name = "jupyter-client"
 version = "8.9.1"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -234,10 +377,82 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyter_core-5.9.1-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 30714, hashes = { sha256 = "8e4efe9399594a9e46fb2bd049ff793faf2e41eaf570635786b7e56ab3ac72f6" } }]
 
 [[packages]]
+name = "jupyter-events"
+version = "0.12.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyter_events-0.12.1-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 21225, hashes = { sha256 = "de3352fb77bcdbfc44e84051ec8317d26211f741c5045add18081730892aacc5" } }]
+
+[[packages]]
+name = "jupyter-lsp"
+version = "2.3.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyter_lsp-2.3.1-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 79187, hashes = { sha256 = "e9c41f8064a058c7d26c742ef54267084c5b3f5e0a428b1cf63c3c1709928e1f" } }]
+
+[[packages]]
+name = "jupyter-server"
+version = "2.21.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyter_server-2.21.0-1-py3-none-any.whl", upload-time = 2026-08-31T16:58:41Z, size = 395767, hashes = { sha256 = "b45a13be8e75c4aae53e9747fefcd7f478b168d91ee2256fa07165c3cb68cf56" } }]
+
+[[packages]]
+name = "jupyter-server-terminals"
+version = "0.5.4"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyter_server_terminals-0.5.4-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 15514, hashes = { sha256 = "ee8694a34f33dbb831166dc6da227621e7e8e02684decd4ff20684942ac3bf2a" } }]
+
+[[packages]]
+name = "jupyterlab"
+version = "4.5.10"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyterlab-4.5.10-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 12454274, hashes = { sha256 = "63f69199cfdba005a0a3a577cf7bc326f91950141c0b51a7c612d5f23e369419" } }]
+
+[[packages]]
 name = "jupyterlab-pygments"
 version = "0.3.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyterlab_pygments-0.3.0-2-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 17964, hashes = { sha256 = "a7838ddba7ef759672d6f06d3a657db1f1b222df2ea30cc8fa12238cf2152c48" } }]
+
+[[packages]]
+name = "jupyterlab-server"
+version = "2.28.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/jupyterlab_server-2.28.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 61571, hashes = { sha256 = "3e1d8eb8bc3030df7be780a53f2e4f051b163e1e5652cc561340dc69340d7530" } }]
+
+[[packages]]
+name = "kfp"
+version = "2.17.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/kfp-2.17.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 479782, hashes = { sha256 = "a6bb17423aaae00d05b22505ba663d91d39aac192619989e17ed44d65c905030" } }]
+
+[[packages]]
+name = "kfp-kubernetes"
+version = "2.17.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/kfp_kubernetes-2.17.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 29466, hashes = { sha256 = "6326f072af17863960beb38a5f14b4b59c02763fbea804011f5a2c43d0146094" } }]
+
+[[packages]]
+name = "kfp-pipeline-spec"
+version = "2.17.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/kfp_pipeline_spec-2.17.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:17Z, size = 11704, hashes = { sha256 = "742a3cbb2a9e4aabf5505bb0f07ff90ebe394930244724d98d0df4de7647bac8" } }]
+
+[[packages]]
+name = "kfp-server-api"
+version = "2.17.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/kfp_server_api-2.17.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 130411, hashes = { sha256 = "e99f4d87407cba00d47ccd582d4416766643b53719e5415c46aaa75368e56ed5" } }]
+
+[[packages]]
+name = "kubernetes"
+version = "36.0.3"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/kubernetes-36.0.3-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:17Z, size = 4619742, hashes = { sha256 = "5abef75f6749b0a1d75b0a886a490d2502ed1754ed8e95e4dd99082161571656" } }]
+
+[[packages]]
+name = "lark"
+version = "1.3.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/lark-1.3.1-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 114762, hashes = { sha256 = "2e1f9a6f017474e27772b4fdd733aab241fe73a9d546e74f7e8db7b4d3ef288b" } }]
 
 [[packages]]
 name = "markupsafe"
@@ -316,6 +531,30 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/networkx-3.6.1-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 2070144, hashes = { sha256 = "cf13e752b157f3b94b6bdef4be9c98f01901a8ba80084f7e3a87bc9778905f5f" } }]
 
 [[packages]]
+name = "notebook"
+version = "7.6.2"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/notebook-7.6.2-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 5548932, hashes = { sha256 = "48e9115bfe69cccf3462e3eebed5fab1d0b2e64130b2e6844c5bae7cf88e003a" } }]
+
+[[packages]]
+name = "notebook-shim"
+version = "0.2.4"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/notebook_shim-0.2.4-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 15000, hashes = { sha256 = "dff20201f6677c0f7f31517898d5073da70e51d8039a1ff98da4ffc2e7827ae3" } }]
+
+[[packages]]
+name = "oauthlib"
+version = "3.3.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/oauthlib-3.3.1-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 161707, hashes = { sha256 = "f370abab1b1c2a6c4cee58209d430d26d73807b4e30980e78e9801788f534cf3" } }]
+
+[[packages]]
+name = "odh-kale"
+version = "2.2.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/odh_kale-2.2.0-1-py3-none-any.whl", upload-time = 2026-08-18T00:56:21Z, size = 377926, hashes = { sha256 = "1b4b0c5a2f035a5421854275d0565b813b2f02efbfc7320056fecd3f0344fd2e" } }]
+
+[[packages]]
 name = "packaging"
 version = "26.3"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -364,6 +603,12 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/progress-1.6.1-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 11434, hashes = { sha256 = "d3c5f68db84e11599ea79ca58d5c1f94dc0fe49fad3b7c13aaea0a21a73a34c3" } }]
 
 [[packages]]
+name = "prometheus-client"
+version = "0.26.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/prometheus_client-0.26.0-1-py3-none-any.whl", upload-time = 2026-08-14T01:04:01Z, size = 66246, hashes = { sha256 = "5e8baf7c797d92256e9e56cab17b15eed22d5f2d560a28de918a8ee7bb692613" } }]
+
+[[packages]]
 name = "prompt-toolkit"
 version = "3.0.53"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -378,6 +623,23 @@ wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/propcache-0.5.2-1-cp312-cp312-linux_ppc64le.whl", upload-time = 2026-08-14T00:49:42Z, size = 66146, hashes = { sha256 = "a1b9679c2435bec7edbfcf75d9e31b1c7984fe54c4e09eaaa2856c76dfbdc7f9" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/propcache-0.5.2-1-cp312-cp312-linux_s390x.whl", upload-time = 2026-08-14T02:14:48Z, size = 81210, hashes = { sha256 = "9ff1c5c4caae00455aae23300862b8cf4df09e75efc13596c1b3b68c23c6d4cb" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/propcache-0.5.2-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-14T00:51:06Z, size = 64197, hashes = { sha256 = "4b5ae20932f4cb043164642b2303ef86297f7a93ee4336d153fdfac9f711796f" } },
+]
+
+[[packages]]
+name = "proto-plus"
+version = "1.28.4"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/proto_plus-1.28.4-1-py3-none-any.whl", upload-time = 2026-08-31T16:58:41Z, size = 52499, hashes = { sha256 = "fa3e50ba9b63f27129c860706ab554ed6fd3051de4b53faace1cf39189155ab9" } }]
+
+[[packages]]
+name = "protobuf"
+version = "6.33.6"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/protobuf-6.33.6-1-cp312-cp312-linux_aarch64.whl", upload-time = 2026-08-14T03:41:10Z, size = 1201942, hashes = { sha256 = "63006ec5d99aa11f0d6571167fc78fedd2b8a97aebae717fda728c6f3de8b34b" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/protobuf-6.33.6-1-cp312-cp312-linux_ppc64le.whl", upload-time = 2026-08-14T02:07:25Z, size = 1258496, hashes = { sha256 = "1f43f5d94d298f15dad99c259923c59fcd2254dac6bbb853c3f46f9144c47a20" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/protobuf-6.33.6-1-cp312-cp312-linux_s390x.whl", upload-time = 2026-08-14T04:06:59Z, size = 1505206, hashes = { sha256 = "37ad32066dbe00d3cf4e3692072de09703f49abfd424518a77827ec48c8baa59" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/protobuf-6.33.6-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-14T02:04:25Z, size = 1218785, hashes = { sha256 = "9190332c2a7cc9e740df778f87dab7a07c48afa04bcd9c242d6321a8d8648934" } },
 ]
 
 [[packages]]
@@ -402,6 +664,18 @@ name = "pure-eval"
 version = "0.2.3"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/pure_eval-0.2.3-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 13695, hashes = { sha256 = "3c9c0cd14dd91e7a2934b33e74cb0eb0353b1461325f06b41c9ff8350c380993" } }]
+
+[[packages]]
+name = "pyasn1"
+version = "0.6.4"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/pyasn1-0.6.4-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 86054, hashes = { sha256 = "a1c6555370d74ccf3ca076e09c2b77a823bd9f19943cbf1527cc83cf2205b12f" } }]
+
+[[packages]]
+name = "pyasn1-modules"
+version = "0.4.2"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/pyasn1_modules-0.4.2-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 183021, hashes = { sha256 = "6ee3464546d8f7daf5ca504390d3c525806ed7fcc972998866f7fd07b3d8cf2b" } }]
 
 [[packages]]
 name = "pycodestyle"
@@ -445,6 +719,12 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/python_dateutil-2.9.0.post0-1-py2.py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 231850, hashes = { sha256 = "e3d7c7c7054ebe488f9bb1e1f14a22955c9c5e4b1ac4f0cefefa25c2e3a30f4c" } }]
 
 [[packages]]
+name = "python-json-logger"
+version = "4.2.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/python_json_logger-4.2.0-1-py3-none-any.whl", upload-time = 2026-08-19T00:37:34Z, size = 16754, hashes = { sha256 = "705b66a54544867ebcdffc48e61b6adbc66f8410b4b77e56e4ae293864582247" } }]
+
+[[packages]]
 name = "pyyaml"
 version = "6.0.3"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -474,9 +754,39 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "requests"
-version = "2.34.2"
+version = "2.33.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/requests-2.34.2-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 74727, hashes = { sha256 = "a9af2e58bdfc2ce308285230ae028e85344a322a84aad258bffecc98ba875bb8" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/requests-2.33.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 66704, hashes = { sha256 = "5a9b26a054cec98d10da567b6e8783b556032f96ebc075665e9ba7144b30a8e2" } }]
+
+[[packages]]
+name = "requests-oauthlib"
+version = "2.0.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/requests_oauthlib-2.0.0-1-py2.py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 26050, hashes = { sha256 = "634963f9a16cff466939af3b006af734a67df64b31a92dd9d1f37d11ec1b9771" } }]
+
+[[packages]]
+name = "requests-toolbelt"
+version = "1.0.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/requests_toolbelt-1.0.0-1-py2.py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 53484, hashes = { sha256 = "4a6f146dea9f38b77300d27d183664bdf6f92d7324a48eda3f2093b9a1288e25" } }]
+
+[[packages]]
+name = "rfc3339-validator"
+version = "0.1.4"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/rfc3339_validator-0.1.4-1-py2.py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 5385, hashes = { sha256 = "dc3664e5d7c536ec4af21122247b1c2b719ef18412ecea83913eb74a4d93b7ff" } }]
+
+[[packages]]
+name = "rfc3986-validator"
+version = "0.1.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/rfc3986_validator-0.1.1-1-py2.py3-none-any.whl", upload-time = 2026-08-15T08:17:17Z, size = 6205, hashes = { sha256 = "3e9b53655518c0d6254ef6a33d7af198e9b32b927fda5cac6941e2dc209d10dc" } }]
+
+[[packages]]
+name = "rfc3987-syntax"
+version = "1.1.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/rfc3987_syntax-1.1.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:17Z, size = 9778, hashes = { sha256 = "1e2842aef14b9ffa974bb57cbf3dd14eea37d54f569a01debd6965ce3d8c1835" } }]
 
 [[packages]]
 name = "rpds-py"
@@ -488,6 +798,12 @@ wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/rpds_py-2026.6.3-1-cp312-cp312-linux_s390x.whl", upload-time = 2026-08-14T02:14:48Z, size = 436980, hashes = { sha256 = "1f443cf494e7e314c44add89c4b244245ad0d27755dd9a026e69ea481db75bd9" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/rpds_py-2026.6.3-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-08-14T01:46:27Z, size = 354375, hashes = { sha256 = "313a1c60e1972845e396e6781a52d20ab612518f22db5cb19d202fcb4f818421" } },
 ]
+
+[[packages]]
+name = "send2trash"
+version = "2.1.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/send2trash-2.1.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 19287, hashes = { sha256 = "bcce65332cb56b574fdbd76779291d5c3635da813bf719c8ade92887094af294" } }]
 
 [[packages]]
 name = "setuptools"
@@ -514,10 +830,22 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/stack_data-0.6.3-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 26384, hashes = { sha256 = "cbcec9a4322ebcb786dcc5372241e8f70d9fd4b47f2dc13e2fa96cab10a7475e" } }]
 
 [[packages]]
+name = "tabulate"
+version = "0.10.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/tabulate-0.10.0-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 41335, hashes = { sha256 = "437f1c5d5e558c8178f88d2fdca451d82fe12172a4fadfd91e4c774a6755300f" } }]
+
+[[packages]]
 name = "tenacity"
 version = "9.1.4"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/tenacity-9.1.4-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 30701, hashes = { sha256 = "d3c296fa4c831ba6a65c62bad73f635a9637772d43ff29394123514b59f6d118" } }]
+
+[[packages]]
+name = "terminado"
+version = "0.18.1"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/terminado-0.18.1-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 15815, hashes = { sha256 = "720c7eddf2ba20c7fa279dbeb4636f0621344066656855d23603b0944d95e9e4" } }]
 
 [[packages]]
 name = "tinycss2"
@@ -555,6 +883,18 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/typing_extensions-4.16.0-1-py3-none-any.whl", upload-time = 2026-08-14T00:51:06Z, size = 47352, hashes = { sha256 = "19ed460723b936cd45de80f01d92192bec0e9a9264bfbd1e1cf82945bc38983c" } }]
 
 [[packages]]
+name = "tzdata"
+version = "2026.3"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/tzdata-2026.3-1-py2.py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 349806, hashes = { sha256 = "0d183bc3f56f7cdc6a69745b4b3f744c839da134df1b032153b4b93fa97bc324" } }]
+
+[[packages]]
+name = "uri-template"
+version = "1.3.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/uri_template-1.3.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 12895, hashes = { sha256 = "52a35f31b19eb1eb9190a92112770348cf2d2f9144a93ca5f90ace45f0a20dd3" } }]
+
+[[packages]]
 name = "urllib3"
 version = "2.7.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -578,10 +918,22 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/wcwidth-0.8.2-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 324792, hashes = { sha256 = "5880f454b3b69f0479eafbec007169d262ddd33c2d7e66432c819283b0d54eab" } }]
 
 [[packages]]
+name = "webcolors"
+version = "25.10.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/webcolors-25.10.0-1-py3-none-any.whl", upload-time = 2026-08-15T08:17:18Z, size = 16605, hashes = { sha256 = "709970f37b58749eaf278c77ed1836df39e58bff8847d645cd7b89df849c59fe" } }]
+
+[[packages]]
 name = "webencodings"
 version = "0.6.1"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/webencodings-0.6.1-1-py3-none-any.whl", upload-time = 2026-08-19T01:10:11Z, size = 10456, hashes = { sha256 = "4bae5fba959dd841b2ca2748b08abdb67b02ad08a2cbb101337d750adc8a25f6" } }]
+
+[[packages]]
+name = "websocket-client"
+version = "1.9.0"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA1/cpu-ubi9/websocket_client-1.9.0-1-py3-none-any.whl", upload-time = 2026-08-14T02:08:43Z, size = 84341, hashes = { sha256 = "f99e4267f2ed84d6fc26ef1348245ef1d371c69898da692995163fbbd7554f9a" } }]
 
 [[packages]]
 name = "wheel"
