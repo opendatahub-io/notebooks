@@ -1,0 +1,43 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: jupyter-minimal-cpu-pypi
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-name: "Jupyter Minimal PyPI (CPU)"
+    opendatahub.io/notebook-image-desc: "Minimal JupyterLab with PyPI index. pip install torch/tensorflow at runtime."
+spec:
+  lookupPolicy:
+    local: false
+  tags:
+    - name: spike
+      from:
+        kind: DockerImage
+        name: quay.io/jdanek/jupyter-minimal-cpu-pypi:spike
+      importPolicy:
+        importMode: PreserveOriginal
+      referencePolicy:
+        type: Source
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: codeserver-cpu-pypi
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-name: "CodeServer PyPI (CPU)"
+    opendatahub.io/notebook-image-desc: "VS Code (code-server) with PyPI index. pip install torch/tensorflow at runtime."
+spec:
+  lookupPolicy:
+    local: false
+  tags:
+    - name: spike3
+      from:
+        kind: DockerImage
+        name: quay.io/jdanek/codeserver-cpu-pypi:spike3
+      importPolicy:
+        importMode: PreserveOriginal
+      referencePolicy:
+        type: Source
