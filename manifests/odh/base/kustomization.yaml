@@ -4,16 +4,19 @@ kind: Kustomization
 resources:
   - jupyter-minimal-notebook-imagestream.yaml
   - jupyter-datascience-notebook-imagestream.yaml
+  - jupyter-baseline-notebook-imagestream.yaml
   - jupyter-minimal-gpu-notebook-imagestream.yaml
   - jupyter-pytorch-notebook-imagestream.yaml
   - jupyter-tensorflow-notebook-imagestream.yaml
   - jupyter-trustyai-notebook-imagestream.yaml
   - code-server-notebook-imagestream.yaml
+  - code-server-baseline-notebook-imagestream.yaml
   - jupyter-rocm-minimal-notebook-imagestream.yaml
   - jupyter-rocm-pytorch-notebook-imagestream.yaml
   - jupyter-rocm-tensorflow-notebook-imagestream.yaml
   - jupyter-pytorch-llmcompressor-imagestream.yaml
   - runtime-datascience-imagestream.yaml
+  - runtime-baseline-imagestream.yaml
   - runtime-minimal-imagestream.yaml
   - runtime-pytorch-imagestream.yaml
   - runtime-rocm-pytorch-imagestream.yaml
@@ -326,6 +329,32 @@ replacements:
           name: jupyter-pytorch-llmcompressor
           version: v1
   - source:
+      fieldPath: data.odh-workbench-jupyter-baseline-cpu-py312-c9s-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-baseline-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-workbench-codeserver-baseline-cpu-py312-c9s-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: code-server-baseline-notebook
+          version: v1
+  - source:
       fieldPath: data.odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n
       kind: ConfigMap
       name: notebook-image-commithash
@@ -612,6 +641,32 @@ replacements:
           name: jupyter-pytorch-llmcompressor
           version: v1
   - source:
+      fieldPath: data.odh-workbench-jupyter-baseline-cpu-py312-c9s-commit-n
+      kind: ConfigMap
+      name: notebook-image-commithash
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-baseline-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-workbench-codeserver-baseline-cpu-py312-c9s-commit-n
+      kind: ConfigMap
+      name: notebook-image-commithash
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: code-server-baseline-notebook
+          version: v1
+  - source:
       fieldPath: data.odh-pipeline-runtime-minimal-cpu-py312-ubi9-n
       kind: ConfigMap
       name: notebook-image-params
@@ -701,4 +756,17 @@ replacements:
           group: image.openshift.io
           kind: ImageStream
           name: runtime-pytorch-llmcompressor
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-baseline-cpu-py312-c9s-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-baseline
           version: v1

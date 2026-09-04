@@ -23,6 +23,7 @@ MANIFESTS_RHOAI_DIR = ROOT_DIR / "manifests" / "rhoai"
 _TEST_MANIFESTS_ODH_DIR = Path("notebooks/manifests/odh")  # for unit tests using relative paths
 
 JUPYTER_MINIMAL_NOTEBOOK_ID = "minimal"
+JUPYTER_BASELINE_NOTEBOOK_ID = "baseline"
 JUPYTER_DATASCIENCE_NOTEBOOK_ID = "datascience"
 JUPYTER_TRUSTYAI_NOTEBOOK_ID = "trustyai"
 JUPYTER_PYTORCH_NOTEBOOK_ID = "pytorch"
@@ -87,7 +88,7 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
     # 2. Find the notebook's characteristic path components
     path_parts = directory.parts
     # Find the root component ('jupyter', 'runtimes', etc.) to anchor the search
-    for root_candidate in ("jupyter", "codeserver", "runtimes"):
+    for root_candidate in ("codeserver-baseline", "jupyter", "codeserver", "runtimes"):
         try:
             start_index = path_parts.index(root_candidate)
             break
@@ -97,16 +98,19 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
         raise ValueError(f"Cannot determine notebook root in path: {directory}") from None
 
     # The parts between the root and the OS/python dir define the notebook flavor
-    # e.g., ('minimal',), ('rocm', 'tensorflow',), ('pytorch',)
+    # e.g., ('minimal',), ('baseline',), ('rocm', 'tensorflow',), ('pytorch',)
     notebook_identity_parts = path_parts[start_index + 1 : -1]
 
-    # Determine scope (e.g., 'minimal', 'tensorflow')
-    # The shell script uses the last part of the path-like notebook_id.
-    try:
-        scope = notebook_identity_parts[-1]
-    except IndexError:
-        # codeserver doesn't have scope
-        scope = ""
+    if path_parts[start_index] == "codeserver-baseline":
+        scope = JUPYTER_BASELINE_NOTEBOOK_ID
+    else:
+        # Determine scope (e.g., 'minimal', 'tensorflow')
+        # The shell script uses the last part of the path-like notebook_id.
+        try:
+            scope = notebook_identity_parts[-1]
+        except IndexError:
+            # codeserver doesn't have scope
+            scope = ""
     if "-" in scope:
         assert path_parts[start_index] == "runtimes", "this naming pattern only appears in rocm runtime images"
         scope = scope.split("-", 1)[-1]
@@ -161,10 +165,13 @@ def get_source_of_truth_filepath(
     filename = ""
 
     if "runtime" == notebook_id:
-        accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
-        filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
-        if accelerator_flavor == "cuda":
-            filename = f"jupyter-{scope}-{file_suffix}"
+        if scope == JUPYTER_BASELINE_NOTEBOOK_ID:
+            filename = "runtime-baseline-imagestream.yaml"
+        else:
+            accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
+            filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
+            if accelerator_flavor == "cuda":
+                filename = f"jupyter-{scope}-{file_suffix}"
 
     elif "jupyter" in notebook_id:
         if scope == JUPYTER_MINIMAL_NOTEBOOK_ID:
@@ -178,6 +185,9 @@ def get_source_of_truth_filepath(
             # Logic for datascience and trustyai
             filename = f"jupyter-{scope}-{file_suffix}"
 
+        elif scope == JUPYTER_BASELINE_NOTEBOOK_ID:
+            filename = f"jupyter-baseline-{file_suffix}"
+
         elif JUPYTER_PYTORCH_NOTEBOOK_ID in scope or JUPYTER_TENSORFLOW_NOTEBOOK_ID in scope:
             # Logic for pytorch and tensorflow
             accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
@@ -186,8 +196,11 @@ def get_source_of_truth_filepath(
                 # This override is intentionally different from the 'minimal' one, as per the script
                 filename = f"jupyter-{scope}-{file_suffix}"
 
-    elif CODESERVER_NOTEBOOK_ID in notebook_id:
-        filename = f"code-server-{file_suffix}"
+    elif CODESERVER_NOTEBOOK_ID in notebook_id or notebook_id == "codeserver-baseline":
+        if notebook_id == "codeserver-baseline" or scope == JUPYTER_BASELINE_NOTEBOOK_ID:
+            filename = f"code-server-baseline-{file_suffix}"
+        else:
+            filename = f"code-server-{file_suffix}"
 
     if not filename:
         raise ValueError(f"Unable to determine imagestream filename for '{metadata=}'")
@@ -298,6 +311,12 @@ class TestManifests:
             "jupyter-datascience-ubi9-python-3.12": MANIFESTS_ODH_DIR
             / "base"
             / "jupyter-datascience-notebook-imagestream.yaml",
+            "jupyter-baseline-c9s-python-3.12": MANIFESTS_ODH_DIR
+            / "base"
+            / "jupyter-baseline-notebook-imagestream.yaml",
+            "runtime-baseline-c9s-python-3.12": MANIFESTS_ODH_DIR
+            / "base"
+            / "runtime-baseline-imagestream.yaml",
             "runtime-datascience-ubi9-python-3.12": MANIFESTS_ODH_DIR
             / "base"
             / "jupyter-datascience-notebook-imagestream.yaml",
@@ -335,9 +354,12 @@ class TestManifests:
             / "base"
             / "jupyter-trustyai-notebook-imagestream.yaml",
             "codeserver-ubi9-python-3.12": MANIFESTS_ODH_DIR / "base" / "code-server-notebook-imagestream.yaml",
+            "codeserver-baseline-c9s-python-3.12": MANIFESTS_ODH_DIR
+            / "base"
+            / "code-server-baseline-notebook-imagestream.yaml",
         }
         for target in targets:
-            if "codeserver" in target:
+            if "codeserver" in target and "baseline" not in target:
                 continue
             try:
                 expected_manifest_path = expected_manifest_paths[target]

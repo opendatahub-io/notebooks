@@ -194,6 +194,15 @@ function _get_source_of_truth_filepath()
     local file_suffix='notebook-imagestream.yaml'
     local filename=
     case "${notebook_id}" in
+        runtime-baseline)
+            filename="runtime-baseline-imagestream.yaml"
+            ;;
+        codeserver-baseline)
+            filename="code-server-baseline-${file_suffix}"
+            ;;
+        *${jupyter_baseline_notebook_id}*)
+            filename="jupyter-baseline-${file_suffix}"
+            ;;
         *$jupyter_minimal_notebook_id*)
             filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
             if [ "${accelerator_flavor}" = 'cuda' ]; then
@@ -260,13 +269,6 @@ function _create_test_versions_source_of_truth()
     local notebook_id="${1:-}"
 
     local version_filename='expected_versions.json'
-
-    # Phase-1 jupyter/baseline has no imagestream yet; papermill tests soft-skip
-    # version asserts when this file is empty/missing keys.
-    if [ "${notebook_id}" = "${jupyter_baseline_notebook_id}" ]; then
-        "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c 'printf "%s\n" "{}" > "${1}"' -- "${version_filename}"
-        return 0
-    fi
 
     local test_version_truth_filepath=
     test_version_truth_filepath="$( _get_source_of_truth_filepath "${notebook_id}" )" || true
@@ -444,11 +446,17 @@ function _get_notebook_id() {
 
 
     case "${notebook_workload_name}" in
+        *runtime-baseline-*)
+            notebook_id="runtime-baseline"
+            ;;
+        *codeserver-baseline-*)
+            notebook_id="codeserver-baseline"
+            ;;
+        *jupyter-${jupyter_baseline_notebook_id}-*)
+            notebook_id="${jupyter_baseline_notebook_id}"
+            ;;
         *${jupyter_minimal_notebook_id}-*)
             notebook_id="${jupyter_minimal_notebook_id}"
-            ;;
-        *${jupyter_baseline_notebook_id}-*)
-            notebook_id="${jupyter_baseline_notebook_id}"
             ;;
         *${jupyter_datascience_notebook_id}-*)
             notebook_id="${jupyter_datascience_notebook_id}"

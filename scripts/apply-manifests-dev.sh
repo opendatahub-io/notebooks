@@ -72,6 +72,56 @@ need_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
 }
 
+KUSTOMIZE=()
+
+resolve_kustomize() {
+  if [[ -n "${KUSTOMIZE_BIN:-}" ]]; then
+    need_cmd "${KUSTOMIZE_BIN}"
+    KUSTOMIZE=("${KUSTOMIZE_BIN}")
+    return
+  fi
+  if command -v kustomize >/dev/null 2>&1; then
+    KUSTOMIZE=(kustomize)
+    return
+  fi
+  if command -v oc >/dev/null 2>&1 && oc kustomize --help >/dev/null 2>&1; then
+    log "Using 'oc kustomize' (standalone kustomize not found)"
+    KUSTOMIZE=(oc kustomize)
+    return
+  fi
+  if command -v kubectl >/dev/null 2>&1 && kubectl kustomize --help >/dev/null 2>&1; then
+    log "Using 'kubectl kustomize' (standalone kustomize not found)"
+    KUSTOMIZE=(kubectl kustomize)
+    return
+  fi
+  die "Required command not found: kustomize (install via 'brew install kustomize', or use oc/kubectl with kustomize)"
+}
+
+kustomize_build() {
+  "${KUSTOMIZE[@]}" build "$@"
+}
+
+# Append KEY=value lines from overlay that are absent from dest (operator bundle may lag local manifests).
+append_missing_env_keys() {
+  local dest="$1"
+  local overlay="$2"
+  [[ -f "${overlay}" ]] || return 0
+
+  local line key
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line//$'\r'/}"
+    [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    [[ "${line}" == *"="* ]] || continue
+    key="${line%%=*}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    if ! grep -q "^${key}=" "${dest}" 2>/dev/null; then
+      printf '%s\n' "${line}" >> "${dest}"
+    fi
+  done < "${overlay}"
+}
+
 configure_platform() {
   case "${PLATFORM}" in
     odh)
@@ -253,7 +303,7 @@ check_cluster_prerequisites() {
 
 check_build_prerequisites() {
   check_cluster_prerequisites
-  need_cmd kustomize
+  resolve_kustomize
   [[ -d "${MANIFESTS_DIR}" ]] || die "Manifest directory not found: ${MANIFESTS_DIR}"
 }
 
@@ -332,7 +382,7 @@ workbench_namespace() {
 
 imagestream_names_from_build() {
   local dir="$1"
-  kustomize build "${dir}" | awk '
+  kustomize_build "${dir}" | awk '
     /^kind: ImageStream$/ { is=1; next }
     is && /^  name: / { print $2; is=0 }
   ' | sort -u
@@ -368,7 +418,7 @@ snapshot_baseline() {
     tar cf - -C "${OPERATOR_MANIFESTS_TAR_DIR}" base \
     | tar xf - -C "${REVERT_DIR}"
 
-  kustomize build "${REVERT_DIR}/base" > "${REVERT_DIR}/rendered-before.yaml"
+  kustomize_build "${REVERT_DIR}/base" > "${REVERT_DIR}/rendered-before.yaml"
   imagestream_names_from_build "${REVERT_DIR}/base" > "${REVERT_DIR}/baseline-imagestream-names.txt"
 
   target_namespaces > "${REVERT_DIR}/snapshot-namespaces.txt"
@@ -387,14 +437,29 @@ snapshot_baseline() {
 
 build_workdir() {
   local pod="$1"
-  local workdir
+  local workdir operator_params operator_commits
   workdir="$(mktemp -d)"
   cp -r "${MANIFESTS_DIR}/." "${workdir}/"
 
+  operator_params="$(mktemp)"
+  operator_commits="$(mktemp)"
   oc exec -n "${OPERATOR_NS}" "${pod}" -- \
-    cat "${OPERATOR_MANIFESTS_PATH}/params-latest.env" > "${workdir}/params-latest.env"
+    cat "${OPERATOR_MANIFESTS_PATH}/params-latest.env" > "${operator_params}"
   oc exec -n "${OPERATOR_NS}" "${pod}" -- \
-    cat "${OPERATOR_MANIFESTS_PATH}/commit-latest.env" > "${workdir}/commit-latest.env"
+    cat "${OPERATOR_MANIFESTS_PATH}/commit-latest.env" > "${operator_commits}" 2>/dev/null || : > "${operator_commits}"
+
+  cp "${operator_params}" "${workdir}/params-latest.env"
+  append_missing_env_keys "${workdir}/params-latest.env" "${MANIFESTS_DIR}/params-latest.env"
+
+  if [[ -s "${operator_commits}" ]]; then
+    cp "${operator_commits}" "${workdir}/commit-latest.env"
+  else
+    : > "${workdir}/commit-latest.env"
+  fi
+  append_missing_env_keys "${workdir}/commit-latest.env" "${MANIFESTS_DIR}/commit-latest.env"
+
+  rm -f "${operator_params}" "${operator_commits}"
+  log "Using operator params/commit env with local keys merged for new ImageStreams"
 
   printf '%s' "${workdir}"
 }
@@ -425,9 +490,9 @@ cmd_preview() {
   workdir="$(build_workdir "${RESOLVED_OPERATOR_POD}")"
 
   log "Previewing ${PLATFORM} kustomize build from ${MANIFESTS_DIR}"
-  kustomize build "${workdir}"
+  kustomize_build "${workdir}"
   log "Resource counts:"
-  kustomize build "${workdir}" | awk '/^kind: / { counts[$2]++ } END { for (k in counts) print counts[k], k }' | sort -rn
+  kustomize_build "${workdir}" | awk '/^kind: / { counts[$2]++ } END { for (k in counts) print counts[k], k }' | sort -rn
 
   cleanup_temp_files "${workdir}" ""
 }
@@ -441,7 +506,7 @@ cmd_apply() {
 
   snapshot_baseline "${RESOLVED_OPERATOR_POD}"
 
-  kustomize build "${workdir}" > "${rendered}"
+  kustomize_build "${workdir}" > "${rendered}"
   imagestream_names_from_build "${workdir}" > "${REVERT_DIR}/applied-imagestream-names.txt"
   target_namespaces > "${REVERT_DIR}/applied-namespaces.txt"
 

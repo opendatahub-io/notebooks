@@ -1,0 +1,38 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/baseline"
+    opendatahub.io/notebook-image-name: "Jupyter | Baseline | CPU | Python 3.12"
+    opendatahub.io/notebook-image-desc: "Lean Jupyter workbench with JupyterLab, Elyra, and Kale for pipeline authoring and PDF export, using a minimal public-index Python footprint."
+    opendatahub.io/notebook-image-order: "9"
+  name: jupyter-baseline-notebook
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"},
+            {"name": "Kfp", "version": "2.17"},
+            {"name": "Odh-Elyra", "version": "5.0"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-baseline-cpu-py312-c9s
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-baseline-cpu-py312-c9s-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-baseline-cpu-py312-c9s-n_PLACEHOLDER
+      name: "3.6"
+      referencePolicy:
+        type: Source

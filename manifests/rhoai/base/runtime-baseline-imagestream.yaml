@@ -1,0 +1,38 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/runtime-image: "true"
+  annotations:
+    opendatahub.io/runtime-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/runtimes/baseline"
+    opendatahub.io/runtime-image-name: "Runtime | Baseline | CPU | Python 3.12 | Latest"
+    opendatahub.io/runtime-image-desc: "Baseline runtime image for Elyra pipeline execution with a lean public-index Python footprint."
+  name: runtime-baseline
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/runtime-image-metadata: |
+          [
+            {
+              "display_name": "Runtime | Baseline | CPU | Python 3.12 | Latest",
+              "metadata": {
+                "tags": [
+                  "baseline"
+                ],
+                "display_name": "Runtime | Baseline | CPU | Python 3.12 | Latest",
+                "pull_policy": "IfNotPresent"
+              },
+              "schema_name": "runtime-image"
+            }
+          ]
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-pipeline-runtime-baseline-cpu-py312-rhel9
+      from:
+        kind: DockerImage
+        name: odh-pipeline-runtime-baseline-cpu-py312-c9s-n_PLACEHOLDER
+      name: "baseline"
+      referencePolicy:
+        type: Source
