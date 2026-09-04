@@ -363,12 +363,15 @@ def test_frame():
                 try:
                     if cleanup_func is not None:
                         cleanup_func(resource)
+                except Exception:
+                    logging.exception("Cleanup callback failed for %r (continuing teardown)", resource)
+                try:
                     resource.__exit__(None, None, None)  # don't use named args, there are inconsistencies
                 except Exception:
                     # Transient podman API failures (e.g. RemoteDisconnected during
                     # IPv6 network removal) should not abort teardown of remaining
                     # resources. The orphaned resource will be GC'd by podman.
-                    logging.exception("Cleanup failed for %r (continuing teardown)", resource)
+                    logging.exception("Context exit failed for %r (continuing teardown)", resource)
 
     t = TestFrame()
     yield t
