@@ -3,5 +3,9 @@ name=OpenShift 4.12 Public - $basearch
 # Note: el8, because that is the only available option for ppc64le and s390x, but it is compatible with el9.
 baseurl=https://mirror.openshift.com/pub/openshift-v4/$basearch/dependencies/rpms/4.12-el8-beta/
 enabled=1
-gpgcheck=0
+# RPMs are signed with the Red Hat release key 2 (567E347A...FD431D51, verified
+# against the RPM signatures for x86_64/aarch64/ppc64le/s390x), shipped as
+# RPM-GPG-KEY-redhat-release in UBI9 and the ODH base images.
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 skip_if_unavailable=True
