@@ -73,10 +73,12 @@ See [ADR 0008](docs/architecture/decisions/0008-harden-github-actions-pin-sha-di
 ### Contributing from branches vs forks
 
 **Recommended:** If you have write access to the repo, push your branch directly
-and create the PR from there:
+and create the PR from there. If you started from a fork, add the upstream remote
+first so the branch lands in `opendatahub-io/notebooks` (not your fork):
 
 ```bash
-git push origin HEAD:<your-initials>/branch-name
+git remote add upstream https://github.com/opendatahub-io/notebooks.git
+git push upstream HEAD:<your-initials>/branch-name
 ```
 
 This gives CI full access to build secrets (RHEL subscription, AIPCC registry) and
