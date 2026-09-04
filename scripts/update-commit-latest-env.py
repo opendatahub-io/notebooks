@@ -322,6 +322,8 @@ async def find_latest_tag_by_skopeo_created(
     image: str,
     pattern: re.Pattern,
     semaphore: asyncio.Semaphore,
+    *,
+    log_failure: bool = True,
 ) -> str | None:
     """Return the most recently created tag on *image* matching *pattern*."""
     tags = await skopeo_list_tags(image, semaphore)
@@ -332,7 +334,7 @@ async def find_latest_tag_by_skopeo_created(
 
     log.info("found candidate tags via skopeo", image=image, count=len(matching))
     inspected = await asyncio.gather(
-        *[skopeo_inspect_config(f"{image}:{tag}", semaphore, log_failure=False) for tag in matching]
+        *[skopeo_inspect_config(f"{image}:{tag}", semaphore, log_failure=log_failure) for tag in matching]
     )
 
     best_tag: str | None = None
@@ -362,7 +364,9 @@ async def find_latest_odh_main_tag(image_base: str, semaphore: asyncio.Semaphore
         return tag
 
     log.info("discovering latest ODH main-<sha> tag via skopeo", image=image_base)
-    return await find_latest_tag_by_skopeo_created(image_base, ODH_TAG_PATTERN, semaphore)
+    # The fallback already logged why it is being used; keep per-tag inspect
+    # failures quiet so a dead image does not flood the log.
+    return await find_latest_tag_by_skopeo_created(image_base, ODH_TAG_PATTERN, semaphore, log_failure=False)
 
 
 async def resolve_odh_vcs_ref(
@@ -396,41 +400,10 @@ async def resolve_odh_vcs_ref(
     return vcs_ref_from_odh_main_tag(tag)
 
 
-async def find_latest_rhoai_tag_by_created(
-    image: str,
-    semaphore: asyncio.Semaphore,
-) -> str | None:
+async def find_latest_rhoai_tag_by_created(image: str, semaphore: asyncio.Semaphore) -> str | None:
     """Return the most recently created ``rhoai-X.Y`` tag on *image*."""
-    tags = await skopeo_list_tags(image, semaphore)
-    matching = [tag for tag in tags if RHOAI_TAG_PATTERN.match(tag)]
-    if not matching:
-        log.error(
-            "no rhoai-X.Y tags match pattern",
-            image=image,
-            pattern=RHOAI_TAG_PATTERN.pattern,
-            sample=tags[:10],
-        )
-        return None
-
-    log.info("found RHOAI candidate tags", image=image, count=len(matching))
-    inspected = await asyncio.gather(*[skopeo_inspect_config(f"{image}:{tag}", semaphore) for tag in matching])
-
-    best_tag: str | None = None
-    best_created = ""
-    for tag, (_, cfg) in zip(matching, inspected, strict=True):
-        if cfg is None:
-            continue
-        created = cfg.get("created", "")
-        if created > best_created:
-            best_created = created
-            best_tag = tag
-
-    if best_tag is None:
-        log.error("could not inspect any RHOAI candidate tags", image=image)
-        return None
-
-    log.info("selected latest RHOAI tag", image=image, tag=best_tag, created=best_created)
-    return best_tag
+    # log_failure=True (the default) matches the pre-merge RHOAI behavior.
+    return await find_latest_tag_by_skopeo_created(image, RHOAI_TAG_PATTERN, semaphore, log_failure=True)
 
 
 async def collect_odh_entries(
