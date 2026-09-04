@@ -406,9 +406,7 @@ def main():
                 unresolved.append(f"{name}=={version}")
 
     if unresolved:
-        print(
-            f"\nPhase 3 (retry): {len(unresolved)} package(s) unresolved, retrying sequentially..."
-        )
+        print(f"\nPhase 3 (retry): {len(unresolved)} package(s) unresolved, retrying sequentially...")
         still_unresolved: list[str] = []
         unresolved_set = set(unresolved)
         for args in to_resolve:
