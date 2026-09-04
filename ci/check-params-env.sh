@@ -695,7 +695,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             # Rollout automation rewrites released workbench keys with numeric
             # release suffixes (for example '-3-5', '-3-6'). Keep this check
             # forward-compatible instead of hardcoding every new release key.
-            if [[ "${image_variable}" =~ ^(odh-workbench-[a-z0-9-]+-py312-ubi9)-[0-9]+-[0-9]+$ ]]; then
+            if [[ "${image_variable}" =~ ^(odh-workbench-[a-z0-9-]+-py312-ubi9)-[0-9]{1,2}-[0-9]+$ ]]; then
                 local image_base
                 image_base="${BASH_REMATCH[1]}"
 
