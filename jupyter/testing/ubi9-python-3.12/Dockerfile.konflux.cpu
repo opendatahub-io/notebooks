@@ -1,0 +1,141 @@
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
+####################
+# cpu-base         #
+####################
+FROM ${BASE_IMAGE} AS cpu-base
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root (intermediate stage; final stage ends with USER 1001).
+# hadolint ignore=DL3002
+USER 0
+
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+# CentOS key imported only if prefetched (may fail gracefully if not present).
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
+# Install useful OS packages (versions follow UBI stream; pinning each would drift with point releases)
+# compat-openssl11 provides libcrypto.so.1.1 required by FIPS-compliance scanning.
+# hadolint ignore=DL3041
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+
+# [SDIST BUILD] Install build tools needed for compiling Python packages from source.
+# This is required for RHAISTRAT-1482: build from PyPI source distributions.
+# These stay in the image for now; a production multi-stage build would remove them.
+# hadolint ignore=DL3041
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
+    bash /utils/dnf-helper.sh install \
+    # C/C++ compilers (already present but ensure)
+    gcc gcc-c++ make \
+    # CMake for packages like pyzmq
+    cmake \
+    # Rust for cryptography (if not using vendored)
+    rust cargo \
+    # ZeroMQ development headers for pyzmq
+    zeromq-devel \
+    # LibFFI for cffi
+    libffi-devel \
+    # OpenSSL development headers
+    openssl-devel \
+    # YAML development headers for pyyaml
+    libyaml-devel
+
+
+####################
+# jupyter-minimal  #
+####################
+FROM cpu-base AS jupyter-minimal
+
+ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
+ARG MINIMAL_SOURCE_CODE=jupyter/testing/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
+
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+ARG RELEASE
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+    com.redhat.component="${LABEL_COMPONENT}" \
+    io.k8s.display-name="${LABEL_COMPONENT}" \
+    summary="Testing Jupyter CPU notebook image - hermetic public-PyPI spike" \
+    description="Testing Jupyter CPU notebook image for hermetic build feasibility spike with public PyPI" \
+    io.k8s.description="Testing Jupyter CPU notebook image for hermetic build feasibility spike with public PyPI" \
+    com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+    version="${RELEASE}"
+
+WORKDIR /opt/app-root/bin
+
+COPY --chown=1001:0 ${JUPYTER_REUSABLE_UTILS} utils/
+
+USER 0
+
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
+### BEGIN Dependencies for PDF export
+RUN ./utils/install_pdf_deps.sh
+
+### END Dependencies for PDF export
+
+# Public-index spike: use root-level uv.lock (not uv.lock.d/pylock.*.toml)
+COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/uv.lock ./uv.lock
+COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+
+COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
+
+USER 1001:0
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+umask 0002
+
+echo "Installing software and packages from SOURCE (sdist)"
+# [SDIST BUILD] Install Python packages from source distributions.
+# This compiles packages from source - required for RHAISTRAT-1482 Conforma compliance.
+# --no-binary :all: forces source builds even if wheels are available.
+# Note: This is slower than wheel installs (~30-60 min vs ~2 min).
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
+    --strict --no-deps --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --no-binary :all: \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
+
+# pandoc --version  # Skipped: pandoc-rhai not available on public PyPI (spike Section D)
+
+# Disable announcement plugin of jupyterlab
+jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+chmod g+w /opt/app-root/etc/jupyter/labconfig
+# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
+sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+# copy jupyter configuration (install -m 0664 for OpenShift gid 0 g+w)
+install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
+  /opt/app-root/etc/jupyter/jupyter_server_config.py
+# Apply JupyterLab addons
+/opt/app-root/bin/utils/addons/apply.sh
+/usr/local/bin/ensure-openshift-site-packages.sh
+EOF
+
+USER 1001
+
+WORKDIR /opt/app-root/src
+
+ENTRYPOINT ["start-notebook.sh"]
