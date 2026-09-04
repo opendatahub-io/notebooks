@@ -1,6 +1,6 @@
 ---
-description: Jira project IDs, custom fields, and conventions for creating issues in RHAIENG and related projects
-alwaysApply: false
+name: jira-conventions
+description: Jira project IDs, custom fields, and conventions for creating and updating issues in RHAIENG and related projects (RHOAIENG CVE trackers, RHAIRFE, RHAISTRAT) on redhat.atlassian.net — cloud ID, component/team IDs, key custom field IDs, issue hierarchy and parent linking, MCP create/update/transition call patterns, link types, sprint assignment, and the RHOAIENG CVE resolution workflow. Use whenever creating, updating, linking, assigning, or transitioning Jira tickets for this team; do not use for non-Jira task tracking.
 ---
 
 # Jira Conventions for Notebooks Team

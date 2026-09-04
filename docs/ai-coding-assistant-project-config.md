@@ -89,14 +89,14 @@ OpenCode's fallback to `CLAUDE.md` and `.claude/skills/` means teams already usi
 
 The practical problem: your team has Jira conventions, coding standards, or workflow instructions that should be available regardless of which tool a developer uses. Here are the approaches we evaluated.
 
-### Approach 1: Pointers (what we use)
+### Approach 1: Pointers
 
 Each tool's instructions file contains a one-line pointer to the canonical source.
 
 ```markdown
 # CLAUDE.md
 ## References
-- Jira conventions: see `.cursor/rules/jira-conventions.mdc`
+- Jira conventions: see `.agents/skills/jira-conventions/SKILL.md`
 ```
 
 **Pros:** Simple, robust, no dependencies. Each tool loads only a few bytes of overhead.
@@ -137,9 +137,10 @@ npx skills list              # shows installed skills
 
 ## What We Did in This Repo
 
-- Created `CLAUDE.md` at the repo root with a pointer to `.cursor/rules/jira-conventions.mdc`
-- `.cursor/rules/jira-conventions.mdc` remains the single source of truth for Jira project IDs, custom fields, and MCP call patterns
-- Both Cursor and Claude Code can access the same knowledge without content duplication
+- `AGENTS.md` is the single source of truth for always-on project conventions
+- `CLAUDE.md` at the repo root is a symlink to `AGENTS.md`, so Claude Code (and other `CLAUDE.md`-based finders) load the same file — no pointer stub to keep in sync
+- Conditional knowledge lives in Agent Skills under `.agents/skills/` — e.g. `jira-conventions` (Jira project IDs, custom fields, MCP call patterns) and `test-conventions` (pytest, testcontainers, markers, fixtures)
+- `.claude/skills` and `.cursor/skills` are symlinks to `.agents/skills/`, so all clients scan one tree; tool-specific directories contain symlinks only, no unique content
 
 ## Recommendations
 

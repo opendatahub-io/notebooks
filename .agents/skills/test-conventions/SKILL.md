@@ -1,7 +1,11 @@
 ---
-description: Test creation conventions for the notebooks repository — pytest patterns, testcontainers, markers, fixtures, allure, and test organization.
-globs: "tests/**,ci/**/*.py,scripts/**/*.py,ntb/**/*.py"
-alwaysApply: false
+name: test-conventions
+description: Test creation conventions for the notebooks repository — pytest patterns, testcontainers, markers, fixtures, allure, assertion patterns, and test organization, with DO/DON'T lists and an implementation checklist. Apply when creating or modifying tests, fixtures, or conftest under tests/, ci/**.py, scripts/**.py, or ntb/**.py; docs/agents/testing.md holds the test catalog (types, commands, CI parity).
+paths:
+  - "tests/**"
+  - "ci/**/*.py"
+  - "scripts/**/*.py"
+  - "ntb/**/*.py"
 ---
 
 # Test Conventions for opendatahub-io/notebooks
