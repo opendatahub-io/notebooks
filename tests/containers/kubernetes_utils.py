@@ -216,11 +216,11 @@ class ImageDeployment:
         )
 
         core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=self.client.client)
-        pod_name: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(
+        pod_list: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(
             namespace=ns.name, label_selector=f"app={container_name}"
         )
-        assert len(pod_name.items) == 1
-        self.pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
+        assert len(pod_list.items) == 1, f"Expected exactly one pod for app={container_name}, got {len(pod_list.items)}"
+        self.pod: kubernetes.client.models.v1_pod.V1Pod = pod_list.items[0]
 
         if not is_runtime_image:
             p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, self.pod), "localhost", 0)  # pyright: ignore[reportArgumentType]
