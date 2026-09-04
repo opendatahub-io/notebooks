@@ -30,6 +30,7 @@ import platform
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path, PurePosixPath
 from urllib.parse import urljoin
@@ -51,6 +52,9 @@ DOWNLOAD_PROCESS_TIMEOUT_SECONDS = 3600
 # Transient wget failures (Akamai/S3 blips under parallel load) are retried
 # sequentially before the prefetch step fails.
 DOWNLOAD_MAX_PASSES = 3
+# Index page fetches hit the same Akamai front-end; retry before giving up.
+INDEX_FETCH_MAX_PASSES = 3
+INDEX_FETCH_RETRY_DELAY_SECONDS = 2
 
 ARCH_ALIASES: dict[str, list[str]] = {
     "amd64": ["x86_64", "amd64"],
@@ -211,58 +215,91 @@ def fetch_simple_index_urls(
 ) -> list[tuple[str, str, str]]:
     normalized = re.sub(r"[-_.]+", "-", name).lower()
     page_url = f"{index_url.rstrip('/')}/{normalized}/"
-    try:
-        req = urllib.request.Request(page_url, headers={"Accept": "text/html", "User-Agent": "prefetch/1.0"})  # ruff: ignore[suspicious-url-open-usage]
-        with urllib.request.urlopen(req, timeout=30) as r:  # ruff: ignore[suspicious-url-open-usage]
-            html = r.read().decode()
-    except Exception as e:
-        print(f"  WARN: failed to fetch index page for {name}: {e}", file=sys.stderr)
-        return []
+    last_error: Exception | None = None
+    for attempt in range(1, INDEX_FETCH_MAX_PASSES + 1):
+        try:
+            req = urllib.request.Request(page_url, headers={"Accept": "text/html", "User-Agent": "prefetch/1.0"})  # ruff: ignore[suspicious-url-open-usage]
+            with urllib.request.urlopen(req, timeout=30) as r:  # ruff: ignore[suspicious-url-open-usage]
+                html = r.read().decode()
+        except Exception as e:
+            last_error = e
+            if attempt < INDEX_FETCH_MAX_PASSES:
+                time.sleep(INDEX_FETCH_RETRY_DELAY_SECONDS)
+                continue
+            print(
+                f"  ERROR: failed to fetch index page for {name} after {INDEX_FETCH_MAX_PASSES} attempts: {e}",
+                file=sys.stderr,
+            )
+            return []
 
-    out = []
-    for m in re.finditer(r'<a\s+href="([^"]*?)#sha256=([a-f0-9]+)"[^>]*>([^<]+)</a>', html):
-        download_url, sha, filename = m.group(1), m.group(2), m.group(3).strip()
-        download_url = urljoin(page_url, download_url)
-        filename = PurePosixPath(filename).name
-        if not filename or filename in (".", ".."):
-            continue
-        if sha in wanted_hashes:
-            out.append((download_url, filename, sha))
-    return out
+        out = []
+        for m in re.finditer(r'<a\s+href="([^"]*?)#sha256=([a-f0-9]+)"[^>]*>([^<]+)</a>', html):
+            download_url, sha, filename = m.group(1), m.group(2), m.group(3).strip()
+            download_url = urljoin(page_url, download_url)
+            filename = PurePosixPath(filename).name
+            if not filename or filename in (".", ".."):
+                continue
+            if sha in wanted_hashes:
+                out.append((download_url, filename, sha))
+        return out
+
+    if last_error is not None:
+        print(
+            f"  ERROR: failed to fetch index page for {name} after {INDEX_FETCH_MAX_PASSES} attempts: {last_error}",
+            file=sys.stderr,
+        )
+    return []
 
 
 def fetch_pypi_urls(name: str, version: str, wanted_hashes: set[str]) -> list[tuple[str, str, str]]:
     url = PYPI_JSON.format(name=name, version=version)
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "prefetch/1.0"})  # ruff: ignore[suspicious-url-open-usage]
-        with urllib.request.urlopen(req, timeout=30) as r:  # ruff: ignore[suspicious-url-open-usage]
-            data = json.loads(r.read().decode())
-    except Exception as e:
-        print(f"  WARN: failed to fetch PyPI metadata for {name}: {e}", file=sys.stderr)
-        return []
+    last_error: Exception | None = None
+    for attempt in range(1, INDEX_FETCH_MAX_PASSES + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "prefetch/1.0"})  # ruff: ignore[suspicious-url-open-usage]
+            with urllib.request.urlopen(req, timeout=30) as r:  # ruff: ignore[suspicious-url-open-usage]
+                data = json.loads(r.read().decode())
+        except Exception as e:
+            last_error = e
+            if attempt < INDEX_FETCH_MAX_PASSES:
+                time.sleep(INDEX_FETCH_RETRY_DELAY_SECONDS)
+                continue
+            print(
+                f"  ERROR: failed to fetch PyPI metadata for {name} after {INDEX_FETCH_MAX_PASSES} attempts: {e}",
+                file=sys.stderr,
+            )
+            return []
 
-    out = []
-    for entry in data.get("urls", []):
-        raw_filename = entry["url"].split("/")[-1].split("?")[0]
-        filename = PurePosixPath(raw_filename).name
-        if not filename:
-            continue
-        if any(x in filename for x in ["macosx", "win_amd64", "win32", "win_arm64", "ios_"]):
-            continue
-        digests = entry.get("digests") or {}
-        h = digests.get("sha256")
-        if h and h in wanted_hashes:
-            out.append((entry["url"], filename, h))
-    return out
+        out = []
+        for entry in data.get("urls", []):
+            raw_filename = entry["url"].split("/")[-1].split("?")[0]
+            filename = PurePosixPath(raw_filename).name
+            if not filename:
+                continue
+            if any(x in filename for x in ["macosx", "win_amd64", "win32", "win_arm64", "ios_"]):
+                continue
+            digests = entry.get("digests") or {}
+            h = digests.get("sha256")
+            if h and h in wanted_hashes:
+                out.append((entry["url"], filename, h))
+        return out
+
+    if last_error is not None:
+        print(
+            f"  ERROR: failed to fetch PyPI metadata for {name} after {INDEX_FETCH_MAX_PASSES} attempts: {last_error}",
+            file=sys.stderr,
+        )
+    return []
 
 
-def resolve_one(args: tuple) -> list[tuple[str, str, str]]:
+def resolve_one(args: tuple) -> tuple[str, str, list[tuple[str, str, str]]]:
     """Resolve URLs for one package. Called in parallel."""
     name, version, wanted_hashes, index_url, use_simple = args
     if use_simple:
-        return fetch_simple_index_urls(index_url, name, version, wanted_hashes)
+        urls = fetch_simple_index_urls(index_url, name, version, wanted_hashes)
     else:
-        return fetch_pypi_urls(name, version, wanted_hashes)
+        urls = fetch_pypi_urls(name, version, wanted_hashes)
+    return name, version, urls
 
 
 def _wget_error_detail(result: subprocess.CompletedProcess[str] | subprocess.CalledProcessError) -> str:
@@ -360,9 +397,38 @@ def main():
 
     # Phase 3: parallel resolve
     all_files: list[tuple[str, str, str]] = []
+    unresolved: list[str] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        for urls in executor.map(resolve_one, to_resolve):
-            all_files.extend(urls)
+        for name, version, urls in executor.map(resolve_one, to_resolve):
+            if urls:
+                all_files.extend(urls)
+            else:
+                unresolved.append(f"{name}=={version}")
+
+    if unresolved:
+        print(
+            f"\nPhase 3 (retry): {len(unresolved)} package(s) unresolved, retrying sequentially..."
+        )
+        still_unresolved: list[str] = []
+        unresolved_set = set(unresolved)
+        for args in to_resolve:
+            name, version = args[0], args[1]
+            key = f"{name}=={version}"
+            if key not in unresolved_set:
+                continue
+            _, _, urls = resolve_one(args)
+            if urls:
+                all_files.extend(urls)
+                unresolved_set.discard(key)
+            else:
+                still_unresolved.append(key)
+        unresolved = still_unresolved
+
+    if unresolved:
+        print(f"\nERROR: failed to resolve wheel URLs for {len(unresolved)} package(s):", file=sys.stderr)
+        for pkg in unresolved:
+            print(f"  - {pkg}", file=sys.stderr)
+        sys.exit(1)
 
     # Phase 4: filter by arch and type
     to_download = []
