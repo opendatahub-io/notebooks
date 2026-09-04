@@ -102,6 +102,18 @@ COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/app-root/bin/utils/bootstrapper.py
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
+# The raw RHEL Python base does not bootstrap uv the way AIPCC notebook bases
+# do. Install uv from the hermeto/cachi2 pip cache (offline) before the main
+# package install. Online `pip install uv` would break hermetic Konflux builds.
+# UV_VERSION is derived from this image's requirements.cpu.txt by scripts/dockerfile_fragments.py.
+### BEGIN UV version
+ARG UV_VERSION=0.12.5
+
+### END UV version
+RUN python3 -m pip install --no-cache-dir --no-index \
+    --find-links /cachi2/output/deps/pip \
+    "uv==${UV_VERSION}"
+
 USER 1001:0
 
 ENV ELYRA_INSTALL_PACKAGES="false"
@@ -111,11 +123,6 @@ set -Eeuxo pipefail
 umask 0002
 
 echo "Installing software and packages"
-# rhel9/python-312 does not ship uv (ODH/AIPCC bases do). Bootstrap it from
-# the Cachi2 pip cache, then install the rest of the lockfile with uv.
-python3 -m pip install --no-index --no-cache-dir --no-deps \
-    --find-links /cachi2/output/deps/pip \
-    uv
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
