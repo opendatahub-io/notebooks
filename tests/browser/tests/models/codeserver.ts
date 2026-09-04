@@ -1,7 +1,7 @@
 // Copyright (c) 2019 Coder Technologies Inc.
 // https://github.com/coder/code-server/blob/main/test/e2e/models/CodeServer.ts
 
-import {Page} from "@playwright/test";
+import {expect, Page} from "@playwright/test";
 import * as path from "node:path";
 
 import {log as rootLog} from "../logger";
@@ -34,6 +34,33 @@ export class CodeServer {
      */
     async waitForTab(file: string): Promise<void> {
         await this.page.waitForSelector(`.tab :text("${path.basename(file)}")`)
+    }
+
+    /**
+     * Close the workspace README preview opened on first launch
+     * (workbench.startupEditor = "readme").
+     */
+    async dismissStartupReadme(): Promise<void> {
+        const readmeTab = this.page.getByRole("tab", {name: /README\.md/i})
+        if (!(await readmeTab.isVisible().catch(() => false))) {
+            return
+        }
+        await readmeTab.click()
+        const tabClose = readmeTab.locator(".codicon-close")
+        if (await tabClose.count() > 0) {
+            await tabClose.click({force: true})
+        } else {
+            await this.page.keyboard.press("Control+W")
+        }
+        await expect(readmeTab).not.toBeVisible({timeout: 10000})
+    }
+
+    /**
+     * Focus the integrated terminal via the default VS Code keybinding.
+     */
+    async focusTerminalViaKeyboard(): Promise<void> {
+        await this.page.keyboard.press("Control+Shift+Backquote")
+        await this.page.waitForSelector("textarea.xterm-helper-textarea:focus-within", {timeout: 10000})
     }
 
     /**

@@ -69,21 +69,13 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
     await codeServer.isEditorVisible()
   })
 
-  test('wait for welcome screen to load', async ({codeServer, page}, testInfo) => {
+  test('wait for startup surface to load', async ({codeServer, page}, testInfo) => {
     await page.goto(codeServer.url);
 
     await codeServer.isEditorVisible()
     page.on("console", (msg) => log.info(msg.text()))
 
-    // With chat.disableAIFeatures:false, Agent Status / Chat keep mutating
-    // div.monaco-workbench, so whole-workbench waitForStableDOM never settles.
-    // Assert the welcome surface itself instead (title is heading + paragraph).
-    await expect(page.getByRole('tab', { name: /Welcome/i })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'code-server', level: 1 })).toBeVisible()
-    await expect(page.getByText('Editing evolved')).toBeVisible()
-    await utils.waitForNextRender(page)
-
-    await utils.takeScreenshot(page, testInfo, "welcome.png")
+    await utils.assertStartupSurface(page, testInfo)
   })
 
   test('use the terminal to run command', async ({codeServer, page}, _testInfo) => {
@@ -93,8 +85,13 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
       expect(await codeServer.isEditorVisible()).toBe(true)
     })
 
+    await test.step("Close startup README preview", async () => {
+      // README preview intercepts command-palette clicks until dismissed.
+      await codeServer.dismissStartupReadme()
+    })
+
     await test.step("should show the Integrated Terminal", async () => {
-      await codeServer.focusTerminal()
+      await codeServer.focusTerminalViaKeyboard()
       await expect(page.locator("#terminal")).toBeVisible()
     })
 

@@ -13,9 +13,20 @@ done
 run-nginx.sh &
 /usr/sbin/httpd -D FOREGROUND &
 
-# Add .bashrc for custom prompt if not present
+# Add .bashrc for custom prompt and BYO Copilot hint if not present
 if [ ! -f "/opt/app-root/src/.bashrc" ]; then
-  echo 'PS1="\[\033[34;1m\][\$(pwd)]\[\033[0m\]\n\[\033[1;0m\]$ \[\033[0m\]"' > /opt/app-root/src/.bashrc
+  cat > /opt/app-root/src/.bashrc <<'EOF'
+PS1="\[\033[34;1m\][\$(pwd)]\[\033[0m\]\n\[\033[1;0m\]$ \[\033[0m\]"
+# Shown when opening a terminal until install-byo-copilot.sh has been run.
+if [ ! -f "${HOME}/.local/share/code-server/byo-copilot/gallery.env" ]; then
+  echo ""
+  echo "  GitHub Copilot is not included in this workbench image."
+  echo "  To enable it with your own subscription, run:  install-byo-copilot.sh"
+  echo "  Then restart the workbench and sign in to GitHub."
+  echo "  See README.md in this folder for details."
+  echo ""
+fi
+EOF
 fi
 
 # Initialize access logs for culling
@@ -59,11 +70,15 @@ universal_json_settings='// vscode settings are written in json-with-comments
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
 
-  // RHAIENG-6400 / RHAISTRAT-2209: enable Copilot Chat surfaces for Device Code auth validation.
-  // Customer GA still gated by Legal RHAI-113; preferDeviceCodeFlow so UrlHandler/OAuth
-  // redirects are not tried first behind Kubeflow OAuth / kube-rbac-proxy.
+  // Open workspace README on startup (includes optional BYO Copilot instructions).
+  "workbench.startupEditor": "readme",
+  "workbench.editorAssociations": {
+    "README.md": "vscode.markdown.preview.editor"
+  },
+
+  // AI features off by default; users opt in via install-byo-copilot.sh (BYO license).
   // https://code.visualstudio.com/docs/copilot/faq#_how-can-i-remove-copilot-from-vs-code
-  "chat.disableAIFeatures": false,
+  "chat.disableAIFeatures": true,
   "github-authentication.preferDeviceCodeFlow": true,
 
   // RHOAIENG-14518: Disable the "Do you trust the authors [...]" startup prompt
@@ -89,13 +104,35 @@ json_launch_settings='{
   ]
 }'
 json_settings='{
-  "python.defaultInterpreterPath": "/opt/app-root/bin/python3"
+  "python.defaultInterpreterPath": "/opt/app-root/bin/python3",
+  "workbench.editorAssociations": {
+    "README.md": "vscode.markdown.preview.editor"
+  }
 }'
 
 # Create necessary directories and files for python debugger and universal settings
 create_dir_and_file "$universal_dir" "$user_settings_filepath" "$universal_json_settings"
 create_dir_and_file "$vscode_dir" "$settings_filepath" "$json_settings"
 create_dir_and_file "$vscode_dir" "$launch_filepath" "$json_launch_settings"
+
+workspace_readme="/opt/app-root/src/README.md"
+workspace_readme_src="${SCRIPT_DIR}/workspace-readme.md"
+if [ ! -f "$workspace_readme" ]; then
+  if [ -f "$workspace_readme_src" ]; then
+    cp "$workspace_readme_src" "$workspace_readme"
+    echo "Debug: '$workspace_readme' seeded from '$workspace_readme_src'."
+  else
+    echo "Warning: workspace readme source not found at '$workspace_readme_src'."
+  fi
+else
+  echo "Debug: '$workspace_readme' already exists."
+fi
+
+# Symlink BYO installer into workspace so `ls` shows it (binary lives in /opt/app-root/bin).
+byo_link="/opt/app-root/src/install-byo-copilot.sh"
+if [ ! -e "$byo_link" ] && [ -x "/opt/app-root/bin/install-byo-copilot.sh" ]; then
+  ln -s /opt/app-root/bin/install-byo-copilot.sh "$byo_link"
+fi
 
 # Ensure the extensions directory exists
 extensions_dir="${CODE_SERVER_DATA_DIR}/extensions"
@@ -136,6 +173,16 @@ fi
 
 # Start server with explicit --user-data-dir so code-server writes settings,
 # extensions, and logs under /opt/app-root/src/ (writable by UID 1001).
+BYO_COPILOT_GALLERY="${CODE_SERVER_DATA_DIR}/byo-copilot/gallery.env"
+if [[ -f "${BYO_COPILOT_GALLERY}" ]]; then
+  # shellcheck source=/dev/null
+  source "${BYO_COPILOT_GALLERY}"
+  echo "Debug: loaded BYO Copilot gallery config from ${BYO_COPILOT_GALLERY}"
+else
+  echo "NOTE: GitHub Copilot is not enabled. Users with their own subscription can run:"
+  echo "      install-byo-copilot.sh   (see /opt/app-root/src/README.md)"
+fi
+
 start_process /usr/bin/code-server \
     --bind-addr "${BIND_ADDR}" \
     --user-data-dir "${CODE_SERVER_DATA_DIR}" \
