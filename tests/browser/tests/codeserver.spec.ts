@@ -91,7 +91,7 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
     })
 
     await test.step("should show the Integrated Terminal", async () => {
-      await codeServer.focusTerminal()
+      await codeServer.focusTerminalViaKeyboard()
       await expect(page.locator("#terminal")).toBeVisible()
     })
 

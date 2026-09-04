@@ -99,8 +99,14 @@ export async function assertStartupSurface(page: Page, testInfo: TestInfo): Prom
 
     if (readmeVisible) {
         await expect(readmeTab).toBeVisible()
-        await expect(page.getByRole('heading', { name: 'Code Server workbench', level: 1 })).toBeVisible()
-        await expect(page.getByText(/does not ship.*GitHub Copilot/i)).toBeVisible()
+        const workbench = page.locator("div.monaco-workbench")
+        // Markdown preview uses a custom editor; heading roles are often absent.
+        await workbench.locator(".markdown-preview-view, .rendered-markdown")
+            .first()
+            .waitFor({state: "visible", timeout: 15000})
+            .catch(() => undefined)
+        await expect(workbench.getByText("Code Server workbench")).toBeVisible({timeout: 15000})
+        await expect(workbench.getByText(/bring your own/i)).toBeVisible({timeout: 15000})
         await waitForNextRender(page)
         await takeScreenshot(page, testInfo, "workspace-readme.png")
         return

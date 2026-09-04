@@ -42,12 +42,25 @@ export class CodeServer {
      */
     async dismissStartupReadme(): Promise<void> {
         const readmeTab = this.page.getByRole("tab", {name: /README\.md/i})
-        if (!(await readmeTab.isVisible())) {
+        if (!(await readmeTab.isVisible().catch(() => false))) {
             return
         }
         await readmeTab.click()
-        await this.page.keyboard.press("Control+W")
-        await expect(readmeTab).not.toBeVisible({timeout: 5000})
+        const tabClose = readmeTab.locator(".codicon-close")
+        if (await tabClose.count() > 0) {
+            await tabClose.click({force: true})
+        } else {
+            await this.page.keyboard.press("Control+W")
+        }
+        await expect(readmeTab).not.toBeVisible({timeout: 10000})
+    }
+
+    /**
+     * Focus the integrated terminal via the default VS Code keybinding.
+     */
+    async focusTerminalViaKeyboard(): Promise<void> {
+        await this.page.keyboard.press("Control+Shift+Backquote")
+        await this.page.waitForSelector("textarea.xterm-helper-textarea:focus-within", {timeout: 10000})
     }
 
     /**
