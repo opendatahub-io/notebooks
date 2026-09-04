@@ -116,8 +116,6 @@ def test_not_expired_just_outside_buffer() -> None:
 def test_get_auth_headers_basic_auth_from_env(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("JIRA_EMAIL", "user@redhat.com")
     monkeypatch.setenv("JIRA_API_TOKEN", "my-api-token")
-    monkeypatch.delenv("JIRA_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
 
     headers = get_auth_headers("https://redhat.atlassian.net")
     assert "Authorization" in headers
@@ -127,10 +125,7 @@ def test_get_auth_headers_basic_auth_from_env(monkeypatch: MonkeyPatch) -> None:
 
 
 def test_get_auth_headers_bearer_from_env(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_EMAIL", raising=False)
-    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
     monkeypatch.setenv("JIRA_TOKEN", "legacy-bearer-token")
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
     monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
 
     headers = get_auth_headers("https://issues.redhat.com")
@@ -139,19 +134,13 @@ def test_get_auth_headers_bearer_from_env(monkeypatch: MonkeyPatch) -> None:
 
 def test_get_auth_headers_raises_when_only_email(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("JIRA_EMAIL", "user@redhat.com")
-    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
 
     with pytest.raises(JiraAuthError, match=r"JIRA_EMAIL.*JIRA_API_TOKEN"):
         get_auth_headers("https://redhat.atlassian.net")
 
 
 def test_get_auth_headers_raises_when_only_token(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_EMAIL", raising=False)
     monkeypatch.setenv("JIRA_API_TOKEN", "my-api-token")
-    monkeypatch.delenv("JIRA_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
     monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
 
     with pytest.raises(JiraAuthError, match="JIRA_EMAIL"):
@@ -159,10 +148,6 @@ def test_get_auth_headers_raises_when_only_token(monkeypatch: MonkeyPatch) -> No
 
 
 def test_get_auth_headers_raises_when_no_creds(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_EMAIL", raising=False)
-    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
     monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
 
     with pytest.raises(JiraAuthError, match="No Jira authentication credentials found"):
