@@ -111,6 +111,19 @@ make refresh-lock-files
   else is sitting in the tree (scratch files, unrelated in-progress edits, generated
   artifacts) with no chance to notice until it's already committed.
 
+### Do not expose in committed or GitHub-published content
+
+Applies to PR descriptions, issues, commit messages, and any committed doc — not just
+public docs. Investigation context is fine *during* work; it must be sanitized before it
+lands in a durable artifact.
+
+- **PII** — real names tied to private contact info, employee IDs, personal email/phone,
+  or home paths with a username (`/home/alice/...` → `~/...` or a generic path).
+- **IP addresses** — public or private (Tailscale `100.x`, lab `10.x`, RFC1918).
+- **Internal hostnames** — non-public machine/cluster names, VPN or lab hosts.
+- **Sanitize, don't omit the finding** — keep the technical detail, swap the identifier
+  for a generic descriptor (e.g. `user@host 100.x.x.x` → "a validation host").
+
 ## Communication
 
 English, terse.
