@@ -1,0 +1,23 @@
+// markdownlint-cli2 configuration for the notebooks repo (see issue #4037).
+//
+// Only the rules this repo actively enforces are enabled. The full default
+// markdownlint ruleset is intentionally NOT enabled: the existing docs do not
+// follow it (e.g. MD013 line-length, MD060 table-pipe style), and enabling it
+// would fail on thousands of pre-existing lines.
+//
+// Enforced rules:
+//   MD040 fenced-code-language  - every fenced code block must declare a language.
+//   MD014 commands-show-output  - a `$` shell prompt must be followed by shown output.
+{
+  "config": {
+    "default": false,
+    "MD040": true,
+    "MD014": true
+  },
+  "globs": ["**/*.md"],
+  // markdownlint-cli2 unions these globs with the files pre-commit passes
+  // (--all-files), so it would otherwise also lint untracked vendored READMEs
+  // under .venv/ (created by `uv sync`) and node_modules/. Exclude both so the
+  // hook only checks files in the repository.
+  "ignores": [".venv/**", "venv/**", "node_modules/**"]
+}

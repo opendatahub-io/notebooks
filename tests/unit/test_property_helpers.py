@@ -83,13 +83,16 @@ def test_capped_patch_excerpt_properties(patch: str | None, max_lines: int) -> N
     # round-trippable. The contract is a line budget, not blank-line preservation.
     # Locate the ellipsis by its deterministic position (matches head_count in
     # capped_patch_excerpt), not by content: a generated line can equal "...".
-    ellipsis_at = (max_lines - 1) // 2
+    usable = max_lines - 1
+    head_count = usable // 2
+    tail_count = usable - head_count
+    ellipsis_at = head_count
     assert output_lines[ellipsis_at] == "..."
     head = output_lines[:ellipsis_at]
     tail = output_lines[ellipsis_at + 1 :]
-    assert head == input_lines[: len(head)]
-    if tail:
-        assert tail == input_lines[-len(tail) :]
+    assert head == input_lines[:head_count]
+    expected_tail = patch_excerpt._patch_lines("\n".join(input_lines[-tail_count:]))
+    assert tail == expected_tail
 
 
 @st.composite

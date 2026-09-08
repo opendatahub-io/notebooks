@@ -54,7 +54,7 @@ mkdir -p "${BENCH_ROOT}/${PASS}"
 
 **Pass A**
 
-```
+```text
 list
 launch 4.20 aws
 ```
@@ -63,7 +63,7 @@ Wait for DM with cluster ready + kubeconfig or `oc login` line. cluster-bot repl
 
 **Pass B**
 
-```
+```text
 rosa create 4.20 8h
 ```
 
@@ -71,7 +71,7 @@ Bot rejects `24h` / `48h` (`max duration for a ROSA cluster is 8h0m0s`). Ready D
 
 **Deprovision (both)**
 
-```
+```text
 done
 ```
 
@@ -107,7 +107,7 @@ Writes:
 
 Console line example:
 
-```
+```text
 progress=68% steps_done=11/16 current=launch-ipi-install-install (running) elapsed_sec=1470
 ```
 

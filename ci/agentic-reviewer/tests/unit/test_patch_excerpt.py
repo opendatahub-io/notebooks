@@ -50,3 +50,13 @@ def test_cr_in_content_is_not_a_line_break() -> None:
 def test_trailing_newline_does_not_add_a_line() -> None:
     patch = "one\ntwo\n"
     assert patch_excerpt.capped_patch_excerpt(patch, max_lines=2) == patch
+
+
+def test_truncation_preserves_tail_through_join_roundtrip() -> None:
+    # Trailing empty logical lines collapse through "\n".join; tail must still
+    # match the last tail_count lines after that round-trip.
+    patch = "\n\n\n0\n\n"
+    excerpt = patch_excerpt.capped_patch_excerpt(patch, max_lines=4)
+
+    assert excerpt is not None
+    assert patch_excerpt._patch_lines(excerpt) == ["", "...", "0"]

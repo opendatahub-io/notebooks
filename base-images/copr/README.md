@@ -93,7 +93,7 @@ Packages with either `skip_tests` or `spec_replacements` use Copr custom builds.
 
 ## Project structure
 
-```
+```text
 base-images/copr/
   pyproject.toml          # workspace member config + CLI entry point
   spec.md                 # product requirements

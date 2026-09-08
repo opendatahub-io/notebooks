@@ -27,7 +27,7 @@ import yaml
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG_PATH = ROOT_DIR / "versions_config.yml"
-MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver")
+MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline")
 POLICY_SCHEMA = object()
 GPU_FLAVORS = {
     "cuda": ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow"),
@@ -59,6 +59,10 @@ CPU_BASE_IMAGE_SCHEMA = {
     "rhds": POLICY_SCHEMA,
     "odh": POLICY_SCHEMA,
 }
+BASELINE_CPU_BASE_IMAGE_SCHEMA = {
+    "rhds": POLICY_SCHEMA,
+    "odh": POLICY_SCHEMA,
+}
 logger = logging.getLogger(__name__)
 ANSI_GREEN = "\033[32m"
 ANSI_YELLOW = "\033[33m"
@@ -74,6 +78,7 @@ MAKEFILE_ASSIGNMENT_RE = re.compile(r"^(?P<prefix>\s*(?P<key>[A-Za-z_][A-Za-z0-9
 
 BASE_IMAGE_SCHEMA = {
     "cpu": CPU_BASE_IMAGE_SCHEMA,
+    "baseline_cpu": BASELINE_CPU_BASE_IMAGE_SCHEMA,
     "cuda": dict.fromkeys(GPU_FLAVORS["cuda"]),
     "rocm": dict.fromkeys(GPU_FLAVORS["rocm"]),
 }
@@ -91,6 +96,7 @@ ROOT_SCHEMA = {
 }
 
 RHDS_CHANNELS = frozenset({"fast", "stable"})
+RHDS_BASELINE_CHANNELS = frozenset({"rhel"})
 ODH_ORIGINS = frozenset({"in-house", "midstream"})
 RHDS_STABLE_OVERRIDE_ACCELERATORS = frozenset({"cuda", "rocm"})
 RHDS_TAG_RE = re.compile(r"^(?P<version>\d+\.\d+\.\d+)(?:-(?P<phase>ea\.\d+))?-(?P<build>\d+)$")
@@ -102,6 +108,7 @@ RHDS_TAG_RE = re.compile(r"^(?P<version>\d+\.\d+\.\d+)(?:-(?P<phase>ea\.\d+))?-(
 RHDS_STABLE_TAG_RE = re.compile(
     r"^(?P<version>\d+\.\d+\.\d+)(?:-(?:(?P<legacy_stable>stable)-)?(?P<build>\d+))?$",
 )
+RHEL_PYTHON_TAG_RE = re.compile(r"^(?P<os_stream>\d+\.\d+)-(?P<build>\d+)$")
 RHDS_GPU_STABLE_REPOSITORY_SUFFIX = "-stable"
 RHDS_GPU_STABLE_REPOSITORY_PREFIX = "quay.io/aipcc/base-images/"
 MIDSTREAM_VERSION_RE = re.compile(r"^\d+\.\d+$")
@@ -128,8 +135,19 @@ class VersionsConfig:
     base_image: dict[str, Any]
     gpu_acc_versions: dict[tuple[str, str], str]
 
-    def policy(self, accelerator: str, distribution: str, flavor: str | None = None) -> BaseImagePolicy:
-        if accelerator == "cpu":
+    def policy(
+        self,
+        accelerator: str,
+        distribution: str,
+        flavor: str | None = None,
+        *,
+        baseline: bool = False,
+    ) -> BaseImagePolicy:
+        if baseline:
+            if accelerator != "cpu":
+                raise ValueError(f"Baseline policy supports CPU only, got accelerator '{accelerator}'")
+            raw_policy = self.base_image["baseline_cpu"][distribution]
+        elif accelerator == "cpu":
             raw_policy = self.base_image["cpu"][distribution]
         else:
             if flavor is None:
@@ -157,6 +175,7 @@ class ConfTarget:
     accelerator: str
     distribution: str
     flavor: str | None
+    is_baseline: bool = False
 
 
 @dataclass(frozen=True)
@@ -403,6 +422,24 @@ def validate_distribution_policy(
         raise ValueError(f"odh in-house origin at {context} requires a numeric acc_version")
 
 
+def validate_baseline_cpu_rhds_policy(policy: object, *, context: str) -> None:
+    if not isinstance(policy, dict):
+        raise ValueError(f"Expected mapping at {context}")
+
+    actual_keys = set(policy)
+    if actual_keys != {"channel"}:
+        unexpected_keys = sorted(actual_keys - {"channel"})
+        missing_keys = sorted({"channel"} - actual_keys)
+        if unexpected_keys:
+            raise ValueError(f"Unexpected keys under {context}: {', '.join(unexpected_keys)}")
+        if missing_keys:
+            raise ValueError(f"Missing keys under {context}: {', '.join(missing_keys)}")
+
+    channel = scalar_to_string(policy["channel"])
+    if channel not in RHDS_BASELINE_CHANNELS:
+        raise ValueError(f"Invalid baseline_cpu rhds channel at {context}: {channel}")
+
+
 def normalize_gpu_flavor_config(
     flavor_policy: object,
     *,
@@ -506,8 +543,18 @@ def normalize_base_image_config(
     mapping = validate_expected_mapping_keys(base_image, set(BASE_IMAGE_SCHEMA), root_context)
 
     validate_mapping_schema(mapping["cpu"], CPU_BASE_IMAGE_SCHEMA, f"{root_context}.cpu")
+    validate_mapping_schema(
+        mapping["baseline_cpu"],
+        BASELINE_CPU_BASE_IMAGE_SCHEMA,
+        f"{root_context}.baseline_cpu",
+    )
 
-    normalized_base_image = {"cpu": mapping["cpu"], "cuda": {}, "rocm": {}}
+    normalized_base_image = {
+        "cpu": mapping["cpu"],
+        "baseline_cpu": mapping["baseline_cpu"],
+        "cuda": {},
+        "rocm": {},
+    }
     gpu_acc_versions: dict[tuple[str, str], str] = {}
 
     for distribution in ("rhds", "odh"):
@@ -518,6 +565,18 @@ def normalize_base_image_config(
             context=f"cpu.{distribution}",
             release=release,
         )
+
+    validate_baseline_cpu_rhds_policy(
+        mapping["baseline_cpu"]["rhds"],
+        context="baseline_cpu.rhds",
+    )
+    validate_distribution_policy(
+        mapping["baseline_cpu"]["odh"],
+        distribution="odh",
+        accelerator="cpu",
+        context="baseline_cpu.odh",
+        release=release,
+    )
 
     for accelerator, flavors in GPU_FLAVORS.items():
         accelerator_mapping = validate_expected_mapping_keys(
@@ -575,6 +634,13 @@ def classify_conf_name(name: str) -> tuple[str, str] | None:
     return mapping.get(name)
 
 
+def is_baseline_conf_path(relative_path: Path) -> bool:
+    parts = relative_path.parts
+    if parts and parts[0] == "codeserver-baseline":
+        return True
+    return len(parts) >= 2 and parts[1] == "baseline"
+
+
 def classify_flavor(relative_path: Path, accelerator: str) -> str | None:
     parts = relative_path.parts
 
@@ -617,6 +683,7 @@ def collect_conf_targets(root_dir: Path) -> list[ConfTarget]:
                     accelerator=accelerator,
                     distribution=distribution,
                     flavor=classify_flavor(relative_path, accelerator),
+                    is_baseline=is_baseline_conf_path(relative_path),
                 )
             )
 
@@ -1165,6 +1232,8 @@ def determine_rhds_fast_bundle_phase(
     same_release_phases: set[str | None] = set()
 
     for peer_state in states:
+        if peer_state.target.is_baseline:
+            continue
         if peer_state.target.distribution != "rhds":
             continue
         if peer_state.policy.mode != "fast":
@@ -1294,6 +1363,38 @@ def default_rhds_seed_phase(
     return "ea.1"
 
 
+def build_rhel_python_base_repository(release: ReleaseConfig) -> str:
+    return f"registry.redhat.io/rhel9/python-{compact_python_version(release.python_version)}"
+
+
+def rhel_python_os_stream(release: ReleaseConfig) -> str:
+    if not release.rhds_os_base.startswith("el"):
+        raise ValueError(f"release.rhds_os_base must start with 'el', got {release.rhds_os_base!r}")
+    return release.rhds_os_base[2:]
+
+
+def select_latest_rhel_python_tag(tags: tuple[str, ...], os_stream: str) -> str:
+    matching: list[tuple[int, str]] = []
+    for tag in tags:
+        match = RHEL_PYTHON_TAG_RE.fullmatch(tag)
+        if match is None or match.group("os_stream") != os_stream:
+            continue
+        matching.append((int(match.group("build")), tag))
+    if not matching:
+        raise ValueError(f"No RHEL python base tag found for os stream {os_stream}")
+    return max(matching)[1]
+
+
+def resolve_rhel_python_base_image(
+    release: ReleaseConfig,
+    tag_cache: dict[str, tuple[str, ...]],
+) -> str:
+    repository = build_rhel_python_base_repository(release)
+    os_stream = rhel_python_os_stream(release)
+    latest_tag = select_latest_rhel_python_tag(list_rhds_repository_tags(repository, tag_cache), os_stream)
+    return f"{repository}:{latest_tag}"
+
+
 def resolve_rhds_base_image(
     state: TargetState,
     release: ReleaseConfig,
@@ -1309,6 +1410,9 @@ def resolve_rhds_base_image(
     target = state.target
     policy = state.policy
     current_base_image = state.current_base_image
+
+    if policy.mode == "rhel":
+        return resolve_rhel_python_base_image(release, tag_cache)
 
     if policy.mode == "stable":
         if target.accelerator == "cpu":
@@ -1553,7 +1657,12 @@ def plan_updates(
                 target=target,
                 original_text=original_text,
                 current_base_image=current_base_image,
-                policy=config.policy(target.accelerator, target.distribution, target.flavor),
+                policy=config.policy(
+                    target.accelerator,
+                    target.distribution,
+                    target.flavor,
+                    baseline=target.is_baseline,
+                ),
                 shared_acc_version=(
                     None
                     if target.accelerator == "cpu"

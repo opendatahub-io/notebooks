@@ -34,7 +34,7 @@ dependencies. To add a new notebook:
     - `Dockerfile.cpu` (and/or `.cuda`, `.rocm`) with multi-stage build instructions
     - `build-args/` directory with `cpu.conf`, `konflux.cpu.conf`, etc.
 - Add a Makefile target (no dependency on another notebook target):
-    ```
+    ```makefile
     .PHONY: jupyter-${NOTEBOOK_NAME}-ubi9-python-$(RELEASE_PYTHON_VERSION)
     jupyter-${NOTEBOOK_NAME}-ubi9-python-$(RELEASE_PYTHON_VERSION):
     	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
@@ -73,10 +73,12 @@ See [ADR 0008](docs/architecture/decisions/0008-harden-github-actions-pin-sha-di
 ### Contributing from branches vs forks
 
 **Recommended:** If you have write access to the repo, push your branch directly
-and create the PR from there:
+and create the PR from there. If you started from a fork, add the upstream remote
+first so the branch lands in `opendatahub-io/notebooks` (not your fork):
 
 ```bash
-git push origin HEAD:<your-initials>/branch-name
+git remote add upstream https://github.com/opendatahub-io/notebooks.git
+git push upstream HEAD:<your-initials>/branch-name
 ```
 
 This gives CI full access to build secrets (RHEL subscription, AIPCC registry) and
@@ -143,6 +145,17 @@ make test-${NOTEBOOK_NAME}
 - When renaming image labels or similar CI metadata, update only the current `-n`
   entries in `ci/check-params-env.sh` and `ci/expected-image-metadata.yaml`. Historical
   entries intentionally keep old names.
+- **macOS python.org SSL certificates:** If your default `python3` is the python.org
+  framework build (e.g. `/Library/Frameworks/Python.framework/...`), ad-hoc scripts that
+  use `urllib` or `requests` may fail with
+  `ssl.SSLCertVerificationError: certificate verify failed`. This is because the
+  python.org installer does not wire up CA certificates automatically. Fix once by
+  running:
+  ```bash
+  "/Applications/Python 3.12/Install Certificates.command"
+  ```
+  (adjust the version number to match your install). Alternatively, use the
+  `uv`-managed Python (`python3.14`) which uses the system trust store.
 
 #### ODH vs RHOAI local builds
 

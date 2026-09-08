@@ -1,6 +1,6 @@
 ---
-description: Jira project IDs, custom fields, and conventions for creating issues in RHAIENG and related projects
-alwaysApply: false
+name: jira-conventions
+description: Jira project IDs, custom fields, and conventions for creating and updating issues in RHAIENG and related projects (RHOAIENG CVE trackers, RHAIRFE, RHAISTRAT) on redhat.atlassian.net — cloud ID, component/team IDs, key custom field IDs, issue hierarchy and parent linking, MCP create/update/transition call patterns, link types, sprint assignment, and the RHOAIENG CVE resolution workflow. Use whenever creating, updating, linking, assigning, or transitioning Jira tickets for this team; do not use for non-Jira task tracking.
 ---
 
 # Jira Conventions for Notebooks Team
@@ -68,7 +68,7 @@ RHOAIENG tickets are per-component vulnerability trackers created automatically 
 
 The sprint field ID differs between projects. Use `jira_add_issues_to_sprint` (from the project MCP server) which works for **both** projects regardless of field ID:
 
-```
+```text
 jira_add_issues_to_sprint(sprint_id="66724", issue_keys="RHOAIENG-12345,RHOAIENG-12346")
 ```
 
@@ -88,13 +88,13 @@ Standard workflow for resolving CVE tickets on `rhoai-2.25`:
 
 Use `jira_update_issue` with the `fields` parameter as a JSON string:
 
-```
+```text
 jira_update_issue(issue_key="RHOAIENG-12345", fields="{\"assignee\": \"user@redhat.com\"}")
 ```
 
 For transitions:
 
-```
+```text
 jira_transition_issue(issue_key="RHOAIENG-12345", transition_id="131")
 ```
 

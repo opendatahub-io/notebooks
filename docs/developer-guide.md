@@ -85,7 +85,7 @@ spec:
 
 ### **ImageStream definitions for the supported out-of-the-box images in ODH**
 
-The ImageStream definitions of the out-of-the-box workbench images for ODH can be found [here](https://github.com/opendatahub-io/notebooks/tree/main/manifests).
+The ImageStream definitions of the out-of-the-box workbench images for ODH can be found in the [notebooks manifests](https://github.com/opendatahub-io/notebooks/tree/main/manifests).
 
 ### **Example ImageStream object definition**
 

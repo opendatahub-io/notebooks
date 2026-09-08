@@ -5,7 +5,7 @@ Apply local ImageStream manifest edits to a dev/test cluster using
 **Open Data Hub (ODH)** upstream and **Red Hat OpenShift AI (RHOAI)** downstream;
 only the `--platform` flag and default namespaces differ.
 
-**Not for production.** This bypasses the operator’s normal release path. It is a replacment for the recently deprecation of `devFlags` provided by the operator.
+**Not for production.** This bypasses the operator’s normal release path. It replaces the recently deprecated `devFlags` provided by the operator.
 Changes may be
 overwritten on operator upgrade or workbenches reconcile.
 

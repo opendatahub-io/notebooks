@@ -39,6 +39,10 @@ def _minimal_valid_config() -> dict:
                     "rhds": {"channel": "fast", "version": "3.5.0"},
                     "odh": {"origin": "in-house", "version": "latest"},
                 },
+                "baseline_cpu": {
+                    "rhds": {"channel": "rhel"},
+                    "odh": {"origin": "in-house", "version": "latest"},
+                },
                 "cuda": {
                     "minimal": copy.deepcopy(_GPU_FLAVOR),
                 },

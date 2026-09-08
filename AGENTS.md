@@ -8,6 +8,9 @@ multi-stage Dockerfiles on Centos 9 Stream (ODH) and RHEL 9.8 EUS (RHOAI) with P
 This file is the short entry point for AI agents working in this repository. Keep it lean,
 and follow linked documents for topic-specific detail.
 
+`CLAUDE.md` at the repo root is a symlink to this file (alias for Claude Code
+discovery); `AGENTS.md` remains the single source of truth — edit only this file.
+
 ## Start here
 
 | Read this | When |

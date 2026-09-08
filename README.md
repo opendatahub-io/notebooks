@@ -216,7 +216,7 @@ In addition, Dagger [does not allow bind-mounting local directories](https://doc
 to the container but always copies files in and out.
 
 #### Running testcontainers tests in Pytest
-```
+```bash
 # Podman/Docker config
 # Linux
 sudo dnf install podman

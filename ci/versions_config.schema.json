@@ -24,6 +24,10 @@
           "$ref": "#/$defs/CpuArtifact",
           "description": "Shared CPU policy for all managed CPU workbenches."
         },
+        "baseline_cpu": {
+          "$ref": "#/$defs/BaselineCpuArtifact",
+          "description": "CPU policy for baseline images (public-index, hermetic builds)."
+        },
         "cuda": {
           "$ref": "#/$defs/CudaFlavors",
           "description": "CUDA flavor map keyed by image/flavor ID (open keys; sync enforces the managed inventory).",
@@ -47,10 +51,29 @@
       },
       "required": [
         "cpu",
+        "baseline_cpu",
         "cuda",
         "rocm"
       ],
       "title": "BaseImageArtifacts",
+      "type": "object"
+    },
+    "BaselineCpuArtifact": {
+      "additionalProperties": false,
+      "description": "Shared CPU base-image policy for baseline workbench/runtime images.",
+      "properties": {
+        "rhds": {
+          "$ref": "#/$defs/RhdsRhelCpuPolicy"
+        },
+        "odh": {
+          "$ref": "#/$defs/OdhCpuPolicy"
+        }
+      },
+      "required": [
+        "rhds",
+        "odh"
+      ],
+      "title": "BaselineCpuArtifact",
       "type": "object"
     },
     "CpuArtifact": {
@@ -268,6 +291,23 @@
       "title": "RhdsFastGpuPolicy",
       "type": "object"
     },
+    "RhdsRhelCpuPolicy": {
+      "additionalProperties": false,
+      "description": "RHDS baseline CPU policy: bare RHEL Python base image (OS-stream tags).",
+      "properties": {
+        "channel": {
+          "const": "rhel",
+          "description": "Must be \"rhel\" for baseline images that start from registry.redhat.io/rhel9/python-*.",
+          "title": "Channel",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "title": "RhdsRhelCpuPolicy",
+      "type": "object"
+    },
     "RhdsStableCpuPolicy": {
       "additionalProperties": false,
       "description": "RHDS CPU policy for the stable channel (version is derived from release.full_version).",
@@ -346,6 +386,15 @@
             "rhds": {
               "channel": "fast",
               "version": "<full_version>"
+            },
+            "odh": {
+              "origin": "in-house",
+              "version": "latest"
+            }
+          },
+          "baseline_cpu": {
+            "rhds": {
+              "channel": "rhel"
             },
             "odh": {
               "origin": "in-house",

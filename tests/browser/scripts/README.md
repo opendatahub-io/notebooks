@@ -29,7 +29,7 @@ Install **Node.js + npm**:
 
 ----------
 
-# 3️⃣ Initialize the project (creates package.json **and** package-lock.json)
+# 3️⃣ Initialize the project (creates package.json)
 
 From the repo root:
 
@@ -38,7 +38,8 @@ From the repo root:
 This generates:
 
 -   `package.json` — declares dependencies and scripts
--   `package-lock.json` — _locks_ exact dependency versions for reproducible installs
+
+Note: `package-lock.json` is **not** created by `npm init` — it is generated on the first `npm install` (see step 4 below).
 
 ----------
 
@@ -48,11 +49,11 @@ Playwright **must** be installed locally so the scripts can import it:
 
 `npm install playwright`
 
-This updates:
+This creates/updates:
 
 -   `node_modules/` with the dependency
 -   `package.json` with `"playwright": "..."`
--   `package-lock.json` with the exact resolved version
+-   `package-lock.json` with the exact resolved version (created on the first `npm install`)
 
 Then install browser binaries:
 

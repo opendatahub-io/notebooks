@@ -91,19 +91,20 @@ and a full walkthrough (including jupyter datascience).
 ### What it does
 
 
-| Step                 | Condition                                                   | Script called                                                                         |
-| -------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 1. Generic artifacts | `prefetch-input/<variant>/artifacts.in.yaml` exists         | `create-artifact-lockfile.py`                                                         |
-| 2. Pip wheels        | `pyproject.toml` exists in component dir                    | `create-requirements-lockfile.sh --download`                                          |
-| 3. NPM packages      | Tekton PipelineRun found for component (see below)          | `download-npm.sh --tekton-file`                                                       |
-| 4. RPMs              | `prefetch-input/<variant>/rpms.in.yaml` exists              | `hermeto-fetch-rpm.sh` (if lockfile committed) or `create-rpm-lockfile.sh --download` |
-| 5. Go modules        | Tekton file has `prefetch-input` entries with `type: gomod` | `create-go-lockfile.sh --tekton-file`                                                 |
+| Step                 | Condition                                                   | Script called                                                                                  |
+| -------------------- | ----------------------------------------------------------- |------------------------------------------------------------------------------------------------|
+| 1. Generic artifacts | `prefetch-input/<variant>/artifacts.in.yaml` exists         | `create-artifact-lockfile.py`                                                                  |
+| 2. Pip wheels        | `pyproject.toml` exists; missing `requirements.<flavor>.txt` fails prefetch | `download-pip-packages.py` from committed `requirements.<flavor>.txt` (no lockfile generation) |
+| 3. NPM packages      | Tekton PipelineRun found for component (see below)          | `download-npm.sh --tekton-file`                                                                |
+| 4. RPMs              | `prefetch-input/<variant>/rpms.in.yaml` exists              | `hermeto-fetch-rpm.sh` (if lockfile committed) or `create-rpm-lockfile.sh --download`          |
+| 5. Go modules        | Tekton file has `prefetch-input` entries with `type: gomod` | `create-go-lockfile.sh --tekton-file`                                                          |
 
 
 **Variant directory:** Lockfiles live under `prefetch-input/odh/` (upstream) or
 `prefetch-input/rhds/` (downstream). If that directory is missing, steps 1 and 4
 are skipped; steps 2 (pip), 3 (npm), and 5 (gomod) still run when their inputs exist
-(`pyproject.toml`, a Tekton file for the component, or gomod-type prefetch-input).
+(`pyproject.toml` and `requirements.<flavor>.txt`, a Tekton file for the
+component, or gomod-type prefetch-input).
 
 **Step 3 (NPM):** The script finds the Tekton file automatically via
 `find_tekton_yaml`: it looks for a `.tekton/*pull-request*.yaml` whose
@@ -119,9 +120,11 @@ directory containing `go.mod` and `go.sum`, `create-go-lockfile.sh` runs Hermeto
 to fetch Go modules into `cachi2/output/deps/gomod/`. If there are no gomod
 entries, the step is skipped.
 
-Steps are skipped if their input files don't exist. For RPMs, if
-`rpms.lock.yaml` is already committed, it downloads directly (skipping
-lockfile regeneration) — this avoids cross-platform issues on arm64 CI runners.
+Steps are skipped if their input files don't exist, except Step 2, which fails
+if the committed `requirements.<flavor>.txt` is missing (run
+`make refresh-lock-files`). For RPMs, if `rpms.lock.yaml` is already committed,
+it downloads directly (skipping lockfile regeneration) — this avoids
+cross-platform issues on arm64 CI runners.
 
 ### GitHub Actions integration
 
@@ -292,7 +295,7 @@ python3 scripts/lockfile-generators/create-artifact-lockfile.py \
 
 After running these, the generated files are:
 
-```
+```text
 codeserver/ubi9-python-3.12/
 ├── requirements.cpu.txt                      # pinned pip packages (generated from pylock.cpu.toml)
 ├── uv.lock.d/
@@ -741,7 +744,12 @@ packages on ppc64le and s390x**. Baseline `pyproject.toml` files therefore:
 
 - Keep **uv, wheel, setuptools, micropipenv, ripgrep** (etc.) ungated so every arch resolves.
 - Gate **Jupyter / Elyra / Kale stacks** with
-  `sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')`.
+  `platform_machine != 'ppc64le' and platform_machine != 's390x'`
+  (same form as AIPCC meta packages). Pair that with a single
+  `[tool.uv] environments` entry
+  (`sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'`)
+  so exported requirements.txt markers include linux/cpython plus the exclusion. Do not list four arch-specific
+  environments: uv then emits ``== x86_64 or == aarch64`` ORs instead of ``!= ppc64le``.
 - Set `[tool.uv] required-environments` for all four arches so lock resolution fails early
   if a truly universal dep is missing a wheel on any platform.
 

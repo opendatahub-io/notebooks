@@ -93,7 +93,7 @@ This single command orchestrates all five lockfile generators:
 
 Lockfiles are organized into variant subdirectories under `prefetch-input/`:
 
-```
+```text
 prefetch-input/
 ├── repos/           # shared DNF repo definitions (ubi, centos, epel, rhsm-pulp)
 ├── odh/             # upstream lockfiles (UBI + CentOS Stream repos)
@@ -110,7 +110,7 @@ prefetch-input/
 
 After running, dependencies are in:
 
-```
+```text
 cachi2/output/deps/
 ├── generic/    # GPG keys, VS Code .vsix extensions (ripgrep from pip, oc from RPM)
 ├── rpm/        # RPM packages + repodata/ (includes openshift-clients)

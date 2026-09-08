@@ -50,7 +50,7 @@ OpenShift default, a security hardening feature against registry/namespace
 squatting), so an unqualified name with multiple configured unqualified-
 search registries is rejected outright:
 
-```
+```text
 Failed to inspect image "": rpc error: code = Unknown desc = short name
 mode is enforcing, but image name dxflrs/garage:v2.3.0 returns ambiguous list
 ```
@@ -66,7 +66,7 @@ Both SeaweedFS and RustFS default to Docker Hub-hosted images
 session (image inspection + repeated pod restarts across both installs),
 this cluster's outbound IP hit Docker Hub's anonymous rate limit:
 
-```
+```text
 Failed to pull image "docker.io/chrislusf/seaweedfs:4.41": ...
 toomanyrequests: You have reached your unauthenticated pull rate limit.
 https://www.docker.com/increase-rate-limit
@@ -385,7 +385,7 @@ rm -f "$PASSWORD_FILE"   # don't wait for the trap/EXIT fallback — clean up as
 
 Result: `CrashLoopBackOff`,
 
-```
+```bash
 oc --context "$CLUSTER_CONTEXT" logs deploy/s4 -n s4
 exec container process `/opt/ceph-container/bin/entrypoint.sh`: Exec format error
 ```

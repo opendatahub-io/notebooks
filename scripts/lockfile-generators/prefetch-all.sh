@@ -219,38 +219,42 @@ else
 fi
 
 # =========================================================================
-# Step 2: Pip wheels (create-requirements-lockfile.sh --download)
+# Step 2: Pip wheels (download from committed requirements.<flavor>.txt)
 #
-# Resolves Python dependencies from pyproject.toml using uv, generates
-# pylock.<flavor>.toml + requirements.<flavor>.txt, then downloads all
-# wheels.  The --flavor flag selects which optional dependency groups
-# to include (e.g. cpu vs cuda have different torch/triton packages).
+# Download-only, like the RPM step (step 4): this script never generates
+# pip lockfiles.  GHA and Konflux (Hermeto/cachi2) must consume the same
+# committed pylock/requirements files; regenerating them here would let
+# GHA pass while Konflux fails on the stale committed locks (and vice
+# versa).  When pyproject.toml changes, regenerate with
+# `make refresh-lock-files` (or create-requirements-lockfile.sh) and
+# commit the result — prefetch only downloads.
+#
+# The --flavor flag selects which lockfile flavor to use (cpu, cuda,
+# rocm have different optional dependency groups, e.g. torch/triton).
 # Output: cachi2/output/deps/pip/
 # =========================================================================
 PYPROJECT="$COMPONENT_DIR/pyproject.toml"
 if [[ -f "$PYPROJECT" ]]; then
   echo "=== [2/5] Pip wheels ==="
-  # Generate lockfile + requirements.txt (no download)
-  "$SCRIPTS_PATH/create-requirements-lockfile.sh" \
-      --pyproject-toml "$PYPROJECT" --flavor "$FLAVOR"
-
   REQUIREMENTS_FILE="$COMPONENT_DIR/requirements.${FLAVOR}.txt"
-  if [[ -f "$REQUIREMENTS_FILE" ]]; then
-    # Derive target arch from BUILD_ARCH (GHA cross-build via QEMU) or host
-    if [[ -n "${BUILD_ARCH:-}" ]]; then
-      case "${BUILD_ARCH##*/}" in
-        amd64) ARCH="x86_64" ;;
-        arm64) ARCH="aarch64" ;;
-        *) ARCH="${BUILD_ARCH##*/}" ;;
-      esac
-    else
-      ARCH=$(uname -m)
-    fi
-
-    # Download wheels (parallel, arch-filtered)
-    python3 "$SCRIPTS_PATH/helpers/download-pip-packages.py" \
-        --arch "$ARCH" "$REQUIREMENTS_FILE"
+  if [[ ! -f "$REQUIREMENTS_FILE" ]]; then
+    error_exit "requirements.${FLAVOR}.txt not found in $COMPONENT_DIR. prefetch-all.sh does not generate pip lockfiles — run 'make refresh-lock-files DIR=$COMPONENT_DIR' (or scripts/lockfile-generators/create-requirements-lockfile.sh), commit the result, then re-run prefetch."
   fi
+
+  # Derive target arch from BUILD_ARCH (GHA cross-build via QEMU) or host
+  if [[ -n "${BUILD_ARCH:-}" ]]; then
+    case "${BUILD_ARCH##*/}" in
+      amd64) ARCH="x86_64" ;;
+      arm64) ARCH="aarch64" ;;
+      *) ARCH="${BUILD_ARCH##*/}" ;;
+    esac
+  else
+    ARCH=$(uname -m)
+  fi
+
+  # Download wheels (parallel, arch-filtered)
+  python3 "$SCRIPTS_PATH/helpers/download-pip-packages.py" \
+      --arch "$ARCH" "$REQUIREMENTS_FILE"
   STEPS_RUN=$((STEPS_RUN + 1))
   echo ""
 else

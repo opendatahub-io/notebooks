@@ -4,7 +4,7 @@ The following pattern is designed and would be used for future IDE workbench con
 
 Workbench Image name schema:
 
-```
+```text
 odh-<image type>-<image-feature>-<image-scope>-<accelerator>-<python version>-<os-version>
 ```
 

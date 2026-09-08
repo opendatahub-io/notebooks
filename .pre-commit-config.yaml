@@ -39,6 +39,12 @@ repos:
       - id: ruff-format
         types_or: [python, pyi]
         files: '^(ci|tests|ntb|base-images|scripts)/.*\.(py|pyi)$'
+  # https://github.com/DavidAnson/markdownlint-cli2
+  # Enforces MD040 (fenced-code-language) and MD014 (commands-show-output); see .markdownlint-cli2.jsonc.
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.2
+    hooks:
+      - id: markdownlint-cli2
   # https://github.com/gitleaks/gitleaks
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1

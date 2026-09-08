@@ -70,7 +70,7 @@ Start by cloning the Open Data Hub notebooks repository:
 
 Navigate to the codeserver folder and create a new folder for your custom image. For example, let's name it ubi9-python-3.9-db-clients. Inside this folder, create a Dockerfile with the following instructions:
 
-```
+```dockerfile
 # The base image auto assigned by the make recipe from the next step, in this case is the code-server notebook.
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
@@ -107,7 +107,7 @@ Create two RPM files, mongodb-org-6.0.repo-x86_64 and mssql-2022.repo-x86_64, in
 
 Filename: mongodb-org-6.0.repo-x86_64
 
-```
+```ini
 [mongodb-org-6.0]
 name=MongoDB Repository
 baseurl=https://repo.mongodb.org/yum/redhat/9/mongodb-org/6.0/x86_64/
@@ -118,7 +118,7 @@ gpgkey=https://www.mongodb.org/static/pgp/server-6.0.asc
 
 Filename: mssql-2022.repo-x86_64
 
-```
+```ini
 [packages-microsoft-com-prod]
 name=packages-microsoft-com-prod
 baseurl=https://packages.microsoft.com/rhel/9.0/prod/
@@ -131,7 +131,7 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 
 To streamline the build and push process, update the Makefile with a new recipe:
 
-```
+```makefile
 .PHONY: codeserver-ubi9-python-3.9-db-clients
 codeserver-ubi9-python-3.9-db-clients: codeserver-ubi9-python-3.9
 $(call image,$@,codeserver/ubi9-python-3.9-db-clients,$<)
@@ -139,8 +139,8 @@ $(call image,$@,codeserver/ubi9-python-3.9-db-clients,$<)
 
 Run the following command to build and push the image:
 
-```
-$ make codeserver-ubi9-python-3.9-db-clients -e IMAGE_REGISTRY=quay.io/${YOUR_USERNAME}/workbench-images
+```bash
+make codeserver-ubi9-python-3.9-db-clients -e IMAGE_REGISTRY=quay.io/${YOUR_USERNAME}/workbench-images
 ```
 
 Note: Replace `${YOUR_USERNAME}` with your actual username, and the registry can be any valid registry, not just quay.io.

@@ -8,7 +8,7 @@ inputs:
   update:
     description: 'Run apt-get update before installing'
     required: false
-    default: 'true'
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -55,4 +55,13 @@ runs:
 
     - name: Install packages
       shell: bash
-      run: sudo apt-get install ${{ inputs.packages }}
+      run: |
+        set -Eeuxo pipefail
+        if ! sudo apt-get install ${{ inputs.packages }}; then
+          # Runner images ship a pre-populated apt index that can lag the
+          # mirrors (a replaced or removed .deb then fails the install);
+          # refresh the index and retry once before failing the job.
+          echo "apt install failed against the current index; refreshing and retrying once"
+          sudo apt-get update
+          sudo apt-get install ${{ inputs.packages }}
+        fi

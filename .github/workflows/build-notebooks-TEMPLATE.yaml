@@ -108,20 +108,11 @@ jobs:
           platform: ${{ inputs.platform }}
 
       # do this early because it's fast and why not
-      - name: Install git-crypt
+      - name: Unlock git-crypt and configure registry auth
         if: ${{ inputs.subscription }}
-        uses: ./.github/actions/apt-install
+        uses: ./.github/actions/git-crypt-auth
         with:
-          packages: git-crypt
-
-      - name: Unlock encrypted secrets with git-crypt
-        if: ${{ inputs.subscription }}
-        run: |
-          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
-          git-crypt unlock ./git-crypt-key
-          rm ./git-crypt-key
-        env:
-          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+          git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
 
       # https://console.redhat.com/insights/connector/activation-keys
       # This runs slower than storing the entitlement certificates with git-crypt,

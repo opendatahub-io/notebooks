@@ -115,7 +115,7 @@ The `test_image_pyprojects_version_alignment` test verifies:
 
 Example test failures:
 
-```
+```text
 SUBFAILED: boto3 has multiple specifiers: [~=1.42.29, ~=1.40.52]
   → Fix: Update all pyproject.toml files to use the same boto3 version
 

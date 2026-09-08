@@ -21,7 +21,7 @@ Benefits:
 
 ## Architecture overview
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
 │                     Lockfile inputs (committed)                  │
 │                                                                  │
@@ -275,7 +275,7 @@ Updated to handle:
 
 Lockfiles are organized into two variant directories:
 
-```
+```text
 prefetch-input/
 ├── repos/           # shared .repo files
 ├── odh/             # upstream (UBI + CentOS Stream + EPEL repos)

@@ -1,0 +1,10 @@
+---
+# artifacts.in.yaml - Generic (non-RPM, non-pip) artifacts to prefetch
+#
+# Shared RHDS generic inputs for repo-root prefetch-input/ consumers (e.g.
+# jupyter-baseline). Component-local trees (codeserver-baseline) may carry
+# their own copy; keep this aligned when adding URLs here.
+
+input:
+    - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
+    - url: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9

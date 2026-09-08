@@ -5,6 +5,7 @@
 # Table of contents
 
 - [Overview](#overview)
+- [Baseline runtime smoke test](#baseline-runtime-smoke-test)
 - [Elyra Testing](#elyra-testing)
 - [Setup AWS Credentials](#setup-aws-credentials)
 - [Pipeline setup](#pipeline-setup)
@@ -18,6 +19,12 @@ Elyra enhances JupyterLab with AI-centric features, streamlining AI model develo
 The Notebooks team is responsible for maintaining these runtime container images. This ensures Elyra pipelines can be executed using RHOAI images specifically crafted for this purpose, including accelerator support (NVIDIA and AMD GPUs), AI frameworks (pre-installed PyTorch and TensorFlow), and Python support.
 
 This ensures ML engineers can focus on AI model development with reliable and efficient pipeline execution in RHOAI.
+
+## Baseline runtime smoke test
+
+For **runtime-baseline** images (lean Elyra/Kale executor, no datascience stack), use the
+stdlib-only pipeline in [`baseline/`](baseline/README.md) instead of the iris sample below.
+The iris example requires pandas and scikit-learn and will fail on baseline runtimes.
 
 ## Elyra Testing
 
@@ -89,7 +96,7 @@ To run Elyra pipelines, you need to create a data science cluster workbench in R
 
       ![Create workbench button][image9]
 
-3. On the workbench creation form, you can put any name you want, but it needs to be, at least, the data science image (you can choose the TensorFlow, PyTorch, among other images \- click [here](https://github.com/search?q=repo%3Aopendatahub-io%2Fnotebooks+COPY+%2F%24%7BDATASCIENCE_SOURCE_CODE%7D%5C%2Fsetup-elyra.sh%2F&type=code) for a full list of images with Elyra):
+3. On the workbench creation form, you can put any name you want, but it needs to be, at least, the data science image (you can choose the TensorFlow, PyTorch, among other images \- click [the repository search for images with Elyra](https://github.com/search?q=repo%3Aopendatahub-io%2Fnotebooks+COPY+%2F%24%7BDATASCIENCE_SOURCE_CODE%7D%5C%2Fsetup-elyra.sh%2F&type=code) for a full list):
 
    	**Name:** elyra-wb
    	**Image Selection:** Jupyter | Data Science | CPU | Python 3.12
