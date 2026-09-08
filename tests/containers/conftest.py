@@ -102,7 +102,7 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
         # overrides the fixture scope (https://github.com/pytest-dev/pytest/issues/634),
         # causing ScopeMismatch for any session-scoped fixture that depends on `image`.
         image_option = metafunc.config.getoption("--image")
-        assert image_option is not None
+        assert image_option is not None, "--image option must be provided"
         metafunc.parametrize(image.__name__, image_option, scope="session")
 
 
@@ -118,7 +118,7 @@ def get_image_metadata(image: str) -> Image:
             return Image(id=None, name=image, labels=image_info.labels, env=image_info.env or {})
         # pull & docker inspect
         image_metadata = client.client.images.pull(image)
-        assert isinstance(image_metadata, docker.models.images.Image)
+        assert isinstance(image_metadata, docker.models.images.Image), "docker images.pull() did not return an Image"
 
     return Image.from_docker(image_metadata, name=image)
 
