@@ -105,18 +105,14 @@ RUN dnf install -y gcc-c++ openblas-devel \
     && mkdir -p /opt/app-root/src/wheels && chown 1001:0 /opt/app-root/src/wheels \
     && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 
-USER 1001:0
-
 USER 0
 # [SDIST] Rust toolchain for sdists with Rust extensions via RPM packages
 # (compatible with hermetic Konflux builds).
-RUN dnf install -y rust cargo ninja-build ninja-build && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
+RUN dnf install -y rust cargo ninja-build && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
-# these are build tools, not packages shipped in the image. They let the
-# loop below build sdists with --no-build-isolation (much faster than
-# per-package isolated environments).
+
 
 COPY --chown=1001:0 .wheel-cache /opt/app-root/src/wheels
 
@@ -144,8 +140,6 @@ while IFS= read -r req; do
   # there only the target package is forced to sdist (build deps may use
   # prebuilt wheels, or we'd compile their entire dependency trees).
   if python3 -m pip wheel "${spec}" \
-       --no-deps --no-binary :all: -w /opt/app-root/src/wheels \
-     || python3 -m pip wheel "${spec}" \
        --no-deps --no-binary :all: -w /opt/app-root/src/wheels; then
     BUILT=$((BUILT + 1))
   else
