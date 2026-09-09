@@ -3,7 +3,7 @@
 # Scheduled runs moved to lock-renewal.yaml; this workflow remains for manual fallback.
 name: RPM Lock Files Renewal Action
 
-permissions: {}  # least-privilege: grant per-job below
+permissions: {}  # default-deny: unscoped jobs get only metadata:read
 
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:

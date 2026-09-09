@@ -4,7 +4,7 @@
 # Opens one PR with up to four commits (one per step).
 name: Full Lock Files Renewal Action
 
-permissions: {}  # least-privilege: grant per-job below
+permissions: {}  # default-deny: unscoped jobs get only metadata:read
 
 on:  # yamllint disable-line rule:truthy
   schedule:

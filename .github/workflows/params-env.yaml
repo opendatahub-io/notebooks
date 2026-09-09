@@ -20,11 +20,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions:
-  contents: read
-
 jobs:
   validation-of-params-env:
+    permissions:
+      contents: read
     runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
