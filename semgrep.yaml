@@ -1867,7 +1867,7 @@ rules:
       Remediation: Always quote variables in file operations:
         rm "$FILE"         # correct
         rm $FILE           # dangerous
-    pattern-regex: '(rm|cp|mv|eval|chmod|chown|kill|pkill)\s+[^|;]*(?<!["''\\])\$(?:\{[A-Za-z_][A-Za-z0-9_]*(?:[:\-\+\?=][^}]*)?\}|[A-Za-z_][A-Za-z0-9_]*)'
+    pattern-regex: '(rm|cp|mv|eval|chmod|chown|kill|pkill)\s+[^|;&\n]*(?<!["''\\])\$(?:\{[A-Za-z_][A-Za-z0-9_]*(?:[:\-\+\?=][^}]*)?\}|[A-Za-z_][A-Za-z0-9_]*)'
     metadata:
       cwe: "CWE-78"
       category: "security"

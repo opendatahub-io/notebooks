@@ -1,5 +1,6 @@
+---
 name: Semgrep TLS Rules
-on:
+on:  # yamllint disable-line rule:truthy
   pull_request:
     branches: [main, master, dev, odh, incubating, stable, stable-2.x]
 
@@ -10,9 +11,9 @@ jobs:
   semgrep-tls:
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep@sha256:525beaba156b9bd3f9847d6ec0eb8f308e11f407e0c0b2da641e7c8dd99c97d6 # 1.168.0
+      image: semgrep/semgrep@sha256:525beaba156b9bd3f9847d6ec0eb8f308e11f407e0c0b2da641e7c8dd99c97d6  # 1.168.0
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Restore suppression file from base branch
         # Prevent PR contributors from weakening suppressions by editing
