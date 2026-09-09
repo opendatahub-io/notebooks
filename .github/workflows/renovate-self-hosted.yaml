@@ -20,8 +20,6 @@
 # quay.io / registry.redhat.io resolve (docker datasource + hostRules).
 name: Renovate (self-hosted)
 
-permissions: {}  # least-privilege; Renovate uses RENOVATE_TOKEN
-
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:

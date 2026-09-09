@@ -1,7 +1,5 @@
 ---
 name: Create release
-permissions:
-  contents: write
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
@@ -40,6 +38,8 @@ env:
 
 jobs:
   release:
+    permissions:
+      contents: write
     name: Create opendatahub-io/notebooks release
     runs-on: ubuntu-26.04
     steps:
