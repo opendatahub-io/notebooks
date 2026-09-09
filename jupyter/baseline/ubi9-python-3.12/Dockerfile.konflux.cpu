@@ -82,6 +82,91 @@ EOF
 USER 1001
 
 ####################
+# python-builder   #
+####################
+# [SDIST] Compile the pinned Python packages from source distributions
+# into /opt/app-root/src/wheels. The jupyter-baseline stage installs those wheels with
+# --no-index, so the shipped Python packages never come from precompiled
+# PyPI wheels.
+#
+# /opt/app-root/src/wheels may be a podman --volume mount during development; the build
+# loop skips packages whose wheel already exists, so each iteration only
+# compiles what is missing.
+FROM cpu-base AS python-builder
+
+ARG BASELINE_SOURCE_CODE=jupyter/baseline/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
+
+USER 0
+
+# [SDIST] Toolchain for compiling sdists (non-hermetic: base image repos).
+# openblas-devel provides BLAS/LAPACK for numpy.
+RUN dnf install -y gcc-c++ openblas-devel \
+    && mkdir -p /opt/app-root/src/wheels && chown 1001:0 /opt/app-root/src/wheels \
+    && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
+
+USER 1001:0
+
+# [SDIST] Rust toolchain for sdists with Rust extensions (cryptography,
+# argon2-cffi-bindings, rpds-py, uv). Installed for the app user so the
+# loop below can use it without root.
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --profile minimal --default-toolchain stable
+
+COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+
+# [SDIST] Prebuilt build-system tooling. Allowed as precompiled wheels:
+# these are build tools, not packages shipped in the image. They let the
+# loop below build sdists with --no-build-isolation (much faster than
+# per-package isolated environments).
+RUN python3 -m pip install --no-cache-dir \
+    setuptools wheel setuptools-scm meson meson-python ninja cmake cython patchelf \
+    maturin setuptools-rust hatchling flit-core poetry-core scikit-build-core \
+    jupyter-packaging mypy pybind11 puccinialin uv-build hatch-fancy-pypi-readme hatch-jupyter-builder hatch-nodejs-version
+
+COPY --chown=1001:0 .wheel-cache /opt/app-root/src/wheels
+
+# [SDIST] Compile every pinned package from its sdist (--no-binary :all:).
+# Packages whose wheel already exists in /opt/app-root/src/wheels are skipped (dev
+# iteration cache). (pip wheel, not uv: uv has no `uv pip wheel`.)
+RUN /bin/bash <<'EOF'
+set -Eeuo pipefail
+export PIP_CACHE_DIR=/tmp/pip-cache
+export PATH="$HOME/.cargo/bin:$PATH"
+FAILED=()
+BUILT=0
+SKIPPED=0
+while IFS= read -r req; do
+  [ -z "$req" ] && continue
+  spec="${req%% ;*}"
+  name="$(echo "${spec%%=*}" | tr 'A-Z_' 'a-z-')"
+  if ls /opt/app-root/src/wheels/"${name}"-[0-9]*.whl >/dev/null 2>&1; then
+    SKIPPED=$((SKIPPED + 1))
+    continue
+  fi
+  echo "=== building ${spec} ==="
+  # Fast path: no build isolation (backends are preinstalled). Fallback:
+  # standard PEP 517 isolation for packages with other build requirements;
+  # there only the target package is forced to sdist (build deps may use
+  # prebuilt wheels, or we'd compile their entire dependency trees).
+  if python3 -m pip wheel "${spec}" \
+       --no-deps --no-build-isolation --no-binary :all: -w /opt/app-root/src/wheels \
+     || python3 -m pip wheel "${spec}" \
+       --no-deps --no-binary "${name}" -w /opt/app-root/src/wheels; then
+    BUILT=$((BUILT + 1))
+  else
+    echo "FAILED: ${name}"
+    FAILED+=("${name}")
+  fi
+done < <(sed '/--hash/d' ./requirements.txt | tr -d '\\' | sed 's/[[:space:]]*$//' | grep '^[A-Za-z0-9_.-]*==')
+echo "summary: built=${BUILT} skipped=${SKIPPED} failed=${#FAILED[@]}"
+if [ ${#FAILED[@]} -gt 0 ]; then
+  echo "FAILED packages: ${FAILED[*]}"
+  exit 1
+fi
+EOF
+
+####################
 # jupyter-minimal  #
 ####################
 FROM cpu-base AS jupyter-minimal
@@ -153,8 +238,7 @@ COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.tx
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
-# Install uv from the hermeto/cachi2 pip cache (offline) before the main
-# package install. Online `pip install uv` would break hermetic Konflux builds.
+# Install uv (build tool) before the main package install.
 # UV_VERSION is derived from this image's requirements.cpu.txt by
 # scripts/dockerfile_fragments.py.
 #
@@ -167,22 +251,28 @@ USER 1001:0
 ARG UV_VERSION=0.12.5
 
 ### END UV version
-RUN python3 -m pip install --no-cache-dir --no-index \
-    --find-links /cachi2/output/deps/pip \
+RUN python3 -m pip install --no-cache-dir \
     "uv==${UV_VERSION}"
+
+# [SDIST] Wheels compiled from source in the python-builder stage.
+COPY --from=python-builder /opt/app-root/src/wheels ./wheels
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 umask 0002
 
-# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index).
-# /cachi2/output/deps/pip/ contains AIPCC wheels (and uv itself).
+# [SDIST] Install all Python packages from the source-built wheels in
+# ./opt/app-root/src/wheels (--no-index). Locally built wheels do not match the --hash pins
+# in requirements.txt (those pin the official PyPI artifacts), so install
+# from a hash-free requirements file.
+sed '/--hash/d' ./requirements.txt | tr -d '\\' > ./requirements-nohash.txt
+
 echo "Installing software and packages"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
-    --find-links /cachi2/output/deps/pip \
-    --requirements=./requirements.txt
+    --find-links ./wheels \
+    --requirements=./requirements-nohash.txt
 
 # JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist; no
 # PyPI wheels for argon2-cffi-bindings and other native deps). Skip Jupyter
