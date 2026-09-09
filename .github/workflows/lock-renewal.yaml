@@ -4,6 +4,8 @@
 # Opens one PR with up to four commits (one per step).
 name: Full Lock Files Renewal Action
 
+permissions: {}  # default-deny: unscoped jobs get only metadata:read
+
 on:  # yamllint disable-line rule:truthy
   schedule:
     - cron: "0 1 * * 3"  # Weekly lockfile update (Wednesday 1am UTC)
