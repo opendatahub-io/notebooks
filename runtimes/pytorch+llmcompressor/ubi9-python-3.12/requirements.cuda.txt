@@ -1,8 +1,9 @@
---index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.6-EA1/cuda13.0-ubi9/simple/
+--index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.6-EA2/cuda13.0-ubi9-test/simple/
 absl-py==2.5.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:870c8b3fdb3bc79cb9a131533f13622c809d3090151203dfaf6679b882e92279
 accelerate==1.14.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:4a7529ac2909448b994a1cfd3ea922adc91013726c7be08e52cee529283a57d5
+    --hash=sha256:4a7529ac2909448b994a1cfd3ea922adc91013726c7be08e52cee529283a57d5 \
+    --hash=sha256:b3d70fff99e2621c3c15ff6ef918d3e4bb0559b8eba6dd692a416c954f21f756
 aiohappyeyeballs==2.7.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:0a3f4e56c12ab97baf48a449be6299637c225707431275b9ec526da4c02dbf07
 aiohttp==3.14.3 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
