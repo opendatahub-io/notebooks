@@ -282,7 +282,7 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
                         )
 
             with subtests.test(msg="checking imagestream manifest consistency with pylock.toml", pyproject=file):
-                _skip_unimplemented_manifests(directory)
+                _skip_unimplemented_manifests(directory, manifests_directory)
 
                 manifest = load_manifests_file_for(directory, manifests_directory)
 
@@ -402,7 +402,7 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
             logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
             continue
 
-        if _skip_unimplemented_manifests(directory, call_skip=False):
+        if _skip_unimplemented_manifests(directory, manifests_directory, call_skip=False):
             continue
 
         manifest = load_manifests_file_for(directory, manifests_directory)
@@ -862,17 +862,29 @@ def is_subproject_metapackage(package_name: str) -> bool:
     return package_name.startswith("odh-notebooks-meta-") and package_name.endswith("-deps")
 
 
-def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bool:
-    unimplemented_dirs = (
-        "codeserver-baseline/ubi9-python-3.12",
-        "jupyter/baseline/ubi9-python-3.12",
-        "runtimes/baseline/ubi9-python-3.12",
-    )
-    for d in unimplemented_dirs:
-        if is_suffix(directory.parts, pathlib.Path(d).parts):
-            if call_skip:
-                pytest.skip(f"Manifest not implemented {directory.parts}")
-            else:
+_ODH_ONLY_MANIFEST_DIRS = (
+    "codeserver-baseline",
+    "jupyter/baseline",
+    "runtimes/baseline",
+)
+
+
+def _skip_unimplemented_manifests(
+    directory: pathlib.Path,
+    manifests_directory: pathlib.Path | None = None,
+    call_skip: bool = True,
+) -> bool:
+    """Skip image dirs with no manifest in the selected product tree.
+
+    Baseline workbench/runtime images ship on ODH only; RHOAI has no imagestream manifests for them.
+    """
+    if manifests_directory == manifests.MANIFESTS_RHOAI_DIR:
+        rel_parts = directory.relative_to(PROJECT_ROOT).parts
+        for d in _ODH_ONLY_MANIFEST_DIRS:
+            prefix_parts = pathlib.Path(d).parts
+            if len(rel_parts) >= len(prefix_parts) and rel_parts[: len(prefix_parts)] == prefix_parts:
+                if call_skip:
+                    pytest.skip(f"Baseline manifests are ODH-only (no RHOAI manifest for {directory.parts})")
                 return True
     return False
 

@@ -77,6 +77,8 @@ _ACCELERATOR_OVERRIDE_FOR_RESOURCE: dict[str, str | None] = {
     "jupyter-rocm-pytorch-notebook-imagestream.yaml": "rocm",
     "jupyter-rocm-tensorflow-notebook-imagestream.yaml": "rocm",
     "jupyter-pytorch-llmcompressor-imagestream.yaml": "cuda",
+    "jupyter-baseline-notebook-imagestream.yaml": None,
+    "code-server-baseline-notebook-imagestream.yaml": None,
 }
 
 # Canonical Git URLs for ``git fetch`` when the ``-n`` tag commit is not already in the local object DB.
@@ -154,7 +156,7 @@ def _discover_candidate_dirs() -> list[Path]:
         "Pipfile.lock.cpu",
         "Pipfile.lock.gpu",
     )
-    roots = ("jupyter", "codeserver")
+    roots = ("jupyter", "codeserver", "codeserver-baseline", "runtimes")
     seen: set[Path] = set()
     out: list[Path] = []
     for root in roots:
