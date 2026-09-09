@@ -107,11 +107,9 @@ RUN dnf install -y gcc-c++ openblas-devel \
 
 USER 1001:0
 
-# [SDIST] Rust toolchain for sdists with Rust extensions (cryptography,
-# argon2-cffi-bindings, rpds-py, uv). Installed for the app user so the
-# loop below can use it without root.
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-    | sh -s -- -y --profile minimal --default-toolchain stable
+# [SDIST] Rust toolchain for sdists with Rust extensions via RPM packages
+# (compatible with hermetic Konflux builds).
+RUN dnf install -y rust cargo && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
