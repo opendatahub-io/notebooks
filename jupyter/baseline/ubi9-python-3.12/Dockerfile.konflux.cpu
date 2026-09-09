@@ -114,14 +114,9 @@ RUN dnf install -y rust cargo && dnf clean all && rm -rf /var/cache/dnf /var/cac
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
-# [SDIST] Prebuilt build-system tooling. Allowed as precompiled wheels:
 # these are build tools, not packages shipped in the image. They let the
 # loop below build sdists with --no-build-isolation (much faster than
 # per-package isolated environments).
-RUN python3 -m pip install --no-cache-dir \
-    setuptools wheel setuptools-scm meson meson-python ninja cmake cython patchelf \
-    maturin setuptools-rust hatchling flit-core poetry-core scikit-build-core \
-    jupyter-packaging mypy pybind11 puccinialin uv-build hatch-fancy-pypi-readme hatch-jupyter-builder hatch-nodejs-version
 
 COPY --chown=1001:0 .wheel-cache /opt/app-root/src/wheels
 
@@ -149,9 +144,9 @@ while IFS= read -r req; do
   # there only the target package is forced to sdist (build deps may use
   # prebuilt wheels, or we'd compile their entire dependency trees).
   if python3 -m pip wheel "${spec}" \
-       --no-deps --no-build-isolation --no-binary :all: -w /opt/app-root/src/wheels \
+       --no-deps --no-binary :all: -w /opt/app-root/src/wheels \
      || python3 -m pip wheel "${spec}" \
-       --no-deps --no-binary "${name}" -w /opt/app-root/src/wheels; then
+       --no-deps --no-binary :all: -w /opt/app-root/src/wheels; then
     BUILT=$((BUILT + 1))
   else
     echo "FAILED: ${name}"
