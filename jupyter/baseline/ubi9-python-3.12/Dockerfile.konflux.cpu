@@ -110,7 +110,7 @@ USER 1001:0
 USER 0
 # [SDIST] Rust toolchain for sdists with Rust extensions via RPM packages
 # (compatible with hermetic Konflux builds).
-RUN dnf install -y rust cargo && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
+RUN dnf install -y rust cargo ninja-build ninja-build && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
