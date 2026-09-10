@@ -138,12 +138,13 @@ EOF
 # jupyterlab is a build-time dependency of several shipped packages, and
 # some build hooks import the package's own source (ipykernel), which pulls
 # its runtime deps; install it (the lock's version) with its dependencies
-# so every build-time import resolves
+# so every build-time import resolves. pip (not uv): uv resolves
+# build-system.requires transitively, which cycles through
+# hatch-jupyter-builder -> jupyterlab; pip installs them bare.
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
-PYBIN=$(command -v python3)
 JUPYTERLAB=$(sed -n 's/^jupyterlab==\([^ ;]*\).*/\1/p' ./requirements.txt)
-uv pip install --system --python $PYBIN --no-binary :all: \
+python3 -m pip install --no-binary :all: \
     jupyterlab==${JUPYTERLAB}
 EOF
 
