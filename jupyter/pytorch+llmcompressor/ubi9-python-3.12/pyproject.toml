@@ -17,7 +17,10 @@ dependencies = [
     # llmcompressor packages
     # see https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757007056725559?thread_ts=1756924127.136609&cid=C0961HQ858Q
     "odh-notebooks-meta-llmcompressor-deps",
-    "speculators",
+    # speculators 0.8.0 ships a vendored hs-connectors path dependency that
+    # 'uv pip compile' cannot resolve (URL deps must be direct requirements).
+    # Cap below 0.8 until speculators ships a lock-friendly 0.8.x release.
+    "speculators<0.8",
     "lm-eval",
 
     # Datascience and useful extensions

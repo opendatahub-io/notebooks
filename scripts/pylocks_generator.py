@@ -78,6 +78,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import tomllib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -109,6 +110,14 @@ GLOBAL_LOCK_INPUTS: tuple[Path, ...] = (
     Path("scripts/index_url_resolver.py"),
 )
 UV_MIN_VERSION = (0, 4, 0)
+
+# Bounded retry for transient index failures in `uv pip compile` (e.g. an RH EA
+# index briefly returning 5xx on a wheel metadata fetch). uv retries a few times
+# internally, but a sustained blip defeats that; without this a single flaky index
+# fails the entire lock renewal. Deterministic errors (e.g. resolution failures)
+# are never retried.
+LOCK_RETRY_MAX_ATTEMPTS = 4
+LOCK_RETRY_BACKOFF_BASE_SECONDS = 10
 
 NO_EMIT_PACKAGES = (
     "odh-notebooks-meta-db-connectors-deps",
@@ -874,6 +883,41 @@ def _run_subprocess(
     return result
 
 
+# Substrings of a `uv pip compile` error that indicate a transient
+# network/server failure (index server temporarily unavailable), not a missing
+# package. A 503/502/504, a 429 rate limit, a connection reset, or a timeout all
+# mean "try again", whereas a 404/absent package is a resolution error.
+_TRANSIENT_LOCK_ERROR_MARKERS = (
+    "request failed after",
+    "http status server error",
+    "http status client error (429)",
+    "service unavailable",
+    "bad gateway",
+    "gateway timeout",
+    "connection reset",
+    "connection refused",
+    "connection aborted",
+    "connection error",
+    "timed out",
+    "temporary failure in name resolution",
+    "dns error",
+)
+# Substrings that indicate a deterministic failure: retrying is wasted work.
+_DETERMINISTIC_LOCK_ERROR_MARKERS = (
+    "failed to resolve",
+    "resolution error",
+    "no solution found",
+)
+
+
+def _is_transient_lock_error(stderr: str) -> bool:
+    """Return True when a uv pip compile failure looks transient (retryable)."""
+    low = (stderr or "").lower()
+    if any(marker in low for marker in _DETERMINISTIC_LOCK_ERROR_MARKERS):
+        return False
+    return any(marker in low for marker in _TRANSIENT_LOCK_ERROR_MARKERS)
+
+
 def run_public_index_lock(
     project_dir: Path,
     index_flags: list[str],
@@ -1050,18 +1094,52 @@ def run_lock(
 
     compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
 
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=600,
-            env=compile_env,
-        )
-    except subprocess.TimeoutExpired:
-        log.warning(f"Timed out generating {desc} in {project_dir}")
+    result: subprocess.CompletedProcess[str] | None = None
+    timed_out = False
+    for attempt in range(1, LOCK_RETRY_MAX_ATTEMPTS + 1):
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=600,
+                env=compile_env,
+            )
+            timed_out = False
+        except subprocess.TimeoutExpired:
+            log.warning(f"Timed out generating {desc} in {project_dir} (attempt {attempt}/{LOCK_RETRY_MAX_ATTEMPTS})")
+            result = None
+            timed_out = True
+
+        if result is not None and result.returncode == 0:
+            break
+
+        # Failed (non-zero exit or timeout). Retry only transient index errors.
+        transient = timed_out or _is_transient_lock_error(result.stderr if result is not None else "")
+        if not transient:
+            break
+        if attempt < LOCK_RETRY_MAX_ATTEMPTS:
+            delay = LOCK_RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempt - 1))
+            log.warning(
+                f"Transient index error generating {desc} in {project_dir} "
+                f"(attempt {attempt}/{LOCK_RETRY_MAX_ATTEMPTS}); retrying in {delay}s."
+            )
+            time.sleep(delay)
+
+    if result is None or result.returncode != 0:
+        if result is not None:
+            if result.stdout:
+                log.print(result.stdout)
+            if result.stderr:
+                log.print(result.stderr)
+        if timed_out:
+            log.warning(
+                f"Failed to generate {desc} in {project_dir} (timed out after {LOCK_RETRY_MAX_ATTEMPTS} attempts)"
+            )
+        else:
+            log.warning(f"Failed to generate {desc} in {project_dir}")
         (project_dir / output).unlink(missing_ok=True)
         return False
 
@@ -1069,12 +1147,6 @@ def run_lock(
         log.print(result.stdout)
     if result.stderr:
         log.print(result.stderr)
-
-    if result.returncode != 0:
-        log.warning(f"Failed to generate {desc} in {project_dir}")
-        (project_dir / output).unlink(missing_ok=True)
-        return False
-
     log.ok(f"{desc} generated successfully.")
     return True
 
