@@ -32,6 +32,10 @@ dev = [
     "pyjson5",
     "ruamel-yaml",
     "structlog",
+    # Lock-file retry resilience: scripts/pylocks_generator.py uses stamina
+    # (a higher-level retry API) over tenacity to retry transient RH-index failures.
+    "tenacity",
+    "stamina",
     #
     "testcontainers",
     "docker",

@@ -78,7 +78,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 import tomllib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -90,6 +89,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import packaging.requirements
 import packaging.utils
+import stamina
 import typer
 
 from scripts.index_url_resolver import IndexResolutionError, ResolvedIndexConfig, resolve_index_config
@@ -115,9 +115,12 @@ UV_MIN_VERSION = (0, 4, 0)
 # index briefly returning 5xx on a wheel metadata fetch). uv retries a few times
 # internally, but a sustained blip defeats that; without this a single flaky index
 # fails the entire lock renewal. Deterministic errors (e.g. resolution failures)
-# are never retried.
+# are never retried. Implemented with stamina (a thin retry API over tenacity),
+# which adds exponential backoff plus jitter to avoid thundering-herd retries.
 LOCK_RETRY_MAX_ATTEMPTS = 4
 LOCK_RETRY_BACKOFF_BASE_SECONDS = 10
+LOCK_RETRY_BACKOFF_MAX_SECONDS = 40
+LOCK_RETRY_BACKOFF_JITTER_SECONDS = 5
 
 NO_EMIT_PACKAGES = (
     "odh-notebooks-meta-db-connectors-deps",
@@ -918,6 +921,18 @@ def _is_transient_lock_error(stderr: str) -> bool:
     return any(marker in low for marker in _TRANSIENT_LOCK_ERROR_MARKERS)
 
 
+class TransientLockError(Exception):
+    """A transient uv pip compile failure (e.g. a 5xx from the index) worth retrying.
+
+    Carries the stderr of the failing attempt so the last failure can be surfaced
+    in the log once stamina exhausts its retry budget.
+    """
+
+    def __init__(self, message: str, stderr: str = "") -> None:
+        super().__init__(message)
+        self.stderr = stderr
+
+
 def run_public_index_lock(
     project_dir: Path,
     index_flags: list[str],
@@ -1094,9 +1109,8 @@ def run_lock(
 
     compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
 
-    result: subprocess.CompletedProcess[str] | None = None
-    timed_out = False
-    for attempt in range(1, LOCK_RETRY_MAX_ATTEMPTS + 1):
+    def _compile_once() -> subprocess.CompletedProcess[str]:
+        """Run one uv pip compile; raise TransientLockError on a transient failure."""
         try:
             result = subprocess.run(
                 cmd,
@@ -1107,39 +1121,33 @@ def run_lock(
                 timeout=600,
                 env=compile_env,
             )
-            timed_out = False
-        except subprocess.TimeoutExpired:
-            log.warning(f"Timed out generating {desc} in {project_dir} (attempt {attempt}/{LOCK_RETRY_MAX_ATTEMPTS})")
-            result = None
-            timed_out = True
+        except subprocess.TimeoutExpired as exc:
+            log.warning(f"Timed out generating {desc} in {project_dir}")
+            raise TransientLockError("uv pip compile timed out") from exc
 
-        if result is not None and result.returncode == 0:
-            break
+        # A deterministic failure (resolution error, missing package) is returned
+        # as-is so stamina does not retry it; only transient index errors raise.
+        if result.returncode != 0 and _is_transient_lock_error(result.stderr or ""):
+            log.warning(f"Transient index error generating {desc} in {project_dir}; stamina will retry")
+            raise TransientLockError("transient uv pip compile failure", stderr=result.stderr or "")
+        return result
 
-        # Failed (non-zero exit or timeout). Retry only transient index errors.
-        transient = timed_out or _is_transient_lock_error(result.stderr if result is not None else "")
-        if not transient:
-            break
-        if attempt < LOCK_RETRY_MAX_ATTEMPTS:
-            delay = LOCK_RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempt - 1))
-            log.warning(
-                f"Transient index error generating {desc} in {project_dir} "
-                f"(attempt {attempt}/{LOCK_RETRY_MAX_ATTEMPTS}); retrying in {delay}s."
-            )
-            time.sleep(delay)
+    retried_compile = stamina.retry(
+        on=TransientLockError,
+        attempts=LOCK_RETRY_MAX_ATTEMPTS,
+        timeout=None,
+        wait_initial=LOCK_RETRY_BACKOFF_BASE_SECONDS,
+        wait_max=LOCK_RETRY_BACKOFF_MAX_SECONDS,
+        wait_jitter=LOCK_RETRY_BACKOFF_JITTER_SECONDS,
+        wait_exp_base=2,
+    )(_compile_once)
 
-    if result is None or result.returncode != 0:
-        if result is not None:
-            if result.stdout:
-                log.print(result.stdout)
-            if result.stderr:
-                log.print(result.stderr)
-        if timed_out:
-            log.warning(
-                f"Failed to generate {desc} in {project_dir} (timed out after {LOCK_RETRY_MAX_ATTEMPTS} attempts)"
-            )
-        else:
-            log.warning(f"Failed to generate {desc} in {project_dir}")
+    try:
+        result = retried_compile()
+    except TransientLockError as exc:
+        if exc.stderr:
+            log.print(exc.stderr)
+        log.warning(f"Failed to generate {desc} in {project_dir} (exhausted {LOCK_RETRY_MAX_ATTEMPTS} attempts)")
         (project_dir / output).unlink(missing_ok=True)
         return False
 
@@ -1147,6 +1155,11 @@ def run_lock(
         log.print(result.stdout)
     if result.stderr:
         log.print(result.stderr)
+    if result.returncode != 0:
+        log.warning(f"Failed to generate {desc} in {project_dir}")
+        (project_dir / output).unlink(missing_ok=True)
+        return False
+
     log.ok(f"{desc} generated successfully.")
     return True
 
