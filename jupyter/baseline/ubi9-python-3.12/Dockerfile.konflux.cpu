@@ -116,9 +116,10 @@ RUN python3 -m pip install --no-cache-dir --no-binary :all: \
     puccinialin uv-build hatch-fancy-pypi-readme hatch-jupyter-builder \
     hatch-nodejs-version hatch-vcs cffi packaging pkgconfig \
     coherent-licensed colorama expandvars build
-# jupyterlab is a build-time dependency of several shipped packages;
-# --no-deps keeps the toolchain env lean (their builds only import jupyterlab)
-RUN python3 -m pip install --no-cache-dir --no-binary :all: --no-deps \
+# jupyterlab is a build-time dependency of several shipped packages, and
+# some build hooks import the package's own source (ipykernel), which pulls
+# its runtime deps; install it with them so every build-time import resolves
+RUN python3 -m pip install --no-cache-dir --no-binary :all: \
     'jupyterlab==4.5.10'
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
