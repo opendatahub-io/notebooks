@@ -281,8 +281,10 @@ RUN python3 -m pip install --no-cache-dir \
     "uv==${UV_VERSION}"
 
 # [SDIST] Install all Python packages from the wheels compiled in the
-# python-builder stage. The wheel directory is mounted into this step
-# (not copied), so the wheels never become an image layer.
+# python-builder stage. The wheel directory is mounted into this step;
+# uv opens the wheels read-write and the from-mount is read-only, so
+# they are served from a scratch copy removed before the layer
+# commits (the wheels never become image content).
 # Locally built wheels do not match the --hash pins in requirements.txt
 # (those pin the official PyPI artifacts), so install from a hash-free
 # requirements file.
@@ -293,12 +295,18 @@ umask 0002
 
 sed '/--hash/d' ./requirements.txt | tr -d '\\' > ./requirements-nohash.txt
 
+# The from-mount is read-only and uv opens wheels read-write:
+# scratch copy in, removed before the layer commits.
+mkdir -p /tmp/wheels
+cp /wheels/*.whl /tmp/wheels/
+
 echo "Installing software and packages"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
-    --find-links /wheels \
+    --find-links /tmp/wheels \
     --requirements=./requirements-nohash.txt
+rm -rf /tmp/wheels
 
 # JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist; no
 # PyPI wheels for argon2-cffi-bindings and other native deps). Skip Jupyter
