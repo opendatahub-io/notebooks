@@ -22,10 +22,22 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 ARM64_COMPATIBLE = {
+    "codeserver-baseline-ubi9-python-3.12",
     "codeserver-ubi9-python-3.12",
     "cuda-jupyter-minimal-ubi9-python-3.12",
+    "cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12",
+    "cuda-jupyter-pytorch-ubi9-python-3.12",
     "cuda-jupyter-tensorflow-ubi9-python-3.12",
+    "jupyter-baseline-ubi9-python-3.12",
+    "jupyter-datascience-ubi9-python-3.12",
+    "jupyter-minimal-ubi9-python-3.12",
+    "jupyter-trustyai-ubi9-python-3.12",
+    "runtime-baseline-ubi9-python-3.12",
+    "runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12",
+    "runtime-cuda-pytorch-ubi9-python-3.12",
     "runtime-cuda-tensorflow-ubi9-python-3.12",
+    "runtime-datascience-ubi9-python-3.12",
+    "runtime-minimal-ubi9-python-3.12",
 }
 
 PPC64LE_COMPATIBLE = {
