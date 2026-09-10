@@ -97,14 +97,22 @@ USER 0
 
 # [SDIST] Toolchain for compiling sdists, from hermetic RPM locks.
 # openblas-devel provides BLAS/LAPACK for numpy; rust and cargo for Rust
-# extensions; ninja-build for parallel native builds.
-RUN dnf install -y gcc-c++ openblas-devel rust cargo ninja-build \
+# extensions; ninja-build and cmake for parallel native builds.
+RUN dnf install -y gcc-c++ openblas-devel rust cargo ninja-build cmake \
     && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
+
+# [SDIST] Build-system toolchain, compiled once from sdists and reused
+# by every package below via --no-build-isolation (ninja/cmake from dnf).
+RUN python3 -m pip install --no-cache-dir --no-binary :all: \
+    setuptools wheel setuptools-scm meson meson-python cython patchelf \
+    maturin setuptools-rust hatchling flit-core poetry-core scikit-build-core \
+    jupyter-packaging mypy pybind11 puccinialin uv-build hatch-fancy-pypi-readme \
+    hatch-jupyter-builder hatch-nodejs-version
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
-# [SDIST] Compile every pinned package from its sdist (--no-binary :all:),
-# including its build-system requirements, in a single pip invocation.
+# [SDIST] Compile every pinned package from its sdist (--no-binary :all:)
+# in a single pip invocation, against the toolchain installed above.
 # (pip wheel, not uv: uv has no `uv pip wheel`.)
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
@@ -116,7 +124,7 @@ sed '/--hash/d' ./requirements.txt \
     | tr -d '\\' | sed 's/[[:space:]]*$//' \
     | grep '^[A-Za-z0-9_.-]*==' \
     | sed 's/;.*$//' > /tmp/requirements-sdist.txt
-python3 -m pip wheel --no-deps --no-binary :all: \
+python3 -m pip wheel --no-deps --no-build-isolation --no-binary :all: \
     -w /opt/app-root/src/wheels -r /tmp/requirements-sdist.txt
 EOF
 
