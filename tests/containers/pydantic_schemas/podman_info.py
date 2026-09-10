@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+
 from pydantic import BaseModel, Field
 
 # ruff: file-ignore[mixed-case-variable-in-class-scope] Variable `volumePath` in class scope should not be mixedCase
@@ -104,7 +106,7 @@ class Host(BaseModel):
     rootlessNetworkCmd: str
     security: Security
     serviceIsRemote: bool
-    slirp4netns: Slirp4netns
+    slirp4netns: Slirp4netns | None = None
     swapFree: int
     swapTotal: int
     uptime: str
@@ -149,7 +151,7 @@ class ImageStore(BaseModel):
 
 
 class Store(BaseModel):
-    configFile: str
+    configFile: str | None = None
     containerStore: ContainerStore
     graphDriverName: str
     graphOptions: GraphOptions
@@ -185,144 +187,143 @@ class PodmanInfo(BaseModel):
 
 def test_podman_info():
     # given
-    rootful_podman_info = PodmanInfo.model_validate(
-        {
-            "host": {
-                "arch": "arm64",
-                "buildahVersion": "1.38.1",
-                "cgroupControllers": ["cpuset", "cpu", "io", "memory", "pids", "rdma", "misc"],
-                "cgroupManager": "systemd",
-                "cgroupVersion": "v2",
-                "conmon": {
-                    "package": "conmon-2.1.12-3.fc41.aarch64",
-                    "path": "/usr/bin/conmon",
-                    "version": "conmon version 2.1.12, commit: ",
-                },
-                "cpuUtilization": {"idlePercent": 97.99, "systemPercent": 1.15, "userPercent": 0.86},
-                "cpus": 6,
-                "databaseBackend": "sqlite",
-                "distribution": {"distribution": "fedora", "variant": "coreos", "version": "41"},
-                "eventLogger": "journald",
-                "freeLocks": 2048,
-                "hostname": "localhost.localdomain",
-                "idMappings": {"gidmap": None, "uidmap": None},
-                "kernel": "6.12.7-200.fc41.aarch64",
-                "linkmode": "dynamic",
-                "logDriver": "journald",
-                "memFree": 1624608768,
-                "memTotal": 2041810944,
-                "networkBackend": "netavark",
-                "networkBackendInfo": {
-                    "backend": "netavark",
-                    "dns": {
-                        "package": "aardvark-dns-1.13.1-1.fc41.aarch64",
-                        "path": "/usr/libexec/podman/aardvark-dns",
-                        "version": "aardvark-dns 1.13.1",
-                    },
-                    "package": "netavark-1.13.1-1.fc41.aarch64",
-                    "path": "/usr/libexec/podman/netavark",
-                    "version": "netavark 1.13.1",
-                },
-                "ociRuntime": {
-                    "name": "crun",
-                    "package": "crun-1.19.1-1.fc41.aarch64",
-                    "path": "/usr/bin/crun",
-                    "version": "crun version 1.19.1\n"
-                    "commit: "
-                    "3e32a70c93f5aa5fea69b50256cca7fd4aa23c80\n"
-                    "rundir: /run/crun\n"
-                    "spec: 1.0.0\n"
-                    "+SYSTEMD +SELINUX +APPARMOR +CAP +SECCOMP "
-                    "+EBPF +CRIU +LIBKRUN +WASM:wasmedge "
-                    "+YAJL",
-                },
-                "os": "linux",
-                "pasta": {
-                    "executable": "/usr/bin/pasta",
-                    "package": "passt-0^20241211.g09478d5-1.fc41.aarch64",
-                    "version": "pasta "
-                    "0^20241211.g09478d5-1.fc41.aarch64-pasta\n"
-                    "Copyright Red Hat\n"
-                    "GNU General Public License, version 2 or "
-                    "later\n"
-                    "  "
-                    "<https://www.gnu.org/licenses/old-licenses/gpl-2.0.html>\n"
-                    "This is free software: you are free to change "
-                    "and redistribute it.\n"
-                    "There is NO WARRANTY, to the extent permitted "
-                    "by law.\n",
-                },
-                "remoteSocket": {"exists": True, "path": "unix:///run/podman/podman.sock"},
-                "rootlessNetworkCmd": "pasta",
-                "security": {
-                    "apparmorEnabled": False,
-                    "capabilities": "CAP_CHOWN,CAP_DAC_OVERRIDE,CAP_FOWNER,CAP_FSETID,CAP_KILL,CAP_NET_BIND_SERVICE,CAP_SETFCAP,CAP_SETGID,CAP_SETPCAP,CAP_SETUID,CAP_SYS_CHROOT",
-                    "rootless": False,
-                    "seccompEnabled": True,
-                    "seccompProfilePath": "/usr/share/containers/seccomp.json",
-                    "selinuxEnabled": True,
-                },
-                "serviceIsRemote": False,
-                "slirp4netns": {
-                    "executable": "/usr/bin/slirp4netns",
-                    "package": "slirp4netns-1.3.1-1.fc41.aarch64",
-                    "version": "slirp4netns version 1.3.1\n"
-                    "commit: "
-                    "e5e368c4f5db6ae75c2fce786e31eef9da6bf236\n"
-                    "libslirp: 4.8.0\n"
-                    "SLIRP_CONFIG_VERSION_MAX: 5\n"
-                    "libseccomp: 2.5.5",
-                },
-                "swapFree": 0,
-                "swapTotal": 0,
-                "uptime": "0h 1m 33.00s",
-                "variant": "v8",
+    rootful_input = {
+        "host": {
+            "arch": "arm64",
+            "buildahVersion": "1.38.1",
+            "cgroupControllers": ["cpuset", "cpu", "io", "memory", "pids", "rdma", "misc"],
+            "cgroupManager": "systemd",
+            "cgroupVersion": "v2",
+            "conmon": {
+                "package": "conmon-2.1.12-3.fc41.aarch64",
+                "path": "/usr/bin/conmon",
+                "version": "conmon version 2.1.12, commit: ",
             },
-            "plugins": {
-                "authorization": None,
-                "log": ["k8s-file", "none", "passthrough", "journald"],
-                "network": ["bridge", "macvlan", "ipvlan"],
-                "volume": ["local"],
-            },
-            "registries": {"search": ["docker.io"]},
-            "store": {
-                "configFile": "/usr/share/containers/storage.conf",
-                "containerStore": {"number": 0, "paused": 0, "running": 0, "stopped": 0},
-                "graphDriverName": "overlay",
-                "graphOptions": {
-                    "overlay.additionalImageStores": ["/usr/lib/containers/storage"],
-                    "overlay.imagestore": "/usr/lib/containers/storage",
-                    "overlay.mountopt": "nodev,metacopy=on",
+            "cpuUtilization": {"idlePercent": 97.99, "systemPercent": 1.15, "userPercent": 0.86},
+            "cpus": 6,
+            "databaseBackend": "sqlite",
+            "distribution": {"distribution": "fedora", "variant": "coreos", "version": "41"},
+            "eventLogger": "journald",
+            "freeLocks": 2048,
+            "hostname": "localhost.localdomain",
+            "idMappings": {"gidmap": None, "uidmap": None},
+            "kernel": "6.12.7-200.fc41.aarch64",
+            "linkmode": "dynamic",
+            "logDriver": "journald",
+            "memFree": 1624608768,
+            "memTotal": 2041810944,
+            "networkBackend": "netavark",
+            "networkBackendInfo": {
+                "backend": "netavark",
+                "dns": {
+                    "package": "aardvark-dns-1.13.1-1.fc41.aarch64",
+                    "path": "/usr/libexec/podman/aardvark-dns",
+                    "version": "aardvark-dns 1.13.1",
                 },
-                "graphRoot": "/var/lib/containers/storage",
-                "graphRootAllocated": 106415992832,
-                "graphRootUsed": 15990263808,
-                "graphStatus": {
-                    "Backing Filesystem": "xfs",
-                    "Native Overlay Diff": "false",
-                    "Supports d_type": "true",
-                    "Supports shifting": "true",
-                    "Supports volatile": "true",
-                    "Using metacopy": "true",
-                },
-                "imageCopyTmpDir": "/var/tmp",  # ruff: ignore[hardcoded-temp-file] - string literal in test fixture data, not an actual tmpdir path
-                "imageStore": {"number": 15},
-                "runRoot": "/run/containers/storage",
-                "transientStore": False,
-                "volumePath": "/var/lib/containers/storage/volumes",
+                "package": "netavark-1.13.1-1.fc41.aarch64",
+                "path": "/usr/libexec/podman/netavark",
+                "version": "netavark 1.13.1",
             },
-            "version": {
-                "APIVersion": "5.3.2",
-                "Built": 1737504000,
-                "BuiltTime": "Wed Jan 22 01:00:00 2025",
-                "GitCommit": "",
-                "GoVersion": "go1.23.4",
-                "Os": "linux",
-                "OsArch": "linux/arm64",
-                "Version": "5.3.2",
+            "ociRuntime": {
+                "name": "crun",
+                "package": "crun-1.19.1-1.fc41.aarch64",
+                "path": "/usr/bin/crun",
+                "version": "crun version 1.19.1\n"
+                "commit: "
+                "3e32a70c93f5aa5fea69b50256cca7fd4aa23c80\n"
+                "rundir: /run/crun\n"
+                "spec: 1.0.0\n"
+                "+SYSTEMD +SELINUX +APPARMOR +CAP +SECCOMP "
+                "+EBPF +CRIU +LIBKRUN +WASM:wasmedge "
+                "+YAJL",
             },
-        }
-    )
+            "os": "linux",
+            "pasta": {
+                "executable": "/usr/bin/pasta",
+                "package": "passt-0^20241211.g09478d5-1.fc41.aarch64",
+                "version": "pasta "
+                "0^20241211.g09478d5-1.fc41.aarch64-pasta\n"
+                "Copyright Red Hat\n"
+                "GNU General Public License, version 2 or "
+                "later\n"
+                "  "
+                "<https://www.gnu.org/licenses/old-licenses/gpl-2.0.html>\n"
+                "This is free software: you are free to change "
+                "and redistribute it.\n"
+                "There is NO WARRANTY, to the extent permitted "
+                "by law.\n",
+            },
+            "remoteSocket": {"exists": True, "path": "unix:///run/podman/podman.sock"},
+            "rootlessNetworkCmd": "pasta",
+            "security": {
+                "apparmorEnabled": False,
+                "capabilities": "CAP_CHOWN,CAP_DAC_OVERRIDE,CAP_FOWNER,CAP_FSETID,CAP_KILL,CAP_NET_BIND_SERVICE,CAP_SETFCAP,CAP_SETGID,CAP_SETPCAP,CAP_SETUID,CAP_SYS_CHROOT",
+                "rootless": False,
+                "seccompEnabled": True,
+                "seccompProfilePath": "/usr/share/containers/seccomp.json",
+                "selinuxEnabled": True,
+            },
+            "serviceIsRemote": False,
+            "slirp4netns": {
+                "executable": "/usr/bin/slirp4netns",
+                "package": "slirp4netns-1.3.1-1.fc41.aarch64",
+                "version": "slirp4netns version 1.3.1\n"
+                "commit: "
+                "e5e368c4f5db6ae75c2fce786e31eef9da6bf236\n"
+                "libslirp: 4.8.0\n"
+                "SLIRP_CONFIG_VERSION_MAX: 5\n"
+                "libseccomp: 2.5.5",
+            },
+            "swapFree": 0,
+            "swapTotal": 0,
+            "uptime": "0h 1m 33.00s",
+            "variant": "v8",
+        },
+        "plugins": {
+            "authorization": None,
+            "log": ["k8s-file", "none", "passthrough", "journald"],
+            "network": ["bridge", "macvlan", "ipvlan"],
+            "volume": ["local"],
+        },
+        "registries": {"search": ["docker.io"]},
+        "store": {
+            "configFile": "/usr/share/containers/storage.conf",
+            "containerStore": {"number": 0, "paused": 0, "running": 0, "stopped": 0},
+            "graphDriverName": "overlay",
+            "graphOptions": {
+                "overlay.additionalImageStores": ["/usr/lib/containers/storage"],
+                "overlay.imagestore": "/usr/lib/containers/storage",
+                "overlay.mountopt": "nodev,metacopy=on",
+            },
+            "graphRoot": "/var/lib/containers/storage",
+            "graphRootAllocated": 106415992832,
+            "graphRootUsed": 15990263808,
+            "graphStatus": {
+                "Backing Filesystem": "xfs",
+                "Native Overlay Diff": "false",
+                "Supports d_type": "true",
+                "Supports shifting": "true",
+                "Supports volatile": "true",
+                "Using metacopy": "true",
+            },
+            "imageCopyTmpDir": "/var/tmp",  # ruff: ignore[hardcoded-temp-file] - string literal in test fixture data, not an actual tmpdir path
+            "imageStore": {"number": 15},
+            "runRoot": "/run/containers/storage",
+            "transientStore": False,
+            "volumePath": "/var/lib/containers/storage/volumes",
+        },
+        "version": {
+            "APIVersion": "5.3.2",
+            "Built": 1737504000,
+            "BuiltTime": "Wed Jan 22 01:00:00 2025",
+            "GitCommit": "",
+            "GoVersion": "go1.23.4",
+            "Os": "linux",
+            "OsArch": "linux/arm64",
+            "Version": "5.3.2",
+        },
+    }
+    rootful_podman_info = PodmanInfo.model_validate(rootful_input)
 
     rootless_podman_info = PodmanInfo.model_validate(
         {
@@ -470,3 +471,12 @@ def test_podman_info():
 
     assert rootful_podman_info.host.remoteSocket.exists
     assert rootless_podman_info.host.remoteSocket.exists
+
+    # podman 6.x dropped host.slirp4netns and store.configFile; the schema must tolerate both shapes
+    v6_input = copy.deepcopy(rootful_input)
+    del v6_input["host"]["slirp4netns"]
+    del v6_input["store"]["configFile"]
+    v6_input["host"]["memAvailable"] = 1048576
+    v6 = PodmanInfo.model_validate(v6_input)
+    assert v6.host.slirp4netns is None
+    assert v6.store.configFile is None
