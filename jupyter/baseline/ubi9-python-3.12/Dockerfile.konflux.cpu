@@ -104,19 +104,20 @@ RUN dnf install -y gcc-c++ openblas-devel rust cargo ninja-build \
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
 # [SDIST] Compile every pinned package from its sdist (--no-binary :all:),
-# including its build-system requirements. (pip wheel, not uv: uv has no
-# `uv pip wheel`.)
+# including its build-system requirements, in a single pip invocation.
+# (pip wheel, not uv: uv has no `uv pip wheel`.)
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
 export PIP_CACHE_DIR=/tmp/pip-cache
 mkdir -p /opt/app-root/src/wheels
-while IFS= read -r req; do
-  [ -z "$req" ] && continue
-  spec="${req%% ;*}"
-  echo "=== building ${spec} ==="
-  python3 -m pip wheel "${spec}" \
-       --no-deps --no-binary :all: -w /opt/app-root/src/wheels
-done < <(sed '/--hash/d' ./requirements.txt | tr -d '\\' | sed 's/[[:space:]]*$//' | grep '^[A-Za-z0-9_.-]*==')
+# strip --hash pins, line continuations and environment markers from
+# the pip-compiled lock so every entry is a plain name==version spec
+sed '/--hash/d' ./requirements.txt \
+    | tr -d '\\' | sed 's/[[:space:]]*$//' \
+    | grep '^[A-Za-z0-9_.-]*==' \
+    | sed 's/;.*$//' > /tmp/requirements-sdist.txt
+python3 -m pip wheel --no-deps --no-binary :all: \
+    -w /opt/app-root/src/wheels -r /tmp/requirements-sdist.txt
 EOF
 
 ####################
@@ -207,24 +208,24 @@ ARG UV_VERSION=0.12.5
 RUN python3 -m pip install --no-cache-dir \
     "uv==${UV_VERSION}"
 
-# [SDIST] Wheels compiled from source in the python-builder stage.
-COPY --from=python-builder /opt/app-root/src/wheels ./wheels
-
-RUN /bin/bash <<'EOF'
+# [SDIST] Install all Python packages from the wheels compiled in the
+# python-builder stage. The wheel directory is mounted into this step
+# (not copied), so the wheels never become an image layer.
+# Locally built wheels do not match the --hash pins in requirements.txt
+# (those pin the official PyPI artifacts), so install from a hash-free
+# requirements file.
+RUN --mount=from=python-builder,source=/opt/app-root/src/wheels,target=/wheels \
+    /bin/bash <<'EOF'
 set -Eeuxo pipefail
 umask 0002
 
-# [SDIST] Install all Python packages from the source-built wheels in
-# ./opt/app-root/src/wheels (--no-index). Locally built wheels do not match the --hash pins
-# in requirements.txt (those pin the official PyPI artifacts), so install
-# from a hash-free requirements file.
 sed '/--hash/d' ./requirements.txt | tr -d '\\' > ./requirements-nohash.txt
 
 echo "Installing software and packages"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
-    --find-links ./wheels \
+    --find-links /wheels \
     --requirements=./requirements-nohash.txt
 
 # JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist; no
