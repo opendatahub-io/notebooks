@@ -190,6 +190,10 @@ while IFS= read -r spec; do
   python3 -m pip wheel --no-deps --no-binary :all: \
       -w /opt/app-root/src/wheels "$spec"
 done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
+# Build backends create some wheels 0600 and pip moves them to the
+# wheel dir as-is; normalize so the read-only from-mount consumer
+# (USER 1001) can read every wheel.
+chmod 644 /opt/app-root/src/wheels/*.whl
 EOF
 
 ####################
