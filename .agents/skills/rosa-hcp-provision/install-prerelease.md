@@ -202,18 +202,21 @@ matching. `registry.redhat.io` is entered as its own group; leave its
 username blank at the prompt to omit it entirely if you don't have a
 working credential for it yet.)
 
-Use a **dedicated read-only robot or service-account** credential for
-`quay.io/rhoai`, not a personal Quay login — the Secret is cloned into
-multiple namespaces and outlives any individual's account. Document
-rotation and revocation for that robot independently of people leaving
-the team.
+**Credential choice:** for shared or long-lived clusters, prefer a
+**dedicated read-only robot or service-account** for `quay.io/rhoai` — the
+Secret is cloned into multiple namespaces and outlives any individual's
+account, so document rotation and revocation for that robot independently
+of people leaving the team. For ephemeral personal dev clusters, a
+**personal Quay login** that can read `quay.io/rhoai` is fine too — wire
+the same credential under **both** `quay.io` and `quay.io/rhoai` keys
+either way.
 
 **If the cached `quay.io/rhoai` robot credential is dead** (`"Could not
 find robot with username..."` — `rhoai+devops_rhoai_readonly_bot` was
 dead 2026-08-10 and **still dead 2026-08-24**): request a fresh
 read-only robot for `quay.io/rhoai` org access (e.g. via
-`#rhoai-devtestops-requests`), then wire it under **both** `quay.io` and
-`quay.io/rhoai` keys. Verify with a plain
+`#rhoai-devtestops-requests`), or fall back to a personal Quay login with
+org read access. Verify with a plain
 `skopeo inspect docker://quay.io/rhoai/<image>` *before* creating any
 cluster Secret — don't assume it works.
 
