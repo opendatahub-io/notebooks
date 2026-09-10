@@ -140,12 +140,17 @@ EOF
 # its runtime deps; install it (the lock's version) with its dependencies
 # so every build-time import resolves. pip (not uv): uv resolves
 # build-system.requires transitively, which cycles through
-# hatch-jupyter-builder -> jupyterlab; pip installs them bare.
+# hatch-jupyter-builder -> jupyterlab; pip installs them bare. pip wheel
+# (not pip install): the tree's diamond deps make pip install build a
+# shared sdist twice ('is already being built'); pip wheel builds each
+# package once, then install runs from the local wheels.
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
 JUPYTERLAB=$(sed -n 's/^jupyterlab==\([^ ;]*\).*/\1/p' ./requirements.txt)
-python3 -m pip install --no-binary :all: \
-    jupyterlab==${JUPYTERLAB}
+python3 -m pip wheel --no-binary :all: \
+    -w /tmp/jl-wheels jupyterlab==${JUPYTERLAB}
+python3 -m pip install --no-index --no-binary :all: \
+    --find-links /tmp/jl-wheels jupyterlab==${JUPYTERLAB}
 EOF
 
 
