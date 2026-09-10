@@ -44,6 +44,7 @@ ENV CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-ser
 
 ARG BASE_IMAGE
 ARG GHA_BUILD=false
+ARG STRIP_COPILOT_PROPRIETARY=false
 
 ARG NODE_VERSION=22.22.0
 ARG CODESERVER_VERSION=v4.122.1
@@ -83,6 +84,7 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/replace-aipcc-ripgrep.sh ${COD
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/tweak-gha.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/strip-copilot-proprietary.sh ${CODESERVER_SOURCE_CODE}/patches/
 # [HERMETIC] utils/ contains git-tracked .vsix (built-in extensions + Python/Jupyter); used by setup-offline-binaries.sh and final stage.
 COPY ${CODESERVER_CONTEXT}/utils/ ${CODESERVER_SOURCE_CODE}/utils/
 
@@ -122,7 +124,13 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESE
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run release && \
-    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}/release"
+    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}/release" && \
+    if [ "${STRIP_COPILOT_PROPRIETARY}" = "true" ]; then \
+      chmod +x ${CODESERVER_SOURCE_CODE}/patches/strip-copilot-proprietary.sh && \
+      ${CODESERVER_SOURCE_CODE}/patches/strip-copilot-proprietary.sh ${CODESERVER_SOURCE_PREFETCH}/release; \
+    else \
+      echo "STRIP_COPILOT_PROPRIETARY=${STRIP_COPILOT_PROPRIETARY}: keeping proprietary Copilot artifacts in release tree"; \
+    fi
 
 # Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
 RUN echo "done" > /tmp/control
@@ -185,6 +193,7 @@ ARG TARGETARCH
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG CODESERVER_VERSION=v4.122.1
 ARG PYLOCK_FLAVOR
+ARG STRIP_COPILOT_PROPRIETARY=false
 
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
@@ -332,7 +341,11 @@ EOF
 
 # Launcher
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SOURCE_CODE}/run-nginx.sh ./
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/scripts/workspace-readme.md ./
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/scripts/install-byo-copilot.sh ./
+RUN chmod +x /opt/app-root/bin/install-byo-copilot.sh
 
+ENV STRIP_COPILOT_PROPRIETARY=${STRIP_COPILOT_PROPRIETARY}
 ENV SHELL=/bin/bash
 
 # Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
