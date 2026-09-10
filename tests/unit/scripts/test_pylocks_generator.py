@@ -380,6 +380,129 @@ def test_run_lock_logs_index_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert any("Lock INDEX_URL: https://example.invalid/simple/?format=json" in line for line in log._lines)
 
 
+class TestIsTransientLockError:
+    """`_is_transient_lock_error()` - transient-vs-deterministic classification."""
+
+    def test_503_server_error_is_transient(self) -> None:
+        stderr = "error: Request failed after 3 retries\nCaused by: HTTP status server error (503 Service Unavailable)"
+        assert pg._is_transient_lock_error(stderr) is True
+
+    def test_429_with_reason_phrase_is_transient(self) -> None:
+        # uv 0.12.0 emits the reason phrase before the closing paren, so the
+        # marker must match the "(429" prefix, not the full "(429)" token.
+        assert pg._is_transient_lock_error("error: HTTP status client error (429 Too Many Requests)") is True
+
+    def test_deterministic_resolution_is_not_transient(self) -> None:
+        assert pg._is_transient_lock_error("error: No solution found when resolving dependencies") is False
+
+    def test_speculators_url_dep_is_not_transient(self) -> None:
+        # The speculators 0.8.0 hs-connectors failure has no transient marker.
+        stderr = "Failed to resolve dependencies for speculators (v0.8.0)\nPackage hs-connectors was included as a URL dependency"
+        assert pg._is_transient_lock_error(stderr) is False
+
+    def test_combined_transient_and_resolution_is_transient(self) -> None:
+        # A transient index error that interrupts resolve emits both a resolution
+        # and a transient marker; the transient one must win so it is retried.
+        stderr = "error: No solution found\nCaused by: Request failed after 3 retries (HTTP status server error 503)"
+        assert pg._is_transient_lock_error(stderr) is True
+
+    def test_empty_is_not_transient(self) -> None:
+        assert pg._is_transient_lock_error("") is False
+
+
+def _run_lock_with_fake_subprocess(
+    project_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outcomes: list[tuple[int, str]],
+) -> tuple[bool, int]:
+    """Run pg.run_lock with a scripted fake subprocess.run.
+
+    Returns (success, attempt_count). `outcomes` is a list of (returncode, stderr)
+    per attempt; the last entry is reused for any further attempts. stamina's
+    backoff sleep is neutralized so the test runs instantly.
+    """
+    project_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("time.sleep", lambda _s: None)
+    calls = {"n": 0}
+
+    def fake_run(cmd, **kwargs):
+        idx = min(calls["n"], len(outcomes) - 1)
+        rc, err = outcomes[idx]
+        calls["n"] += 1
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=rc, stdout="", stderr=err)
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+    success = pg.run_lock(
+        project_dir,
+        "cpu",
+        ["--default-index=https://example.invalid/simple/?format=json"],
+        pg.IndexMode.rh_index,
+        "3.12",
+        False,
+        False,
+        "2026-05-18T00:00:00Z",
+        pg.LogBuffer(),
+    )
+    return success, calls["n"]
+
+
+def test_run_lock_retries_combined_transient_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A combined (resolution + transient) error is retried for all attempts."""
+    combined = "error: No solution found\nCaused by: Request failed after 3 retries (HTTP status server error 503)"
+    success, calls = _run_lock_with_fake_subprocess(tmp_path / "p", monkeypatch, [(1, combined)] * 8)
+    assert success is False
+    assert calls == pg.LOCK_RETRY_MAX_ATTEMPTS
+
+
+def test_run_lock_succeeds_after_transient_retries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Two transient 503s then a success resolves before the budget is exhausted."""
+    success, calls = _run_lock_with_fake_subprocess(
+        tmp_path / "p",
+        monkeypatch,
+        [(1, "HTTP status server error (503 Service Unavailable)"), (1, "HTTP status server error (503)"), (0, "")],
+    )
+    assert success is True
+    assert calls == 3
+
+
+def test_run_lock_does_not_retry_deterministic_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A pure resolution error (no transient marker) fails fast on the first attempt."""
+    success, calls = _run_lock_with_fake_subprocess(
+        tmp_path / "p",
+        monkeypatch,
+        [(1, "error: No solution found when resolving dependencies")],
+    )
+    assert success is False
+    assert calls == 1
+
+
+def test_run_lock_times_out_and_exhausts_retries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A persistent subprocess timeout is transient: retried until the budget is exhausted."""
+    project_dir = tmp_path / "p"
+    project_dir.mkdir()
+    monkeypatch.setattr("time.sleep", lambda _s: None)
+    calls = {"n": 0}
+
+    def fake_run(cmd, **kwargs):
+        calls["n"] += 1
+        raise pg.subprocess.TimeoutExpired(cmd=cmd, timeout=600)
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+    success = pg.run_lock(
+        project_dir,
+        "cpu",
+        ["--default-index=https://example.invalid/simple/?format=json"],
+        pg.IndexMode.rh_index,
+        "3.12",
+        False,
+        False,
+        "2026-05-18T00:00:00Z",
+        pg.LogBuffer(),
+    )
+    assert success is False
+    assert calls["n"] == pg.LOCK_RETRY_MAX_ATTEMPTS
+
+
 def test_generate_requirements_txt_falls_back_to_pylock_header_when_index_resolution_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -893,7 +893,7 @@ def _run_subprocess(
 _TRANSIENT_LOCK_ERROR_MARKERS = (
     "request failed after",
     "http status server error",
-    "http status client error (429)",
+    "http status client error (429",
     "service unavailable",
     "bad gateway",
     "gateway timeout",
@@ -914,11 +914,19 @@ _DETERMINISTIC_LOCK_ERROR_MARKERS = (
 
 
 def _is_transient_lock_error(stderr: str) -> bool:
-    """Return True when a uv pip compile failure looks transient (retryable)."""
+    """Return True when a uv pip compile failure looks transient (retryable).
+
+    Transient markers take precedence over the deterministic ones: uv can emit a
+    resolution failure such as "no solution found" *because* a transient index
+    error like "request failed after N retries" interrupted the resolve, and that
+    combined output is still worth retrying.
+    """
     low = (stderr or "").lower()
+    if any(marker in low for marker in _TRANSIENT_LOCK_ERROR_MARKERS):
+        return True
     if any(marker in low for marker in _DETERMINISTIC_LOCK_ERROR_MARKERS):
         return False
-    return any(marker in low for marker in _TRANSIENT_LOCK_ERROR_MARKERS)
+    return False
 
 
 class TransientLockError(Exception):
