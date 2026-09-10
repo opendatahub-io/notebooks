@@ -140,7 +140,9 @@ EOF
 # jupyter_client (and its import chain); notebook, jupyter-bokeh,
 # jupyter-server-proxy, jupyterlab-git-core and odh-kale declare
 # jupyterlab in build-system.requires (checked via importlib
-# metadata, so --no-deps suffices). The full jupyterlab tree is
+# metadata, so --no-deps suffices). Empirically, import ipykernel
+# needs exactly this closure (checked in a scratch container); the full
+# jupyterlab tree is
 # neither needed nor installable from sdists: its isolated build
 # envs self-reference through hatch-jupyter-builder -> jupyterlab.
 RUN /bin/bash <<'EOF'
@@ -152,11 +154,17 @@ TRAITLETS=$(sed -n 's/^traitlets==\([^ ;]*\).*/\1/p' ./requirements.txt)
 PYZMQ=$(sed -n 's/^pyzmq==\([^ ;]*\).*/\1/p' ./requirements.txt)
 TORNADO=$(sed -n 's/^tornado==\([^ ;]*\).*/\1/p' ./requirements.txt)
 PLATFORMDIRS=$(sed -n 's/^platformdirs==\([^ ;]*\).*/\1/p' ./requirements.txt)
+DATEUTIL=$(sed -n 's/^python-dateutil==\([^ ;]*\).*/\1/p' ./requirements.txt)
+SIX=$(sed -n 's/^six==\([^ ;]*\).*/\1/p' ./requirements.txt)
+# python-dateutil builds in isolation: its setuptools_scm<8.0 pin is unsatisfiable
+# against the toolchain setuptools-scm
+python3 -m pip install --no-deps --no-binary :all: \
+    python-dateutil==${DATEUTIL}
 python3 -m pip install --no-deps --no-build-isolation --no-binary :all: \
     jupyterlab==${JUPYTERLAB} \
     jupyter-client==${JCLIENT} jupyter-core==${JCORE} \
     traitlets==${TRAITLETS} pyzmq==${PYZMQ} tornado==${TORNADO} \
-    platformdirs==${PLATFORMDIRS}
+    platformdirs==${PLATFORMDIRS} six==${SIX}
 EOF
 
 
