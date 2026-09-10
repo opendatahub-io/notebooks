@@ -61,6 +61,51 @@ print("Scikit-learn smoke test completed successfully.")
             assert "Scikit-learn smoke test completed successfully." in output_str
             assert "Prediction: [1]" in output_str
 
+    @allure.issue("RHAIENG-7433")
+    @allure.description(
+        "Regression: converting a pandas DataFrame with a datetime64 column to a pyarrow "
+        "Table must not segfault. Guards against a numpy ABI mismatch in pandas' datetime64 "
+        "C extension (observed with pandas 2.3.3 build-3 in RHOAI 3.6-EA1, RHAIENG-7433)."
+    )
+    def test_pandas_pyarrow_datetime64(self, datascience_image: conftest.Image) -> None:
+        container = WorkbenchContainer(image=datascience_image.name, user=4321, group_add=[0])
+        # language=Python
+        repro_script = """
+import sys
+import numpy as np
+import pandas as pd
+import pyarrow as pa
+
+print(f"python: {sys.version.split()[0]}")
+print(f"numpy: {np.__version__}, pandas: {pd.__version__}, pyarrow: {pa.__version__}")
+
+df = pd.DataFrame({"t": [pd.Timestamp("2020-01-01")], "v": [1.0]})
+table = pa.Table.from_pandas(df)
+assert table.num_rows == 1, f"unexpected row count: {table.num_rows}"
+dtype = table.column("t").type
+assert str(dtype).startswith("timestamp"), f"unexpected datetime column type: {dtype}"
+print("pandas->pyarrow datetime64 conversion completed successfully.")
+"""
+        with container:
+            container.with_command("/bin/sh -c 'sleep infinity'")
+            container.start(wait_for_readiness=False)
+
+            # Match the interpreter present in the image: code-server exposes only python3.
+            name_label = datascience_image.labels.get("name", "")
+            is_codeserver = "-code-server-" in name_label or "codeserver" in datascience_image.name.lower()
+            python_exe = "/opt/app-root/bin/python3" if is_codeserver else "python"
+            print(f"Using python executable: {python_exe}")
+
+            exit_code, output = container.exec([python_exe, "-c", repro_script])
+            output_str = output.decode()
+            print(output_str)
+
+            assert exit_code == 0, (
+                f"pandas->pyarrow datetime64 conversion failed with exit code {exit_code} "
+                f"(139 = SIGSEGV, e.g. from a numpy ABI mismatch in pandas' datetime64 C extension)"
+            )
+            assert "pandas->pyarrow datetime64 conversion completed successfully." in output_str
+
     @allure.description("Check that mysql client functionality is working with SASL plain auth.")
     def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
         MYSQL_CONNECTOR_PYTHON_VERSION = "26.7.0"
