@@ -103,16 +103,28 @@ RUN dnf install -y gcc-c++ openblas-devel rust cargo ninja-build cmake \
 
 # [SDIST] Build-system toolchain, compiled once from sdists and reused
 # by every package below via --no-build-isolation (ninja/cmake from dnf).
+# Self-referential backends (hatchling, cffi, ...) bootstrap through
+# pip's build isolation. Pinned entries resolve cross-package spec
+# conflicts: flit-core<4 (several backends cap it), maturin<2, and the
+# lock's jupyterlab version (notebook caps <4.6, odh-elyra pins ~=4.5.0).
 RUN python3 -m pip install --no-cache-dir --no-binary :all: \
-    setuptools wheel setuptools-scm meson meson-python cython patchelf \
-    maturin setuptools-rust hatchling flit-core poetry-core scikit-build-core \
-    jupyter-packaging mypy pybind11 puccinialin uv-build hatch-fancy-pypi-readme \
-    hatch-jupyter-builder hatch-nodejs-version
+    setuptools wheel \
+    'setuptools-scm[toml]' setuptools-git-versioning setuptools-rust \
+    'maturin>=1.14.1,<2' 'flit-core>=3.12,<4' pdm-backend \
+    meson meson-python cython patchelf hatchling poetry-core \
+    scikit-build-core jupyter-packaging jupyter_builder mypy pybind11 \
+    puccinialin uv-build hatch-fancy-pypi-readme hatch-jupyter-builder \
+    hatch-nodejs-version hatch-vcs cffi packaging pkgconfig \
+    coherent-licensed colorama expandvars build
+# jupyterlab is a build-time dependency of several shipped packages;
+# --no-deps keeps the toolchain env lean (their builds only import jupyterlab)
+RUN python3 -m pip install --no-cache-dir --no-binary :all: --no-deps \
+    'jupyterlab==4.5.10'
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
 # [SDIST] Compile every pinned package from its sdist (--no-binary :all:)
-# in a single pip invocation, against the toolchain installed above.
+# in one pip invocation, against the toolchain installed above.
 # (pip wheel, not uv: uv has no `uv pip wheel`.)
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
@@ -124,8 +136,15 @@ sed '/--hash/d' ./requirements.txt \
     | tr -d '\\' | sed 's/[[:space:]]*$//' \
     | grep '^[A-Za-z0-9_.-]*==' \
     | sed 's/;.*$//' > /tmp/requirements-sdist.txt
+# python-dateutil pins setuptools_scm<8.0, which conflicts with the
+# toolchain's newer setuptools-scm; build just that one in isolation
+grep -v '^python-dateutil==' /tmp/requirements-sdist.txt > /tmp/requirements-shared.txt
 python3 -m pip wheel --no-deps --no-build-isolation --no-binary :all: \
-    -w /opt/app-root/src/wheels -r /tmp/requirements-sdist.txt
+    -w /opt/app-root/src/wheels -r /tmp/requirements-shared.txt
+while IFS= read -r spec; do
+  python3 -m pip wheel --no-deps --no-binary :all: \
+      -w /opt/app-root/src/wheels "$spec"
+done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
 EOF
 
 ####################
