@@ -393,7 +393,7 @@ EOF
 # necessarily "the one we pinned"); polls since OLM creates the
 # InstallPlan asynchronously after the Subscription is applied.
 CSV_NAME=gpu-operator-certified.v25.3.4
-.cursor/skills/lib/wait-for-csv.sh nvidia-gpu-operator "$CSV_NAME"
+.agents/skills/lib/wait-for-csv.sh nvidia-gpu-operator "$CSV_NAME"
 
 # ClusterPolicy — extract default from CSV alm-examples (empty spec{} is invalid in v25.3+)
 # Use $CSV_NAME directly (defined above), not a grep match — grep can hit an
@@ -474,7 +474,7 @@ oc --context "$CLUSTER_CONTEXT" create ns "$TEST_NAMESPACE"   # fails loudly if 
 # credential and pushes it into a cluster Secret is a real credential-theft
 # pattern, independently flagged in review. create-pull-secret.sh reads the
 # token interactively so it never lands in argv/ps/history:
-.cursor/skills/lib/create-pull-secret.sh rhoai-pull "$TEST_NAMESPACE" quay.io
+.agents/skills/lib/create-pull-secret.sh rhoai-pull "$TEST_NAMESPACE" quay.io
 # (or, if you already have a dockerconfigjson you trust from your own
 # secret-manager workflow — not your default Docker CLI config —
 # `oc --context "$CLUSTER_CONTEXT" create secret generic rhoai-pull -n "$TEST_NAMESPACE"
@@ -573,13 +573,13 @@ customer-facing workaround tiers.
 | `A hosted cluster requires at least 2 replicas` | HCP hard floor on the cluster's initial pool at create time — the cluster as a whole needs ≥2 replicas. Once that's satisfied, *additional* machine pools (e.g. GPU pools above) can use `--replicas 1` fine |
 | Duplicate cluster name | Cluster already exists in org; `rosa list clusters` to check |
 | `--use-spot-instances` seems to have no effect | It currently doesn't — not a bug, spot isn't usable yet on ROSA HCP at all (CLI *and* service-side gaps, plus a minimum OCP 4.22 requirement). Full detail, JIRA tracking, and a retest checklist: [spot-instances.md](spot-instances.md) |
-| `exec container process: Exec format error` on notebook spawn | Two possible causes, check both: (a) RHOAI 2.25's images may genuinely be x86_64-only — recreate with an x86_64 `--compute-machine-type`/`--instance-type`; (b) on RHOAI 3.5+/ROSA-ARO HCP, this is usually the ImageStream `importMode=Legacy` bug — check `oc get imagestream <name> -o json \| jq '.spec.tags[].importPolicy'` and see [arm64-imagestream-importmode.md](arm64-imagestream-importmode.md) for the real fix (keeps arm64, no need to recreate the cluster) |
+| `exec container process: Exec format error` on notebook spawn | Two possible causes, check both: (a) RHOAI 2.25's images may genuinely be x86_64-only — recreate with an x86_64 `--compute-machine-type`/`--instance-type`; (b) on RHOAI 3.5+/ROSA-ARO HCP, this is usually the ImageStream `importMode=Legacy` bug — check `oc get imagestream "$IMAGESTREAM_NAME" -o json \| jq '.spec.tags[].importPolicy'` (define `IMAGESTREAM_NAME` first) and see [arm64-imagestream-importmode.md](arm64-imagestream-importmode.md) for the real fix (keeps arm64, no need to recreate the cluster) |
 | ClusterPolicy `spec{}` invalid | v25.3+ requires all fields; extract default from `csv alm-examples` |
 | GPU pods Pending after ClusterPolicy | Driver compiles first; other pods cascade after driver **2/2 Ready** |
 | Driver compile 60+ min, logs stuck on `make nv-linux.o` | Node `MemoryPressure=True`, DTK pod ~6+ GiB — create `g5g.2xlarge` pool, delete xlarge pool |
 | `oc exec` into driver toolkit hangs | Same memory pressure on `g5g.xlarge`; check `oc adm top node` |
 | `oc wait` driver Ready timeout at 600s | Normal on xlarge; extend to 1800s or upsize pool first |
-| `ErrImagePull` for `quay.io/rhoai/*` | Create `pull-secret-quay` / `rhoai-pull` in the namespace (Option B / [install-prerelease.md](install-prerelease.md)). Dead robot `rhoai+devops_rhoai_readonly_bot` is still dead as of 2026-08-24 — use a personal Quay login that can read `quay.io/rhoai` |
+| `ErrImagePull` for `quay.io/rhoai/*` | Create `pull-secret-quay` in the namespace (Option B / [install-prerelease.md](install-prerelease.md)). Dead robot `rhoai+devops_rhoai_readonly_bot` is still dead as of 2026-08-24 — request a fresh read-only `quay.io/rhoai` robot; do not use a personal Quay login |
 | Dashboard `https://rh-ai.apps...` returns **403** (not OAuth 302) | `kube-auth-proxy` in `openshift-ingress` ImagePullBackOff on `quay.io/rhoai/odh-kube-auth-proxy-rhel9`. Copy `pull-secret-quay` there (Kyverno `sync-secrets` generate rule is immutable after apply). See [install-prerelease.md](install-prerelease.md) step 10 |
 | Workbench 1/2: sidecar pulled, notebook `authentication required` on `image-registry.openshift-image-registry.svc` | Kyverno `patchStrategicMerge` replaced `imagePullSecrets` and dropped `*-dockercfg-*`. Use JSON Patch **append**. Delete the pod after fixing the policy. [install-prerelease.md](install-prerelease.md) step 6/13 |
 | Two GPU workbenches, one `Pending` `Insufficient nvidia.com/gpu` | See [GPU Machine Pools](#gpu-machine-pools) above — one `g5g.2xlarge` replica = one GPU. Expected |

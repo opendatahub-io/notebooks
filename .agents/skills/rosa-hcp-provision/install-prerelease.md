@@ -81,8 +81,14 @@ pull-secret.
 ## 4. Install Kyverno
 
 ```bash
+KYVERNO_CHART_VERSION=3.9.0   # app v1.19.0 — verified OCP 4.21, 2026-08-24
 helm repo add kyverno https://kyverno.github.io/kyverno/ && helm repo update
+# Optional: verify chart provenance before install (Kyverno publishes .prov files)
+tmpdir="$(mktemp -d)" && trap 'rm -rf "$tmpdir"' EXIT
+helm pull kyverno/kyverno --version "$KYVERNO_CHART_VERSION" --prov --destination "$tmpdir"
+helm verify "$tmpdir/kyverno-${KYVERNO_CHART_VERSION}.tgz"
 helm --kube-context "$CLUSTER_CONTEXT" install kyverno kyverno/kyverno -n kyverno --create-namespace \
+  --version "$KYVERNO_CHART_VERSION" \
   --set securityContext=null \
   --set backgroundController.securityContext=null \
   --set cleanupController.securityContext=null \
@@ -91,15 +97,20 @@ helm --kube-context "$CLUSTER_CONTEXT" install kyverno kyverno/kyverno -n kyvern
   --set admissionController.initContainer.securityContext=null
 ```
 
-Verified working end-to-end on OCP 4.21 (2026-08-10 with chart 1.18.x;
-2026-08-24 with **chart 1.19.0** unpinned `helm install kyverno/kyverno`).
-Kyverno 1.19 prints `ClusterPolicy (kyverno.io) is deprecated` on apply —
-noise, the v1 policies below still work. **Fallback if `helm` truly isn't
+Verified working end-to-end on OCP 4.21 (2026-08-10 with chart 3.8.x /
+app v1.18.x; 2026-08-24 with **chart 3.9.0** / app v1.19.0). Kyverno
+1.19 prints `ClusterPolicy (kyverno.io) is deprecated` on apply — noise,
+the v1 policies below still work. **Fallback if `helm` truly isn't
 available**:
 ```bash
-KYVERNO_VERSION=v1.18.0   # pin a version — Helm path used 1.19.0 (2026-08-24); raw YAML fallback last proven on 1.18.0
-curl -fsSL -o /tmp/kyverno-install.yaml "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
-less /tmp/kyverno-install.yaml   # skim before applying cluster-scoped RBAC/webhooks — see cost-optimization.md item 5 on why a checksum here wouldn't help
+KYVERNO_VERSION=v1.19.0   # must match the Helm chart's app version above
+KYVERNO_INSTALL_URL="https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/install.yaml"
+KYVERNO_INSTALL_SHA256=''   # fill from the release asset before apply
+curl -fsSL -o /tmp/kyverno-install.yaml "$KYVERNO_INSTALL_URL"
+if [ -n "$KYVERNO_INSTALL_SHA256" ]; then
+  echo "$KYVERNO_INSTALL_SHA256  /tmp/kyverno-install.yaml" | shasum -a 256 -c -
+fi
+less /tmp/kyverno-install.yaml   # skim before applying cluster-scoped RBAC/webhooks
 kubectl --context "$CLUSTER_CONTEXT" apply --server-side -f /tmp/kyverno-install.yaml
 ```
 then patch out the incompatible fields on all 4 controller Deployments
@@ -138,10 +149,11 @@ done
 
 Grants the admission/background controllers permission to
 get/list/watch/create/update/patch/delete `secrets` (needed by the
-`sync-secrets` policy below). The admission controller also runs generate
-validation — without `aggregate-to-admission-controller`, `sync-secrets`
-apply fails even though background-controller RBAC looks correct (hit
-2026-08-24 on chart 1.19.0):
+`sync-secrets` policy below). Policy admission validation also needs
+`aggregate-to-admission-controller` — observed with chart 3.9.0 / app
+v1.19.0 on 2026-08-24; without that label, `sync-secrets` apply fails
+even though background-controller RBAC looks correct (may apply on older
+Kyverno too — treat as required, not version-specific):
 
 Kyverno's documented pattern splits this role (admission-controller:
 read-only get/list/watch; background-controller: the write verbs). Both
@@ -180,7 +192,7 @@ Read the credentials interactively instead, so they never touch argv/ps/
 shell history either:
 
 ```bash
-.cursor/skills/lib/create-pull-secret.sh pull-secret-quay openshift-config \
+.agents/skills/lib/create-pull-secret.sh pull-secret-quay openshift-config \
   "quay.io,quay.io/rhoai" registry.redhat.io
 ```
 
@@ -190,13 +202,20 @@ matching. `registry.redhat.io` is entered as its own group; leave its
 username blank at the prompt to omit it entirely if you don't have a
 working credential for it yet.)
 
+Use a **dedicated read-only robot or service-account** credential for
+`quay.io/rhoai`, not a personal Quay login — the Secret is cloned into
+multiple namespaces and outlives any individual's account. Document
+rotation and revocation for that robot independently of people leaving
+the team.
+
 **If the cached `quay.io/rhoai` robot credential is dead** (`"Could not
 find robot with username..."` — `rhoai+devops_rhoai_readonly_bot` was
-dead 2026-08-10 and **still dead 2026-08-24**): fall back to a personal
-`quay.io` account credential if it has org read access. Write the same
-credential under **both** `quay.io` and `quay.io/rhoai` keys. Verify with
-a plain `skopeo inspect docker://quay.io/rhoai/<image>` *before* wiring
-it into any cluster object — don't assume it works.
+dead 2026-08-10 and **still dead 2026-08-24**): request a fresh
+read-only robot for `quay.io/rhoai` org access (e.g. via
+`#rhoai-devtestops-requests`), then wire it under **both** `quay.io` and
+`quay.io/rhoai` keys. Verify with a plain
+`skopeo inspect docker://quay.io/rhoai/<image>` *before* creating any
+cluster Secret — don't assume it works.
 
 ## 6. The 3 ClusterPolicies — **deviations from the source doc**
 
@@ -478,7 +497,9 @@ This hand-copied `openshift-ingress` Secret is **not** tracked by
 Kyverno-managed clone. On the next credential rotation in
 `openshift-config`, every namespace `sync-secrets` targets gets the
 update automatically; `openshift-ingress` does not. Re-run the same
-`jq` copy by hand after any `pull-secret-quay` rotation.
+`jq` copy by hand after any `pull-secret-quay` rotation, then delete
+`kube-auth-proxy` pods in `openshift-ingress` so they pick up the new
+credential.
 
 **If `dashboard-redirect` (or anything else pulling from
 `registry.redhat.io`) shows `ImagePullBackOff` after applying policies**:
@@ -497,7 +518,8 @@ whichever policy is live at the moment of recreation. Confirm recovery
 with:
 
 ```bash
-oc --context "$CLUSTER_CONTEXT" get imagestream "<name>" -n redhat-ods-applications -o json | \
+export IMAGESTREAM_NAME="<image-stream-name>"
+oc --context "$CLUSTER_CONTEXT" get imagestream "$IMAGESTREAM_NAME" -n redhat-ods-applications -o json | \
   jq -r '.spec.tags[] | "\(.name) -> \(.from.name)"'
 ```
 
@@ -544,6 +566,11 @@ oc --context "$CLUSTER_CONTEXT" get secret pull-secret-quay -n openshift-config 
   oc --context "$CLUSTER_CONTEXT" apply -f -
 ```
 
+This `openshift-marketplace` copy is **not** tracked by `sync-secrets`
+`synchronize: true` — re-run the same `jq` copy after every rotation of
+`openshift-config/pull-secret-quay`, then delete the CatalogSource pod so
+OLM picks up the new credential.
+
 **Gotcha**: `CatalogSource.spec.secrets` did **not** visibly propagate to
 the CatalogSource pod's ServiceAccount in time this session — the
 reliable path was patching the SA directly, then deleting the pod to pick
@@ -581,7 +608,7 @@ The `3.6.0-ea.1` CSV showed up only in the full `entries[]` dump of the
 
 Same pattern as [install-rhoai.md](install-rhoai.md) step 2 (empty
 `spec: {}` OperatorGroup, `installPlanApproval: Manual`, then
-`.cursor/skills/lib/wait-for-csv.sh redhat-ods-operator "$CSV_NAME"` to
+`.agents/skills/lib/wait-for-csv.sh redhat-ods-operator "$CSV_NAME"` to
 approve-and-wait by exact CSV match) — just point `source` at your
 `CatalogSource` name from step 7 and `channel`/`startingCSV`/`CSV_NAME` at
 what you found in step 7's channel dump.
@@ -602,10 +629,20 @@ oc --context "$CLUSTER_CONTEXT" delete csv "rhods-operator.<version>" -n redhat-
 Do **not** reuse [install-rhoai.md](install-rhoai.md) step 3's YAML
 verbatim on 3.6-ea.1+. That snippet is `datasciencecluster.opendatahub.io/v1`
 with `datasciencepipelines` — 3.6 EA (2026-08-24) expects **`v2`** and
-**`aipipelines`**. The wrong key is a silent no-op; see install-rhoai.md's
-rename note. DSCI stays `dscinitialization.opendatahub.io/v1`.
+**`aipipelines`**. The wrong component key is a silent no-op; see
+install-rhoai.md's rename note. `modelmeshserving` and `codeflare` are
+v1-only keys — they no-op under v2 the same way.
+
+DSCI is unchanged from install-rhoai.md step 3. For the DSC, start from
+this repo's v2 component-key reference
+[`.agents/plugins/cluster-provisioning/skills/cluster-bot/fixtures/dsc-minimal-workbenches.yaml`](../../plugins/cluster-provisioning/skills/cluster-bot/fixtures/dsc-minimal-workbenches.yaml)
+— it lists every valid `datasciencecluster.opendatahub.io/v2` component
+key — then flip `dashboard` to `Managed` (the fixture leaves it `Removed`
+because cluster-bot only needs workbenches):
 
 ```bash
+# DSCI: same as install-rhoai.md step 3. DSC: v2, every component key
+# explicit (aligned with dsc-minimal-workbenches.yaml; dashboard Managed).
 cat <<EOF | oc --context "$CLUSTER_CONTEXT" apply -f -
 apiVersion: dscinitialization.opendatahub.io/v1
 kind: DSCInitialization
@@ -622,36 +659,48 @@ spec:
     managementState: Managed
     customCABundle: ''
 ---
-# Same shape as install-rhoai.md step 3, except apiVersion v2 and
-# `aipipelines` replacing `datasciencepipelines` — keep both in sync if
-# the component list changes. Components not listed below (e.g. the
-# v2-only feastoperator, llamastackoperator, mlflowoperator, sparkoperator,
-# trainer, aigateway, mcplifecycleoperator, ogx) are left at the operator's
-# own default, which is Removed for all of them on a fresh v2 DSC.
 apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
   name: default-dsc
 spec:
   components:
+    aigateway:
+      managementState: Removed
+      batchGateway:
+        managementState: Removed
+    aipipelines:
+      managementState: Removed
     dashboard:
       managementState: Managed
-    workbenches:
-      managementState: Managed
-    aipipelines:
+    feastoperator:
       managementState: Removed
     kserve:
       managementState: Removed
+    kueue:
+      managementState: Removed
+    llamastackoperator:
+      managementState: Removed
+    mcplifecycleoperator:
+      managementState: Removed
+    mlflowoperator:
+      managementState: Removed
+    modelregistry:
+      managementState: Removed
+    ogx:
+      managementState: Removed
     ray:
       managementState: Removed
-    kueue:
+    sparkoperator:
+      managementState: Removed
+    trainer:
       managementState: Removed
     trainingoperator:
       managementState: Removed
     trustyai:
       managementState: Removed
-    modelregistry:
-      managementState: Removed
+    workbenches:
+      managementState: Managed
 EOF
 ```
 
@@ -722,7 +771,7 @@ for i in $(seq 1 12); do
   sleep 5
 done
 [ -n "$CSV_NAME" ] || { echo "ERROR: Subscription servicemeshoperator3 never resolved a currentCSV" >&2; exit 1; }
-.cursor/skills/lib/wait-for-csv.sh openshift-operators "$CSV_NAME"
+.agents/skills/lib/wait-for-csv.sh openshift-operators "$CSV_NAME"
 ```
 
 **Gotcha 1 — don't pin `startingCSV`.** A first attempt pinning
