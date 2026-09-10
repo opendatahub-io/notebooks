@@ -4,7 +4,7 @@
 # Fast static checks also run via make test / pytest-tests.
 name: Validate Renovate config
 
-permissions: {}
+permissions: {}  # default-deny: unscoped jobs get only metadata:read
 
 on:  # yamllint disable-line rule:truthy
   pull_request:

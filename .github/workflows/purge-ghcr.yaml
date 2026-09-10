@@ -11,11 +11,10 @@ name: "Purge old ghcr.io test images periodically"
   schedule:
     - cron: "0 5 * * *"  # at 05:00 every day
 
-permissions:
-  packages: write
-
 jobs:
   clean:
+    permissions:
+      packages: write
     runs-on: ubuntu-26.04
     name: Delete old test images
     steps:

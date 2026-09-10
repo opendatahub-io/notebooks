@@ -325,6 +325,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=1592
             ;;
+        odh-workbench-jupyter-baseline-cpu-py312-c9s-n)
+            expected_name="opendatahub/odh-workbench-jupyter-baseline-cpu-py312-c9s"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1400
+            ;;
         odh-workbench-jupyter-datascience-cpu-py312-ubi9-2025-2)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9"
@@ -447,6 +453,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             else
                 expected_img_size=1140
             fi
+            ;;
+        odh-workbench-codeserver-baseline-cpu-py312-c9s-n)
+            expected_name="opendatahub/odh-workbench-codeserver-baseline-cpu-py312-c9s"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1100
             ;;
         odh-workbench-codeserver-datascience-cpu-py312-ubi9-2025-2)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
@@ -615,6 +627,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=1461
             ;;
+        odh-pipeline-runtime-baseline-cpu-py312-c9s-n)
+            expected_name="opendatahub/odh-pipeline-runtime-baseline-cpu-py312-c9s"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=900
+            ;;
         odh-pipeline-runtime-pytorch-cuda-py312-ubi9-n)
             expected_name="opendatahub/odh-pipeline-runtime-pytorch-cuda-py312-ubi9"
             expected_commitref="main"
@@ -695,7 +713,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             # Rollout automation rewrites released workbench keys with numeric
             # release suffixes (for example '-3-5', '-3-6'). Keep this check
             # forward-compatible instead of hardcoding every new release key.
-            if [[ "${image_variable}" =~ ^(odh-workbench-[a-z0-9-]+-py312-ubi9)-[0-9]+-[0-9]+$ ]]; then
+            if [[ "${image_variable}" =~ ^(odh-workbench-[a-z0-9-]+-py312-(ubi9|c9s))-[0-9]+-[0-9]+$ ]]; then
                 local image_base
                 image_base="${BASH_REMATCH[1]}"
 

@@ -5,12 +5,13 @@ on:  # yamllint disable-line rule:truthy
     branches:
       - 'main'
 
-permissions:
-  pull-requests: read
 env:
   QUAY_IMAGE_REPO: ${{ secrets.QUAY_IMAGE_REPO }}
 jobs:
   delete-pr-quay-image:
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-26.04
     steps:
       - name: Git checkout

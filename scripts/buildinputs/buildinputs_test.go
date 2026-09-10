@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -10,26 +11,30 @@ import (
 	"testing"
 )
 
+// globDockerfiles lists the Dockerfiles tracked by git under dir.
+// It uses git ls-files rather than walking the tree so that untracked
+// build artifacts (e.g. an in-tree Go module cache or nested worktrees)
+// do not contribute third-party Dockerfiles to the parse check.
 func globDockerfiles(dir string) ([]string, error) {
+	//nolint:gosec // G204: dir is the repo root derived from this test file's own location (runtime.Caller); command and flags are fixed
+	out, err := exec.Command("git", "-C", dir, "ls-files", "-z").Output()
+	if err != nil {
+		return nil, err
+	}
 	files := make([]string, 0)
-	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if f.IsDir() {
-			return nil
+	for _, path := range strings.Split(string(out), "\x00") {
+		if path == "" {
+			continue
 		}
 		base := filepath.Base(path)
 		if base == "Dockerfile.json" {
-			return nil
+			continue
 		}
 		if base == "Dockerfile" || strings.HasPrefix(base, "Dockerfile.") {
-			files = append(files, path)
+			files = append(files, filepath.Join(dir, path))
 		}
-		return nil
-	})
-
-	return files, err
+	}
+	return files, nil
 }
 
 // TestParseAllDockerfiles checks there are no panics when processing all Dockerfiles we have

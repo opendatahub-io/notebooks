@@ -3,7 +3,7 @@
 # validate with make test, and open a PR with the resulting changes.
 name: Release Kickoff Action
 
-permissions: {}
+permissions: {}  # default-deny: unscoped jobs get only metadata:read
 
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:

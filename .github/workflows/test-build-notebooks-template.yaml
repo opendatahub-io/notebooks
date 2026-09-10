@@ -1,10 +1,6 @@
 ---
 name: Test Build Notebooks Template
 
-permissions:
-  contents: read
-  packages: write
-
 "on":
   push:
     branches: [main, stable, 'rhoai-*']
@@ -29,6 +25,9 @@ concurrency:
 
 jobs:
   test-template-minimal:
+    permissions:
+      contents: read
+      packages: write
     name: Test Template with Minimal Notebook
     uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
     with:

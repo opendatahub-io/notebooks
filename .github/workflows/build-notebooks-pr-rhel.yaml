@@ -13,10 +13,6 @@
 # see https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-secrets
 # and https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
 
-permissions:
-  contents: read
-  packages: read
-
 concurrency:
   group: ${{ format('build-notebooks-pr-rhel-{0}', github.event.pull_request.number) }}
   cancel-in-progress: true
@@ -114,6 +110,9 @@ jobs:
         shell: bash
 
   build:
+    permissions:
+      contents: read
+      packages: read
     name: "${{ matrix.target }} · ${{ matrix.platform }}"
     needs: ["authorize", "gen"]
     strategy:

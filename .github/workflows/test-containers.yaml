@@ -18,10 +18,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions:
-  contents: read
-  packages: read
-
 env:
   TESTCONTAINERS_RYUK_DISABLED: "true"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
@@ -31,6 +27,9 @@ env:
 
 jobs:
   find-images:
+    permissions:
+      contents: read
+      packages: read
     name: Find test images
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
     runs-on: ubuntu-26.04
@@ -96,6 +95,9 @@ jobs:
               f.write(f"matrix={json.dumps(matrix)}\n")
 
   container-tests:
+    permissions:
+      contents: read
+      packages: read
     name: "${{ matrix.name }}"
     needs: find-images
     runs-on: ubuntu-26.04
@@ -178,6 +180,9 @@ jobs:
           log-prefix: ${{ matrix.name }}
 
   openshift-container-tests:
+    permissions:
+      contents: read
+      packages: read
     name: "openshift: ${{ matrix.name }}"
     needs: find-images
     runs-on: ubuntu-26.04

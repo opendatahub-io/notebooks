@@ -1479,21 +1479,15 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "torch"
-version = "2.11.0"
+version = "2.12.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/torch-2.11.0-6-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-01T13:40:01Z, size = 596493473, hashes = { sha256 = "6de9eadfa0fd3f530089c05c690072ab6bb09235076b6549e08b308200aec339" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/torch-2.11.0-7-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-01T13:40:01Z, size = 596492843, hashes = { sha256 = "72624586bebc7a07bf05f707feeb0afdf026beae10eb015d907b71d266be76d9" } },
-]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/torch-2.12.0-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-09T04:58:58Z, size = 556959261, hashes = { sha256 = "eef81648820f8ecdf78c0cfb01d8248010006d46f1b99d17192dd2a316af156d" } }]
 
 [[packages]]
 name = "torchvision"
-version = "0.26.0"
+version = "0.27.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/torchvision-0.26.0-2-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-01T13:40:01Z, size = 1456655, hashes = { sha256 = "6bac92554be11e46e9d03ad29e84c11ee7e0ace846493545a59d8af20e86770a" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/torchvision-0.26.0-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-01T13:40:01Z, size = 1456677, hashes = { sha256 = "56d0af27b9dc5569e340cb80e631943a1dd461a47a9befbc946ea78dc58978ec" } },
-]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/torchvision-0.27.0-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-09T04:58:58Z, size = 1308238, hashes = { sha256 = "74290c2114e0205ce2e398ca3296fc8e17aff7472d2a7b02e617fe4318acc877" } }]
 
 [[packages]]
 name = "tornado"
@@ -1515,11 +1509,11 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "triton"
-version = "3.6.0"
+version = "3.7.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/triton-3.6.0-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-01T13:40:01Z, size = 119953429, hashes = { sha256 = "bec93d1406724ccdf70207e198b6dc91091de5ec53b6384a86f0d311d7896ccc" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/triton-3.6.0-4-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-01T13:40:01Z, size = 119953509, hashes = { sha256 = "c7333666cc776e6fe0087e8762af79afc53d28de51b078350cf907a2acdae60c" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/triton-3.7.0-4-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-01T13:40:01Z, size = 127498585, hashes = { sha256 = "2f8d810e83307d25cb07c6a244ae283bd8b0f4df4a0bacff51eff98755dfde30" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/triton-3.7.0-5-cp312-cp312-linux_x86_64.whl", upload-time = 2026-09-01T13:40:01Z, size = 127498671, hashes = { sha256 = "2560291eece96bda30d9e30c9c407fd146e7e815ee96a76c15aa3b0699eb06ae" } },
 ]
 
 [[packages]]

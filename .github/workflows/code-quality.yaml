@@ -10,11 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions:
-  contents: read
-
 jobs:
   check-generated-code:
+    permissions:
+      contents: read
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -249,6 +248,8 @@ jobs:
           fail_ci_if_error: false
 
   code-static-analysis:
+    permissions:
+      contents: read
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -311,6 +312,8 @@ jobs:
 
   # https://github.com/pre-commit/action
   prek:
+    permissions:
+      contents: read
     name: "prek"
     runs-on: ubuntu-26.04
     timeout-minutes: 10
