@@ -147,7 +147,6 @@ while IFS= read -r req; do
     FAILED+=("${name}")
   fi
 done < <(sed '/--hash/d' ./requirements.txt | tr -d '\\' | sed 's/[[:space:]]*$//' | grep '^[A-Za-z0-9_.-]*==')
-echo "summary: built=${BUILT} skipped=${SKIPPED} failed=${#FAILED[@]}"
 if [ ${#FAILED[@]} -gt 0 ]; then
   echo "FAILED packages: ${FAILED[*]}"
   exit 1
