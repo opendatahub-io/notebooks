@@ -11,7 +11,10 @@ dependencies = [
 
     # llmcompressor packages
     "odh-notebooks-meta-llmcompressor-deps",
-    "speculators",
+    # speculators 0.8.0 ships a vendored hs-connectors path dependency that
+    # 'uv pip compile' cannot resolve (URL deps must be direct requirements).
+    # Cap below 0.8 until speculators ships a lock-friendly 0.8.x release.
+    "speculators<0.8",
     "lm-eval",
 
     # Datascience and useful extensions

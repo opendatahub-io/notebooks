@@ -89,6 +89,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import packaging.requirements
 import packaging.utils
+import stamina
 import typer
 
 from scripts.index_url_resolver import IndexResolutionError, ResolvedIndexConfig, resolve_index_config
@@ -109,6 +110,17 @@ GLOBAL_LOCK_INPUTS: tuple[Path, ...] = (
     Path("scripts/index_url_resolver.py"),
 )
 UV_MIN_VERSION = (0, 4, 0)
+
+# Bounded retry for transient index failures in `uv pip compile` (e.g. an RH EA
+# index briefly returning 5xx on a wheel metadata fetch). uv retries a few times
+# internally, but a sustained blip defeats that; without this a single flaky index
+# fails the entire lock renewal. Deterministic errors (e.g. resolution failures)
+# are never retried. Implemented with stamina (a thin retry API over tenacity),
+# which adds exponential backoff plus jitter to avoid thundering-herd retries.
+LOCK_RETRY_MAX_ATTEMPTS = 4
+LOCK_RETRY_BACKOFF_BASE_SECONDS = 10
+LOCK_RETRY_BACKOFF_MAX_SECONDS = 40
+LOCK_RETRY_BACKOFF_JITTER_SECONDS = 5
 
 NO_EMIT_PACKAGES = (
     "odh-notebooks-meta-db-connectors-deps",
@@ -874,6 +886,61 @@ def _run_subprocess(
     return result
 
 
+# Substrings of a `uv pip compile` error that indicate a transient
+# network/server failure (index server temporarily unavailable), not a missing
+# package. A 503/502/504, a 429 rate limit, a connection reset, or a timeout all
+# mean "try again", whereas a 404/absent package is a resolution error.
+_TRANSIENT_LOCK_ERROR_MARKERS = (
+    "request failed after",
+    "http status server error",
+    "http status client error (429",
+    "service unavailable",
+    "bad gateway",
+    "gateway timeout",
+    "connection reset",
+    "connection refused",
+    "connection aborted",
+    "connection error",
+    "timed out",
+    "temporary failure in name resolution",
+    "dns error",
+)
+# Substrings that indicate a deterministic failure: retrying is wasted work.
+_DETERMINISTIC_LOCK_ERROR_MARKERS = (
+    "failed to resolve",
+    "resolution error",
+    "no solution found",
+)
+
+
+def _is_transient_lock_error(stderr: str) -> bool:
+    """Return True when a uv pip compile failure looks transient (retryable).
+
+    Transient markers take precedence over the deterministic ones: uv can emit a
+    resolution failure such as "no solution found" *because* a transient index
+    error like "request failed after N retries" interrupted the resolve, and that
+    combined output is still worth retrying.
+    """
+    low = (stderr or "").lower()
+    if any(marker in low for marker in _TRANSIENT_LOCK_ERROR_MARKERS):
+        return True
+    if any(marker in low for marker in _DETERMINISTIC_LOCK_ERROR_MARKERS):
+        return False
+    return False
+
+
+class TransientLockError(Exception):
+    """A transient uv pip compile failure (e.g. a 5xx from the index) worth retrying.
+
+    Carries the stderr of the failing attempt so the last failure can be surfaced
+    in the log once stamina exhausts its retry budget.
+    """
+
+    def __init__(self, message: str, stderr: str = "") -> None:
+        super().__init__(message)
+        self.stderr = stderr
+
+
 def run_public_index_lock(
     project_dir: Path,
     index_flags: list[str],
@@ -1050,18 +1117,45 @@ def run_lock(
 
     compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
 
+    def _compile_once() -> subprocess.CompletedProcess[str]:
+        """Run one uv pip compile; raise TransientLockError on a transient failure."""
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=600,
+                env=compile_env,
+            )
+        except subprocess.TimeoutExpired as exc:
+            log.warning(f"Timed out generating {desc} in {project_dir}")
+            raise TransientLockError("uv pip compile timed out") from exc
+
+        # A deterministic failure (resolution error, missing package) is returned
+        # as-is so stamina does not retry it; only transient index errors raise.
+        if result.returncode != 0 and _is_transient_lock_error(result.stderr or ""):
+            log.warning(f"Transient index error generating {desc} in {project_dir}; stamina will retry")
+            raise TransientLockError("transient uv pip compile failure", stderr=result.stderr or "")
+        return result
+
+    retried_compile = stamina.retry(
+        on=TransientLockError,
+        attempts=LOCK_RETRY_MAX_ATTEMPTS,
+        timeout=None,
+        wait_initial=LOCK_RETRY_BACKOFF_BASE_SECONDS,
+        wait_max=LOCK_RETRY_BACKOFF_MAX_SECONDS,
+        wait_jitter=LOCK_RETRY_BACKOFF_JITTER_SECONDS,
+        wait_exp_base=2,
+    )(_compile_once)
+
     try:
-        result = subprocess.run(
-            cmd,
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=600,
-            env=compile_env,
-        )
-    except subprocess.TimeoutExpired:
-        log.warning(f"Timed out generating {desc} in {project_dir}")
+        result = retried_compile()
+    except TransientLockError as exc:
+        if exc.stderr:
+            log.print(exc.stderr)
+        log.warning(f"Failed to generate {desc} in {project_dir} (exhausted {LOCK_RETRY_MAX_ATTEMPTS} attempts)")
         (project_dir / output).unlink(missing_ok=True)
         return False
 
@@ -1069,7 +1163,6 @@ def run_lock(
         log.print(result.stdout)
     if result.stderr:
         log.print(result.stderr)
-
     if result.returncode != 0:
         log.warning(f"Failed to generate {desc} in {project_dir}")
         (project_dir / output).unlink(missing_ok=True)
