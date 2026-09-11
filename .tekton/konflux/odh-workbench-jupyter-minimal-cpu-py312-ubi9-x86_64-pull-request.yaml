@@ -336,7 +336,7 @@ spec:
           - dnf install -y podman podman-docker git python3 curl
           - nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &
           - for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
-          - podman info --format '{{.Version}}'
+          - podman --version
           - export UV_INSTALL_DIR=/usr/local
           - curl -LsSf https://astral.sh/uv/install.sh | sh
           - uv python install 3.14

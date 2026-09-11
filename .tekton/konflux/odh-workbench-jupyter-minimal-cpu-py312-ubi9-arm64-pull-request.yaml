@@ -316,46 +316,6 @@ spec:
           cpu: '4'
           memory: 8Gi
           ephemeral-storage: 64Gi
-  - pipelineTaskName: test-testcontainers
-    computeResources:
-      requests:
-        cpu: '4'
-        memory: 8Gi
-        ephemeral-storage: 60Gi
-      limits:
-        cpu: '4'
-        memory: 8Gi
-        ephemeral-storage: 60Gi
-  - pipelineTaskName: provision-kind
-    computeResources:
-      requests:
-        cpu: '4'
-        memory: 8Gi
-        ephemeral-storage: 60Gi
-      limits:
-        cpu: '4'
-        memory: 8Gi
-        ephemeral-storage: 60Gi
-  - pipelineTaskName: test-makefile-deploy
-    computeResources:
-      requests:
-        cpu: '4'
-        memory: 8Gi
-        ephemeral-storage: 40Gi
-      limits:
-        cpu: '4'
-        memory: 8Gi
-        ephemeral-storage: 40Gi
-  - pipelineTaskName: test-openshift-pytest
-    computeResources:
-      requests:
-        cpu: '4'
-        memory: 8Gi
-        ephemeral-storage: 40Gi
-      limits:
-        cpu: '4'
-        memory: 8Gi
-        ephemeral-storage: 40Gi
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-cpu-py312-ubi9
   workspaces:

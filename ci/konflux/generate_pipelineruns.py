@@ -290,7 +290,10 @@ def testcontainers_task(image: Image) -> dict:
                         {"name": "FORCE_COLOR", "value": "1"},
                     ],
                     "script": test_script(
-                        ["dnf install -y podman podman-docker git python3 curl", *PODMAN_SERVICE_START, "podman info --format '{{.Version}}'"],
+                        # NOTE: never use '{{...}}' in a script line — PaC template-renders the
+                        # whole file, so e.g. --format '{{.Version}}' is parsed as a template var
+                        # and breaks the whole PipelineRun render.
+                        ["dnf install -y podman podman-docker git python3 curl", *PODMAN_SERVICE_START, "podman --version"],
                         setup_uv_and_repo_lines(),
                         resolve_image_lines(),
                         [
@@ -596,8 +599,12 @@ def pipeline_spec(image: Image, platform: str, refs: dict[str, dict], test_arche
     }
 
 
-def compute_resources() -> list[dict]:
-    """taskRunSpecs overrides (mirrors the existing per-image PR pipelines)."""
+def compute_resources(has_tests: bool, has_makefile_tests: bool) -> list[dict]:
+    """taskRunSpecs overrides (mirrors the existing per-image PR pipelines).
+
+    Only emit entries for tasks that actually exist in the pipeline: referencing a
+    non-existent pipelineTaskName makes the whole PipelineRun InvalidTaskRunSpecs.
+    """
 
     def cr(cpu: str, memory: str, ephemeral: str | None = None) -> dict:
         base = {"cpu": cpu, "memory": memory}
@@ -605,7 +612,7 @@ def compute_resources() -> list[dict]:
             base["ephemeral-storage"] = ephemeral
         return {"requests": dict(base), "limits": dict(base)}
 
-    return [
+    result = [
         {
             "pipelineTaskName": "prefetch-dependencies",
             "computeResources": cr("4", "8Gi"),
@@ -616,23 +623,32 @@ def compute_resources() -> list[dict]:
                 {"name": "build", "computeResources": cr("4", "8Gi", "64Gi")},
             ],
         },
-        {
-            "pipelineTaskName": "test-testcontainers",
-            "computeResources": cr("4", "8Gi", "60Gi"),
-        },
-        {
-            "pipelineTaskName": "provision-kind",
-            "computeResources": cr("4", "8Gi", "60Gi"),
-        },
-        {
-            "pipelineTaskName": "test-makefile-deploy",
-            "computeResources": cr("4", "8Gi", "40Gi"),
-        },
-        {
-            "pipelineTaskName": "test-openshift-pytest",
-            "computeResources": cr("4", "8Gi", "40Gi"),
-        },
     ]
+    if has_tests:
+        result += [
+            {
+                "pipelineTaskName": "test-testcontainers",
+                "computeResources": cr("4", "8Gi", "60Gi"),
+            },
+            {
+                "pipelineTaskName": "provision-kind",
+                "computeResources": cr("4", "8Gi", "60Gi"),
+            },
+        ]
+        if has_makefile_tests:
+            result.append(
+                {
+                    "pipelineTaskName": "test-makefile-deploy",
+                    "computeResources": cr("4", "8Gi", "40Gi"),
+                }
+            )
+        result.append(
+            {
+                "pipelineTaskName": "test-openshift-pytest",
+                "computeResources": cr("4", "8Gi", "40Gi"),
+            }
+        )
+    return result
 
 
 def on_comment(image: Image, arch_key: str) -> str:
@@ -696,7 +712,7 @@ def pipelinerun(image: Image, platform: str, refs: dict[str, dict]) -> dict:
                 *([{"name": "prefetch-input", "value": image.prefetch_input}] if image.hermetic else []),
             ],
             "pipelineSpec": pipeline_spec(image, platform, refs, image.test_arches),
-            "taskRunSpecs": compute_resources(),
+            "taskRunSpecs": compute_resources(has_tests=arch_key in image.test_arches, has_makefile_tests=image.has_makefile_tests),
             "taskRunTemplate": {
                 # Per-component Konflux build SA (auto-created by build-service):
                 # quay pull/push for the component image + secret attachment for git-auth.
@@ -808,6 +824,9 @@ else:
             for name in ("test-testcontainers", "provision-kind"):
                 task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == name)
                 assert task["runAfter"] == ["build-image-index"]
+            # taskRunSpecs must only reference tasks that exist (else InvalidTaskRunSpecs)
+            task_names = {t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]}
+            assert {t["pipelineTaskName"] for t in run["spec"]["taskRunSpecs"]} <= task_names
 
         def test_no_tests_on_non_test_arches(self):
             image = Image(
@@ -820,6 +839,30 @@ else:
             run = pipelinerun(image, "linux/ppc64le", refs)
             task_names = [t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]]
             assert task_names == ["init", "clone-repository", "prefetch-dependencies", "build-images", "build-image-index"]
+
+        def test_no_stray_pac_templates(self):
+            """PaC template-renders the whole file: any '{{...}}' is a template var.
+
+            Guards against shell constructs like --format '{{.Version}}' silently
+            breaking the PipelineRun render (the run just never gets created).
+            """
+            image = Image(
+                make_target="jupyter-minimal-ubi9-python-3.12",
+                flavor="cpu",
+                build_directory="jupyter/minimal/ubi9-python-3.12",
+            )
+            allowed = {
+                "{{revision}}",
+                "{{pull_request_number}}",
+                "{{target_branch}}",
+                "{{source_url}}",
+                "{{event_type}}",
+                "{{ git_auth_secret }}",
+            }
+            for platform in image.platforms:
+                text = render(image, platform, bundle_task_refs())
+                stray = set(re.findall(r"\{\{[^{}]*\}\}", text))
+                assert stray <= allowed, f"{platform}: unexpected template sequences: {stray - allowed}"
 
         def test_render_roundtrip(self):
             image = Image(
