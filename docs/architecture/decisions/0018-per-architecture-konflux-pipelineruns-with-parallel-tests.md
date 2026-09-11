@@ -85,7 +85,12 @@ usable by the per-component build SA (`build-pipeline-<component>`) rejects
 `.containers[0].privileged=true` (including the Konflux
 `appstudio-pipelines-scc` and the cluster `privileged` SCC, which the SA
 simply isn't bound to). The tenant RBAC does not let us read SAs/SCCs or
-create bindings, so rootless is the only path available to this repo.
+create bindings. The rootless path that followed was then proven
+impossible in this tenant as well (`NoNewPrivs: 1` voids the setuid/filecap
+prerequisite; no `CAP_SYS_ADMIN` for rootful) — see the
+[Investigation](#investigation-in-pod-test-stages-in-this-tenant-2026-09-11)
+section, including the open probe of whether the SCC allows a per-step
+`capabilities.add: [SYS_ADMIN]`.
 
 Real-OpenShift testing is the documented upgrade path: EPHC/CSO
 (`TestPlatformCluster` claims, `provision-ephemeral-cluster` tasks from
@@ -129,7 +134,10 @@ then, in parallel (two test legs, each its own rootless pod):
   rootless (`KIND_EXPERIMENTAL_PROVIDER=podman`). The kind cluster only lives
   inside its pod (and each Tekton step is its own container), so the whole
   k8s leg is a single step. `skip-build` + `image-under-test` params allow
-  iterating on the test stages without rebuilding.
+  iterating on the test stages without rebuilding. (As of the
+  [Investigation](#investigation-in-pod-test-stages-in-this-tenant-2026-09-11),
+  the rootless form of this decision is infeasible in this tenant; the
+  rootful form — step `capabilities.add: [SYS_ADMIN]` — is being probed.)
 - **Scans are out of scope for v1** (build + tests only); the existing
   multi-arch pipelines continue to cover them.
 
@@ -146,18 +154,16 @@ then, in parallel (two test legs, each its own rootless pod):
   and self-resolves as other pipelines finish — a re-trigger (or the next
   push) recovers it. The per-push 4x pipeline count raises the odds of
   hitting it; watch for this when triaging `prefetch-dependencies` failures.
-- **Test pods must be rootless (privileged is forbidden in this tenant).**
-  Verified live: the test pods were rejected at admission by every usable
-  SCC. The steps therefore run rootless podman/kind, which relies on the node
-  allowing unprivileged user namespaces (a Fedora default) — if a node
-  profile disables those, the test legs fail and the fallback is an
-  out-of-band privileged runner (a dedicated SA bound to the `privileged`
-  SCC, owned by the Konflux onboarding team) or EPHC. Two container-side
-  prerequisites were also needed and are handled in the step's root phase:
-  a non-root user with a subuid range, and `cap_setuid` filecaps on
-  `newuidmap`/`newgidmap` (the Fedora image ships them without setuid or
-  filecaps, so rootless user-namespace setup fails with
-  `newuidmap: write to uid_map failed` otherwise).
+- **In-pod container runtimes are blocked in this tenant as configured —
+  rootless and rootful alike.** The test pods were rejected at admission by
+  every usable SCC with `privileged: true`, the rootless redesign was then
+  proven impossible live (`NoNewPrivs: 1` makes setuid/filecaps on
+  `newuidmap` void), and rootful podman/kind lacks `CAP_SYS_ADMIN`
+  (`CapEff: 0x5fb`, the k8s default set). Full evidence and reproduction in
+  the [Investigation](#investigation-in-pod-test-stages-in-this-tenant-2026-09-11)
+  section; the open question it raises (whether the SCC permits a per-step
+  `capabilities.add: [SYS_ADMIN]`, as the build task does for `SETFCAP`)
+  decides between a rootful in-pod design and EPHC / a privileged SA.
 - **kind ≠ OpenShift.** Faithful to GHA, not an upgrade. EPHC is the
   documented upgrade path (see Context); it is deliberately not in v1.
 - **The iteration trigger is not graduation-ready.** No `pathChanged()`
@@ -172,6 +178,104 @@ then, in parallel (two test legs, each its own rootless pod):
   with `PYTHONPATH=. uv run ci/konflux/generate_pipelineruns.py`.
   It is not yet wired into `ci/generate_code.sh` (that script doesn't cover
   any `.tekton/` generator today).
+
+## Investigation: in-pod test stages in this tenant (2026-09-11)
+
+During live iteration of PR #4566, every in-pod container-runtime option was
+tested against this tenant's pod security profile. **Result: no container
+runtime (rootless or rootful) works in the test pods as configured.** The
+build stage is unaffected — it works by a different mechanism (below).
+
+### Finding chain (each step verified live)
+
+1. **`privileged: true` — rejected at admission by every usable SCC.**
+   `provider appstudio-pipelines-scc: .containers[0].privileged: Invalid
+   value: true: Privileged containers are not allowed`; the cluster
+   `privileged` SCC is `Forbidden: not usable by user or serviceaccount`.
+   → rootless redesign (commit `b53516c62`).
+2. **Rootless podman — `newuidmap` cannot write `uid_map`.**
+   `newuidmap: write to uid_map failed: Operation not permitted ... should
+   have setuid or have filecaps setuid`. The Fedora image ships
+   `newuidmap`/`newgidmap` without setuid/filecaps.
+3. **`setcap cap_setuid+ep` — EPERM.**
+   `unable to set CAP_SETFCAP effective capability: Operation not
+   permitted` — the test step lacks `CAP_SETFCAP`.
+4. **Setuid bit — applied but void.** `ls -l` shows `-rwsr-xr-x` (the bit
+   stuck), yet `write to uid_map failed` persists because the pod runs with
+   **`NoNewPrivs: 1`** (pod spec: `allowPrivilegeEscalation: false`), which
+   makes the kernel ignore setuid/filecaps on `execve`. **Rootless is
+   categorically impossible in this tenant** — this is a tenant-wide
+   property, not node-dependent.
+5. **Rootful podman/kind — no `CAP_SYS_ADMIN`.** Step `CapEff` as root:
+   `00000000000005fb` — the stock k8s default set (`chown, dac_override,
+   fowner, fsetid, kill, setgid, setuid, setpcap, net_bind_service,
+   net_admin, net_raw`), no `sys_admin`. Rootful podman/kind needs it for
+   mount/network namespaces.
+6. **testcontainers leg — no docker socket can exist.** pytest died with
+   an `INTERNALERROR` connecting to the socket; consistent with 1–5.
+
+### Why the build stage works under the same profile
+
+The build task is `buildah-remote-oci-ta` (bundle
+`quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.10.5`,
+source `konflux-ci/build-definitions`). Two mechanisms keep it inside the
+pod's capability budget:
+
+- **The step requests capabilities explicitly**: its `securityContext` is
+  `{"runAsUser": 0, "capabilities": {"add": ["SETFCAP"], "drop":
+  ["MKNOD"]}, "allowPrivilegeEscalation": false}` — admission accepts the
+  addition, i.e. **the SCC's `allowedCapabilities` list extends beyond the
+  k8s defaults and per-step `capabilities.add` works in this tenant**.
+- **buildah's chroot isolation creates no namespaces and does no mounts**:
+  the in-cluster path (log line `Localhost detected; running build in
+  cluster`) runs `konflux-build-cli image build` in-pod; RUN steps execute
+  via `chroot(2)` into the on-disk rootfs (allowed for root on a
+  root-owned directory without `CAP_SYS_CHROOT`) and inherit the pod's
+  network namespace — so the whole build fits in the default cap set under
+  `no_new_privs`. (Non-amd64 platforms instead rsync/ssh the build to a
+  remote builder VM and only orchestrate in-pod.) podman/kind have no such
+  mode: every container they create needs namespace + mount privileges.
+
+### Open question: can the test step request `SYS_ADMIN`?
+
+Finding 3+5 together imply a probe: the SCC allows per-step
+`capabilities.add` (proven by the build step's `SETFCAP`). If
+`sys_admin` is on that allow list, **rootful** podman/kind work in-pod
+(`no_new_privs` is irrelevant — a process that already holds the caps can
+`unshare`/`mount`; no setuid tricks involved), and the test design becomes:
+step `securityContext: {runAsUser: 0, capabilities: {add: ["SYS_ADMIN"]}}`,
+body runs as root, rootful podman socket. The probe is one push: admission
+either rejects it at 0s (error names the SCC → in-pod is out, go EPHC /
+privileged SA) or the rootful `podman info`/`kind create` proceeds.
+
+### Reproduction
+
+```bash
+CTX='open-data-hub-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek'
+KA_HOST="https://kubearchive-api-server-product-kubearchive.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com"
+TOKEN=$(oc --context "$CTX" whoami -t)
+NS=open-data-hub-tenant
+
+# PLR -> TaskRuns
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$KA_HOST/apis/tekton.dev/v1/namespaces/$NS/pipelineruns/<plr>" |
+  jq -r '.status.childReferences[] | "\(.pipelineTaskName)  \(.name)"'
+# TaskRun -> pod
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$KA_HOST/apis/tekton.dev/v1/namespaces/$NS/taskruns/<tr>" | jq -r .status.podName
+# step log (plain k8s pod-log API; NOT the tekton.dev logs path)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$KA_HOST/api/v1/namespaces/$NS/pods/<pod>/log?container=step-test"
+# pod security profile (securityContext per container)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$KA_HOST/api/v1/namespaces/$NS/pods/<pod>" |
+  jq '.spec | {serviceAccountName, containers: [.containers[] | {name, securityContext}]}'
+# decode the observed CapEff
+capsh --decode=00000000000005fb
+```
+
+The generated test step also prints `CapEff`/`NoNewPrivs` (root phase, as
+root) at the start of every run — the easiest live read.
 
 ## References
 

@@ -330,6 +330,11 @@ spec:
         steps:
         - name: test
           image: quay.io/fedora/fedora:43
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add:
+              - SYS_ADMIN
           env:
           - name: BUILT_IMAGE
             value: $(params.BUILT_IMAGE)
@@ -344,31 +349,12 @@ spec:
           script: |
             #!/bin/bash
             set -Eeuxo pipefail
-            # --- root phase: packages + non-root user (rootless podman/kind below) ---
-            dnf install -y podman podman-docker git python3 curl make sudo
+            dnf install -y podman podman-docker git python3 curl make
             grep -E 'CapEff|NoNewPrivs' /proc/self/status
-            if [ "$(id -u)" = "0" ]; then
-              useradd -m tester 2>/dev/null || true
-              U=$(id -u tester)
-              grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester
-              mkdir -p "/run/user/$U" && chown tester "/run/user/$U"
-              chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap
-              ls -l /usr/bin/newuidmap
-              sed -n '/^# __BODY_BELOW__/,$p' "$0" | tail -n +2 > /tmp/step-body.sh
-              chmod +x /tmp/step-body.sh
-              exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"
-            fi
-            # __BODY_BELOW__
-            set -Eeuxo pipefail
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
-            cd "$HOME"
-            grep -E 'CapEff|NoNewPrivs' /proc/self/status
-            if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
-              mkdir -p "/run/user/$(id -u)" 2>/dev/null || true
-            fi
-            export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-            export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
-            export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$XDG_RUNTIME_DIR/podman/podman.sock"
+            cd /workspace
+            export DOCKER_HOST="unix:///run/podman/podman.sock"
+            export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/run/podman/podman.sock"
             curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
             git clone "$(params.GIT_URL)" src_code
@@ -381,7 +367,7 @@ spec:
             fi
             IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
             echo "Testing image: ${IMAGE}"
-            nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &
+            nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &
             for _ in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
             podman --version
             uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy
@@ -422,6 +408,11 @@ spec:
         steps:
         - name: test
           image: quay.io/fedora/fedora:43
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add:
+              - SYS_ADMIN
           env:
           - name: BUILT_IMAGE
             value: $(params.BUILT_IMAGE)
@@ -438,31 +429,12 @@ spec:
           script: |
             #!/bin/bash
             set -Eeuxo pipefail
-            # --- root phase: packages + non-root user (rootless podman/kind below) ---
-            dnf install -y podman podman-docker git python3 curl make sudo
+            dnf install -y podman podman-docker git python3 curl make
             grep -E 'CapEff|NoNewPrivs' /proc/self/status
-            if [ "$(id -u)" = "0" ]; then
-              useradd -m tester 2>/dev/null || true
-              U=$(id -u tester)
-              grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester
-              mkdir -p "/run/user/$U" && chown tester "/run/user/$U"
-              chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap
-              ls -l /usr/bin/newuidmap
-              sed -n '/^# __BODY_BELOW__/,$p' "$0" | tail -n +2 > /tmp/step-body.sh
-              chmod +x /tmp/step-body.sh
-              exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"
-            fi
-            # __BODY_BELOW__
-            set -Eeuxo pipefail
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
-            cd "$HOME"
-            grep -E 'CapEff|NoNewPrivs' /proc/self/status
-            if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
-              mkdir -p "/run/user/$(id -u)" 2>/dev/null || true
-            fi
-            export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-            export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
-            export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$XDG_RUNTIME_DIR/podman/podman.sock"
+            cd /workspace
+            export DOCKER_HOST="unix:///run/podman/podman.sock"
+            export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/run/podman/podman.sock"
             mkdir -p "$HOME/bin"
             curl -Lo "$HOME/bin/kind" https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
             chmod +x "$HOME/bin/kind"
@@ -492,7 +464,7 @@ spec:
             export NOTEBOOK_TAG="${IMAGE##*:}"
             export IMAGE_TAG="${IMAGE##*:}"
             uv run python3 ci/cached-builds/make_test.py --target "$(params.TARGET)"
-            nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &
+            nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &
             for _ in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
             podman --version
             uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy

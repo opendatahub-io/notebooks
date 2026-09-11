@@ -61,9 +61,10 @@ updated keeps the generated pipelines in sync.
 init -> clone-repository -> prefetch-dependencies -> build-images -> build-image-index
                                           (all skipped when skip-build=true)
 
-then, in parallel (two test legs, each its own pod, both rootless):
-  test-testcontainers   rootless podman; pytest tests/containers (cpu markers)
-  test-k8s              rootless podman + single-node kind cluster, all in one
+then, in parallel (two test legs, each its own pod, both rootful — the step
+requests CAP_SYS_ADMIN, see below):
+  test-testcontainers   rootful podman; pytest tests/containers (cpu markers)
+  test-k8s              rootful podman + single-node kind cluster, all in one
                         step (the cluster only lives inside this pod):
                           kind create -> make deploy9/test/undeploy9 (papermill,
                           via ci/cached-builds/make_test.py) -> pytest
@@ -78,7 +79,7 @@ Notes:
   `on-pr-<sha>` index the existing `.tekton/*` pipelines produce.
 - **Image expiration: 5 days** (`image-expires-after: 5d`), same as the
   existing PR pipelines.
-- **Test cluster = kind in a pod (rootless).** GHA's "openshift" tests
+- **Test cluster = kind in a pod (rootful).** GHA's "openshift" tests
   actually run on a single-node *kubeadm* cluster (plain k8s, not OpenShift)
   via `.github/actions/provision-k8s` — kind is the faithful equivalent and
   costs nothing per push. Real-OpenShift testing is the documented upgrade
@@ -86,17 +87,23 @@ Notes:
   `provision-ephemeral-cluster` tasks from `openshift/konflux-tasks`; verified
   installed in `open-data-hub-tenant`, with a worked example in
   `opendatahub-io/odh-konflux-central:integration-tests/olminstall/`).
-- **The tenant SCCs forbid privileged containers** (verified live: every SCC
-  usable by the build SA rejects `.containers[0].privileged=true`, including
-  `appstudio-pipelines-scc` and the cluster `privileged` SCC). So the test
-  pods run **rootless**: the step script creates a non-root user with a
-  subuid range and re-execs its body as that user (see
-  `rootless_step_script`), then drives podman/kind rootless
-  (`KIND_EXPERIMENTAL_PROVIDER=podman`). No privileged SCC is needed. This
-  relies on the node allowing unprivileged user namespaces (Fedora default),
-  and the root phase grants `cap_setuid` filecaps to `newuidmap`/`newgidmap`
-  — the Fedora image ships them without setuid/filecaps, and rootless
-  user-namespace setup requires them.
+- **The tenant SCCs reject `privileged: true`, so the test step asks for
+  `CAP_SYS_ADMIN` instead** (verified live: every usable SCC rejects
+  `.containers[0].privileged=true`, including `appstudio-pipelines-scc` and
+  the cluster `privileged` SCC). The SCC *does* accept per-step
+  `capabilities.add` — the bundle's buildah build task uses exactly this
+  mechanism with `SETFCAP`. A rootful podman/kind needs `CAP_SYS_ADMIN` for
+  the mount/network namespaces of the containers-in-pod, so the test step's
+  `securityContext` is `{runAsUser: 0, capabilities: {add: [SYS_ADMIN]}}`
+  (see `test_step_security_context`). **Why not rootless?** A rootless
+  redesign was tried first and proven impossible here: the pod runs with
+  `NoNewPrivs: 1` (the SCC sets `allowPrivilegeEscalation: false`), which
+  makes the setuid/filecap bit on `newuidmap` void, so user namespaces can
+  never be created; rootful without `CAP_SYS_ADMIN` is also a no-go (the pod
+  otherwise has the k8s default cap set, `CapEff: 0x5fb`). Full evidence and
+  reproduction: the ADR's Investigation section. If the SCC does not allow
+  `sys_admin`, admission rejects the pod at 0s and the error names the
+  capability — then the fallback is a dedicated privileged SA or EPHC.
 - **The whole k8s leg is one step.** The kind cluster is podman containers
   *inside the pod*; a dependent task's pod could never reach it, and each
   Tekton step is its own container (so separate steps would kill the cluster

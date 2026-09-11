@@ -11,8 +11,8 @@ Pipeline shape (single inline pipelineSpec — no cluster-side Pipeline CR neede
                                         (all skipped when skip-build=true)
 
     then, in parallel (two test legs, each its own pod):
-      test-testcontainers   (rootless podman: testcontainers pytest)
-      test-k8s              (rootless podman + kind: make deploy/papermill,
+      test-testcontainers   (rootful podman: testcontainers pytest)
+      test-k8s              (rootful podman + kind: make deploy/papermill,
                              then openshift-marked pytest — one step because
                              the kind cluster only lives inside this pod)
 
@@ -22,8 +22,11 @@ openshift pytest — which GHA runs serially in one job; here the two legs
 run in parallel, and within the k8s leg the steps stay serial because they
 share one in-pod kind cluster).
 
-The tenant's SCCs forbid privileged containers (verified live), so the test
-pods run rootless podman/kind (see rootless_step_script).
+The tenant's SCCs reject privileged containers (verified live). Rootless was
+tried first and proven impossible there (NoNewPrivs: 1 voids the user-
+namespace prerequisite), so the test pods now run ROOTFUL podman/kind with a
+per-step CAP_SYS_ADMIN request (see test_step_security_context; the bundle's
+buildah task uses the same capabilities.add mechanism with SETFCAP).
 
 Usage:
 
@@ -106,36 +109,51 @@ UV_VERSION = "0.12.13"
 UV_INSTALL_URL = f"https://astral.sh/uv/{UV_VERSION}/install.sh"
 
 
-def rootless_env_lines() -> list[str]:
-    """Rootless podman/kind environment (the tenant SCCs forbid privileged pods,
-    verified live: every usable SCC rejects .containers[0].privileged=true)."""
+def podman_env_lines() -> list[str]:
+    """Rootful podman environment: the docker-compatible socket at /run/podman.
+
+    The step runs as root with CAP_SYS_ADMIN (see test_step_security_context),
+    so podman runs rootful and listens on the standard rootful socket.
+    """
     return [
-        'if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then',
-        '  mkdir -p "/run/user/$(id -u)" 2>/dev/null || true',
-        "fi",
-        'export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"',
-        'export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"',
-        'export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$XDG_RUNTIME_DIR/podman/podman.sock"',
+        'export DOCKER_HOST="unix:///run/podman/podman.sock"',
+        'export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/run/podman/podman.sock"',
     ]
 
 
 def podman_service_start_lines() -> list[str]:
-    """docker-compatible API on the rootless podman socket (GHA podman.socket equivalent)."""
+    """docker-compatible API on the rootful podman socket (GHA podman.socket equivalent)."""
     return [
-        "nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &",
+        "nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &",
         "for _ in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done",
         "podman --version",
     ]
 
 
-def rootless_step_script(*body_sections: list[str]) -> str:
-    """Step script that re-execs its body as a non-root user when running as root.
+def test_step_security_context() -> dict:
+    """The test step runs as root with CAP_SYS_ADMIN.
 
-    Tekton runs each step in its own container, and the tenant's SCCs forbid
-    privileged containers, so containers-in-the-pod (podman, kind) must run
-    rootless. Root phase (as root): install packages, create a user with a
-    subuid range, then re-exec the body (everything below the marker) as that
-    user. When the pod already runs non-root, the root phase is skipped.
+    The tenant SCCs reject `privileged: true` (verified live: every usable SCC
+    does), but they accept per-step `capabilities.add` — the bundle's buildah
+    build task does exactly this with SETFCAP. Rootful podman/kind need
+    CAP_SYS_ADMIN to create the mount/network namespaces and do the mounts
+    that containers-in-pod (kind node, testcontainers) require. If the SCC
+    does not allow sys_admin, admission rejects the pod at 0s and the error
+    names the capability — that is the probe's signal.
+    """
+    return {"runAsUser": 0, "capabilities": {"add": ["SYS_ADMIN"]}}
+
+
+def test_step_script(*body_sections: list[str]) -> str:
+    """Step script for the test legs: install tools, then run the body as root.
+
+    Rootful by design (see test_step_security_context()). The earlier rootless
+    redesign (create a user with a subuid range, re-exec the body via su,
+    setuid newuidmap) was proven impossible in this tenant: the pod runs with
+    NoNewPrivs: 1 (the SCC sets allowPrivilegeEscalation: false), which makes
+    the setuid/filecap bit on newuidmap void, so user namespaces can never be
+    created there. Rootful with CAP_SYS_ADMIN mirrors what the build task
+    already relies on. See the ADR's Investigation section.
     """
     body_lines: list[str] = []
     for section in body_sections:
@@ -143,32 +161,11 @@ def rootless_step_script(*body_sections: list[str]) -> str:
     header = [
         "#!/bin/bash",
         "set -Eeuxo pipefail",
-        "# --- root phase: packages + non-root user (rootless podman/kind below) ---",
-        "dnf install -y podman podman-docker git python3 curl make sudo",
-        # diagnostics: pod capabilities + no_new_privs (rootless feasibility)
+        "dnf install -y podman podman-docker git python3 curl make",
+        # diagnostics: confirm the pod security profile at the top of every run
         "grep -E 'CapEff|NoNewPrivs' /proc/self/status",
-        'if [ "$(id -u)" = "0" ]; then',
-        "  useradd -m tester 2>/dev/null || true",
-        "  U=$(id -u tester)",
-        '  grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester',
-        '  mkdir -p "/run/user/$U" && chown tester "/run/user/$U"',
-        # the fedora image ships newuidmap/newgidmap without setuid/filecaps;
-        # rootless user-namespace setup needs them (podman info: exit 125).
-        # Filecaps need CAP_SETFCAP, which this pod may lack (setcap EPERM);
-        # the setuid bit only needs file ownership, so prefer it.
-        "  chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap",
-        "  ls -l /usr/bin/newuidmap",
-        "  sed -n '/^# __BODY_BELOW__/,$p' \"$0\" | tail -n +2 > /tmp/step-body.sh",
-        "  chmod +x /tmp/step-body.sh",
-        '  exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"',
-        "fi",
-        "# __BODY_BELOW__",
-        "set -Eeuxo pipefail",
         'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"',
-        # su preserves the (root-owned) cwd — work from $HOME instead
-        'cd "$HOME"',
-        # diagnostics for the next rootless failure, if any
-        "grep -E 'CapEff|NoNewPrivs' /proc/self/status",
+        "cd /workspace",
     ]
     return "\n".join(header + body_lines) + "\n"
 
@@ -280,8 +277,7 @@ def bundle_task_refs() -> dict[str, dict]:
 def setup_uv_and_repo_lines() -> list[str]:
     """Clone the PR revision and set up the repo's uv venv (GHA: uv venv + uv sync --group dev).
 
-    Runs as the non-root body user (home-dir uv install; PATH is set by
-    rootless_step_script).
+    Runs as root (home-dir uv install; PATH is set by test_step_script).
     """
     return [
         f"curl -LsSf {UV_INSTALL_URL} | sh",
@@ -295,8 +291,6 @@ def setup_uv_and_repo_lines() -> list[str]:
 
 
 def resolve_image_lines() -> list[str]:
-    # Re-trigger note: the test pods fail at 0s (admission); next iteration
-    # captures the exact rejection to pick between privileged-SCC and rootless.
     """BUILT_IMAGE is the deterministic on-pr tag the build pushes to (params.output-image).
 
     It is a param, not a task-result reference: a task that references a
@@ -365,7 +359,8 @@ def image_env() -> list[dict]:
 def testcontainers_task(image: Image) -> dict:
     """GHA parity: 'Run Testcontainers container tests (in PyTest)' step.
 
-    Rootless podman in the pod (the tenant SCCs forbid privileged containers).
+    Rootful podman in the pod: the step asks for CAP_SYS_ADMIN (see
+    test_step_security_context; the tenant SCCs reject privileged:true).
     The podman service and its consumer share one step: Tekton steps are
     separate containers, and a service started in an earlier step dies with it.
     """
@@ -379,17 +374,18 @@ def testcontainers_task(image: Image) -> dict:
                 {
                     "name": "test",
                     "image": TEST_IMAGE,
+                    "securityContext": test_step_security_context(),
                     "env": [
                         *image_env(),
                         # GHA parity: pulling Ryuk from docker.io flakes CI
                         {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
                         {"name": "FORCE_COLOR", "value": "1"},
                     ],
-                    "script": rootless_step_script(
+                    "script": test_step_script(
                         # NOTE: never use '{{...}}' in a script line — PaC template-renders the
                         # whole file, so e.g. --format '{{.Version}}' is parsed as a template var
                         # and breaks the whole PipelineRun render.
-                        rootless_env_lines(),
+                        podman_env_lines(),
                         setup_uv_and_repo_lines(),
                         resolve_image_lines(),
                         podman_service_start_lines(),
@@ -427,11 +423,11 @@ def k8s_test_task(image: Image) -> dict:
         'chmod +x "$HOME/bin/kind"',
         f'curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl',
         'chmod +x "$HOME/bin/kubectl"',
-        # kind drives podman directly (rootless); no long-running service needed
+        # kind drives podman directly (rootful); no long-running service needed
         "export KIND_EXPERIMENTAL_PROVIDER=podman",
     ]
     body = [
-        *rootless_env_lines(),
+        *podman_env_lines(),
         *kind_tooling,
         *setup_uv_and_repo_lines(),
         *resolve_image_lines(),
@@ -482,13 +478,14 @@ def k8s_test_task(image: Image) -> dict:
                 {
                     "name": "test",
                     "image": TEST_IMAGE,
+                    "securityContext": test_step_security_context(),
                     "env": [
                         *image_env(),
                         {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
                         {"name": "FORCE_COLOR", "value": "1"},
                         {"name": "PRODUCT", "value": "odh"},
                     ],
-                    "script": rootless_step_script(body),
+                    "script": test_step_script(body),
                 }
             ],
         },
@@ -904,7 +901,9 @@ else:
             # taskRunSpecs must only reference tasks that exist (else InvalidTaskRunSpecs)
             task_names = {t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]}
             assert {t["pipelineTaskName"] for t in run["spec"]["taskRunSpecs"]} <= task_names
-            # the tenant SCCs forbid privileged containers — no test step may request one
+            # the tenant SCCs reject privileged:true — no step may request it;
+            # the test legs ask for CAP_SYS_ADMIN instead (the probe; the
+            # bundle's buildah task uses the same mechanism with SETFCAP)
             for task in run["spec"]["pipelineSpec"]["tasks"]:
                 for step in task.get("taskSpec", {}).get("steps", []):
                     assert isinstance(step.get("script"), str), f"{task['name']}: script must be a string"
@@ -912,6 +911,11 @@ else:
                     assert step.get("securityContext", {}).get("privileged") is not True, (
                         f"{task['name']}: privileged forbidden"
                     )
+            for name in ("test-testcontainers", "test-k8s"):
+                task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == name)
+                sc = task["taskSpec"]["steps"][0]["securityContext"]
+                assert sc["runAsUser"] == 0
+                assert "SYS_ADMIN" in sc["capabilities"]["add"], f"{name}: CAP_SYS_ADMIN probe"
 
         def test_script_vars_resolved(self):
             """Every shell variable referenced in a generated step script must be

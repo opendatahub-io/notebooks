@@ -85,11 +85,14 @@ string, not a K8s object name:
   curl -s -H "Authorization: Bearer $TOKEN" \
     "$KA_HOST/api/v1/namespaces/open-data-hub-tenant/pods/<pod-name>/log?container=step-<step>"
   ```
-- **The tenant SCCs forbid privileged containers** (verified live: every
-  usable SCC rejects `.containers[0].privileged=true`, including the cluster
-  `privileged` SCC which the build SAs aren't bound to). Never add
-  `securityContext.privileged: true` — run podman/kind rootless (see the
-  generator's `rootless_step_script`).
+- **The tenant SCCs reject `privileged: true`** (verified live: every usable
+  SCC does, including the cluster `privileged` SCC which the build SAs aren't
+  bound to). Never add `securityContext.privileged: true`. The test steps
+  instead request `capabilities: {add: [SYS_ADMIN]}` (rootful podman/kind) —
+  the SCC accepts per-step capability additions (the bundle's buildah task
+  does the same with `SETFCAP`), but rootless was proven impossible here
+  (`NoNewPrivs: 1` voids the `newuidmap` setuid prerequisite). See the ADR's
+  Investigation section (`docs/architecture/decisions/0018-*.md`).
 - The tenant has a **memory-request ResourceQuota** (`konflux`, 1Ti); under
   fleet load pods can fail at 0s with `ExceededResourceQuota`. It is
   transient — re-triggering usually recovers it.
