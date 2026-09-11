@@ -222,10 +222,17 @@ def setup_uv_and_repo_lines() -> list[str]:
 
 
 def resolve_image_lines() -> list[str]:
-    """BUILT_IMAGE is empty when skip-build=true; fall back to image-under-test then."""
+    """BUILT_IMAGE is the deterministic on-pr tag the build pushes to (params.output-image).
+
+    It is a param, not a task-result reference: a task that references a
+    $(tasks.X.results.Y) of a when-skipped task is itself skipped (Tekton
+    MissingResultsSkip), which would break the skip-build iteration mode.
+    """
     return [
-        'IMAGE="${BUILT_IMAGE:-${IMAGE_UNDER_TEST}}"',
-        'if [[ -z "${IMAGE}" ]]; then echo "ERROR: set skip-build=false or image-under-test" >&2; exit 1; fi',
+        'if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then',
+        '  echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1',
+        "fi",
+        'IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"',
         'echo "Testing image: ${IMAGE}"',
     ]
 
@@ -239,9 +246,13 @@ def test_script(*sections: list[str]) -> str:
 
 
 def image_params() -> list[dict]:
+    # BUILT_IMAGE is params.output-image (the deterministic on-pr tag), NOT
+    # $(tasks.build-image-index.results.IMAGE_URL): referencing a
+    # when-skipped task's result would skip this task too (MissingResultsSkip).
     return [
-        {"name": "BUILT_IMAGE", "value": "$(tasks.build-image-index.results.IMAGE_URL)"},
+        {"name": "BUILT_IMAGE", "value": "$(params.output-image)"},
         {"name": "IMAGE_UNDER_TEST", "value": "$(params.image-under-test)"},
+        {"name": "SKIP_BUILD", "value": "$(params.skip-build)"},
     ]
 
 
@@ -249,6 +260,7 @@ def image_param_declarations() -> list[dict]:
     return [
         {"name": "BUILT_IMAGE", "type": "string"},
         {"name": "IMAGE_UNDER_TEST", "type": "string"},
+        {"name": "SKIP_BUILD", "type": "string"},
     ]
 
 
@@ -601,7 +613,10 @@ def pipeline_spec(image: Image, platform: str, refs: dict[str, dict], test_arche
             {
                 "name": "image-under-test",
                 "type": "string",
-                "default": "",
+                # TEMPORARY: the amd64 image built by the c528eab8b run (still
+                # valid, 5d expiry) while iterating on the test stages. Revert
+                # to "" when skip-build goes back to "false".
+                "default": "quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-c528eab8b3110650fed41910339281c8f2efb894-x86_64",
                 "description": "Image to test when skip-build=true (e.g. a stable-branch build).",
             },
         ],

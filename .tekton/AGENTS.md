@@ -53,8 +53,12 @@ string, not a K8s object name:
   array fails validation).
 - `taskRunSpecs` may only reference tasks that exist in the pipeline —
   for conditional/arch-specific task graphs, emit them conditionally.
-- `runAfter` on a `when`-skipped task still runs its dependents (the
-  skipped task's results resolve to empty strings).
+- **A task that references a `when`-skipped task's result is itself
+  skipped** (Tekton `MissingResultsSkip`) — e.g. a test task using
+  `$(tasks.build-image-index.results.IMAGE_URL)` while the build tasks are
+  `when`-gated. Pass such values via pipeline params (e.g. the
+  deterministic `output-image` tag) instead. A `when`-skipped parent does
+  *not* skip its `runAfter` dependents.
 
 ## Generated files
 

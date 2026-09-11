@@ -121,7 +121,7 @@ spec:
         "true" skips clone/prefetch/build stages so the test/provision stages can be developed against an existing image (image-under-test).
     - name: image-under-test
       type: string
-      default: ""
+      default: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-c528eab8b3110650fed41910339281c8f2efb894-x86_64
       description: Image to test when skip-build=true (e.g. a stable-branch build).
     results:
     - name: IMAGE_URL
@@ -306,9 +306,11 @@ spec:
       - name: REVISION
         value: $(params.revision)
       - name: BUILT_IMAGE
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(params.output-image)
       - name: IMAGE_UNDER_TEST
         value: $(params.image-under-test)
+      - name: SKIP_BUILD
+        value: $(params.skip-build)
       - name: MARKERS
         value: not openshift and not cuda and not rocm and not manifest_validation
       taskSpec:
@@ -320,6 +322,8 @@ spec:
         - name: BUILT_IMAGE
           type: string
         - name: IMAGE_UNDER_TEST
+          type: string
+        - name: SKIP_BUILD
           type: string
         - name: MARKERS
           type: string
@@ -352,8 +356,10 @@ spec:
             git checkout $(params.REVISION)
             uv venv --python 3.14
             uv sync --group dev --locked
-            IMAGE="${BUILT_IMAGE:-${IMAGE_UNDER_TEST}}"
-            if [[ -z "${IMAGE}" ]]; then echo "ERROR: set skip-build=false or image-under-test" >&2; exit 1; fi
+            if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
+              echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1
+            fi
+            IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
             echo "Testing image: ${IMAGE}"
             uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy
     - name: provision-kind
@@ -361,14 +367,18 @@ spec:
       - build-image-index
       params:
       - name: BUILT_IMAGE
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(params.output-image)
       - name: IMAGE_UNDER_TEST
         value: $(params.image-under-test)
+      - name: SKIP_BUILD
+        value: $(params.skip-build)
       taskSpec:
         params:
         - name: BUILT_IMAGE
           type: string
         - name: IMAGE_UNDER_TEST
+          type: string
+        - name: SKIP_BUILD
           type: string
         results:
         - name: kubeconfig
@@ -392,8 +402,10 @@ spec:
             kind create cluster --name tekton --wait 10m
             kubectl cluster-info
             kubectl get nodes -o wide
-            IMAGE="${BUILT_IMAGE:-${IMAGE_UNDER_TEST}}"
-            if [[ -z "${IMAGE}" ]]; then echo "ERROR: set skip-build=false or image-under-test" >&2; exit 1; fi
+            if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
+              echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1
+            fi
+            IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
             echo "Testing image: ${IMAGE}"
             podman pull ${IMAGE}
             kind load docker-image ${IMAGE}
@@ -409,9 +421,11 @@ spec:
       - name: REVISION
         value: $(params.revision)
       - name: BUILT_IMAGE
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(params.output-image)
       - name: IMAGE_UNDER_TEST
         value: $(params.image-under-test)
+      - name: SKIP_BUILD
+        value: $(params.skip-build)
       - name: KUBECONFIG
         value: $(tasks.provision-kind.results.kubeconfig)
       - name: TARGET
@@ -425,6 +439,8 @@ spec:
         - name: BUILT_IMAGE
           type: string
         - name: IMAGE_UNDER_TEST
+          type: string
+        - name: SKIP_BUILD
           type: string
         - name: KUBECONFIG
           type: string
@@ -454,8 +470,10 @@ spec:
             git checkout $(params.REVISION)
             uv venv --python 3.14
             uv sync --group dev --locked
-            IMAGE="${BUILT_IMAGE:-${IMAGE_UNDER_TEST}}"
-            if [[ -z "${IMAGE}" ]]; then echo "ERROR: set skip-build=false or image-under-test" >&2; exit 1; fi
+            if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
+              echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1
+            fi
+            IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
             echo "Testing image: ${IMAGE}"
             export IMAGE_REGISTRY="${IMAGE%%:*}"
             export NOTEBOOK_TAG="${IMAGE##*:}"
@@ -470,9 +488,11 @@ spec:
       - name: REVISION
         value: $(params.revision)
       - name: BUILT_IMAGE
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(params.output-image)
       - name: IMAGE_UNDER_TEST
         value: $(params.image-under-test)
+      - name: SKIP_BUILD
+        value: $(params.skip-build)
       - name: KUBECONFIG
         value: $(tasks.provision-kind.results.kubeconfig)
       - name: MARKERS
@@ -486,6 +506,8 @@ spec:
         - name: BUILT_IMAGE
           type: string
         - name: IMAGE_UNDER_TEST
+          type: string
+        - name: SKIP_BUILD
           type: string
         - name: KUBECONFIG
           type: string
@@ -523,8 +545,10 @@ spec:
             git checkout $(params.REVISION)
             uv venv --python 3.14
             uv sync --group dev --locked
-            IMAGE="${BUILT_IMAGE:-${IMAGE_UNDER_TEST}}"
-            if [[ -z "${IMAGE}" ]]; then echo "ERROR: set skip-build=false or image-under-test" >&2; exit 1; fi
+            if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
+              echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1
+            fi
+            IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
             echo "Testing image: ${IMAGE}"
             uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy
     workspaces:
