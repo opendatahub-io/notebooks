@@ -114,6 +114,16 @@ PACKAGES=(
     ninja-build
     # Build generator for scikit-build-core
     cmake
+    # autoconf/automake (autoreconf) for patchelf's bootstrap.sh
+    autoconf
+    automake
+    # libtool for LT_INIT-based autotools builds
+    libtool
+    # zlib and image codecs for pillow
+    zlib-devel
+    libjpeg-turbo-devel
+    libtiff-devel
+    libpng-devel
 )
 dnf install -y "${PACKAGES[@]}"
 dnf clean all
