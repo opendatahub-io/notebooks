@@ -1,4 +1,4 @@
-# 18. Per-architecture Konflux PipelineRuns with parallel in-pod tests
+# 18. Per-architecture Konflux PipelineRuns with parallel sidecar tests
 
 Date: 2026-09-11
 
@@ -68,15 +68,25 @@ re-discovering them.
    `on-cel-expression` fires on every PR push to `main`. **This must be
    changed (add `pathChanged()`, or go on-comment-only) before the pattern
    graduates**, or every unrelated PR triggers a full per-arch build fleet.
+8. **The PR-comment report block is best-effort.** The tenant GCs pod logs
+   within ~2 min of failure, so each test leg posts a pytest summary as a PR
+   comment (via the PaC `git-auth` secret, key `git-provider-token`).
+   Observed failure mode: the block wrote the report JSON with `printf` but
+   never executed the generator script, so `curl --data-binary @/tmp/report.json`
+   failed with `CURLE_READ_ERROR` (exit 26) and — under
+   `set -Eeuxo pipefail` — killed the step, turning a green test run red.
+   The generated block therefore runs the generator before the curl and
+   makes the curl non-fatal (`|| true`): report delivery must never mask the
+   test result.
 
-### Test-cluster choice: kind in a pod
+### Test-cluster choice: kind in a pod (superseded — see Decision)
 
 GHA's "openshift" tests are a misnomer: the
 `provision-k8s` action provisions a single-node **kubeadm** cluster — plain
 k8s, not OpenShift (the workbench openshift-marked tests pass on plain k8s
 via the `fake-scc` namespace-label trick). A single-node **kind** cluster in
-a Tekton pod is the faithful, near-free equivalent; GHA parity is the bar
-for v1.
+a Tekton pod was the original faithful, near-free equivalent; GHA parity is
+the bar for v1.
 
 The pod cannot be privileged: **the tenant's SCCs forbid it.** This was
 verified live — the test pods failed at 0s with
@@ -111,11 +121,22 @@ generator (`ci/konflux/generate_pipelineruns.py`), committing the output to
 init -> clone-repository -> prefetch-dependencies -> build-images (1 platform)
      -> build-image-index                    (all skipped when skip-build=true)
 
-then, in parallel (two test legs, each its own rootless pod):
-  test-testcontainers   rootless podman; testcontainers pytest
-  test-k8s              rootless podman + kind, all in one step:
-                        kind create -> make deploy/papermill -> openshift pytest
+then, in parallel (two test legs, each its own pod, same sidecar design):
+  test-testcontainers   pytest tests/containers (cpu markers)
+  test-papermill        pytest tests/containers -m papermill — the GHA
+                        papermill leg (make deploy/test) as a cluster-free
+                        pytest port
 ```
+
+Both test legs run the image under test as a Tekton **sidecar** of the test
+pod and drive it through the sidecar exec agent
+(`tests/containers/sidecar_agent.py`) over a localhost HTTP control plane —
+no container runtime in the pod, no cluster. The agent is embedded in the
+generated task at generation time and handed to the sidecar over a shared
+`emptyDir`; the sidecar's main process is the agent (which relaunches the
+image's own entrypoint as a child on `/start`). The k8s exec API was probed
+and rejected by RBAC (the pipeline SA cannot even `get pods`), so the agent
+is the only in-pod transport.
 
 - **v1 scope:** `jupyter-minimal` (cpu) only; tests only on amd64
   (non-amd64 test pods would need qemu binfmt, impractical for ppc64le/s390x).
@@ -127,26 +148,26 @@ then, in parallel (two test legs, each its own rootless pod):
   the multi-arch `on-pr-<sha>` index the existing `.tekton/*` pipelines
   produce. 5-day image expiration (`image-expires-after: 5d`), same as the
   existing PR pipelines.
-- **Tests:** kind-in-pod for the makefile-deploy and openshift-pytest legs;
-  podman-in-pod for testcontainers. Because privileged pods are forbidden,
-  both legs run **rootless**: the step script creates a non-root user with a
-  subuid range and re-execs its body as that user, then drives podman/kind
-  rootless (`KIND_EXPERIMENTAL_PROVIDER=podman`). The kind cluster only lives
-  inside its pod (and each Tekton step is its own container), so the whole
-  k8s leg is a single step. `skip-build` + `image-under-test` params allow
-  iterating on the test stages without rebuilding. (As of the
-  [Investigation](#investigation-in-pod-test-stages-in-this-tenant-2026-09-11),
-  the in-pod form of this decision is infeasible in this tenant — both
-  rootless and rootful, `SYS_ADMIN` included. The test stage will run
-  out-of-band; the in-pod kind design stands as the reference for tenants
-  whose SCCs allow it.)
+- **Tests:** both legs are sidecar-based (above) — no container runtime and
+  no cluster in the test pod, so the tenant's pod-security constraints are
+  irrelevant to the test stage. The GHA papermill leg
+  (`make deploy9-<target>/test-<target>/undeploy9`) is ported to a cluster-free
+  pytest test (`tests/containers/workbenches/papermill_test.py`, marker
+  `papermill`): GHA's kind cluster only *hosts* the image — the papermill
+  execution itself (`test_notebook.ipynb` + `expected_versions.json` from the
+  imagestream manifest annotations) works identically against a plain
+  container, which the sidecar transport provides. The GHA
+  `openshift`-marked pytest is **not ported**: it needs a real cluster, so it
+  is deferred to the out-of-pod options below (EPHC/mapt). `skip-build` +
+  `image-under-test` params allow iterating on the test stages without
+  rebuilding.
 - **Scans are out of scope for v1** (build + tests only); the existing
   multi-arch pipelines continue to cover them.
 
 ## Consequences
 
 - **Parallel test pods per PR push.** One minimal-cpu PR push now triggers
-  four builds plus (on amd64) four test pods, instead of one GHA job.
+  four builds plus (on amd64) two sidecar test pods, instead of one GHA job.
   Mitigations in place: v1 scope is a single image, `max-keep-runs: 3`,
   `cancel-in-progress: true`. Extending the `IMAGES` list is a one-liner but
   scales this linearly — re-evaluate before adding heavy images.
@@ -164,13 +185,21 @@ then, in parallel (two test legs, each its own rootless pod):
   (`capability may not be added`); rootful with the default caps
   (`CapEff: 0x5fb`) lacks `CAP_SYS_ADMIN`. Full evidence and reproduction in
   the [Investigation](#investigation-in-pod-test-stages-in-this-tenant-2026-09-11)
-  section. The test stage must therefore run out-of-band; the full
-  options map (mapt kind-on-AWS, mapt Fedora VM, EPHC, privileged SA,
-  EAAS, build-only) is in
-  [Options for the test stage](#options-for-the-test-stage-out-of-pod) —
-  decision pending.
-- **kind ≠ OpenShift.** Faithful to GHA, not an upgrade. EPHC is the
-  documented upgrade path (see Context); it is deliberately not in v1.
+  section. **This is what shaped the sidecar design**: a sidecar container
+  needs no runtime, no capabilities, no cluster, and the pytest suite was
+  already transport-agnostic (the same tests run against podman/docker, the
+  sidecar agent, or a kind-deployed workload).
+- **The `openshift`-marked tests are deliberately not in v1.** They need a
+  real cluster (the sidecar transport covers "the image as a workload", not
+  "a cluster to deploy into"). The out-of-pod options map (mapt kind-on-AWS,
+  mapt Fedora VM, EPHC, privileged SA, EAAS, build-only) in
+  [Options for the test stage](#options-for-the-test-stage-out-of-pod) is
+  the upgrade path — decision pending.
+- **The papermill leg needs no cluster at all.** GHA's
+  `make deploy9/test/undeploy9` exists only to host the image; the pytest
+  port (`-m papermill`) runs the same notebook against the sidecar, so that
+  GHA leg graduates on day one. Verified live: the ported test passes in a
+  real Konflux-sidecar-shaped pod against the built image.
 - **The iteration trigger is not graduation-ready.** No `pathChanged()`
   guard (Constraint 7) — every PR push re-triggers the fleet. Graduation
   requires the guard or on-comment-only triggers.
@@ -230,12 +259,19 @@ different mechanism (below).
 **In-pod container runtimes are therefore impossible in this tenant, end of
 story** — all four combinations are exhausted: `privileged: true` (1),
 rootless user namespaces (2–4), rootful + `CAP_SYS_ADMIN` (5, 7), rootful
-with the default caps (5). The test stage must run out-of-band: a dedicated
-SA bound to the `privileged` SCC (human action — the current rootful test
-code then needs only `privileged: true` instead of `capabilities.add` plus
-that SA on the two test tasks), or EPHC (self-service — the openshift-marker
-leg runs against the real cluster from a plain `kubectl`; the testcontainers
-leg would point at a podman pod hosted on the EPHC), or EAAS.
+with the default caps (5).
+
+**Resolution (added 2026-09-12):** rather than moving the test stage
+out-of-pod, the design was inverted — the image under test runs as a Tekton
+**sidecar** of the test pod (a plain container: no runtime to install, no
+capabilities to request), and the pytest suite drives it through a small
+sidecar exec agent over a localhost control plane. This closes findings 1–7
+for both in-scope test legs: a sidecar needs none of the resources that
+failed. (A k8s-exec-API transport was probed in parallel and rejected by
+RBAC — the pipeline SA cannot even `get pods` — leaving the agent as the
+only in-pod transport.) What remains out-of-pod is only the deferred
+`openshift`-marked leg, for which the options below (dedicated privileged
+SA, EPHC, EAAS) still apply.
 
 ### Why the build stage works under the same profile
 
@@ -353,16 +389,13 @@ Task specifics (from the catalog, verified against the live
 - **Deprovision**: `kind-aws-deprovision` (0.1) with the same
   `secret-aws-credentials`/`id`, deleting VM + secrets.
 
-Fit for the two test legs:
+Fit for the remaining (deferred) test leg:
 
-- **k8s leg: near-exact GHA parity.** Remote kind (plain k8s, v1.32) +
-  `make deploy9`/papermill + openshift-marked pytest from the pod via the
-  mounted kubeconfig — same shape as GHA, no in-pod runtime at all.
-- **testcontainers leg: the VM becomes the runtime host.** The SSH
-  credentials secret lets a first step log into the VM, install podman,
-  and expose `podman system service` on a mapped port
-  (`extra-port-mappings`); the test step points testcontainers at
-  `DOCKER_HOST=tcp://<vm>:<port>`. Fallback: keep this leg on GHA for v1.
+- **`openshift`-marked pytest: near-exact GHA parity.** Remote kind (plain
+  k8s, v1.32) — the openshift markers pass on plain k8s via the `fake-scc`
+  namespace-label trick, exactly as in GHA — with the pytest run from the
+  Tekton pod via the mounted kubeconfig; no in-pod runtime at all.
+  (The sidecar legs need none of this: they run in-pod with no cluster.)
 
 So the human ask for A/B is one item: an AWS-credentials secret in
 `open-data-hub-tenant` (onboarding team; standard for tenants using the

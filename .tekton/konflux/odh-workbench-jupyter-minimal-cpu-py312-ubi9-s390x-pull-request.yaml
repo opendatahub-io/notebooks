@@ -116,13 +116,13 @@ spec:
       default: "false"
     - name: skip-build
       type: string
-      default: "true"
+      default: "false"
       description: |-
-        "true" skips clone/prefetch/build stages so the test/provision stages can be developed against an existing image (image-under-test).
+        "true" skips clone/prefetch/build stages so the test stages can run against an existing image (image-under-test, e.g. a stable-branch build).
     - name: image-under-test
       type: string
-      default: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-c528eab8b3110650fed41910339281c8f2efb894-x86_64
-      description: Image to test when skip-build=true (e.g. a stable-branch build).
+      default: ""
+      description: Image to test when skip-build=true; must be set in that mode.
     results:
     - name: IMAGE_URL
       value: $(tasks.build-image-index.results.IMAGE_URL)

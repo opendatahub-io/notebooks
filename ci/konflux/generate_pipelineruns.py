@@ -11,27 +11,27 @@ Pipeline shape (single inline pipelineSpec — no cluster-side Pipeline CR neede
                                         (all skipped when skip-build=true)
 
     then, in parallel (two test legs, each its own pod):
-      test-testcontainers   (rootful podman: testcontainers pytest)
-      test-k8s              (rootful podman + kind: make deploy/papermill,
-                             then openshift-marked pytest — one step because
-                             the kind cluster only lives inside this pod)
+      test-testcontainers   (testcontainers pytest, markers per Image)
+      test-papermill        (the GHA papermill leg as a pytest port, marker
+                             "papermill" — test_notebook.ipynb executed via
+                             papermill against the image's installed stack)
 
 GHA parity: this mirrors .github/workflows/build-notebooks-TEMPLATE.yaml
-(build, then testcontainers pytest, then make deploy/test/undeploy, then
-openshift pytest — which GHA runs serially in one job; here the two legs
-run in parallel, and within the k8s leg the steps stay serial because they
-share one in-pod kind cluster).
+(build, then testcontainers pytest, then make deploy/test/undeploy (papermill),
+then openshift pytest — which GHA runs serially in one job). Here the two
+test legs run in parallel, and both run the image under test as a pod
+SIDECAR (below) — no in-pod cluster. The TEMPLATE's kind-based k8s leg
+(make deploy + openshift-marked pytest) is intentionally NOT replicated:
+the papermill test no longer needs a cluster at all, and the openshift-marked
+tests require a real cluster (deferred to an EPHC/CSO-managed test cluster).
 
-The tenant's SCCs reject privileged containers (verified live), rootless is
-voided by NoNewPrivs: 1, and a per-step CAP_SYS_ADMIN request was rejected
-too — in-pod container runtimes are impossible here (see the ADR
-Investigation section). The testcontainers leg therefore runs the image
-under test as a pod SIDECAR and drives it through a sidecar exec agent
-over a localhost control plane (no runtime at all; the k8s exec API was
-probed and rejected by RBAC — the pipeline SA cannot even `get pods`);
-the k8s leg still carries the rootful CAP_SYS_ADMIN probe (see
-test_step_security_context) until it is replaced (mapt kind-on-AWS is the
-platform-endorsed path).
+In-pod container runtimes are impossible in this tenant: the SCCs reject
+privileged containers (verified live), rootless is voided by NoNewPrivs: 1,
+and a per-step CAP_SYS_ADMIN request was rejected too (see the ADR
+Investigation section). The test legs therefore run the image under test as
+a pod SIDECAR and drive it through a sidecar exec agent over a localhost
+control plane (no runtime at all; the k8s exec API was probed and rejected
+by RBAC — the pipeline SA cannot even `get pods`).
 
 Usage:
 
@@ -106,75 +106,11 @@ DEFAULT_TEST_ARCHES = {"x86_64"}
 
 # Test pod tooling (pinned for reproducibility)
 TEST_IMAGE = "quay.io/fedora/fedora:43"
-KIND_VERSION = "v0.33.0"
-KUBECTL_VERSION = "v1.34.1"  # client for the in-pod kind cluster (k8s leg)
-TENANT_KUBECTL_VERSION = "v1.32.0"  # client for the tenant API (within version skew)
 # Pinned so the test pods don't drift past pyproject.toml's [tool.uv]
 # required-version (">=0.11.8,<0.13") when a newer uv releases. Must stay in
 # that range; bump deliberately.
 UV_VERSION = "0.12.13"
 UV_INSTALL_URL = f"https://astral.sh/uv/{UV_VERSION}/install.sh"
-
-
-def podman_env_lines() -> list[str]:
-    """Rootful podman environment: the docker-compatible socket at /run/podman.
-
-    The step runs as root with CAP_SYS_ADMIN (see test_step_security_context),
-    so podman runs rootful and listens on the standard rootful socket.
-    """
-    return [
-        'export DOCKER_HOST="unix:///run/podman/podman.sock"',
-        'export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/run/podman/podman.sock"',
-    ]
-
-
-def podman_service_start_lines() -> list[str]:
-    """docker-compatible API on the rootful podman socket (GHA podman.socket equivalent)."""
-    return [
-        "nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &",
-        "for _ in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done",
-        "podman --version",
-    ]
-
-
-def test_step_security_context() -> dict:
-    """The test step runs as root with CAP_SYS_ADMIN.
-
-    The tenant SCCs reject `privileged: true` (verified live: every usable SCC
-    does), but they accept per-step `capabilities.add` — the bundle's buildah
-    build task does exactly this with SETFCAP. Rootful podman/kind need
-    CAP_SYS_ADMIN to create the mount/network namespaces and do the mounts
-    that containers-in-pod (kind node, testcontainers) require. If the SCC
-    does not allow sys_admin, admission rejects the pod at 0s and the error
-    names the capability — that is the probe's signal.
-    """
-    return {"runAsUser": 0, "capabilities": {"add": ["SYS_ADMIN"]}}
-
-
-def test_step_script(*body_sections: list[str]) -> str:
-    """Step script for the test legs: install tools, then run the body as root.
-
-    Rootful by design (see test_step_security_context()). The earlier rootless
-    redesign (create a user with a subuid range, re-exec the body via su,
-    setuid newuidmap) was proven impossible in this tenant: the pod runs with
-    NoNewPrivs: 1 (the SCC sets allowPrivilegeEscalation: false), which makes
-    the setuid/filecap bit on newuidmap void, so user namespaces can never be
-    created there. Rootful with CAP_SYS_ADMIN mirrors what the build task
-    already relies on. See the ADR's Investigation section.
-    """
-    body_lines: list[str] = []
-    for section in body_sections:
-        body_lines += section
-    header = [
-        "#!/bin/bash",
-        "set -Eeuxo pipefail",
-        "dnf install -y podman podman-docker git python3 curl make",
-        # diagnostics: confirm the pod security profile at the top of every run
-        "grep -E 'CapEff|NoNewPrivs' /proc/self/status",
-        'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"',
-        "cd /workspace",
-    ]
-    return "\n".join(header + body_lines) + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -194,10 +130,12 @@ class Image:
     build_directory: str
     # Which arches run the test stages (default: amd64 only)
     test_arches: set[str] = field(default_factory=lambda: set(DEFAULT_TEST_ARCHES))
-    # pytest marker for the testcontainers stage (GHA parity: build-notebooks-TEMPLATE.yaml)
-    testcontainers_markers: str = "not openshift and not cuda and not rocm and not manifest_validation"
-    # pytest marker for the OpenShift stage (GHA parity)
-    openshift_markers: str = "openshift and not cuda and not rocm"
+    # pytest marker for the testcontainers stage (GHA parity: build-notebooks-TEMPLATE.yaml).
+    # "not papermill" keeps the GHA papermill leg out of this task — it runs as
+    # its own sidecar task (test-papermill) with marker "papermill".
+    testcontainers_markers: str = (
+        "not openshift and not cuda and not rocm and not manifest_validation and not papermill"
+    )
 
     @property
     def dockerfile(self) -> str:
@@ -284,7 +222,7 @@ def bundle_task_refs() -> dict[str, dict]:
 def setup_uv_and_repo_lines() -> list[str]:
     """Clone the PR revision and set up the repo's uv venv (GHA: uv venv + uv sync --group dev).
 
-    Runs as root (home-dir uv install; PATH is set by test_step_script).
+    Runs as root (home-dir uv install; PATH is set by sidecar_step_script).
     """
     return [
         f"curl -LsSf {UV_INSTALL_URL} | sh",
@@ -311,14 +249,6 @@ def resolve_image_lines() -> list[str]:
         'IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"',
         'echo "Testing image: ${IMAGE}"',
     ]
-
-
-def test_script(*sections: list[str]) -> str:
-    """Tekton StepSpec.script is a STRING — join the lines with newlines."""
-    lines = ["#!/bin/bash", "set -Eeuxo pipefail"]
-    for section in sections:
-        lines += section
-    return "\n".join(lines) + "\n"
 
 
 def image_params() -> list[dict]:
@@ -366,9 +296,9 @@ def image_env() -> list[dict]:
 def sidecar_step_script(body_lines: list[str]) -> str:
     """Test step script for the sidecar stage.
 
-    Unlike test_step_script (the k8s leg) no container runtime is installed —
-    that is the point: the image under test runs as a pod sidecar and is
-    driven through the sidecar agent's localhost control plane.
+    No container runtime is installed — that is the point: the image under
+    test runs as a pod sidecar and is driven through the sidecar agent's
+    localhost control plane.
     """
     header = [
         "#!/bin/bash",
@@ -380,8 +310,45 @@ def sidecar_step_script(body_lines: list[str]) -> str:
     return "\n".join(header + body_lines) + "\n"
 
 
-def testcontainers_task(image: Image, arch_key: str) -> dict:
-    """GHA parity: 'Run Testcontainers container tests (in PyTest)' step.
+def gh_report_lines(label: str) -> list[str]:
+    """Post a run summary as a PR comment — the persistent sink.
+
+    This tenant GCs pod logs within ~2 min of failure, so the PR comment is
+    the only durable record of what the run did. The whole block is
+    best-effort and never fails the task: a report-delivery glitch must not
+    mask the test result (a missing report.json once failed a green run via
+    curl's CURLE_READ_ERROR under `set -Eeuxo pipefail`).
+    """
+    return [
+        'GH_TOKEN=$(cat "$(workspaces.basic-auth.path)/git-provider-token" 2>/dev/null || true)',
+        'if [ -n "$GH_TOKEN" ]; then',
+        "  tail -25 /tmp/pytest.log > /tmp/report-tail.txt",
+        # the \n sequences must stay literal (printf format + python escapes)
+        "# shellcheck disable=SC2016",
+        (
+            "printf '%s\\n' 'import json' 'fence = chr(96) * 3' "
+            "'tail = open(\"/tmp/report-tail.txt\").read()' "
+            f'\'body = "{label} (auto-posted; pod logs are GCed in this tenant):\\n" + fence + "\\n" + tail + "\\n" + fence\' '
+            '\'open("/tmp/report.json", "w").write(json.dumps({"body": body}))\' > /tmp/post_report.py'
+        ),
+        # the report must exist before the curl, and delivery failure must
+        # not mask the test result (|| true)
+        "  python3 /tmp/post_report.py",
+        (
+            '  GH_STATUS=$(curl -s -o /tmp/gh-response.json -w "%{http_code}" '
+            '-X POST "https://api.github.com/repos/opendatahub-io/notebooks/issues/4566/comments" '
+            '-H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" '
+            "--data-binary @/tmp/report.json || true)"
+        ),
+        '  echo "github summary comment: HTTP $GH_STATUS"',
+        "else",
+        '  echo "github summary comment: SKIPPED (no git-provider-token key in git-auth)"',
+        "fi",
+    ]
+
+
+def sidecar_test_task(image: Image, arch_key: str, *, task_name: str, markers: str, report_label: str) -> dict:
+    """One sidecar-based test leg (task/pod per leg; legs run in parallel).
 
     Sidecar design (the runtime-free path): the image under test runs as a
     Tekton SIDECAR of the test pod — a plain pod container, so no container
@@ -418,29 +385,16 @@ def testcontainers_task(image: Image, arch_key: str) -> dict:
         "PYTEST_EXIT=0",
         'uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" -vvv --color=yes > /tmp/pytest.log 2>&1 || PYTEST_EXIT=$?',
         "tail -60 /tmp/pytest.log || true",
-        # persistent sink: post a pytest summary as a PR comment (pod logs
-        # are GCed in this tenant); the workspace is optional, so guard the
-        # absent/empty case
-        'GH_TOKEN=$(cat "$(workspaces.basic-auth.path)/git-provider-token" 2>/dev/null || true)',
-        'if [ -n "$GH_TOKEN" ]; then',
-        "  tail -25 /tmp/pytest.log > /tmp/pytest-tail.txt",
-        # the \n sequences must stay literal (printf format + python escapes)
-        "# shellcheck disable=SC2016",
-        'printf \'%s\\n\' \'import json\' \'fence = chr(96) * 3\' \'tail = open("/tmp/pytest-tail.txt").read()\' \'body = "sidecar test run (auto-posted; pod logs are GCed in this tenant):\\n" + fence + "\\n" + tail + "\\n" + fence\' \'open("/tmp/report.json", "w").write(json.dumps({"body": body}))\' > /tmp/post_report.py',
-        '  GH_STATUS=$(curl -s -o /tmp/gh-response.json -w "%{http_code}" -X POST "https://api.github.com/repos/opendatahub-io/notebooks/issues/4566/comments" -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" --data-binary @/tmp/report.json)',
-        '  echo "github summary comment: HTTP $GH_STATUS"',
-        "else",
-        '  echo "github summary comment: SKIPPED (no git-provider-token key in git-auth)"',
-        "fi",
+        *gh_report_lines(report_label),
         'exit "${PYTEST_EXIT}"',
     ]
     return {
-        "name": "test-testcontainers",
+        "name": task_name,
         "runAfter": ["build-image-index"],
         "params": [
             *git_params(),
             *image_params(),
-            {"name": "MARKERS", "value": image.testcontainers_markers},
+            {"name": "MARKERS", "value": markers},
             {"name": "ARCH", "value": uname_arch},
         ],
         "workspaces": [{"name": "basic-auth", "workspace": "git-auth"}],
@@ -506,94 +460,31 @@ def testcontainers_task(image: Image, arch_key: str) -> dict:
     }
 
 
-def k8s_test_task(image: Image) -> dict:
-    """The whole k8s test leg in ONE task/pod: kind cluster, make deploy/
-    test/undeploy (papermill), then the openshift-marked pytest.
+def testcontainers_task(image: Image, arch_key: str) -> dict:
+    """GHA parity: 'Run Testcontainers container tests (in PyTest)' step."""
+    return sidecar_test_task(
+        image,
+        arch_key,
+        task_name="test-testcontainers",
+        markers=image.testcontainers_markers,
+        report_label="sidecar test run",
+    )
 
-    One pod (and one step) because the kind cluster is podman containers
-    inside the pod — a dependent task's pod could never reach it, and each
-    Tekton step is its own container, so even separate steps in one task
-    would kill the cluster between steps. Everything kind/podman-related
-    therefore lives in a single step, sequentially, like GHA.
 
-    GHA parity: provision-k8s provisions a single-node kubeadm cluster — plain
-    k8s, not OpenShift (the 'openshift' markers work on plain k8s via the
-    fake-scc label trick). EPHC (CSO, TestPlatformCluster claims) is the
-    documented upgrade path for real-OpenShift testing — see ci/konflux/README.md.
+def papermill_task(image: Image, arch_key: str) -> dict:
+    """GHA papermill leg (make deploy/test/undeploy) as a pytest port.
+
+    Runs the image's test_notebook.ipynb via papermill against the image's
+    installed stack — cluster-free (tests/containers/workbenches/
+    papermill_test.py). Images without a test_notebook.ipynb skip at runtime.
     """
-    kind_tooling = [
-        'mkdir -p "$HOME/bin"',
-        f'curl -Lo "$HOME/bin/kind" https://kind.sigs.k8s.io/dl/{KIND_VERSION}/kind-linux-amd64',
-        'chmod +x "$HOME/bin/kind"',
-        f'curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl',
-        'chmod +x "$HOME/bin/kubectl"',
-        # kind drives podman directly (rootful); no long-running service needed
-        "export KIND_EXPERIMENTAL_PROVIDER=podman",
-    ]
-    body = [
-        *podman_env_lines(),
-        *kind_tooling,
-        *setup_uv_and_repo_lines(),
-        *resolve_image_lines(),
-        # No TTL flag in kind v0.33; the cluster dies with the pod.
-        "kind create cluster --name tekton --wait 10m",
-        "kubectl cluster-info",
-        'podman pull "${IMAGE}"',
-        'kind load docker-image "${IMAGE}"',
-        "export KUBECONFIG=$HOME/.kube/config",
-        "kind get kubeconfig",
-        "kubectl get nodes -o wide",
-    ]
-    if image.has_makefile_tests:
-        # deploy9-<t> rewrites kustomization.yaml from IMAGE_REGISTRY + NOTEBOOK_TAG
-        body += [
-            'export IMAGE_REGISTRY="${IMAGE%%:*}"',
-            'export NOTEBOOK_TAG="${IMAGE##*:}"',
-            'export IMAGE_TAG="${IMAGE##*:}"',
-            'uv run python3 ci/cached-builds/make_test.py --target "$(params.TARGET)"',
-        ]
-    body += [
-        # the openshift-marked workbench tests also spin up local testcontainers
-        # (mysql etc.) — same step, so the podman service survives
-        *podman_service_start_lines(),
-        (
-            'uv run pytest tests/containers -m "$(params.MARKERS)" '
-            '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy'
-        ),
-        "kind delete cluster --name tekton || true",
-    ]
-    return {
-        "name": "test-k8s",
-        "runAfter": ["build-image-index"],
-        "params": [
-            *git_params(),
-            *image_params(),
-            {"name": "TARGET", "value": image.make_target},
-            {"name": "MARKERS", "value": image.openshift_markers},
-        ],
-        "taskSpec": {
-            "params": [
-                *git_param_declarations(),
-                *image_param_declarations(),
-                {"name": "TARGET", "type": "string"},
-                {"name": "MARKERS", "type": "string"},
-            ],
-            "steps": [
-                {
-                    "name": "test",
-                    "image": TEST_IMAGE,
-                    "securityContext": test_step_security_context(),
-                    "env": [
-                        *image_env(),
-                        {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
-                        {"name": "FORCE_COLOR", "value": "1"},
-                        {"name": "PRODUCT", "value": "odh"},
-                    ],
-                    "script": test_step_script(body),
-                }
-            ],
-        },
-    }
+    return sidecar_test_task(
+        image,
+        arch_key,
+        task_name="test-papermill",
+        markers="papermill",
+        report_label="papermill test run",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -689,10 +580,10 @@ def build_tasks_section(image: Image, arch_key: str, refs: dict[str, dict], test
     ]
 
     if arch_key in test_arches:
-        # two parallel test legs (each its own pod): testcontainers, and the
-        # whole k8s leg (kind + make deploy/papermill + openshift pytest)
+        # two parallel sidecar test legs (each its own pod): the testcontainers
+        # pytest and the papermill leg (GHA's make deploy/test, cluster-free)
         tasks.append(testcontainers_task(image, arch_key))
-        tasks.append(k8s_test_task(image))
+        tasks.append(papermill_task(image, arch_key))
 
     return tasks
 
@@ -731,23 +622,17 @@ def pipeline_spec(image: Image, platform: str, refs: dict[str, dict], test_arche
             {
                 "name": "skip-build",
                 "type": "string",
-                # TEMPORARY: "true" while iterating on the test/provision stages
-                # (they fail at admission; the build stages are proven). Revert to
-                # "false" once the test pods schedule.
-                "default": "true",
+                "default": "false",
                 "description": (
-                    '"true" skips clone/prefetch/build stages so the test/provision stages can be '
-                    "developed against an existing image (image-under-test)."
+                    '"true" skips clone/prefetch/build stages so the test stages can run '
+                    "against an existing image (image-under-test, e.g. a stable-branch build)."
                 ),
             },
             {
                 "name": "image-under-test",
                 "type": "string",
-                # TEMPORARY: the amd64 image built by the c528eab8b run (still
-                # valid, 5d expiry) while iterating on the test stages. Revert
-                # to "" when skip-build goes back to "false".
-                "default": "quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-c528eab8b3110650fed41910339281c8f2efb894-x86_64",
-                "description": "Image to test when skip-build=true (e.g. a stable-branch build).",
+                "default": "",
+                "description": "Image to test when skip-build=true; must be set in that mode.",
             },
         ],
         "results": [
@@ -769,7 +654,7 @@ def compute_resources(has_tests: bool) -> list[dict]:
     non-existent pipelineTaskName makes the whole PipelineRun InvalidTaskRunSpecs.
 
     Test-pod memory mirrors GHA (the whole suite runs on a 7Gi runner); the
-    k8s leg needs the most (kind control plane + notebook pod + pytest).
+    testcontainers leg needs the most (it runs the largest pytest subset).
     """
 
     def cr(cpu: str, memory: str, ephemeral: str | None = None) -> dict:
@@ -797,11 +682,11 @@ def compute_resources(has_tests: bool) -> list[dict]:
                 "computeResources": cr("4", "4Gi", "40Gi"),
                 "timeout": "60m",
             },
-            # kind + papermill notebook + openshift pytest in one pod
+            # papermill notebook + pip install papermill in the sidecar
             {
-                "pipelineTaskName": "test-k8s",
-                "computeResources": cr("4", "6Gi", "60Gi"),
-                "timeout": "90m",
+                "pipelineTaskName": "test-papermill",
+                "computeResources": cr("4", "4Gi", "40Gi"),
+                "timeout": "30m",
             },
         ]
     return result
@@ -994,20 +879,23 @@ else:
                 "build-images",
                 "build-image-index",
             ]
-            # two parallel test legs (no more provision-kind / makefile / openshift tasks)
+            # two parallel sidecar test legs (no k8s/kind leg, no provision-kind /
+            # makefile / openshift tasks)
             assert "test-testcontainers" in task_names
-            assert "test-k8s" in task_names
-            assert not any(n in task_names for n in ("provision-kind", "test-makefile-deploy", "test-openshift-pytest"))
+            assert "test-papermill" in task_names
+            assert not any(
+                n in task_names for n in ("test-k8s", "provision-kind", "test-makefile-deploy", "test-openshift-pytest")
+            )
             # test legs run in parallel after the build (not serially like GHA)
-            for name in ("test-testcontainers", "test-k8s"):
+            for name in ("test-testcontainers", "test-papermill"):
                 task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == name)
                 assert task["runAfter"] == ["build-image-index"]
             # taskRunSpecs must only reference tasks that exist (else InvalidTaskRunSpecs)
             task_names = {t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]}
             assert {t["pipelineTaskName"] for t in run["spec"]["taskRunSpecs"]} <= task_names
-            # the tenant SCCs reject privileged:true — no step may request it;
-            # the test legs ask for CAP_SYS_ADMIN instead (the probe; the
-            # bundle's buildah task uses the same mechanism with SETFCAP)
+            # the tenant SCCs reject privileged:true (and per-step CAP_SYS_ADMIN)
+            # — no step may request either (sidecar design: the test steps are
+            # plain fedora containers, no capabilities at all)
             for task in run["spec"]["pipelineSpec"]["tasks"]:
                 for step in task.get("taskSpec", {}).get("steps", []):
                     assert isinstance(step.get("script"), str), f"{task['name']}: script must be a string"
@@ -1015,12 +903,9 @@ else:
                     assert step.get("securityContext", {}).get("privileged") is not True, (
                         f"{task['name']}: privileged forbidden"
                     )
-            # the k8s leg still carries the (rejected) CAP_SYS_ADMIN probe;
-            # the testcontainers leg is the sidecar design — no step caps
-            task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == "test-k8s")
-            sc = task["taskSpec"]["steps"][0]["securityContext"]
-            assert sc["runAsUser"] == 0
-            assert "SYS_ADMIN" in sc["capabilities"]["add"]
+                    assert step.get("securityContext", {}).get("capabilities", {}).get("add") is None, (
+                        f"{task['name']}: capability adds forbidden"
+                    )
             task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == "test-testcontainers")
             sidecars = task["taskSpec"]["sidecars"]
             assert sidecars[0]["name"] == "sut"
@@ -1048,6 +933,17 @@ else:
             assert "base64 -d > /shared/agent.py" in script
             assert "pytest tests/containers" in script
             assert "git-provider-token" in script
+            # the report step must generate report.json before curling it, and
+            # the curl must be non-fatal (a missing file once failed a green
+            # run via CURLE_READ_ERROR under set -e)
+            assert "python3 /tmp/post_report.py" in script
+            assert "--data-binary @/tmp/report.json || true" in script
+            # the papermill leg: same sidecar shape, its own marker
+            task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == "test-papermill")
+            params = {p["name"]: p["value"] for p in task["params"]}
+            assert params["MARKERS"] == "papermill"
+            assert task["taskSpec"]["sidecars"][0]["image"] == "$(params.IMAGE_UNDER_TEST)"
+            assert "python3 /tmp/post_report.py" in task["taskSpec"]["steps"][0]["script"]
 
         def test_script_vars_resolved(self):
             """Every shell variable referenced in a generated step script must be

@@ -61,15 +61,22 @@ updated keeps the generated pipelines in sync.
 init -> clone-repository -> prefetch-dependencies -> build-images -> build-image-index
                                           (all skipped when skip-build=true)
 
-then, in parallel (two test legs, each its own pod, both rootful — the step
-requests CAP_SYS_ADMIN, see below):
-  test-testcontainers   rootful podman; pytest tests/containers (cpu markers)
-  test-k8s              rootful podman + single-node kind cluster, all in one
-                        step (the cluster only lives inside this pod):
-                          kind create -> make deploy9/test/undeploy9 (papermill,
-                          via ci/cached-builds/make_test.py) -> pytest
-                          tests/containers (openshift markers)
+then, in parallel (two test legs, each its own pod, same sidecar design):
+  test-testcontainers   pytest tests/containers (cpu markers)
+  test-papermill        pytest tests/containers -m papermill — the GHA
+                        papermill leg (make deploy/test) as a cluster-free
+                        pytest port
 ```
+
+Both test legs run the image under test as a Tekton **sidecar** of the test
+pod and drive it through the sidecar exec agent (`tests/containers/
+sidecar_agent.py`) over a localhost control plane — no container runtime in
+the pod, no cluster. The GHA papermill test deploys the image to a kind
+cluster and papermills `test_notebook.ipynb` in the notebook pod; the pytest
+port (`tests/containers/workbenches/papermill_test.py`) runs the same
+assertion against a plain container (the kind cluster never did anything the
+container transport could), and the GHA `openshift`-marked pytest is
+deferred to a real test cluster (EPHC/CSO — see the ADR).
 
 Notes:
 
@@ -79,46 +86,24 @@ Notes:
   `on-pr-<sha>` index the existing `.tekton/*` pipelines produce.
 - **Image expiration: 5 days** (`image-expires-after: 5d`), same as the
   existing PR pipelines.
-- **Test cluster = kind (out-of-pod).** GHA's "openshift" tests actually
-  run on a single-node *kubeadm* cluster (plain k8s, not OpenShift) via
-  `.github/actions/provision-k8s` — kind is the faithful equivalent. Kind
-  *in the pod* was tried and is impossible in this tenant (SCC rejects
-  `privileged`, `NoNewPrivs` kills rootless, `capabilities.add:
-  [SYS_ADMIN]` rejected — ADR Investigation section). The platform-endorsed
-  replacement is **kind on AWS via mapt**
-  (`konflux-ci/tekton-integration-catalog`, `kind-aws-spot` task; the
-  Konflux platform is deprecating EPHC for PR-level e2e in favor of this —
-  KFLUXDP-277 / KONFLUX-7296, used live by several tenants). A full
-  options map (mapt kind, mapt Fedora VM, EPHC, privileged SA, EAAS,
-  build-only) is in the ADR. Real-OpenShift testing remains possible via
-  **EPHC/CSO** (`TestPlatformCluster` claims,
-  `provision-ephemeral-cluster` tasks from `openshift/konflux-tasks`).
-- **The tenant SCCs reject `privileged: true`, so the test step asks for
-  `CAP_SYS_ADMIN` instead** (verified live: every usable SCC rejects
-  `.containers[0].privileged=true`, including `appstudio-pipelines-scc` and
-  the cluster `privileged` SCC). The SCC *does* accept per-step
-  `capabilities.add` — the bundle's buildah build task uses exactly this
-  mechanism with `SETFCAP`. A rootful podman/kind needs `CAP_SYS_ADMIN` for
-  the mount/network namespaces of the containers-in-pod, so the test step's
-  `securityContext` is `{runAsUser: 0, capabilities: {add: [SYS_ADMIN]}}`
-  (see `test_step_security_context`). **Why not rootless?** A rootless
-  redesign was tried first and proven impossible here: the pod runs with
-  `NoNewPrivs: 1` (the SCC sets `allowPrivilegeEscalation: false`), which
-  makes the setuid/filecap bit on `newuidmap` void, so user namespaces can
-  never be created; rootful without `CAP_SYS_ADMIN` is also a no-go (the pod
-  otherwise has the k8s default cap set, `CapEff: 0x5fb`). **The probe was
-  rejected** (commit `ab9b7ffd8`): the SCC's
-  `capabilities.add` allow-list includes `SETFCAP` but not `sys_admin`
-  (`capability may not be added`). Full evidence and reproduction: the
-  ADR's Investigation section. The test stage will therefore move
-  out-of-pod — options map (mapt kind-on-AWS is the platform-endorsed
-  path) in the ADR.
-- **The whole k8s leg is one step.** The kind cluster is podman containers
-  *inside the pod*; a dependent task's pod could never reach it, and each
-  Tekton step is its own container (so separate steps would kill the cluster
-  between them). `kind create`, the make deploy/papermill, and the
-  openshift-marked pytest therefore run sequentially in a single step, like
-  GHA. Only the testcontainers leg runs truly in parallel.
+- **Sidecar test design (no in-pod runtime, no cluster).** In-pod container
+  runtimes are impossible in this tenant: the SCCs reject `privileged: true`
+  (verified live), rootless is voided by `NoNewPrivs: 1`, and the per-step
+  `capabilities.add: [SYS_ADMIN]` probe was rejected at admission
+  (`capability may not be added`). The test legs therefore run the image
+  under test as a plain pod **sidecar** whose main process is the sidecar
+  exec agent; the test step (a plain fedora container, no capabilities)
+  drives it over a localhost HTTP control plane. The k8s exec API was probed
+  and rejected by RBAC (the pipeline SA cannot even `get pods`), so the agent
+  is the only in-pod transport. Full evidence and the out-of-pod options map
+  (mapt kind-on-AWS, EPHC/CSO `TestPlatformCluster` claims — the paths for
+  the deferred `openshift`-marked tests) are in the ADR's Investigation
+  section.
+- **The papermill leg is cluster-free.** GHA's `make deploy9/test` deploys
+  the image to a kind cluster only to host the image; the papermill
+  execution itself (`test_notebook.ipynb` + `expected_versions.json` from the
+  imagestream manifest) works identically against a plain container, so the
+  pytest port runs it in the sidecar.
 - **Scans are intentionally not in v1** (build + tests only, matching the
   GHA job which does trivy + FIPS, not the Konflux scan set). The existing
   multi-arch pipelines still cover scans; a generator flag can add them.
@@ -151,8 +136,10 @@ the test stages resolve the image under test from `image-under-test`.
 
 ## Observing runs
 
-- Konflux UI: https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com
-  (tenant `open-data-hub-tenant`), or the PR's GitHub checks.
+- The Konflux UI for the `open-data-hub-tenant` tenant, or the PR's
+  GitHub checks.
 - CLI: `oc get pipelinerun -n open-data-hub-tenant` (tenant users can list
-  runs but not create them; triggering goes through PaC).
+  runs but not create them; triggering goes through PaC). Note the tenant
+  GCs pod logs shortly after a failure, so for failed runs the KubeArchive
+  export (used by the agent skills) is the durable log source.
 - Failure triage: the `konflux-analyze` / `konflux-logs` agent skills.
