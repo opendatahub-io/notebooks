@@ -327,14 +327,25 @@ spec:
           type: string
         - name: MARKERS
           type: string
+        sidecars:
+        - name: sut
+          image: $(params.IMAGE_UNDER_TEST)
+          command:
+          - sleep
+          args:
+          - infinity
+          securityContext:
+            runAsUser: 0
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: '1'
+              memory: 1Gi
         steps:
         - name: test
           image: quay.io/fedora/fedora:43
-          securityContext:
-            runAsUser: 0
-            capabilities:
-              add:
-              - SYS_ADMIN
           env:
           - name: BUILT_IMAGE
             value: $(params.BUILT_IMAGE)
@@ -342,8 +353,6 @@ spec:
             value: $(params.IMAGE_UNDER_TEST)
           - name: SKIP_BUILD
             value: $(params.SKIP_BUILD)
-          - name: TESTCONTAINERS_RYUK_DISABLED
-            value: "true"
           - name: FORCE_COLOR
             value: '1'
           script: |
@@ -353,24 +362,25 @@ spec:
             grep -E 'CapEff|NoNewPrivs' /proc/self/status
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
             cd /workspace
-            export DOCKER_HOST="unix:///run/podman/podman.sock"
-            export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/run/podman/podman.sock"
-            curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
-            uv python install 3.14
-            git clone "$(params.GIT_URL)" src_code
-            cd src_code
-            git checkout "$(params.REVISION)"
-            uv venv --python 3.14
-            uv sync --group dev --locked
-            if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
-              echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1
-            fi
-            IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
-            echo "Testing image: ${IMAGE}"
-            nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &
-            for _ in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
-            podman --version
-            uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy
+            mkdir -p "$HOME/bin"
+            curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
+            chmod +x "$HOME/bin/kubectl"
+            echo "=== SA identity ==="
+            kubectl whoami || true
+            echo "=== RBAC probes (as the pipeline SA) ==="
+            echo "pods/exec create: $(kubectl auth can-i create pods/exec 2>&1 || true)"
+            echo "pods/log get: $(kubectl auth can-i get pods/log 2>&1 || true)"
+            echo "pods get: $(kubectl auth can-i get pods 2>&1 || true)"
+            echo "=== self-exec probes (pod=$HOSTNAME, container=sut) ==="
+            kubectl exec "$HOSTNAME" -c sut -- id
+            kubectl exec "$HOSTNAME" -c sut -- runuser -u 1000 -- id
+            kubectl exec "$HOSTNAME" -c sut -- id -un
+            echo probe > /tmp/probe-file.txt
+            kubectl cp /tmp/probe-file.txt "$HOSTNAME":/tmp/probe-file.txt -c sut
+            kubectl exec "$HOSTNAME" -c sut -- cat /tmp/probe-file.txt
+            echo "=== logs probe ==="
+            kubectl logs "$HOSTNAME" -c sut --tail=5 || echo "logs: NOT PERMITTED"
+            echo "PROBE-DONE BUILT_IMAGE=$BUILT_IMAGE IMAGE_UNDER_TEST=$IMAGE_UNDER_TEST"
     - name: test-k8s
       runAfter:
       - build-image-index

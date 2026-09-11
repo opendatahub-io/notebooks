@@ -22,11 +22,14 @@ openshift pytest — which GHA runs serially in one job; here the two legs
 run in parallel, and within the k8s leg the steps stay serial because they
 share one in-pod kind cluster).
 
-The tenant's SCCs reject privileged containers (verified live). Rootless was
-tried first and proven impossible there (NoNewPrivs: 1 voids the user-
-namespace prerequisite), so the test pods now run ROOTFUL podman/kind with a
-per-step CAP_SYS_ADMIN request (see test_step_security_context; the bundle's
-buildah task uses the same capabilities.add mechanism with SETFCAP).
+The tenant's SCCs reject privileged containers (verified live), rootless is
+voided by NoNewPrivs: 1, and a per-step CAP_SYS_ADMIN request was rejected
+too — in-pod container runtimes are impossible here (see the ADR
+Investigation section). The testcontainers leg therefore runs the image
+under test as a pod SIDECAR and drives it through the k8s exec API (no
+runtime at all); the k8s leg still carries the rootful CAP_SYS_ADMIN probe
+(see test_step_security_context) until it is replaced (mapt kind-on-AWS is
+the platform-endorsed path).
 
 Usage:
 
@@ -359,10 +362,16 @@ def image_env() -> list[dict]:
 def testcontainers_task(image: Image) -> dict:
     """GHA parity: 'Run Testcontainers container tests (in PyTest)' step.
 
-    Rootful podman in the pod: the step asks for CAP_SYS_ADMIN (see
-    test_step_security_context; the tenant SCCs reject privileged:true).
-    The podman service and its consumer share one step: Tekton steps are
-    separate containers, and a service started in an earlier step dies with it.
+    Sidecar design (the runtime-free path): the image under test runs as a
+    Tekton SIDECAR of the test pod — a plain pod container, so no container
+    runtime, no SCC involvement, no capabilities (in-pod podman/kind is
+    impossible in this tenant; see the ADR Investigation section). The test
+    step drives it through the k8s API (`kubectl exec`/`cp`/`logs` against
+    its own pod, container `sut`) — no in-pod docker socket needed. The
+    future full design runs the image's real entrypoint under a shell loop
+    (pkill via exec == container restart, without aborting the task); this
+    iteration is the probe that answers the one open question: does the
+    pipeline SA have RBAC for `pods/exec` (and `pods/log`)?
     """
     return {
         "name": "test-testcontainers",
@@ -370,30 +379,53 @@ def testcontainers_task(image: Image) -> dict:
         "params": [*git_params(), *image_params(), {"name": "MARKERS", "value": image.testcontainers_markers}],
         "taskSpec": {
             "params": [*git_param_declarations(), *image_param_declarations(), {"name": "MARKERS", "type": "string"}],
+            "sidecars": [
+                {
+                    "name": "sut",
+                    # the image under test, inert for the probe (sleep); the
+                    # full design replaces this with the loop-wrapper command
+                    "image": "$(params.IMAGE_UNDER_TEST)",
+                    "command": ["sleep"],
+                    "args": ["infinity"],
+                    "securityContext": {"runAsUser": 0},
+                    "resources": {
+                        "requests": {"cpu": "200m", "memory": "256Mi"},
+                        "limits": {"cpu": "1", "memory": "1Gi"},
+                    },
+                }
+            ],
             "steps": [
                 {
                     "name": "test",
                     "image": TEST_IMAGE,
-                    "securityContext": test_step_security_context(),
                     "env": [
                         *image_env(),
-                        # GHA parity: pulling Ryuk from docker.io flakes CI
-                        {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
                         {"name": "FORCE_COLOR", "value": "1"},
                     ],
                     "script": test_step_script(
                         # NOTE: never use '{{...}}' in a script line — PaC template-renders the
                         # whole file, so e.g. --format '{{.Version}}' is parsed as a template var
                         # and breaks the whole PipelineRun render.
-                        podman_env_lines(),
-                        setup_uv_and_repo_lines(),
-                        resolve_image_lines(),
-                        podman_service_start_lines(),
                         [
-                            (
-                                'uv run pytest tests/containers -m "$(params.MARKERS)" '
-                                '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy'
-                            )
+                            'mkdir -p "$HOME/bin"',
+                            f'curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl',
+                            'chmod +x "$HOME/bin/kubectl"',
+                            'echo "=== SA identity ==="',
+                            "kubectl whoami || true",
+                            'echo "=== RBAC probes (as the pipeline SA) ==="',
+                            'echo "pods/exec create: $(kubectl auth can-i create pods/exec 2>&1 || true)"',
+                            'echo "pods/log get: $(kubectl auth can-i get pods/log 2>&1 || true)"',
+                            'echo "pods get: $(kubectl auth can-i get pods 2>&1 || true)"',
+                            'echo "=== self-exec probes (pod=$HOSTNAME, container=sut) ==="',
+                            'kubectl exec "$HOSTNAME" -c sut -- id',
+                            'kubectl exec "$HOSTNAME" -c sut -- runuser -u 1000 -- id',
+                            'kubectl exec "$HOSTNAME" -c sut -- id -un',
+                            "echo probe > /tmp/probe-file.txt",
+                            'kubectl cp /tmp/probe-file.txt "$HOSTNAME":/tmp/probe-file.txt -c sut',
+                            'kubectl exec "$HOSTNAME" -c sut -- cat /tmp/probe-file.txt',
+                            'echo "=== logs probe ==="',
+                            'kubectl logs "$HOSTNAME" -c sut --tail=5 || echo "logs: NOT PERMITTED"',
+                            'echo "PROBE-DONE BUILT_IMAGE=$BUILT_IMAGE IMAGE_UNDER_TEST=$IMAGE_UNDER_TEST"',
                         ],
                     ),
                 }
@@ -911,11 +943,18 @@ else:
                     assert step.get("securityContext", {}).get("privileged") is not True, (
                         f"{task['name']}: privileged forbidden"
                     )
-            for name in ("test-testcontainers", "test-k8s"):
-                task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == name)
-                sc = task["taskSpec"]["steps"][0]["securityContext"]
-                assert sc["runAsUser"] == 0
-                assert "SYS_ADMIN" in sc["capabilities"]["add"], f"{name}: CAP_SYS_ADMIN probe"
+            # the k8s leg still carries the (rejected) CAP_SYS_ADMIN probe;
+            # the testcontainers leg is the sidecar design — no step caps
+            task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == "test-k8s")
+            sc = task["taskSpec"]["steps"][0]["securityContext"]
+            assert sc["runAsUser"] == 0
+            assert "SYS_ADMIN" in sc["capabilities"]["add"]
+            task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == "test-testcontainers")
+            sidecars = task["taskSpec"]["sidecars"]
+            assert sidecars[0]["name"] == "sut"
+            assert sidecars[0]["image"] == "$(params.IMAGE_UNDER_TEST)"
+            assert sidecars[0]["securityContext"]["runAsUser"] == 0
+            assert "securityContext" not in task["taskSpec"]["steps"][0]
 
         def test_script_vars_resolved(self):
             """Every shell variable referenced in a generated step script must be
@@ -927,14 +966,14 @@ else:
             (under set -u) many minutes into iteration.
             """
             env_provided = {
-                # set by the container runtime / su, not by the step env list
+                # set by the container runtime / k8s, not by the step env list
                 "HOME",
                 "PATH",
                 "PWD",
                 "SHLVL",
                 "USER",
+                "HOSTNAME",  # k8s sets hostname = pod name
                 "LOGNAME",
-                "HOSTNAME",
                 "SHELL",
                 "TERM",
                 "OPTIND",
