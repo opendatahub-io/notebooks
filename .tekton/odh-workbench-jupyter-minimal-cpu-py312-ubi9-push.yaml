@@ -89,14 +89,6 @@ spec:
         limits:
           cpu: '4'
           memory: 8Gi
-    - name: sbom-syft-generate
-      computeResources:
-        requests:
-          cpu: '4'
-          memory: 8Gi
-        limits:
-          cpu: '4'
-          memory: 8Gi
     - name: build
       computeResources:
         requests:
