@@ -25,16 +25,18 @@ LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from tests.containers.container_transport import SleepContainer
+
 
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
 
-    def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]) -> None:
+    def _run_test(self, image: str, test_fn: Callable[[SleepContainer], None]) -> None:
         with docker_utils.running_container(image) as container:
             test_fn(container)
 
     def test_elf_files_can_link_runtime_libs(self, subtests: pytest.Subtests, image):
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: SleepContainer):
             def check_elf_file():
                 """This python function will be executed on the image itself.
                 That's why it has to have here all imports it needs."""
@@ -136,7 +138,7 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     def test_oc_command_runs(self, image: str):
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: SleepContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
 
             logging.debug(output.decode())
@@ -145,7 +147,7 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     def test_skopeo_command_runs(self, image: str):
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: SleepContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "skopeo --version"])
 
             logging.debug(output.decode())
@@ -161,7 +163,7 @@ class TestBaseImage:
         on all images.
         """
 
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: SleepContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
             output_str = output.decode()
             logging.debug(output_str)
@@ -259,7 +261,7 @@ class TestBaseImage:
             [f"{app_root_path}/share", "775", expected_gid, expected_uid],
         ]
 
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: SleepContainer):
             for item in directories_to_check:
                 with subtests.test(f"Checking permissions of the: {item[0]}"):
                     # ignore `:%u`, it does not matter what the uid is, it's the gid that is nonrandom on openshift

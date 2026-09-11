@@ -13,7 +13,7 @@ import testcontainers.core.config
 import testcontainers.core.container
 import testcontainers.core.docker_client
 
-from tests.containers import docker_utils, skopeo_utils
+from tests.containers import docker_utils, sidecar_transport, skopeo_utils
 from tests.containers.kubernetes_utils import TestFrame
 
 if TYPE_CHECKING:
@@ -107,6 +107,11 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
 
 
 def get_image_metadata(image: str) -> Image:
+    if sidecar_transport.sidecar_mode():
+        # no docker/skopeo in the test pod; the image name label is the last
+        # path component of the reference (the imagestream name)
+        name = sidecar_transport.image_name_from_ref(image)
+        return Image(id=None, name=name, labels={"name": name}, env=None)
     client = testcontainers.core.docker_client.DockerClient()
     try:
         # docker inspect
@@ -173,6 +178,12 @@ def image(request):
 @pytest.fixture(scope="session")
 def container_arch(image: str) -> str:
     """Detect the CPU architecture of the container image. Runs once per session."""
+    if sidecar_transport.sidecar_mode():
+        # the PLR is per-arch; the pipeline tells us which one this is
+        arch = sidecar_transport.ARCH
+        known_architectures = {"x86_64", "aarch64", "s390x", "ppc64le"}
+        assert arch in known_architectures, f"Unexpected SUT_ARCH {arch!r}"
+        return arch
     container = testcontainers.core.container.DockerContainer(image=image, user=0)
     container.with_command("/bin/sh -c 'sleep infinity'")
     known_architectures = {"x86_64", "aarch64", "s390x", "ppc64le"}
@@ -280,6 +291,17 @@ def codeserver_image(image: str) -> Image:
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_sessionstart
 def pytest_sessionstart(session: Session) -> None:
+    if sidecar_transport.sidecar_mode():
+        # in-pod test stage: no docker runtime here — the image under test runs
+        # as a pod sidecar driven through sidecar_transport (see ADR-0018)
+        logging.info("Sidecar mode: skipping docker preflight (SUT_AGENT_URL=%s)", sidecar_transport.AGENT_URL)
+        if session.config.option.collectonly:
+            return  # nothing to run: no need to (and may not be able to) reach the agent
+        try:
+            sidecar_transport.wait_agent()
+        except TimeoutError as e:
+            raise SystemExit(str(e)) from e  # clean abort, not an INTERNALERROR traceback
+        return
     # first preflight check: ping the Docker API
     client = testcontainers.core.docker_client.DockerClient()
     assert client.client.ping(), "Failed to connect to Docker"
@@ -376,3 +398,20 @@ def test_frame():
     t = TestFrame()
     yield t
     t.destroy()
+
+
+def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
+    """Deselect tests that need the docker API, unavailable in the sidecar stage.
+
+    - ``*ipv6_only*``: builds a dedicated IPv6-only docker network
+    - ``*airgapped*``: needs ``network_mode="none"``
+    - ``sysctls1``: the entrypoint-start variant with per-container sysctls
+    These keep running under GHA (docker transport); in-pod they are covered
+    by the default-variant runs plus the mapt/VM leg (see ADR-0018).
+    """
+    if not sidecar_transport.sidecar_mode():
+        return
+    skip = pytest.mark.skip(reason="requires the docker API (not available in the sidecar test stage)")
+    for item in items:
+        if "ipv6_only" in item.name or "airgapped" in item.name or "sysctls1" in item.name:
+            item.add_marker(skip)
