@@ -116,7 +116,7 @@ spec:
       default: "false"
     - name: skip-build
       type: string
-      default: "false"
+      default: "true"
       description: |-
         "true" skips clone/prefetch/build stages so the test/provision stages can be developed against an existing image (image-under-test).
     - name: image-under-test

@@ -589,7 +589,10 @@ def pipeline_spec(image: Image, platform: str, refs: dict[str, dict], test_arche
             {
                 "name": "skip-build",
                 "type": "string",
-                "default": "false",
+                # TEMPORARY: "true" while iterating on the test/provision stages
+                # (they fail at admission; the build stages are proven). Revert to
+                # "false" once the test pods schedule.
+                "default": "true",
                 "description": (
                     '"true" skips clone/prefetch/build stages so the test/provision stages can be '
                     "developed against an existing image (image-under-test)."
