@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.27
 
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26.7-1788409979 AS build
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26.7-1789040808 AS build
 
 WORKDIR /src
 
