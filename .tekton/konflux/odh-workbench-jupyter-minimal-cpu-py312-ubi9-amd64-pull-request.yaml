@@ -331,6 +331,12 @@ spec:
         - name: test
           image: quay.io/fedora/fedora:43
           env:
+          - name: BUILT_IMAGE
+            value: $(params.BUILT_IMAGE)
+          - name: IMAGE_UNDER_TEST
+            value: $(params.IMAGE_UNDER_TEST)
+          - name: SKIP_BUILD
+            value: $(params.SKIP_BUILD)
           - name: TESTCONTAINERS_RYUK_DISABLED
             value: "true"
           - name: FORCE_COLOR
@@ -344,7 +350,7 @@ spec:
               useradd -m tester 2>/dev/null || true
               U=$(id -u tester)
               grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester
-              mkdir -p /run/user/$U && chown tester /run/user/$U
+              mkdir -p "/run/user/$U" && chown tester "/run/user/$U"
               sed -n '/^# __BODY_BELOW__/,$p' "$0" | tail -n +2 > /tmp/step-body.sh
               chmod +x /tmp/step-body.sh
               exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"
@@ -354,16 +360,16 @@ spec:
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
             cd "$HOME"
             if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
-              mkdir -p /run/user/$(id -u) 2>/dev/null || true
+              mkdir -p "/run/user/$(id -u)" 2>/dev/null || true
             fi
             export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
             export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
             export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$XDG_RUNTIME_DIR/podman/podman.sock"
             curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
-            git clone $(params.GIT_URL) src_code
+            git clone "$(params.GIT_URL)" src_code
             cd src_code
-            git checkout $(params.REVISION)
+            git checkout "$(params.REVISION)"
             uv venv --python 3.14
             uv sync --group dev --locked
             if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
@@ -372,7 +378,7 @@ spec:
             IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
             echo "Testing image: ${IMAGE}"
             nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &
-            for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
+            for _ in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
             podman --version
             uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy
     - name: test-k8s
@@ -413,6 +419,12 @@ spec:
         - name: test
           image: quay.io/fedora/fedora:43
           env:
+          - name: BUILT_IMAGE
+            value: $(params.BUILT_IMAGE)
+          - name: IMAGE_UNDER_TEST
+            value: $(params.IMAGE_UNDER_TEST)
+          - name: SKIP_BUILD
+            value: $(params.SKIP_BUILD)
           - name: TESTCONTAINERS_RYUK_DISABLED
             value: "true"
           - name: FORCE_COLOR
@@ -428,7 +440,7 @@ spec:
               useradd -m tester 2>/dev/null || true
               U=$(id -u tester)
               grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester
-              mkdir -p /run/user/$U && chown tester /run/user/$U
+              mkdir -p "/run/user/$U" && chown tester "/run/user/$U"
               sed -n '/^# __BODY_BELOW__/,$p' "$0" | tail -n +2 > /tmp/step-body.sh
               chmod +x /tmp/step-body.sh
               exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"
@@ -438,22 +450,22 @@ spec:
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
             cd "$HOME"
             if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
-              mkdir -p /run/user/$(id -u) 2>/dev/null || true
+              mkdir -p "/run/user/$(id -u)" 2>/dev/null || true
             fi
             export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
             export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
             export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$XDG_RUNTIME_DIR/podman/podman.sock"
-            mkdir -p $HOME/bin
-            curl -Lo $HOME/bin/kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
-            chmod +x $HOME/bin/kind
-            curl -Lo $HOME/bin/kubectl https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
-            chmod +x $HOME/bin/kubectl
+            mkdir -p "$HOME/bin"
+            curl -Lo "$HOME/bin/kind" https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+            chmod +x "$HOME/bin/kind"
+            curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
+            chmod +x "$HOME/bin/kubectl"
             export KIND_EXPERIMENTAL_PROVIDER=podman
             curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
-            git clone $(params.GIT_URL) src_code
+            git clone "$(params.GIT_URL)" src_code
             cd src_code
-            git checkout $(params.REVISION)
+            git checkout "$(params.REVISION)"
             uv venv --python 3.14
             uv sync --group dev --locked
             if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
@@ -463,17 +475,17 @@ spec:
             echo "Testing image: ${IMAGE}"
             kind create cluster --name tekton --wait 10m
             kubectl cluster-info
-            podman pull ${IMAGE}
-            kind load docker-image ${IMAGE}
+            podman pull "${IMAGE}"
+            kind load docker-image "${IMAGE}"
             export KUBECONFIG=$HOME/.kube/config
             kind get kubeconfig
             kubectl get nodes -o wide
             export IMAGE_REGISTRY="${IMAGE%%:*}"
             export NOTEBOOK_TAG="${IMAGE##*:}"
             export IMAGE_TAG="${IMAGE##*:}"
-            uv run python3 ci/cached-builds/make_test.py --target $(params.TARGET)
+            uv run python3 ci/cached-builds/make_test.py --target "$(params.TARGET)"
             nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &
-            for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
+            for _ in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
             podman --version
             uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy
             kind delete cluster --name tekton || true

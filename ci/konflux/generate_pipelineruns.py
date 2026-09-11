@@ -111,7 +111,7 @@ def rootless_env_lines() -> list[str]:
     verified live: every usable SCC rejects .containers[0].privileged=true)."""
     return [
         'if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then',
-        "  mkdir -p /run/user/$(id -u) 2>/dev/null || true",
+        '  mkdir -p "/run/user/$(id -u)" 2>/dev/null || true',
         "fi",
         'export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"',
         'export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"',
@@ -123,7 +123,7 @@ def podman_service_start_lines() -> list[str]:
     """docker-compatible API on the rootless podman socket (GHA podman.socket equivalent)."""
     return [
         "nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &",
-        "for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done",
+        "for _ in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done",
         "podman --version",
     ]
 
@@ -149,7 +149,7 @@ def rootless_step_script(*body_sections: list[str]) -> str:
         "  useradd -m tester 2>/dev/null || true",
         "  U=$(id -u tester)",
         '  grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester',
-        "  mkdir -p /run/user/$U && chown tester /run/user/$U",
+        '  mkdir -p "/run/user/$U" && chown tester "/run/user/$U"',
         "  sed -n '/^# __BODY_BELOW__/,$p' \"$0\" | tail -n +2 > /tmp/step-body.sh",
         "  chmod +x /tmp/step-body.sh",
         '  exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"',
@@ -276,9 +276,9 @@ def setup_uv_and_repo_lines() -> list[str]:
     return [
         f"curl -LsSf {UV_INSTALL_URL} | sh",
         "uv python install 3.14",
-        "git clone $(params.GIT_URL) src_code",
+        'git clone "$(params.GIT_URL)" src_code',
         "cd src_code",
-        "git checkout $(params.REVISION)",
+        'git checkout "$(params.REVISION)"',
         "uv venv --python 3.14",
         "uv sync --group dev --locked",
     ]
@@ -343,6 +343,15 @@ def git_param_declarations() -> list[dict]:
     ]
 
 
+def image_env() -> list[dict]:
+    """Expose the image params to the step script as shell variables."""
+    return [
+        {"name": "BUILT_IMAGE", "value": "$(params.BUILT_IMAGE)"},
+        {"name": "IMAGE_UNDER_TEST", "value": "$(params.IMAGE_UNDER_TEST)"},
+        {"name": "SKIP_BUILD", "value": "$(params.SKIP_BUILD)"},
+    ]
+
+
 def testcontainers_task(image: Image) -> dict:
     """GHA parity: 'Run Testcontainers container tests (in PyTest)' step.
 
@@ -361,6 +370,7 @@ def testcontainers_task(image: Image) -> dict:
                     "name": "test",
                     "image": TEST_IMAGE,
                     "env": [
+                        *image_env(),
                         # GHA parity: pulling Ryuk from docker.io flakes CI
                         {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
                         {"name": "FORCE_COLOR", "value": "1"},
@@ -402,11 +412,11 @@ def k8s_test_task(image: Image) -> dict:
     documented upgrade path for real-OpenShift testing — see ci/konflux/README.md.
     """
     kind_tooling = [
-        "mkdir -p $HOME/bin",
-        f"curl -Lo $HOME/bin/kind https://kind.sigs.k8s.io/dl/{KIND_VERSION}/kind-linux-amd64",
-        "chmod +x $HOME/bin/kind",
-        f"curl -Lo $HOME/bin/kubectl https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl",
-        "chmod +x $HOME/bin/kubectl",
+        'mkdir -p "$HOME/bin"',
+        f'curl -Lo "$HOME/bin/kind" https://kind.sigs.k8s.io/dl/{KIND_VERSION}/kind-linux-amd64',
+        'chmod +x "$HOME/bin/kind"',
+        f'curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl',
+        'chmod +x "$HOME/bin/kubectl"',
         # kind drives podman directly (rootless); no long-running service needed
         "export KIND_EXPERIMENTAL_PROVIDER=podman",
     ]
@@ -418,8 +428,8 @@ def k8s_test_task(image: Image) -> dict:
         # No TTL flag in kind v0.33; the cluster dies with the pod.
         "kind create cluster --name tekton --wait 10m",
         "kubectl cluster-info",
-        "podman pull ${IMAGE}",
-        "kind load docker-image ${IMAGE}",
+        'podman pull "${IMAGE}"',
+        'kind load docker-image "${IMAGE}"',
         "export KUBECONFIG=$HOME/.kube/config",
         "kind get kubeconfig",
         "kubectl get nodes -o wide",
@@ -430,7 +440,7 @@ def k8s_test_task(image: Image) -> dict:
             'export IMAGE_REGISTRY="${IMAGE%%:*}"',
             'export NOTEBOOK_TAG="${IMAGE##*:}"',
             'export IMAGE_TAG="${IMAGE##*:}"',
-            "uv run python3 ci/cached-builds/make_test.py --target $(params.TARGET)",
+            'uv run python3 ci/cached-builds/make_test.py --target "$(params.TARGET)"',
         ]
     body += [
         # the openshift-marked workbench tests also spin up local testcontainers
@@ -463,6 +473,7 @@ def k8s_test_task(image: Image) -> dict:
                     "name": "test",
                     "image": TEST_IMAGE,
                     "env": [
+                        *image_env(),
                         {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
                         {"name": "FORCE_COLOR", "value": "1"},
                         {"name": "PRODUCT", "value": "odh"},
@@ -890,6 +901,68 @@ else:
                     assert step["script"].startswith("#!/bin/bash")
                     assert step.get("securityContext", {}).get("privileged") is not True, (
                         f"{task['name']}: privileged forbidden"
+                    )
+
+        def test_script_vars_resolved(self):
+            """Every shell variable referenced in a generated step script must be
+            either provided by the step's env or assigned in the script.
+
+            Catches the '$SKIP_BUILD: unbound variable' class of bug: the step
+            env is invisible to the authoring flow, so an env var that is
+            referenced but never declared only surfaces as a live-run failure
+            (under set -u) many minutes into iteration.
+            """
+            env_provided = {
+                # set by the container runtime / su, not by the step env list
+                "HOME",
+                "PATH",
+                "PWD",
+                "SHLVL",
+                "USER",
+                "LOGNAME",
+                "HOSTNAME",
+                "SHELL",
+                "TERM",
+                "OPTIND",
+            }
+
+            def shell_refs(script: str) -> set[str]:
+                """$VAR / ${VAR} references outside single quotes."""
+                refs: set[str] = set()
+                in_squote = False
+                i, n = 0, len(script)
+                while i < n:
+                    c = script[i]
+                    if in_squote:
+                        if c == "'":
+                            in_squote = False
+                    elif c == "'":
+                        in_squote = True
+                    elif c == "\\" and i + 1 < n:
+                        i += 1
+                    elif c == "$":
+                        m = re.match(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)", script[i:])
+                        if m:
+                            refs.add(m.group(1))
+                    i += 1
+                return refs
+
+            image = Image(
+                make_target="jupyter-minimal-ubi9-python-3.12",
+                flavor="cpu",
+                build_directory="jupyter/minimal/ubi9-python-3.12",
+            )
+            run = pipelinerun(image, "linux/x86_64", bundle_task_refs())
+            for task in run["spec"]["pipelineSpec"]["tasks"]:
+                for step in task.get("taskSpec", {}).get("steps", []):
+                    script = step.get("script")
+                    if not isinstance(script, str):
+                        continue
+                    env_names = {e["name"] for e in step.get("env", [])}
+                    assigned = set(re.findall(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=", script, re.M))
+                    missing = shell_refs(script) - env_names - assigned - env_provided
+                    assert not missing, (
+                        f"{task['name']}/step-{step['name']}: referenced but never env'd or assigned: {sorted(missing)}"
                     )
 
         def test_no_tests_on_non_test_arches(self):
