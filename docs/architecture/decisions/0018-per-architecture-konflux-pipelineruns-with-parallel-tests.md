@@ -126,6 +126,12 @@ then, in parallel (one task/pod per test group):
   Mitigations in place: v1 scope is a single image, `max-keep-runs: 3`,
   `cancel-in-progress: true`. Extending the `IMAGES` list is a one-liner but
   scales this linearly — re-evaluate before adding heavy images.
+- **The tenant has a memory-request ResourceQuota (`konflux`, 1Ti).** Under
+  fleet load the quota has been observed >99% used, and new 8Gi-request pods
+  (prefetch/build) can fail with `ExceededResourceQuota`. This is transient
+  and self-resolves as other pipelines finish — a re-trigger (or the next
+  push) recovers it. The per-push 4x pipeline count raises the odds of
+  hitting it; watch for this when triaging `prefetch-dependencies` failures.
 - **Test pods need a privileged SCC.** kind + rootful podman require
   `securityContext.privileged: true` on the step. The per-component build
   SA's SCC was not directly verifiable (tenant RBAC hides serviceaccounts);

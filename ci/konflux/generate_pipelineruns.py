@@ -92,7 +92,11 @@ DEFAULT_TEST_ARCHES = {"x86_64"}
 TEST_IMAGE = "quay.io/fedora/fedora:43"
 KIND_VERSION = "v0.33.0"
 KUBECTL_VERSION = "v1.34.1"
-UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
+# Pinned so the test pods don't drift past pyproject.toml's [tool.uv]
+# required-version (">=0.11.8,<0.13") when a newer uv releases. Must stay in
+# that range; bump deliberately.
+UV_VERSION = "0.12.13"
+UV_INSTALL_URL = f"https://astral.sh/uv/{UV_VERSION}/install.sh"
 PODMAN_SERVICE_START = [
     # docker-compatible API on the podman socket (GHA's podman.socket equivalent)
     "nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &",
@@ -352,7 +356,8 @@ def provision_kind_task() -> dict:
                             "chmod +x /usr/local/bin/kind",
                             f"curl -Lo /usr/local/bin/kubectl https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl",
                             "chmod +x /usr/local/bin/kubectl",
-                            "kind create cluster --name tekton --wait 10m --retention 1h",
+                            # No TTL flag in kind v0.33; the cluster dies with the pod.
+                            "kind create cluster --name tekton --wait 10m",
                             "kubectl cluster-info",
                             "kubectl get nodes -o wide",
                         ],

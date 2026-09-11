@@ -345,7 +345,7 @@ spec:
             for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
             podman --version
             export UV_INSTALL_DIR=/usr/local
-            curl -LsSf https://astral.sh/uv/install.sh | sh
+            curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
             git clone $(params.GIT_URL) src_code
             cd src_code
@@ -389,7 +389,7 @@ spec:
             chmod +x /usr/local/bin/kind
             curl -Lo /usr/local/bin/kubectl https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
             chmod +x /usr/local/bin/kubectl
-            kind create cluster --name tekton --wait 10m --retention 1h
+            kind create cluster --name tekton --wait 10m
             kubectl cluster-info
             kubectl get nodes -o wide
             IMAGE="${BUILT_IMAGE:-${IMAGE_UNDER_TEST}}"
@@ -447,7 +447,7 @@ spec:
             export KUBECONFIG=/root/.kube/config
             kubectl get nodes
             export UV_INSTALL_DIR=/usr/local
-            curl -LsSf https://astral.sh/uv/install.sh | sh
+            curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
             git clone $(params.GIT_URL) src_code
             cd src_code
@@ -516,7 +516,7 @@ spec:
             export KUBECONFIG=/root/.kube/config
             kubectl get nodes
             export UV_INSTALL_DIR=/usr/local
-            curl -LsSf https://astral.sh/uv/install.sh | sh
+            curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
             git clone $(params.GIT_URL) src_code
             cd src_code
