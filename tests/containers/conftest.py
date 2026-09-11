@@ -318,6 +318,21 @@ def _sidecar_container_reset_between_tests():
     Default off: the agent's per-start guards (foreign-owned workdir state
     drop, fresh server log per start) cover the observed cross-test
     pollution, and a restart is a full container lifecycle per test.
+
+    Why per-test restart is impractical for a full suite run — the kubelet
+    applies CrashLoopBackOff to every container restart (verified in k8s
+    v1.32, the OCP 4.19 generation): the restart delay starts at 10s
+    (``containerBackOffPeriod``) and DOUBLES after each exit of the same
+    container, capped at 300s (``MaxContainerBackOff``); the kubelet
+    resets the counter only when two exits are >= 600s apart (custom
+    ``HasExpiredFunc`` in ``kubelet.go``) — i.e. the container must have
+    run clean for 10 minutes. A 12-test suite (restarts seconds apart)
+    therefore pays 10+20+40+80+160+300*7 ~= 33 minutes of pure backoff,
+    and from the 6th restart on the delay exceeds
+    ``wait_agent(timeout=120)`` -> INTERNALERROR. The backoff key is per
+    pod UID (``GetStableKey``), so deleting and re-creating the pod starts
+    from the initial 10s again. Practical uses: one test on a pod idle for
+    >10 minutes, or right after pod recreation (manual iteration).
     """
     yield
     if not sidecar_transport.sidecar_mode():
