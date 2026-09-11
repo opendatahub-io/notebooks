@@ -32,10 +32,6 @@ ARG RHEL_VERSION=9.8
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# PQC (OCP 5.0): the rhel9/python-312 base does not enable post-quantum
-# crypto by default (only RHEL 10 does); set the system policy explicitly.
-RUN update-crypto-policies --set DEFAULT:PQ
-
 ### BEGIN PyPI pip and uv index
 ENV PIP_INDEX_URL=https://pypi.org/simple
 ENV UV_INDEX_URL=https://pypi.org/simple
@@ -54,7 +50,6 @@ EOF
 
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
-COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 # Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
 # compat-openssl11 provides libcrypto.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
@@ -101,7 +96,6 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
-COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
@@ -144,7 +138,6 @@ USER 0
 
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
-COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
     bash /utils/dnf-helper.sh install jq git-lfs libsndfile libxcrypt-compat protobuf pandoc
@@ -163,7 +156,8 @@ ARG UV_VERSION=0.12.5
 ### END UV version
 RUN python3 -m pip install --no-cache-dir --no-index \
     --find-links /cachi2/output/deps/pip \
-    "uv==${UV_VERSION}"
+    "uv==${UV_VERSION}" \
+ && chown -R 1001:0 /opt/app-root/lib/python3.12/site-packages
 
 USER 1001:0
 
