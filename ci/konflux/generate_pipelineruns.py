@@ -26,10 +26,12 @@ The tenant's SCCs reject privileged containers (verified live), rootless is
 voided by NoNewPrivs: 1, and a per-step CAP_SYS_ADMIN request was rejected
 too — in-pod container runtimes are impossible here (see the ADR
 Investigation section). The testcontainers leg therefore runs the image
-under test as a pod SIDECAR and drives it through the k8s exec API (no
-runtime at all); the k8s leg still carries the rootful CAP_SYS_ADMIN probe
-(see test_step_security_context) until it is replaced (mapt kind-on-AWS is
-the platform-endorsed path).
+under test as a pod SIDECAR and drives it through a sidecar exec agent
+over a localhost control plane (no runtime at all; the k8s exec API was
+probed and rejected by RBAC — the pipeline SA cannot even `get pods`);
+the k8s leg still carries the rootful CAP_SYS_ADMIN probe (see
+test_step_security_context) until it is replaced (mapt kind-on-AWS is the
+platform-endorsed path).
 
 Usage:
 
@@ -42,6 +44,7 @@ even though this package is named after the Konflux experiment.
 
 from __future__ import annotations
 
+import base64
 import pathlib
 import re
 from dataclasses import dataclass, field
@@ -360,46 +363,122 @@ def image_env() -> list[dict]:
     ]
 
 
-def testcontainers_task(image: Image) -> dict:
+def sidecar_step_script(body_lines: list[str]) -> str:
+    """Test step script for the sidecar stage.
+
+    Unlike test_step_script (the k8s leg) no container runtime is installed —
+    that is the point: the image under test runs as a pod sidecar and is
+    driven through the sidecar agent's localhost control plane.
+    """
+    header = [
+        "#!/bin/bash",
+        "set -Eeuxo pipefail",
+        "dnf install -y git python3 curl",
+        'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"',
+        "cd /workspace",
+    ]
+    return "\n".join(header + body_lines) + "\n"
+
+
+def testcontainers_task(image: Image, arch_key: str) -> dict:
     """GHA parity: 'Run Testcontainers container tests (in PyTest)' step.
 
     Sidecar design (the runtime-free path): the image under test runs as a
     Tekton SIDECAR of the test pod — a plain pod container, so no container
     runtime, no SCC involvement, no capabilities (in-pod podman/kind is
-    impossible in this tenant; see the ADR Investigation section). The test
-    step drives it through the k8s API (`kubectl exec`/`cp`/`logs` against
-    its own pod, container `sut`) — no in-pod docker socket needed. The
-    future full design runs the image's real entrypoint under a shell loop
-    (pkill via exec == container restart, without aborting the task); this
-    iteration is the probe that answers the one open question: does the
-    pipeline SA have RBAC for `pods/exec` (and `pods/log`)? The probe posts
-    its report as a PR comment (via the PaC git-auth secret) because this
-    tenant GCs pod logs within ~2 min of failure — the comment is the
+    impossible in this tenant; see the ADR Investigation section). The
+    sidecar's main process is the sidecar exec agent (tests/containers/
+    sidecar_agent.py, embedded here at generation time and handed to the
+    sidecar over a shared emptyDir); the test step drives the image through
+    its localhost HTTP control plane — start the entrypoint, exec commands,
+    copy files, restart the server. The k8s-exec-API alternative was probed
+    and rejected by RBAC (the pipeline SA cannot even `get pods`), so the
+    agent is the only in-pod transport. A pytest summary is posted as a PR
+    comment (via the PaC git-auth secret, key git-provider-token) because
+    this tenant GCs pod logs within ~2 min of failure — the comment is the
     persistent sink.
     """
+    # uname-style arch for the container_arch fixture (the PLR is per-arch);
+    # keys are the canonical PLATFORM_ARCH_KEY values (x86_64, arm64, ...)
+    uname_arch = {"x86_64": "x86_64", "arm64": "aarch64", "ppc64le": "ppc64le", "s390x": "s390x"}[arch_key]
+    agent_path = pathlib.Path(__file__).resolve().parents[2] / "tests" / "containers" / "sidecar_agent.py"
+    agent_b64 = base64.b64encode(agent_path.read_bytes()).decode()
+    agent_wait = (
+        "for i in $(seq 1 120); do "
+        "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8899/status', timeout=1)\" >/dev/null 2>&1 && break; "
+        "sleep 1; done"
+    )
+    script_lines = [
+        *setup_uv_and_repo_lines(),
+        *resolve_image_lines(),
+        # the sidecar waits for this file, then execs the agent as its main process
+        f"echo {agent_b64} | base64 -d > /shared/agent.py",
+        agent_wait,
+        "python3 -c \"import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8899/status', timeout=2).read().decode())\"",
+        "PYTEST_EXIT=0",
+        'uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" -vvv --color=yes > /tmp/pytest.log 2>&1 || PYTEST_EXIT=$?',
+        "tail -60 /tmp/pytest.log || true",
+        # persistent sink: post a pytest summary as a PR comment (pod logs
+        # are GCed in this tenant); the workspace is optional, so guard the
+        # absent/empty case
+        'GH_TOKEN=$(cat "$(workspaces.basic-auth.path)/git-provider-token" 2>/dev/null || true)',
+        'if [ -n "$GH_TOKEN" ]; then',
+        "  tail -25 /tmp/pytest.log > /tmp/pytest-tail.txt",
+        # the \n sequences must stay literal (printf format + python escapes)
+        "# shellcheck disable=SC2016",
+        'printf \'%s\\n\' \'import json\' \'fence = chr(96) * 3\' \'tail = open("/tmp/pytest-tail.txt").read()\' \'body = "sidecar test run (auto-posted; pod logs are GCed in this tenant):\\n" + fence + "\\n" + tail + "\\n" + fence\' \'open("/tmp/report.json", "w").write(json.dumps({"body": body}))\' > /tmp/post_report.py',
+        '  GH_STATUS=$(curl -s -o /tmp/gh-response.json -w "%{http_code}" -X POST "https://api.github.com/repos/opendatahub-io/notebooks/issues/4566/comments" -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" --data-binary @/tmp/report.json)',
+        '  echo "github summary comment: HTTP $GH_STATUS"',
+        "else",
+        '  echo "github summary comment: SKIPPED (no git-provider-token key in git-auth)"',
+        "fi",
+        'exit "${PYTEST_EXIT}"',
+    ]
     return {
         "name": "test-testcontainers",
         "runAfter": ["build-image-index"],
-        "params": [*git_params(), *image_params(), {"name": "MARKERS", "value": image.testcontainers_markers}],
+        "params": [
+            *git_params(),
+            *image_params(),
+            {"name": "MARKERS", "value": image.testcontainers_markers},
+            {"name": "ARCH", "value": uname_arch},
+        ],
         "workspaces": [{"name": "basic-auth", "workspace": "git-auth"}],
         "taskSpec": {
-            "params": [*git_param_declarations(), *image_param_declarations(), {"name": "MARKERS", "type": "string"}],
+            "params": [
+                *git_param_declarations(),
+                *image_param_declarations(),
+                {"name": "MARKERS", "type": "string"},
+                {"name": "ARCH", "type": "string"},
+            ],
             # optional: the pipeline workspace git-auth is optional, so the
             # task-side declaration must be too (PaC always provides the
             # secret); the script guards against the absent/empty case
             "workspaces": [{"name": "basic-auth", "optional": True}],
+            "volumes": [{"name": "shared", "emptyDir": {}}],
             "sidecars": [
                 {
                     "name": "sut",
-                    # the image under test, inert for the probe (sleep); the
-                    # full design replaces this with the loop-wrapper command
+                    # the image under test; its main process is the sidecar
+                    # exec agent (the image's own entrypoint is replaced —
+                    # the agent relaunches it as a child on /start)
                     "image": "$(params.IMAGE_UNDER_TEST)",
-                    "command": ["sleep"],
-                    "args": ["infinity"],
+                    "command": [
+                        "/bin/sh",
+                        "-c",
+                        "while [ ! -s /shared/agent.py ]; do sleep 1; done; exec python3 /shared/agent.py",
+                    ],
+                    "env": [
+                        {"name": "SUT_ENTRYPOINT", "value": "start-notebook.sh"},
+                        {"name": "SUT_WORKDIR", "value": "/opt/app-root/src"},
+                        {"name": "SUT_SERVER_LOG", "value": "/shared/server.log"},
+                        {"name": "SUT_IMAGE_USER", "value": "1001"},
+                    ],
+                    "volumeMounts": [{"name": "shared", "mountPath": "/shared"}],
                     "securityContext": {"runAsUser": 0},
                     "resources": {
-                        "requests": {"cpu": "200m", "memory": "256Mi"},
-                        "limits": {"cpu": "1", "memory": "1Gi"},
+                        "requests": {"cpu": "500m", "memory": "256Mi"},
+                        "limits": {"cpu": "2", "memory": "2Gi"},
                     },
                 }
             ],
@@ -410,46 +489,17 @@ def testcontainers_task(image: Image) -> dict:
                     "env": [
                         *image_env(),
                         {"name": "FORCE_COLOR", "value": "1"},
+                        # sidecar mode for the test suite (see sidecar_transport.py)
+                        {"name": "SUT_AGENT_URL", "value": "http://127.0.0.1:8899"},
+                        {"name": "SUT_IMAGE_USER", "value": "1001"},
+                        {"name": "SUT_ARCH", "value": uname_arch},
                     ],
-                    "script": test_step_script(
-                        # NOTE: never use '{{...}}' in a script line — PaC template-renders the
-                        # whole file, so e.g. --format '{{.Version}}' is parsed as a template var
-                        # and breaks the whole PipelineRun render.
-                        [
-                            'mkdir -p "$HOME/bin"',
-                            f'curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/{TENANT_KUBECTL_VERSION}/bin/linux/amd64/kubectl',
-                            'chmod +x "$HOME/bin/kubectl"',
-                            "REPORT=/tmp/probe-report.txt",
-                            ': > "$REPORT"',
-                            'add() { printf "%s\\n" "$1" >> "$REPORT"; }',
-                            'add "server: $(kubectl version --client=false 2>&1 || true)"',
-                            'add "SA: $(kubectl whoami 2>&1 || true)"',
-                            'add "pods/exec create: $(kubectl auth can-i create pods/exec 2>&1 || true)"',
-                            'add "pods/log get: $(kubectl auth can-i get pods/log 2>&1 || true)"',
-                            'add "pods get: $(kubectl auth can-i get pods 2>&1 || true)"',
-                            'add "exec id: $(kubectl exec "$HOSTNAME" -c sut -- id 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
-                            'add "exec runuser 1000: $(kubectl exec "$HOSTNAME" -c sut -- runuser -u 1000 -- id 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
-                            'add "exec id -un: $(kubectl exec "$HOSTNAME" -c sut -- id -un 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
-                            "echo probe > /tmp/probe-file.txt",
-                            'add "kubectl cp: $(kubectl cp /tmp/probe-file.txt "$HOSTNAME":/tmp/probe-file.txt -c sut 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
-                            'add "cp roundtrip: $(kubectl exec "$HOSTNAME" -c sut -- cat /tmp/probe-file.txt 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
-                            'add "logs: $(kubectl logs "$HOSTNAME" -c sut --tail=5 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
-                            'add "git-auth keys: $(printf \'%s\\n\' "$(workspaces.basic-auth.path)"/* 2>&1)"',
-                            'GH_TOKEN=$(cat "$(workspaces.basic-auth.path)/password" 2>/dev/null || cat "$(workspaces.basic-auth.path)/token" 2>/dev/null || true)',
-                            # the \n sequences must stay literal (printf format + python escapes)
-                            "# shellcheck disable=SC2016",
-                            'printf \'%s\\n\' \'import json\' \'report = open("/tmp/probe-report.txt").read()\' \'body = "sidecar probe (auto-posted; pod logs are GCed in this tenant):\\n```\\n" + report + "\\n```"\' \'open("/tmp/report.json", "w").write(json.dumps({"body": body}))\' > /tmp/post_report.py',
-                            'if [ -n "$GH_TOKEN" ]; then',
-                            '  GH_STATUS=$(curl -s -o /tmp/gh-response.json -w "%{http_code}" -X POST "https://api.github.com/repos/opendatahub-io/notebooks/issues/4566/comments" -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" --data-binary @/tmp/report.json)',
-                            '  add "github comment: HTTP $GH_STATUS"',
-                            "else",
-                            '  add "github comment: SKIPPED (no password/token key in git-auth)"',
-                            "fi",
-                            'echo "=== probe report ==="',
-                            'cat "$REPORT"',
-                            'if grep "^exec id: " "$REPORT" | grep -q "PROBE-OK"; then echo "PROBE-PASSED"; else echo "PROBE-FAILED"; exit 1; fi',
-                        ],
-                    ),
+                    "volumeMounts": [{"name": "shared", "mountPath": "/shared"}],
+                    "resources": {
+                        "requests": {"cpu": "500m", "memory": "1Gi"},
+                        "limits": {"cpu": "2", "memory": "4Gi"},
+                    },
+                    "script": sidecar_step_script(script_lines),
                 }
             ],
         },
@@ -641,7 +691,7 @@ def build_tasks_section(image: Image, arch_key: str, refs: dict[str, dict], test
     if arch_key in test_arches:
         # two parallel test legs (each its own pod): testcontainers, and the
         # whole k8s leg (kind + make deploy/papermill + openshift pytest)
-        tasks.append(testcontainers_task(image))
+        tasks.append(testcontainers_task(image, arch_key))
         tasks.append(k8s_test_task(image))
 
     return tasks
@@ -976,10 +1026,28 @@ else:
             assert sidecars[0]["name"] == "sut"
             assert sidecars[0]["image"] == "$(params.IMAGE_UNDER_TEST)"
             assert sidecars[0]["securityContext"]["runAsUser"] == 0
-            assert "securityContext" not in task["taskSpec"]["steps"][0]
-            # the probe posts its report to the PR via the PaC git-auth secret
+            # the sidecar's main process is the exec agent (waits for the file
+            # the test step writes into the shared emptyDir)
+            assert "/shared/agent.py" in sidecars[0]["command"][-1]
+            sidecar_env = {e["name"]: e["value"] for e in sidecars[0]["env"]}
+            assert sidecar_env["SUT_ENTRYPOINT"] == "start-notebook.sh"
+            assert sidecar_env["SUT_SERVER_LOG"] == "/shared/server.log"
+            step = task["taskSpec"]["steps"][0]
+            assert "securityContext" not in step
+            step_env = {e["name"]: e["value"] for e in step["env"]}
+            assert step_env["SUT_AGENT_URL"] == "http://127.0.0.1:8899"
+            assert step_env["SUT_ARCH"] == "x86_64"
+            # shared emptyDir: agent handoff (sidecar) + server log (both)
+            assert task["taskSpec"]["volumes"] == [{"name": "shared", "emptyDir": {}}]
+            assert step["volumeMounts"] == [{"name": "shared", "mountPath": "/shared"}]
+            assert sidecars[0]["volumeMounts"] == [{"name": "shared", "mountPath": "/shared"}]
+            # the step posts a pytest summary to the PR via the PaC git-auth secret
             assert task["workspaces"] == [{"name": "basic-auth", "workspace": "git-auth"}]
             assert task["taskSpec"]["workspaces"] == [{"name": "basic-auth", "optional": True}]
+            script = step["script"]
+            assert "base64 -d > /shared/agent.py" in script
+            assert "pytest tests/containers" in script
+            assert "git-provider-token" in script
 
         def test_script_vars_resolved(self):
             """Every shell variable referenced in a generated step script must be
