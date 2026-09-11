@@ -104,7 +104,8 @@ DEFAULT_TEST_ARCHES = {"x86_64"}
 # Test pod tooling (pinned for reproducibility)
 TEST_IMAGE = "quay.io/fedora/fedora:43"
 KIND_VERSION = "v0.33.0"
-KUBECTL_VERSION = "v1.34.1"
+KUBECTL_VERSION = "v1.34.1"  # client for the in-pod kind cluster (k8s leg)
+TENANT_KUBECTL_VERSION = "v1.32.0"  # client for the tenant API (within version skew)
 # Pinned so the test pods don't drift past pyproject.toml's [tool.uv]
 # required-version (">=0.11.8,<0.13") when a newer uv releases. Must stay in
 # that range; bump deliberately.
@@ -371,14 +372,19 @@ def testcontainers_task(image: Image) -> dict:
     future full design runs the image's real entrypoint under a shell loop
     (pkill via exec == container restart, without aborting the task); this
     iteration is the probe that answers the one open question: does the
-    pipeline SA have RBAC for `pods/exec` (and `pods/log`)?
+    pipeline SA have RBAC for `pods/exec` (and `pods/log`)? The probe posts
+    its report as a PR comment (via the PaC git-auth secret) because this
+    tenant GCs pod logs within ~2 min of failure — the comment is the
+    persistent sink.
     """
     return {
         "name": "test-testcontainers",
         "runAfter": ["build-image-index"],
         "params": [*git_params(), *image_params(), {"name": "MARKERS", "value": image.testcontainers_markers}],
+        "workspaces": [{"name": "basic-auth", "workspace": "git-auth"}],
         "taskSpec": {
             "params": [*git_param_declarations(), *image_param_declarations(), {"name": "MARKERS", "type": "string"}],
+            "workspaces": [{"name": "basic-auth"}],
             "sidecars": [
                 {
                     "name": "sut",
@@ -408,24 +414,37 @@ def testcontainers_task(image: Image) -> dict:
                         # and breaks the whole PipelineRun render.
                         [
                             'mkdir -p "$HOME/bin"',
-                            f'curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl',
+                            f'curl -Lo "$HOME/bin/kubectl" https://dl.k8s.io/release/{TENANT_KUBECTL_VERSION}/bin/linux/amd64/kubectl',
                             'chmod +x "$HOME/bin/kubectl"',
-                            'echo "=== SA identity ==="',
-                            "kubectl whoami || true",
-                            'echo "=== RBAC probes (as the pipeline SA) ==="',
-                            'echo "pods/exec create: $(kubectl auth can-i create pods/exec 2>&1 || true)"',
-                            'echo "pods/log get: $(kubectl auth can-i get pods/log 2>&1 || true)"',
-                            'echo "pods get: $(kubectl auth can-i get pods 2>&1 || true)"',
-                            'echo "=== self-exec probes (pod=$HOSTNAME, container=sut) ==="',
-                            'kubectl exec "$HOSTNAME" -c sut -- id',
-                            'kubectl exec "$HOSTNAME" -c sut -- runuser -u 1000 -- id',
-                            'kubectl exec "$HOSTNAME" -c sut -- id -un',
+                            "REPORT=/tmp/probe-report.txt",
+                            ': > "$REPORT"',
+                            'add() { printf "%s\\n" "$1" >> "$REPORT"; }',
+                            'add "server: $(kubectl version --client=false 2>&1 || true)"',
+                            'add "SA: $(kubectl whoami 2>&1 || true)"',
+                            'add "pods/exec create: $(kubectl auth can-i create pods/exec 2>&1 || true)"',
+                            'add "pods/log get: $(kubectl auth can-i get pods/log 2>&1 || true)"',
+                            'add "pods get: $(kubectl auth can-i get pods 2>&1 || true)"',
+                            'add "exec id: $(kubectl exec "$HOSTNAME" -c sut -- id 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
+                            'add "exec runuser 1000: $(kubectl exec "$HOSTNAME" -c sut -- runuser -u 1000 -- id 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
+                            'add "exec id -un: $(kubectl exec "$HOSTNAME" -c sut -- id -un 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
                             "echo probe > /tmp/probe-file.txt",
-                            'kubectl cp /tmp/probe-file.txt "$HOSTNAME":/tmp/probe-file.txt -c sut',
-                            'kubectl exec "$HOSTNAME" -c sut -- cat /tmp/probe-file.txt',
-                            'echo "=== logs probe ==="',
-                            'kubectl logs "$HOSTNAME" -c sut --tail=5 || echo "logs: NOT PERMITTED"',
-                            'echo "PROBE-DONE BUILT_IMAGE=$BUILT_IMAGE IMAGE_UNDER_TEST=$IMAGE_UNDER_TEST"',
+                            'add "kubectl cp: $(kubectl cp /tmp/probe-file.txt "$HOSTNAME":/tmp/probe-file.txt -c sut 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
+                            'add "cp roundtrip: $(kubectl exec "$HOSTNAME" -c sut -- cat /tmp/probe-file.txt 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
+                            'add "logs: $(kubectl logs "$HOSTNAME" -c sut --tail=5 2>&1 && echo PROBE-OK || echo PROBE-FAIL)"',
+                            'add "git-auth keys: $(printf \'%s\\n\' "$(workspaces.basic-auth.path)"/* 2>&1)"',
+                            'GH_TOKEN=$(cat "$(workspaces.basic-auth.path)/password" 2>/dev/null || cat "$(workspaces.basic-auth.path)/token" 2>/dev/null || true)',
+                            # the \n sequences must stay literal (printf format + python escapes)
+                            "# shellcheck disable=SC2016",
+                            'printf \'%s\\n\' \'import json\' \'report = open("/tmp/probe-report.txt").read()\' \'body = "sidecar probe (auto-posted; pod logs are GCed in this tenant):\\n```\\n" + report + "\\n```"\' \'open("/tmp/report.json", "w").write(json.dumps({"body": body}))\' > /tmp/post_report.py',
+                            'if [ -n "$GH_TOKEN" ]; then',
+                            '  GH_STATUS=$(curl -s -o /tmp/gh-response.json -w "%{http_code}" -X POST "https://api.github.com/repos/opendatahub-io/notebooks/issues/4566/comments" -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" --data-binary @/tmp/report.json)',
+                            '  add "github comment: HTTP $GH_STATUS"',
+                            "else",
+                            '  add "github comment: SKIPPED (no password/token key in git-auth)"',
+                            "fi",
+                            'echo "=== probe report ==="',
+                            'cat "$REPORT"',
+                            'if grep "^exec id: " "$REPORT" | grep -q "PROBE-OK"; then echo "PROBE-PASSED"; else echo "PROBE-FAILED"; exit 1; fi',
                         ],
                     ),
                 }
@@ -955,6 +974,9 @@ else:
             assert sidecars[0]["image"] == "$(params.IMAGE_UNDER_TEST)"
             assert sidecars[0]["securityContext"]["runAsUser"] == 0
             assert "securityContext" not in task["taskSpec"]["steps"][0]
+            # the probe posts its report to the PR via the PaC git-auth secret
+            assert task["workspaces"] == [{"name": "basic-auth", "workspace": "git-auth"}]
+            assert task["taskSpec"]["workspaces"] == [{"name": "basic-auth"}]
 
         def test_script_vars_resolved(self):
             """Every shell variable referenced in a generated step script must be
