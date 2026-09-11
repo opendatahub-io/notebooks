@@ -96,7 +96,9 @@ def _stop_locked(timeout: int = 10) -> None:
     """Stop the server child. Caller must hold _state.lock."""
     proc = _state.proc
     if proc is None or proc.poll() is not None:
+        log.info("stop_server: no live server child to stop")
         return
+    log.info("stop_server: SIGTERM to server child pid=%d", proc.pid)
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
     except (ProcessLookupError, PermissionError):
@@ -105,6 +107,7 @@ def _stop_locked(timeout: int = 10) -> None:
     while proc.poll() is None and time.monotonic() < deadline:
         time.sleep(0.2)
     if proc.poll() is None:
+        log.warning("stop_server: child pid=%d ignored SIGTERM, SIGKILL", proc.pid)
         try:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except (ProcessLookupError, PermissionError):
@@ -112,6 +115,7 @@ def _stop_locked(timeout: int = 10) -> None:
         proc.wait()
     _state.proc = None
     _state.started_at = None
+    log.info("stop_server: server child stopped (exit=%s)", proc.returncode)
 
 
 def stop_server(timeout: int = 10) -> None:
@@ -196,6 +200,7 @@ def _restart_process(delay: float = 0.2) -> None:
     PID 1: its group is inherited from the dead runtime and the kernel
     answers ESRCH.)"""
     time.sleep(delay)
+    log.warning("self-kill: sending SIGTERM to agent pid=%d", os.getpid())
     os.kill(os.getpid(), signal.SIGTERM)
 
 
@@ -321,6 +326,7 @@ class Handler(BaseHTTPRequestHandler):
                 # writable layer is fresh. The kill is deferred so this
                 # response can flush first; the client should treat it as
                 # fire-and-forget and poll /status.
+                log.warning("/restart: stopping server child and scheduling agent self-kill (pid=%d)", os.getpid())
                 stop_server(timeout=5)
                 threading.Thread(target=_restart_process, daemon=True).start()
                 self._send(200, {"restarting": True})
@@ -352,14 +358,17 @@ def main() -> None:
     # signal handling: the task teardown SIGTERMs the sidecar; kill the
     # server child on the way out
     def _on_term(signum, frame) -> None:
+        log.warning("_on_term: received signal %s; stopping server child (pid=%d)", signum, os.getpid())
         stop_server(timeout=5)
+        log.warning("_on_term: server stopped; agent exiting 0 (pid=%d)", os.getpid())
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, _on_term)
     signal.signal(signal.SIGINT, _on_term)
     httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    log.info("sidecar agent listening on 127.0.0.1:%d (entrypoint=%s)", PORT, ENTRYPOINT)
+    log.info("sidecar agent pid=%d listening on 127.0.0.1:%d (entrypoint=%s)", os.getpid(), PORT, ENTRYPOINT)
     httpd.serve_forever()
+    log.warning("serve_forever() returned; agent exiting normally (pid=%d)", os.getpid())
 
 
 if __name__ == "__main__":
