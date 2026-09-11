@@ -9,7 +9,7 @@ live iteration (see ADR 0018, `docs/architecture/decisions/`).
 
 Every K8s **object name** must be a lowercase RFC 1123 subdomain:
 
-```
+```text
 [a-z0-9]([-a-z0-9.]*[a-z0-9])?   # lowercase alphanumerics, '-', '.';
                                   # must start and end alphanumeric
 ```
@@ -73,9 +73,18 @@ string, not a K8s object name:
   no server-side dry-run. Verify your PipelineRuns via `oc get pipelinerun`
   or the PR checks.
 - Completed PipelineRuns (and their TaskRuns) are garbage-collected quickly —
-  read `oc get pipelinerun ... -o json` (status.pipelineTaskRuns) or the PR
-  check's task table while the run is still around; for older runs use the
-  Konflux UI log links in the check output.
+  read `oc get pipelinerun ... -o json` (status.pipelineTaskRuns) while the
+  run is still around. For archived runs, fetch logs via **kubearchive**
+  (see the internal guide linked from `docs/konflux.md`):
+
+  ```bash
+  export KA_HOST="https://kubearchive-api-server-product-kubearchive.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com"
+  export TOKEN=$(oc --context <tenant-context> whoami -t)
+  # 1. find the taskrun (PLR status.childReferences), 2. get its .status.podName,
+  # 3. fetch the step log:
+  curl -s -H "Authorization: Bearer $TOKEN" \
+    "$KA_HOST/api/v1/namespaces/open-data-hub-tenant/pods/<pod-name>/log?container=step-<step>"
+  ```
 - **The tenant SCCs forbid privileged containers** (verified live: every
   usable SCC rejects `.containers[0].privileged=true`, including the cluster
   `privileged` SCC which the build SAs aren't bound to). Never add

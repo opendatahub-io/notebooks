@@ -352,6 +352,7 @@ spec:
             # __BODY_BELOW__
             set -Eeuxo pipefail
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+            cd "$HOME"
             if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
               mkdir -p /run/user/$(id -u) 2>/dev/null || true
             fi
@@ -435,6 +436,7 @@ spec:
             # __BODY_BELOW__
             set -Eeuxo pipefail
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+            cd "$HOME"
             if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
               mkdir -p /run/user/$(id -u) 2>/dev/null || true
             fi

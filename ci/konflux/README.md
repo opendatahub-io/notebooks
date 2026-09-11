@@ -57,7 +57,7 @@ updated keeps the generated pipelines in sync.
 
 ## Pipeline shape (per image x arch)
 
-```
+```text
 init -> clone-repository -> prefetch-dependencies -> build-images -> build-image-index
                                           (all skipped when skip-build=true)
 

@@ -102,7 +102,7 @@ Generate one Konflux **PipelineRun per (image, architecture)** from a Python
 generator (`ci/konflux/generate_pipelineruns.py`), committing the output to
 `.tekton/konflux/`. Each PipelineRun has an inline `pipelineSpec`:
 
-```
+```text
 init -> clone-repository -> prefetch-dependencies -> build-images (1 platform)
      -> build-image-index                    (all skipped when skip-build=true)
 

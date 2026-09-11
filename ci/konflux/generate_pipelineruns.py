@@ -39,7 +39,6 @@ from __future__ import annotations
 import pathlib
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 import yaml
 
@@ -83,6 +82,8 @@ K8S_ARCH_NAME = {"x86_64": "amd64"}
 
 def k8s_arch(arch_key: str) -> str:
     return K8S_ARCH_NAME.get(arch_key, arch_key)
+
+
 # pip binary wheel arches per flavor (prefetch-input binary.arch)
 FLAVOR_PIP_ARCHES = {
     "cpu": "x86_64, aarch64, ppc64le, s390x",
@@ -103,16 +104,18 @@ KUBECTL_VERSION = "v1.34.1"
 # that range; bump deliberately.
 UV_VERSION = "0.12.13"
 UV_INSTALL_URL = f"https://astral.sh/uv/{UV_VERSION}/install.sh"
+
+
 def rootless_env_lines() -> list[str]:
     """Rootless podman/kind environment (the tenant SCCs forbid privileged pods,
     verified live: every usable SCC rejects .containers[0].privileged=true)."""
     return [
-        "if [ -z \"${XDG_RUNTIME_DIR:-}\" ] || [ ! -w \"/run/user/$(id -u)\" ]; then",
+        'if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then',
         "  mkdir -p /run/user/$(id -u) 2>/dev/null || true",
         "fi",
         'export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"',
         'export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"',
-        "export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=\"$XDG_RUNTIME_DIR/podman/podman.sock\"",
+        'export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$XDG_RUNTIME_DIR/podman/podman.sock"',
     ]
 
 
@@ -147,15 +150,18 @@ def rootless_step_script(*body_sections: list[str]) -> str:
         "  U=$(id -u tester)",
         '  grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester',
         "  mkdir -p /run/user/$U && chown tester /run/user/$U",
-        '  sed -n \'/^# __BODY_BELOW__/,$p\' "$0" | tail -n +2 > /tmp/step-body.sh',
+        "  sed -n '/^# __BODY_BELOW__/,$p' \"$0\" | tail -n +2 > /tmp/step-body.sh",
         "  chmod +x /tmp/step-body.sh",
-        "  exec su -s /bin/bash tester -c \"export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh\"",
+        '  exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"',
         "fi",
         "# __BODY_BELOW__",
         "set -Eeuxo pipefail",
-        "export PATH=\"$HOME/.local/bin:$HOME/bin:$PATH\"",
+        'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"',
+        # su preserves the (root-owned) cwd — work from $HOME instead
+        'cd "$HOME"',
     ]
     return "\n".join(header + body_lines) + "\n"
+
 
 # ---------------------------------------------------------------------------
 # Image inventory
@@ -368,8 +374,10 @@ def testcontainers_task(image: Image) -> dict:
                         resolve_image_lines(),
                         podman_service_start_lines(),
                         [
-                            'uv run pytest tests/containers -m "$(params.MARKERS)" '
-                            '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy'
+                            (
+                                'uv run pytest tests/containers -m "$(params.MARKERS)" '
+                                '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy'
+                            )
                         ],
                     ),
                 }
@@ -428,8 +436,10 @@ def k8s_test_task(image: Image) -> dict:
         # the openshift-marked workbench tests also spin up local testcontainers
         # (mysql etc.) — same step, so the podman service survives
         *podman_service_start_lines(),
-        'uv run pytest tests/containers -m "$(params.MARKERS)" '
-        '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy',
+        (
+            'uv run pytest tests/containers -m "$(params.MARKERS)" '
+            '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy'
+        ),
         "kind delete cluster --name tekton || true",
     ]
     return {
@@ -462,9 +472,6 @@ def k8s_test_task(image: Image) -> dict:
             ],
         },
     }
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -692,7 +699,9 @@ def cel_expression() -> str:
     pathChanged() guard (or move to on-comment-only) so unrelated PRs don't
     trigger these runs. See the ADR.
     """
-    return 'event == "pull_request" && target_branch == "main" && body.repository.full_name == "opendatahub-io/notebooks"'
+    return (
+        'event == "pull_request" && target_branch == "main" && body.repository.full_name == "opendatahub-io/notebooks"'
+    )
 
 
 def pipelinerun(image: Image, platform: str, refs: dict[str, dict]) -> dict:
@@ -780,7 +789,7 @@ class _Dumper(yaml.SafeDumper):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.add_representer(str, _represent_str)
+        self.add_representer(str, _represent_str)  # pyright: ignore[reportArgumentType]
 
     def ignore_aliases(self, data: object) -> bool:
         return True
@@ -814,8 +823,6 @@ if __name__ == "__main__":
     main()
 else:
     # test dependencies
-    if TYPE_CHECKING:
-        import pyfakefs.fake_filesystem
 
     class Tests:
         def test_flavor_platforms(self):
@@ -852,10 +859,19 @@ else:
             assert run["metadata"]["name"] == "odh-workbench-jupyter-minimal-cpu-py312-ubi9-amd64-on-pull-request"
             assert re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", run["metadata"]["name"]), "name must be RFC 1123"
             output_image = next(p["value"] for p in run["spec"]["params"] if p["name"] == "output-image")
-            assert output_image == "quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-{{revision}}-x86_64"
+            assert (
+                output_image
+                == "quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-{{revision}}-x86_64"
+            )
             assert next(p["value"] for p in run["spec"]["params"] if p["name"] == "image-expires-after") == "5d"
             task_names = [t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]]
-            assert task_names[:5] == ["init", "clone-repository", "prefetch-dependencies", "build-images", "build-image-index"]
+            assert task_names[:5] == [
+                "init",
+                "clone-repository",
+                "prefetch-dependencies",
+                "build-images",
+                "build-image-index",
+            ]
             # two parallel test legs (no more provision-kind / makefile / openshift tasks)
             assert "test-testcontainers" in task_names
             assert "test-k8s" in task_names
@@ -872,7 +888,9 @@ else:
                 for step in task.get("taskSpec", {}).get("steps", []):
                     assert isinstance(step.get("script"), str), f"{task['name']}: script must be a string"
                     assert step["script"].startswith("#!/bin/bash")
-                    assert step.get("securityContext", {}).get("privileged") is not True, f"{task['name']}: privileged forbidden"
+                    assert step.get("securityContext", {}).get("privileged") is not True, (
+                        f"{task['name']}: privileged forbidden"
+                    )
 
         def test_no_tests_on_non_test_arches(self):
             image = Image(
@@ -884,7 +902,13 @@ else:
             refs = bundle_task_refs()
             run = pipelinerun(image, "linux/ppc64le", refs)
             task_names = [t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]]
-            assert task_names == ["init", "clone-repository", "prefetch-dependencies", "build-images", "build-image-index"]
+            assert task_names == [
+                "init",
+                "clone-repository",
+                "prefetch-dependencies",
+                "build-images",
+                "build-image-index",
+            ]
 
         def test_no_stray_pac_templates(self):
             """PaC template-renders the whole file: any '{{...}}' is a template var.
