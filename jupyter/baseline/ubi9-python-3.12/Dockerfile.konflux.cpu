@@ -124,6 +124,10 @@ PACKAGES=(
     libjpeg-turbo-devel
     libtiff-devel
     libpng-devel
+    # OpenSSL development files for cryptography's openssl-sys (rust)
+    openssl-devel
+    # pkg-config binary; native extensions discover system libraries through it
+    pkgconf-pkg-config
 )
 dnf install -y "${PACKAGES[@]}"
 dnf clean all
