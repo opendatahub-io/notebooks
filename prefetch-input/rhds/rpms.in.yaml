@@ -103,3 +103,10 @@ packages:
   - python3-devel
   - pybind11-devel
   - openblas-devel
+  # Pure-sdist build toolchain for the jupyter-baseline python-builder stage
+  # (gcc-c++/cmake/openblas-devel above are shared with the datascience list)
+  - rust
+  - cargo
+  - ninja-build
+  # libffi headers for cffi's _cffi_backend
+  - libffi-devel

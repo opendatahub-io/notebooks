@@ -108,3 +108,6 @@ packages:
   - python3-devel
   - pybind11-devel
   - openblas-devel
+  # libffi headers for cffi's _cffi_backend (rust/cargo/ninja-build above,
+  # gcc-c++/cmake/openblas-devel in the datascience list below)
+  - libffi-devel
