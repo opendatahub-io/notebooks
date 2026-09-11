@@ -222,6 +222,8 @@ def setup_uv_and_repo_lines() -> list[str]:
 
 
 def resolve_image_lines() -> list[str]:
+    # Re-trigger note: the test pods fail at 0s (admission); next iteration
+    # captures the exact rejection to pick between privileged-SCC and rootless.
     """BUILT_IMAGE is the deterministic on-pr tag the build pushes to (params.output-image).
 
     It is a param, not a task-result reference: a task that references a
@@ -661,24 +663,24 @@ def compute_resources(has_tests: bool, has_makefile_tests: bool) -> list[dict]:
         result += [
             {
                 "pipelineTaskName": "test-testcontainers",
-                "computeResources": cr("4", "8Gi", "60Gi"),
+                "computeResources": cr("4", "4Gi", "60Gi"),
             },
             {
                 "pipelineTaskName": "provision-kind",
-                "computeResources": cr("4", "8Gi", "60Gi"),
+                "computeResources": cr("4", "4Gi", "60Gi"),
             },
         ]
         if has_makefile_tests:
             result.append(
                 {
                     "pipelineTaskName": "test-makefile-deploy",
-                    "computeResources": cr("4", "8Gi", "40Gi"),
+                    "computeResources": cr("4", "4Gi", "40Gi"),
                 }
             )
         result.append(
             {
                 "pipelineTaskName": "test-openshift-pytest",
-                "computeResources": cr("4", "8Gi", "40Gi"),
+                "computeResources": cr("4", "4Gi", "40Gi"),
             }
         )
     return result
