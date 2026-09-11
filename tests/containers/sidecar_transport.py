@@ -155,6 +155,21 @@ def server_logs(n: int = 20_000) -> str:
     return (res if isinstance(res, bytes) else b"").decode(errors="replace")
 
 
+def restart_container(timeout: float = 120) -> None:
+    """Reset the SUT container: the agent exits and kubelet restarts the
+    sidecar container (restartPolicy), which resets the image's writable
+    layer and resurrects the agent from ``/shared/agent.py`` (emptyDir
+    survives container restarts) — the docker mode fresh-container-per-test
+    semantic. The agent dies around when the response is written, so a
+    connection error here is expected and ignored; then wait for the
+    restarted agent to answer."""
+    try:
+        _request("POST", "/restart")
+    except urllib.error.URLError, ConnectionError:
+        pass
+    wait_agent(timeout=timeout)
+
+
 def container_alive() -> bool:
     """`get_wrapped_container().status != "exited"` equivalent: in sidecar
     mode the container itself never exits (the agent is the main process);

@@ -184,6 +184,21 @@ def start_server(user: int, groups: list[int], env: dict[str, str], command: str
         return _server_state()
 
 
+def _restart_process(delay: float = 0.2) -> None:
+    """Exit the agent so the container (and its writable layer) restarts.
+
+    Self-kill through the SIGTERM handler (the graceful _on_term path).
+    The agent is the container's PID 1: when it exits, the container
+    exits and the kernel tears down the container's PID namespace,
+    taking any in-flight /exec children with it; kubelet then restarts
+    the sidecar container and the command loop re-execs the agent.
+    (A killpg of the agent's own group is not reliable for a container
+    PID 1: its group is inherited from the dead runtime and the kernel
+    answers ESRCH.)"""
+    time.sleep(delay)
+    os.kill(os.getpid(), signal.SIGTERM)
+
+
 def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode()
 
@@ -297,6 +312,18 @@ class Handler(BaseHTTPRequestHandler):
                 req = json.loads(raw or b"{}")
                 stop_server(timeout=int(req.get("timeout", 10)))
                 self._send(200, _server_state())
+            elif self.path.startswith("/restart"):
+                # container reset (docker parity, opt-in from the suite):
+                # stop the server child, then exit the agent itself. kubelet
+                # restarts the sidecar container (restartPolicy), the
+                # container command loop re-execs the agent from
+                # /shared/agent.py (emptyDir survives), and the image's
+                # writable layer is fresh. The kill is deferred so this
+                # response can flush first; the client should treat it as
+                # fire-and-forget and poll /status.
+                stop_server(timeout=5)
+                threading.Thread(target=_restart_process, daemon=True).start()
+                self._send(200, {"restarting": True})
             elif self.path.startswith("/exec"):
                 req = json.loads(raw or b"{}")
                 cmd = [str(c) for c in req["cmd"]]

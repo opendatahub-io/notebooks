@@ -302,6 +302,29 @@ def pytest_sessionstart(session: Session) -> None:
         except TimeoutError as e:
             raise SystemExit(str(e)) from e  # clean abort, not an INTERNALERROR traceback
         return
+
+
+@pytest.fixture(autouse=True)
+def _sidecar_container_reset_between_tests():
+    """Opt-in per-test container reset for sidecar mode.
+
+    Docker mode gives every test a fresh container (fresh image writable
+    layer); the sidecar shares one container across tests. With the
+    SUT_RESTART_BETWEEN_TESTS env var set (1/true/yes/on), this fixture
+    asks the agent to exit after each test so kubelet restarts the sidecar
+    container and the image filesystem is reset — exact docker semantics,
+    at the cost of a container cycle per test.
+
+    Default off: the agent's per-start guards (foreign-owned workdir state
+    drop, fresh server log per start) cover the observed cross-test
+    pollution, and a restart is a full container lifecycle per test.
+    """
+    yield
+    if not sidecar_transport.sidecar_mode():
+        return
+    if os.environ.get("SUT_RESTART_BETWEEN_TESTS", "").strip().lower() not in {"1", "true", "yes", "on"}:
+        return
+    sidecar_transport.restart_container()
     # first preflight check: ping the Docker API
     client = testcontainers.core.docker_client.DockerClient()
     assert client.client.ping(), "Failed to connect to Docker"

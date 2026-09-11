@@ -55,6 +55,20 @@ class Container(abc.ABC):
     ``get_wrapped_container()`` returns the low-level (docker-py-shaped)
     handle; the sidecar implementation returns a stand-in exposing the
     attributes the tests touch (``reload``, ``status``, ``id``, ``stop``).
+
+    Leaky abstraction, deliberately: ``start()`` means "start the docker
+    container" under :class:`TestcontainersContainer` (and a container
+    started once stays that container for the test's lifetime) but
+    "start the entrypoint process" under :class:`SidecarContainer` —
+    the sidecar *container* itself never stops or restarts from the
+    suite's point of view. Consequently docker mode gives each test a
+    fresh container (fresh image writable layer), while pod execution
+    shares one container across tests. Cross-test state is mitigated by
+    agent-side per-start guards (foreign-owned workdir state is dropped,
+    the server log is fresh per start) and by the opt-in
+    ``_sidecar_container_reset_between_tests`` conftest fixture
+    (``SUT_RESTART_BETWEEN_TESTS`` env var, default off), which asks the
+    agent to exit so kubelet restarts the sidecar container.
     """
 
     port: int
