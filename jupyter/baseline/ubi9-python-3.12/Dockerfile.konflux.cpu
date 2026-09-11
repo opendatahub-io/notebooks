@@ -96,10 +96,29 @@ ARG PYLOCK_FLAVOR
 USER 0
 
 # [SDIST] Toolchain for compiling sdists, from hermetic RPM locks.
-# openblas-devel provides BLAS/LAPACK for numpy; rust and cargo for Rust
-# extensions; ninja-build and cmake for parallel native builds.
-RUN dnf install -y gcc-c++ openblas-devel rust cargo ninja-build cmake \
-    && dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
+RUN /bin/bash <<'EOF'
+set -Eeuo pipefail
+PACKAGES=(
+    # C/C++ compilers for native extension builds
+    gcc-c++
+    # libffi headers for cffi's _cffi_backend (cffi is a build dep
+    # of many pinned packages)
+    libffi-devel
+    # BLAS/LAPACK development files for numpy
+    openblas-devel
+    # Rust compiler for Rust-based extensions (rpds-py)
+    rust
+    # Rust build tooling invoked by setuptools-rust and maturin
+    cargo
+    # Build generator for meson-python and scikit-build-core
+    ninja-build
+    # Build generator for scikit-build-core
+    cmake
+)
+dnf install -y "${PACKAGES[@]}"
+dnf clean all
+rm -rf /var/cache/dnf /var/cache/yum
+EOF
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
