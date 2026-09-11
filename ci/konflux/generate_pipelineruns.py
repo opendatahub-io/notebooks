@@ -68,6 +68,15 @@ PLATFORM_ARCH_KEY = {
     "linux/ppc64le": "ppc64le",
     "linux/s390x": "s390x",
 }
+# K8s object names must be RFC 1123 (lowercase alphanumerics and '-'), so the
+# 'x86_64' arch token cannot appear in PipelineRun names or filenames — use
+# 'amd64' (the K8s node-label spelling) there. 'x86_64' stays in the Konflux
+# platform id (linux/x86_64) and pip arch lists, which are plain string values.
+K8S_ARCH_NAME = {"x86_64": "amd64"}
+
+
+def k8s_arch(arch_key: str) -> str:
+    return K8S_ARCH_NAME.get(arch_key, arch_key)
 # pip binary wheel arches per flavor (prefetch-input binary.arch)
 FLAVOR_PIP_ARCHES = {
     "cpu": "x86_64, aarch64, ppc64le, s390x",
@@ -691,7 +700,7 @@ def pipelinerun(image: Image, platform: str, refs: dict[str, dict]) -> dict:
                 "appstudio.openshift.io/component": component,
                 "pipelines.appstudio.openshift.io/type": "build",
             },
-            "name": f"{component}-{arch_key}-on-pull-request",
+            "name": f"{component}-{k8s_arch(arch_key)}-on-pull-request",
             "namespace": NAMESPACE,
         },
         "spec": {
@@ -776,7 +785,7 @@ def main() -> None:
     for image in IMAGES:
         for platform in image.platforms:
             arch_key = PLATFORM_ARCH_KEY[platform]
-            path = out_dir / f"{image.component}-{arch_key}-pull-request.yaml"
+            path = out_dir / f"{image.component}-{k8s_arch(arch_key)}-pull-request.yaml"
             path.write_text(render(image, platform, refs))
             written.append(str(path.relative_to(ROOT_DIR)))
     print(f"Generated {len(written)} PipelineRun(s) in {out_dir.relative_to(ROOT_DIR)}/:")
@@ -822,7 +831,9 @@ else:
             )
             refs = bundle_task_refs()
             run = pipelinerun(image, "linux/x86_64", refs)
-            assert run["metadata"]["name"] == "odh-workbench-jupyter-minimal-cpu-py312-ubi9-x86_64-on-pull-request"
+            # K8s object name: 'x86_64' (underscore) is not RFC 1123, so it maps to 'amd64'
+            assert run["metadata"]["name"] == "odh-workbench-jupyter-minimal-cpu-py312-ubi9-amd64-on-pull-request"
+            assert re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", run["metadata"]["name"]), "name must be RFC 1123"
             output_image = next(p["value"] for p in run["spec"]["params"] if p["name"] == "output-image")
             assert output_image == "quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-{{revision}}-x86_64"
             assert next(p["value"] for p in run["spec"]["params"] if p["name"] == "image-expires-after") == "5d"

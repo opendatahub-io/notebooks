@@ -34,6 +34,12 @@ Arch matrix per flavor (matches the existing Konflux multi-arch pipelines):
 | cuda | x86_64, arm64 |
 | rocm | x86_64 |
 
+**Naming note:** K8s object names must be RFC 1123 (lowercase alphanumerics and
+`-`), so the `x86_64` arch token is spelled `amd64` in the PipelineRun name and
+filename (`...-amd64-pull-request.yaml`). `x86_64` remains in the Konflux
+platform id (`linux/x86_64`), the image tag (`on-pr-<sha>-x86_64`), and the
+on-comment trigger — those are plain string values, not K8s names.
+
 **v1 scope:** `jupyter-minimal` (cpu) only, and tests only on `x86_64`.
 Non-amd64 images would need qemu binfmt in the test pod (impractical for
 ppc64le/s390x). Add images by extending the `IMAGES` list in the generator;
