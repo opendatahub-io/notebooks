@@ -85,12 +85,12 @@ usable by the per-component build SA (`build-pipeline-<component>`) rejects
 `.containers[0].privileged=true` (including the Konflux
 `appstudio-pipelines-scc` and the cluster `privileged` SCC, which the SA
 simply isn't bound to). The tenant RBAC does not let us read SAs/SCCs or
-create bindings. The rootless path that followed was then proven
-impossible in this tenant as well (`NoNewPrivs: 1` voids the setuid/filecap
-prerequisite; no `CAP_SYS_ADMIN` for rootful) — see the
+create bindings. Every in-pod path was then proven impossible live: the
+rootless path is voided by `NoNewPrivs: 1` (the setuid/filecap prerequisite
+can't take effect), and a per-step `capabilities.add: [SYS_ADMIN]` probe was
+rejected by the SCC (`capability may not be added`) — see the
 [Investigation](#investigation-in-pod-test-stages-in-this-tenant-2026-09-11)
-section, including the open probe of whether the SCC allows a per-step
-`capabilities.add: [SYS_ADMIN]`.
+section for the full chain and reproduction.
 
 Real-OpenShift testing is the documented upgrade path: EPHC/CSO
 (`TestPlatformCluster` claims, `provision-ephemeral-cluster` tasks from
@@ -136,8 +136,10 @@ then, in parallel (two test legs, each its own rootless pod):
   k8s leg is a single step. `skip-build` + `image-under-test` params allow
   iterating on the test stages without rebuilding. (As of the
   [Investigation](#investigation-in-pod-test-stages-in-this-tenant-2026-09-11),
-  the rootless form of this decision is infeasible in this tenant; the
-  rootful form — step `capabilities.add: [SYS_ADMIN]` — is being probed.)
+  the in-pod form of this decision is infeasible in this tenant — both
+  rootless and rootful, `SYS_ADMIN` included. The test stage will run
+  out-of-band; the in-pod kind design stands as the reference for tenants
+  whose SCCs allow it.)
 - **Scans are out of scope for v1** (build + tests only); the existing
   multi-arch pipelines continue to cover them.
 
@@ -154,16 +156,19 @@ then, in parallel (two test legs, each its own rootless pod):
   and self-resolves as other pipelines finish — a re-trigger (or the next
   push) recovers it. The per-push 4x pipeline count raises the odds of
   hitting it; watch for this when triaging `prefetch-dependencies` failures.
-- **In-pod container runtimes are blocked in this tenant as configured —
-  rootless and rootful alike.** The test pods were rejected at admission by
-  every usable SCC with `privileged: true`, the rootless redesign was then
-  proven impossible live (`NoNewPrivs: 1` makes setuid/filecaps on
-  `newuidmap` void), and rootful podman/kind lacks `CAP_SYS_ADMIN`
-  (`CapEff: 0x5fb`, the k8s default set). Full evidence and reproduction in
+- **In-pod container runtimes are impossible in this tenant — all four
+  combinations exhausted.** `privileged: true` is rejected by every usable
+  SCC; rootless is voided by `NoNewPrivs: 1` (setuid/filecaps on
+  `newuidmap` can't take effect); rootful + per-step
+  `capabilities.add: [SYS_ADMIN]` is rejected by the SCC
+  (`capability may not be added`); rootful with the default caps
+  (`CapEff: 0x5fb`) lacks `CAP_SYS_ADMIN`. Full evidence and reproduction in
   the [Investigation](#investigation-in-pod-test-stages-in-this-tenant-2026-09-11)
-  section; the open question it raises (whether the SCC permits a per-step
-  `capabilities.add: [SYS_ADMIN]`, as the build task does for `SETFCAP`)
-  decides between a rootful in-pod design and EPHC / a privileged SA.
+  section. The test stage must therefore run out-of-band; the full
+  options map (mapt kind-on-AWS, mapt Fedora VM, EPHC, privileged SA,
+  EAAS, build-only) is in
+  [Options for the test stage](#options-for-the-test-stage-out-of-pod) —
+  decision pending.
 - **kind ≠ OpenShift.** Faithful to GHA, not an upgrade. EPHC is the
   documented upgrade path (see Context); it is deliberately not in v1.
 - **The iteration trigger is not graduation-ready.** No `pathChanged()`
@@ -183,8 +188,10 @@ then, in parallel (two test legs, each its own rootless pod):
 
 During live iteration of PR #4566, every in-pod container-runtime option was
 tested against this tenant's pod security profile. **Result: no container
-runtime (rootless or rootful) works in the test pods as configured.** The
-build stage is unaffected — it works by a different mechanism (below).
+runtime works in the test pods — `privileged` (rejected), rootless
+(`NoNewPrivs`), rootful + `CAP_SYS_ADMIN` (rejected), rootful with default
+caps (insufficient).** The build stage is unaffected — it works by a
+different mechanism (below).
 
 ### Finding chain (each step verified live)
 
@@ -213,6 +220,22 @@ build stage is unaffected — it works by a different mechanism (below).
    mount/network namespaces.
 6. **testcontainers leg — no docker socket can exist.** pytest died with
    an `INTERNALERROR` connecting to the socket; consistent with 1–5.
+7. **Per-step `capabilities.add: [SYS_ADMIN]` — rejected at admission.**
+   The probe run (commit `ab9b7ffd8`) was rejected by the SCC with:
+   `provider appstudio-pipelines-scc: .containers[0].capabilities.add:
+   Invalid value: "SYS_ADMIN": capability may not be added`. The SCC's
+   `allowedCapabilities` includes `SETFCAP` (the build task proves it) but
+   not `sys_admin`.
+
+**In-pod container runtimes are therefore impossible in this tenant, end of
+story** — all four combinations are exhausted: `privileged: true` (1),
+rootless user namespaces (2–4), rootful + `CAP_SYS_ADMIN` (5, 7), rootful
+with the default caps (5). The test stage must run out-of-band: a dedicated
+SA bound to the `privileged` SCC (human action — the current rootful test
+code then needs only `privileged: true` instead of `capabilities.add` plus
+that SA on the two test tasks), or EPHC (self-service — the openshift-marker
+leg runs against the real cluster from a plain `kubectl`; the testcontainers
+leg would point at a podman pod hosted on the EPHC), or EAAS.
 
 ### Why the build stage works under the same profile
 
@@ -236,17 +259,15 @@ pod's capability budget:
   remote builder VM and only orchestrate in-pod.) podman/kind have no such
   mode: every container they create needs namespace + mount privileges.
 
-### Open question: can the test step request `SYS_ADMIN`?
+### Probed: the test step cannot request `SYS_ADMIN` (resolved)
 
-Finding 3+5 together imply a probe: the SCC allows per-step
+Findings 3+5 implied a probe: the SCC allows per-step
 `capabilities.add` (proven by the build step's `SETFCAP`). If
-`sys_admin` is on that allow list, **rootful** podman/kind work in-pod
-(`no_new_privs` is irrelevant — a process that already holds the caps can
-`unshare`/`mount`; no setuid tricks involved), and the test design becomes:
-step `securityContext: {runAsUser: 0, capabilities: {add: ["SYS_ADMIN"]}}`,
-body runs as root, rootful podman socket. The probe is one push: admission
-either rejects it at 0s (error names the SCC → in-pod is out, go EPHC /
-privileged SA) or the rootful `podman info`/`kind create` proceeds.
+`sys_admin` were on that allow list, **rootful** podman/kind would work
+in-pod (`no_new_privs` is irrelevant — a process that already holds the
+caps can `unshare`/`mount`; no setuid tricks involved). The probe
+(commit `ab9b7ffd8`, run `...-amd64-on-pulldn7bk`) was rejected:
+`capability may not be added` (finding 7). The in-pod option is closed.
 
 ### Reproduction
 
@@ -277,6 +298,81 @@ capsh --decode=00000000000005fb
 The generated test step also prints `CapEff`/`NoNewPrivs` (root phase, as
 root) at the start of every run — the easiest live read.
 
+### Options for the test stage (out-of-pod)
+
+With in-pod closed (findings 1–7), the runtime/cluster has to come from
+outside the tenant pods. Full breadth of options, mapped from the tenant's
+own Slack (`#forum-konflux-devprod`, `#forum-ocp-testplatform`,
+`#forum-ansible-product-delivery-engineering`) and Jira:
+
+| # | Option | What runs where | Human ask | Provisioning | Tenant status |
+|---|--------|----------------|-----------|--------------|---------------|
+| A | **mapt kind-on-AWS** — `kind-aws-spot` task, `konflux-ci/tekton-integration-catalog` | kind cluster (plain k8s, v1.32 default) on an AWS spot EC2 (default 16 vCPU / 64 GiB, `x86_64`/`arm64`); pipeline steps use the generated kubeconfig | AWS-creds secret in the tenant ns + secret RBAC for the pipeline SA | minutes (mapt/Pulumi) | not used here yet; task needs no privileged pod |
+| B | **mapt Fedora VM** — `fedora-virtual-machine` task | bare Fedora VM on AWS; whatever is installed runs there (podman, kind, both) | same as A | minutes | not used here yet |
+| C | **EPHC / TestPlatformCluster** | full OpenShift cluster via a claim; steps use the connection secret | RBAC for `testplatformclusters` (unverified here); provider already installed in-tenant | 1h11m–1h42m observed (vanguard thread); tests themselves ~14m | proven in a sibling Konflux tenant, but the platform is deprecating it for PR-level tests (KONFLUX-7296) |
+| D | **Dedicated privileged SA** | the current rootful in-pod code, nearly as-is (`capabilities.add` → `privileged: true` + per-task SA) | SCC binding grant — no evidence of a standard offering | n/a (in-pod) | unavailable; tenant-admin action |
+| E | **EAAS** | the proven group-test fallback (see `docs/konflux.md`) | EAAS access for the repo | minutes | proven for a different test suite |
+| F | **Build-only v1, tests stay on GHA** | — | none | — | status quo |
+
+**A is the platform-endorsed path.** KONFLUX-7296 ("Refactor the
+provisioning architecture used in Konflux CI pipelines", closed, FinOps)
+directs Konflux components to **deprecate OpenShift ephemeral clusters for
+PR-level e2e in favor of lightweight k8s (kind on AWS)**, reserving full
+OpenShift for nightly. KFLUXDP-277 (the mapt kind tasks in the
+integration catalog), KFLUXDP-245 (investigation) and KFLUXDP-271
+(release-service integration) are all closed/done. The tasks are in live
+production in sibling tenants — `konflux-vanguard-tenant`
+(konflux-operator-e2e), `rhtap-release-2-tenant`, `ansible-ci-tenant`
+(aap-ui-e2e, jewel-atf-tests), `nexus-tenant` — and every failure mode
+seen in Slack is AWS-side, not SCC-side: shared-account
+`VpcLimitExceeded`, spot capacity (g5.2xlarge), rotated IAM keys
+(`InvalidAccessKeyId`), the `g4ad.4xlarge` instance-type bug (mapt#902,
+fixed in 0.3), S3 `GetBucketLocation`.
+
+Task specifics (from the catalog, verified against the live
+`konflux-ci/release-service` `integration-tests/pipelines/konflux-e2e-tests-pipeline.yaml`):
+
+- **Wiring**: `taskRef` via the **git resolver** (
+  `url: tekton-integration-catalog.git`, `revision: main`,
+  `pathInRepo: tasks/mapt-oci/kind-aws-spot/provision/0.2/kind-aws-provision.yaml`)
+  — no bundle pinning needed.
+- **Provision params**: `secret-aws-credentials` (secret with
+  `access-key`/`secret-key`/`region`/`bucket`), `id` (pipelineRun name),
+  `cluster-access-secret-name: kfg-$(context.pipelineRun.name)`,
+  `ownerKind/ownerName/ownerUid` = the PipelineRun (secrets are
+  owner-referenced → GC'd with the run), `oci-ref`/`oci-credentials`
+  (task-log storage), `spot-increase-rate: 80` (capacity workaround),
+  optional `arch`/`cpus`/`memory`/`compute-sizes`, `version` (k8s,
+  default v1.32 — matches GHA), `nested-virt`, `timeout` (auto-destroy),
+  `extra-port-mappings` (expose NodePorts from the VM),
+  `ssh-credentials-secret-name` (VM access: `host`/`username`/`id_rsa`).
+- **Consumption**: the test task receives `cluster-access-secret` and the
+  README's recommended pattern is a `stepTemplate` mounting that secret
+  with `KUBECONFIG` set — `kubectl`/pytest run from the Tekton pod against
+  the remote cluster.
+- **Deprovision**: `kind-aws-deprovision` (0.1) with the same
+  `secret-aws-credentials`/`id`, deleting VM + secrets.
+
+Fit for the two test legs:
+
+- **k8s leg: near-exact GHA parity.** Remote kind (plain k8s, v1.32) +
+  `make deploy9`/papermill + openshift-marked pytest from the pod via the
+  mounted kubeconfig — same shape as GHA, no in-pod runtime at all.
+- **testcontainers leg: the VM becomes the runtime host.** The SSH
+  credentials secret lets a first step log into the VM, install podman,
+  and expose `podman system service` on a mapped port
+  (`extra-port-mappings`); the test step points testcontainers at
+  `DOCKER_HOST=tcp://<vm>:<port>`. Fallback: keep this leg on GHA for v1.
+
+So the human ask for A/B is one item: an AWS-credentials secret in
+`open-data-hub-tenant` (onboarding team; standard for tenants using the
+catalog — vanguard's secret is `konflux-mapt-us-east-1`, the 0.3 readme
+shows `konflux-test-infra`, release-service uses `mapt-kind-secret`)
+plus secret RBAC for the pipeline SA. Open risk to probe: the git
+resolver inside a **PaC** pipeline in this tenant (release-service uses
+it in an application-driven pipeline); the fallback is a bundle
+reference to the same catalog.
+
 ## References
 
 - [PR #4566](https://github.com/opendatahub-io/notebooks/pull/4566) — the
@@ -294,3 +390,11 @@ root) at the start of every run — the easiest live read.
   (`pkg/templates/templating.go`, `pkg/apis/pipelinesascode/keys/keys.go`).
 - `openshift/konflux-tasks` — `provision-ephemeral-cluster` /
   `deprovision-ephemeral-cluster` tasks (EPHC upgrade path).
+- `konflux-ci/tekton-integration-catalog` — `tasks/mapt-oci/kind-aws-spot`
+  (provision 0.1–0.3 / deprovision 0.1–0.2) and
+  `tasks/mapt-oci/fedora-virtual-machine` (0.1); live wiring example in
+  `konflux-ci/release-service`
+  `integration-tests/pipelines/konflux-e2e-tests-pipeline.yaml`.
+- [KFLUXDP-277](https://redhat.atlassian.net/browse/KFLUXDP-277) (mapt
+  kind epic, closed), [KONFLUX-7296](https://redhat.atlassian.net/browse/KONFLUX-7296)
+  (deprecate EPHC for PR-level e2e, closed), KFLUXDP-245, KFLUXDP-271.

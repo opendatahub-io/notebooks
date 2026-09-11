@@ -79,14 +79,20 @@ Notes:
   `on-pr-<sha>` index the existing `.tekton/*` pipelines produce.
 - **Image expiration: 5 days** (`image-expires-after: 5d`), same as the
   existing PR pipelines.
-- **Test cluster = kind in a pod (rootful).** GHA's "openshift" tests
-  actually run on a single-node *kubeadm* cluster (plain k8s, not OpenShift)
-  via `.github/actions/provision-k8s` — kind is the faithful equivalent and
-  costs nothing per push. Real-OpenShift testing is the documented upgrade
-  path via **EPHC/CSO** (`TestPlatformCluster` claims,
-  `provision-ephemeral-cluster` tasks from `openshift/konflux-tasks`; verified
-  installed in `open-data-hub-tenant`, with a worked example in
-  `opendatahub-io/odh-konflux-central:integration-tests/olminstall/`).
+- **Test cluster = kind (out-of-pod).** GHA's "openshift" tests actually
+  run on a single-node *kubeadm* cluster (plain k8s, not OpenShift) via
+  `.github/actions/provision-k8s` — kind is the faithful equivalent. Kind
+  *in the pod* was tried and is impossible in this tenant (SCC rejects
+  `privileged`, `NoNewPrivs` kills rootless, `capabilities.add:
+  [SYS_ADMIN]` rejected — ADR Investigation section). The platform-endorsed
+  replacement is **kind on AWS via mapt**
+  (`konflux-ci/tekton-integration-catalog`, `kind-aws-spot` task; the
+  Konflux platform is deprecating EPHC for PR-level e2e in favor of this —
+  KFLUXDP-277 / KONFLUX-7296, used live by several tenants). A full
+  options map (mapt kind, mapt Fedora VM, EPHC, privileged SA, EAAS,
+  build-only) is in the ADR. Real-OpenShift testing remains possible via
+  **EPHC/CSO** (`TestPlatformCluster` claims,
+  `provision-ephemeral-cluster` tasks from `openshift/konflux-tasks`).
 - **The tenant SCCs reject `privileged: true`, so the test step asks for
   `CAP_SYS_ADMIN` instead** (verified live: every usable SCC rejects
   `.containers[0].privileged=true`, including `appstudio-pipelines-scc` and
@@ -100,10 +106,13 @@ Notes:
   `NoNewPrivs: 1` (the SCC sets `allowPrivilegeEscalation: false`), which
   makes the setuid/filecap bit on `newuidmap` void, so user namespaces can
   never be created; rootful without `CAP_SYS_ADMIN` is also a no-go (the pod
-  otherwise has the k8s default cap set, `CapEff: 0x5fb`). Full evidence and
-  reproduction: the ADR's Investigation section. If the SCC does not allow
-  `sys_admin`, admission rejects the pod at 0s and the error names the
-  capability — then the fallback is a dedicated privileged SA or EPHC.
+  otherwise has the k8s default cap set, `CapEff: 0x5fb`). **The probe was
+  rejected** (commit `ab9b7ffd8`): the SCC's
+  `capabilities.add` allow-list includes `SETFCAP` but not `sys_admin`
+  (`capability may not be added`). Full evidence and reproduction: the
+  ADR's Investigation section. The test stage will therefore move
+  out-of-pod — options map (mapt kind-on-AWS is the platform-endorsed
+  path) in the ADR.
 - **The whole k8s leg is one step.** The kind cluster is podman containers
   *inside the pod*; a dependent task's pod could never reach it, and each
   Tekton step is its own container (so separate steps would kill the cluster
