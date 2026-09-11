@@ -144,12 +144,15 @@ def rootless_step_script(*body_sections: list[str]) -> str:
         "#!/bin/bash",
         "set -Eeuxo pipefail",
         "# --- root phase: packages + non-root user (rootless podman/kind below) ---",
-        "dnf install -y podman podman-docker git python3 curl make sudo",
+        "dnf install -y podman podman-docker git python3 curl make sudo libcap",
         'if [ "$(id -u)" = "0" ]; then',
         "  useradd -m tester 2>/dev/null || true",
         "  U=$(id -u tester)",
         '  grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester',
         '  mkdir -p "/run/user/$U" && chown tester "/run/user/$U"',
+        # the fedora image ships newuidmap/newgidmap without setuid/filecaps;
+        # rootless user-namespace setup needs them (podman info: exit 125)
+        "  setcap cap_setuid+ep /usr/bin/newuidmap /usr/bin/newgidmap",
         "  sed -n '/^# __BODY_BELOW__/,$p' \"$0\" | tail -n +2 > /tmp/step-body.sh",
         "  chmod +x /tmp/step-body.sh",
         '  exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"',
@@ -159,6 +162,8 @@ def rootless_step_script(*body_sections: list[str]) -> str:
         'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"',
         # su preserves the (root-owned) cwd — work from $HOME instead
         'cd "$HOME"',
+        # diagnostics for the next rootless failure, if any
+        "grep -E 'CapEff|NoNewPrivs' /proc/self/status",
     ]
     return "\n".join(header + body_lines) + "\n"
 

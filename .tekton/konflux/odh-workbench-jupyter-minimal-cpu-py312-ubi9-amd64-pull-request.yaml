@@ -345,12 +345,13 @@ spec:
             #!/bin/bash
             set -Eeuxo pipefail
             # --- root phase: packages + non-root user (rootless podman/kind below) ---
-            dnf install -y podman podman-docker git python3 curl make sudo
+            dnf install -y podman podman-docker git python3 curl make sudo libcap
             if [ "$(id -u)" = "0" ]; then
               useradd -m tester 2>/dev/null || true
               U=$(id -u tester)
               grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester
               mkdir -p "/run/user/$U" && chown tester "/run/user/$U"
+              setcap cap_setuid+ep /usr/bin/newuidmap /usr/bin/newgidmap
               sed -n '/^# __BODY_BELOW__/,$p' "$0" | tail -n +2 > /tmp/step-body.sh
               chmod +x /tmp/step-body.sh
               exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"
@@ -359,6 +360,7 @@ spec:
             set -Eeuxo pipefail
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
             cd "$HOME"
+            grep -E 'CapEff|NoNewPrivs' /proc/self/status
             if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
               mkdir -p "/run/user/$(id -u)" 2>/dev/null || true
             fi
@@ -435,12 +437,13 @@ spec:
             #!/bin/bash
             set -Eeuxo pipefail
             # --- root phase: packages + non-root user (rootless podman/kind below) ---
-            dnf install -y podman podman-docker git python3 curl make sudo
+            dnf install -y podman podman-docker git python3 curl make sudo libcap
             if [ "$(id -u)" = "0" ]; then
               useradd -m tester 2>/dev/null || true
               U=$(id -u tester)
               grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester
               mkdir -p "/run/user/$U" && chown tester "/run/user/$U"
+              setcap cap_setuid+ep /usr/bin/newuidmap /usr/bin/newgidmap
               sed -n '/^# __BODY_BELOW__/,$p' "$0" | tail -n +2 > /tmp/step-body.sh
               chmod +x /tmp/step-body.sh
               exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"
@@ -449,6 +452,7 @@ spec:
             set -Eeuxo pipefail
             export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
             cd "$HOME"
+            grep -E 'CapEff|NoNewPrivs' /proc/self/status
             if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
               mkdir -p "/run/user/$(id -u)" 2>/dev/null || true
             fi
