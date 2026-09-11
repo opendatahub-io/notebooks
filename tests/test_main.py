@@ -179,6 +179,62 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
                 )
 
 
+# PQC (OCP 5.0): every shipped image must enable post-quantum crypto. AIPCC
+# bases carry `update-crypto-policies --set DEFAULT:PQ` since 3.6-EA2, so
+# images FROM them inherit PQC; in-repo C9S bases under base-images/ set it
+# themselves (checked below). Any other base (e.g.
+# registry.redhat.io/rhel9/python-312) requires the explicit policy line.
+PQC_POLICY_RUN_RE = re.compile(r"update-crypto-policies\s+--set\s+DEFAULT:PQ")
+PQC_ENABLED_BASE_PREFIXES = (
+    "quay.io/aipcc/base-images/",
+    "quay.io/opendatahub/odh-base-image",  # built in-repo by base-images/
+)
+
+
+def _dockerfile_for_build_args_conf(conf: pathlib.Path) -> pathlib.Path | None:
+    """Map a build-args conf (cpu.conf / konflux.cuda.conf / ...) to its Dockerfile, if present."""
+    variant = conf.name.removesuffix(".conf")
+    dockerfile = conf.parent.parent / f"Dockerfile.{variant}"
+    return dockerfile if dockerfile.is_file() else None
+
+
+def test_dockerfiles_pqc_crypto_policy_coverage() -> None:
+    """Every shipped image must enable the post-quantum crypto policy (OCP 5.0 PQC mandate).
+
+    See RHOAIENG-84389. The policy must be set while running as root in a stage
+    of the final image (non-root `update-crypto-policies` fails with
+    "You must be root to run update-crypto-policies").
+    """
+    # In-repo C9S base images must set the policy themselves; images that
+    # FROM them (ODH workbenches/runtimes) inherit it.
+    for dockerfile in sorted(PROJECT_ROOT.glob("base-images/**/Dockerfile*")):
+        if not dockerfile.is_file():
+            continue
+        assert PQC_POLICY_RUN_RE.search(dockerfile.read_text()), (
+            f"{dockerfile.relative_to(PROJECT_ROOT)}: C9S base image must enable the post-quantum "
+            "crypto policy: add `RUN update-crypto-policies --set DEFAULT:PQ` while running as root."
+        )
+
+    for conf in sorted(PROJECT_ROOT.glob("**/build-args/*.conf")):
+        base_image = next(
+            (line.split("=", 1)[1].strip() for line in conf.read_text().splitlines() if line.startswith("BASE_IMAGE=")),
+            None,
+        )
+        if base_image is None:
+            continue
+        # repository without tag/digest
+        repository = base_image.split(":", 1)[0]
+        if repository.startswith(PQC_ENABLED_BASE_PREFIXES):
+            continue
+        dockerfile = _dockerfile_for_build_args_conf(conf)
+        if dockerfile is None:
+            continue
+        assert PQC_POLICY_RUN_RE.search(dockerfile.read_text()), (
+            f"{conf.relative_to(PROJECT_ROOT)}: base image {base_image} is not known to ship PQC, but "
+            f"{dockerfile.relative_to(PROJECT_ROOT)} does not run `update-crypto-policies --set DEFAULT:PQ`."
+        )
+
+
 @pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
 def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathlib.Path):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):

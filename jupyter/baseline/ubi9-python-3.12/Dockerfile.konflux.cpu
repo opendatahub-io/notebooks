@@ -32,6 +32,10 @@ ARG RHEL_VERSION=9.8
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
+# PQC (OCP 5.0): the rhel9/python-312 base does not enable post-quantum
+# crypto by default (only RHEL 10 does); set the system policy explicitly.
+RUN update-crypto-policies --set DEFAULT:PQ
+
 ### BEGIN PyPI pip and uv index
 ENV PIP_INDEX_URL=https://pypi.org/simple
 ENV UV_INDEX_URL=https://pypi.org/simple

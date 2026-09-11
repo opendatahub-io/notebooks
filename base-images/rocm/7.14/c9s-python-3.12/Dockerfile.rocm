@@ -39,6 +39,10 @@ set -Eeuxo pipefail
 fix-permissions ${APP_ROOT} -P
 EOF
 
+# PQC (OCP 5.0): enable the post-quantum crypto policy profile (C9S carries
+# the RHEL 9.8 PQ profile; RHEL 10 enables PQ by default).
+RUN update-crypto-policies --set DEFAULT:PQ
+
 USER 1001
 WORKDIR /opt/app-root/bin
 
