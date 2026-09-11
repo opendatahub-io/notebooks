@@ -332,6 +332,7 @@ spec:
           type: string
         workspaces:
         - name: basic-auth
+          optional: true
         sidecars:
         - name: sut
           image: $(params.IMAGE_UNDER_TEST)

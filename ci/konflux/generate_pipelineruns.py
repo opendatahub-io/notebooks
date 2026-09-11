@@ -384,7 +384,10 @@ def testcontainers_task(image: Image) -> dict:
         "workspaces": [{"name": "basic-auth", "workspace": "git-auth"}],
         "taskSpec": {
             "params": [*git_param_declarations(), *image_param_declarations(), {"name": "MARKERS", "type": "string"}],
-            "workspaces": [{"name": "basic-auth"}],
+            # optional: the pipeline workspace git-auth is optional, so the
+            # task-side declaration must be too (PaC always provides the
+            # secret); the script guards against the absent/empty case
+            "workspaces": [{"name": "basic-auth", "optional": True}],
             "sidecars": [
                 {
                     "name": "sut",
@@ -976,7 +979,7 @@ else:
             assert "securityContext" not in task["taskSpec"]["steps"][0]
             # the probe posts its report to the PR via the PaC git-auth secret
             assert task["workspaces"] == [{"name": "basic-auth", "workspace": "git-auth"}]
-            assert task["taskSpec"]["workspaces"] == [{"name": "basic-auth"}]
+            assert task["taskSpec"]["workspaces"] == [{"name": "basic-auth", "optional": True}]
 
         def test_script_vars_resolved(self):
             """Every shell variable referenced in a generated step script must be
