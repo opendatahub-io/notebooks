@@ -78,6 +78,14 @@ re-discovering them.
    The generated block therefore runs the generator before the curl and
    makes the curl non-fatal (`|| true`): report delivery must never mask the
    test result.
+9. **The sidecar image is a static param reference — it must resolve in
+   every mode.** A container `image` field cannot do runtime fallback: when
+   the sidecar was wired to a mode-only param (`image-under-test`, empty in
+   build mode), Tekton failed pod creation with `missing field(s):
+   sidecars.image` on both test tasks even though the build stage was green.
+   Fix: one param is the single source of truth for the image under test in
+   all modes — `output-image` (the built tag normally, the existing image
+   when `skip-build=true`).
 
 ### Test-cluster choice: kind in a pod (superseded — see Decision)
 
@@ -158,9 +166,11 @@ is the only in-pod transport.
   imagestream manifest annotations) works identically against a plain
   container, which the sidecar transport provides. The GHA
   `openshift`-marked pytest is **not ported**: it needs a real cluster, so it
-  is deferred to the out-of-pod options below (EPHC/mapt). `skip-build` +
-  `image-under-test` params allow iterating on the test stages without
-  rebuilding.
+  is deferred to the out-of-pod options below (EPHC/mapt). The `skip-build`
+  param allows iterating on the test stages without rebuilding; in that mode
+  the caller overrides `output-image` (the single source of truth for the
+  image under test in both modes — the test sidecars pull it directly, so an
+  empty or stale reference fails pod admission).
 - **Scans are out of scope for v1** (build + tests only); the existing
   multi-arch pipelines continue to cover them.
 

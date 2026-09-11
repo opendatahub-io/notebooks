@@ -236,17 +236,20 @@ def setup_uv_and_repo_lines() -> list[str]:
 
 
 def resolve_image_lines() -> list[str]:
-    """BUILT_IMAGE is the deterministic on-pr tag the build pushes to (params.output-image).
+    """IMAGE is BUILT_IMAGE — params.output-image, the single source of truth
+    for the image under test: the deterministic on-pr tag the build pushes
+    (normal mode) or an existing image to test (skip-build mode, where the
+    caller overrides output-image).
 
     It is a param, not a task-result reference: a task that references a
     $(tasks.X.results.Y) of a when-skipped task is itself skipped (Tekton
-    MissingResultsSkip), which would break the skip-build iteration mode.
+    MissingResultsSkip), which would break the skip-build mode.
     """
     return [
-        'if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then',
-        '  echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1',
+        'if [[ -z "${BUILT_IMAGE}" ]]; then',
+        '  echo "ERROR: output-image must be set (the built tag, or the image under test when skip-build=true)" >&2; exit 1',
         "fi",
-        'IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"',
+        'IMAGE="${BUILT_IMAGE}"',
         'echo "Testing image: ${IMAGE}"',
     ]
 
@@ -257,7 +260,6 @@ def image_params() -> list[dict]:
     # when-skipped task's result would skip this task too (MissingResultsSkip).
     return [
         {"name": "BUILT_IMAGE", "value": "$(params.output-image)"},
-        {"name": "IMAGE_UNDER_TEST", "value": "$(params.image-under-test)"},
         {"name": "SKIP_BUILD", "value": "$(params.skip-build)"},
     ]
 
@@ -265,7 +267,6 @@ def image_params() -> list[dict]:
 def image_param_declarations() -> list[dict]:
     return [
         {"name": "BUILT_IMAGE", "type": "string"},
-        {"name": "IMAGE_UNDER_TEST", "type": "string"},
         {"name": "SKIP_BUILD", "type": "string"},
     ]
 
@@ -288,7 +289,6 @@ def image_env() -> list[dict]:
     """Expose the image params to the step script as shell variables."""
     return [
         {"name": "BUILT_IMAGE", "value": "$(params.BUILT_IMAGE)"},
-        {"name": "IMAGE_UNDER_TEST", "value": "$(params.IMAGE_UNDER_TEST)"},
         {"name": "SKIP_BUILD", "value": "$(params.SKIP_BUILD)"},
     ]
 
@@ -415,8 +415,12 @@ def sidecar_test_task(image: Image, arch_key: str, *, task_name: str, markers: s
                     "name": "sut",
                     # the image under test; its main process is the sidecar
                     # exec agent (the image's own entrypoint is replaced —
-                    # the agent relaunches it as a child on /start)
-                    "image": "$(params.IMAGE_UNDER_TEST)",
+                    # the agent relaunches it as a child on /start). BUILT_IMAGE
+                    # is params.output-image: the built tag in normal mode, or
+                    # the existing image under test when skip-build=true (the
+                    # caller overrides output-image) — one reference, valid in
+                    # both modes (an empty ref would fail pod admission).
+                    "image": "$(params.BUILT_IMAGE)",
                     "command": [
                         "/bin/sh",
                         "-c",
@@ -594,7 +598,16 @@ def pipeline_spec(image: Image, platform: str, refs: dict[str, dict], test_arche
             {"name": "event-type", "type": "string", "default": "pull_request"},
             {"name": "git-url", "type": "string"},
             {"name": "revision", "type": "string", "default": ""},
-            {"name": "output-image", "type": "string"},
+            {
+                "name": "output-image",
+                "type": "string",
+                "description": (
+                    "The image under test, in both modes: the tag the build pushes "
+                    "on-pr-<revision>-<arch> in normal mode, or an existing image to "
+                    "test when skip-build=true. (Must be non-empty — the test "
+                    "sidecars pull it directly.)"
+                ),
+            },
             {"name": "path-context", "type": "string", "default": "."},
             {"name": "dockerfile", "type": "string"},
             {"name": "hermetic", "type": "string", "default": "false"},
@@ -625,14 +638,9 @@ def pipeline_spec(image: Image, platform: str, refs: dict[str, dict], test_arche
                 "default": "false",
                 "description": (
                     '"true" skips clone/prefetch/build stages so the test stages can run '
-                    "against an existing image (image-under-test, e.g. a stable-branch build)."
+                    "against an existing image — set output-image to that image "
+                    "(e.g. a stable-branch build)."
                 ),
-            },
-            {
-                "name": "image-under-test",
-                "type": "string",
-                "default": "",
-                "description": "Image to test when skip-build=true; must be set in that mode.",
             },
         ],
         "results": [
@@ -909,7 +917,9 @@ else:
             task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == "test-testcontainers")
             sidecars = task["taskSpec"]["sidecars"]
             assert sidecars[0]["name"] == "sut"
-            assert sidecars[0]["image"] == "$(params.IMAGE_UNDER_TEST)"
+            # BUILT_IMAGE is the single source of truth (params.output-image);
+            # an empty/other ref would fail pod admission in one of the modes
+            assert sidecars[0]["image"] == "$(params.BUILT_IMAGE)"
             assert sidecars[0]["securityContext"]["runAsUser"] == 0
             # the sidecar's main process is the exec agent (waits for the file
             # the test step writes into the shared emptyDir)
@@ -942,7 +952,7 @@ else:
             task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == "test-papermill")
             params = {p["name"]: p["value"] for p in task["params"]}
             assert params["MARKERS"] == "papermill"
-            assert task["taskSpec"]["sidecars"][0]["image"] == "$(params.IMAGE_UNDER_TEST)"
+            assert task["taskSpec"]["sidecars"][0]["image"] == "$(params.BUILT_IMAGE)"
             assert "python3 /tmp/post_report.py" in task["taskSpec"]["steps"][0]["script"]
 
         def test_script_vars_resolved(self):

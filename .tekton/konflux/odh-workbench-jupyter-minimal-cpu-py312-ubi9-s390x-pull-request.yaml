@@ -68,6 +68,7 @@ spec:
       default: ""
     - name: output-image
       type: string
+      description: "The image under test, in both modes: the tag the build pushes on-pr-<revision>-<arch> in normal mode, or an existing image to test when skip-build=true. (Must be non-empty \u2014 the test sidecars pull it directly.)"
     - name: path-context
       type: string
       default: .
@@ -117,12 +118,7 @@ spec:
     - name: skip-build
       type: string
       default: "false"
-      description: |-
-        "true" skips clone/prefetch/build stages so the test stages can run against an existing image (image-under-test, e.g. a stable-branch build).
-    - name: image-under-test
-      type: string
-      default: ""
-      description: Image to test when skip-build=true; must be set in that mode.
+      description: "\"true\" skips clone/prefetch/build stages so the test stages can run against an existing image \u2014 set output-image to that image (e.g. a stable-branch build)."
     results:
     - name: IMAGE_URL
       value: $(tasks.build-image-index.results.IMAGE_URL)

@@ -118,7 +118,7 @@ Notes:
   `/build-jupyter-minimal-cpu-x86_64` (CEL is bypassed for on-comment).
 - `cancel-in-progress: true` — a new push cancels the in-flight runs.
 
-## Fast iteration on the test/provision stages
+## Fast iteration on the test stages
 
 To iterate on the test tasks without rebuilding the image, override the
 pipeline params (e.g. via the Konflux UI's "run pipeline" form or a temporary
@@ -127,12 +127,15 @@ param in the generated file):
 ```yaml
 - name: skip-build
   value: "true"
-- name: image-under-test
+- name: output-image
   value: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:<any-existing-tag>
 ```
 
 `skip-build=true` skips clone/prefetch/build (and the scans, when added);
-the test stages resolve the image under test from `image-under-test`.
+`output-image` is the single source of truth for the image under test in
+**both** modes — the built `on-pr-<sha>-<arch>` tag normally, or the existing
+image to test here. The test sidecars pull it directly, so it must always be
+a pullable reference.
 
 ## Observing runs
 
