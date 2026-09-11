@@ -217,11 +217,12 @@ def resolve_image_lines() -> list[str]:
     ]
 
 
-def test_script(*sections: list[str]) -> list[str]:
+def test_script(*sections: list[str]) -> str:
+    """Tekton StepSpec.script is a STRING — join the lines with newlines."""
     lines = ["#!/bin/bash", "set -Eeuxo pipefail"]
     for section in sections:
         lines += section
-    return lines
+    return "\n".join(lines) + "\n"
 
 
 def image_params() -> list[dict]:
@@ -728,24 +729,35 @@ def pipelinerun(image: Image, platform: str, refs: dict[str, dict]) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _represent_str(dumper: yaml.Dumper, data: str) -> yaml.Node:
+    style = None
+    if "\n" in data:
+        style = "|"
+    elif "{" in data or "}" in data:
+        style = "'"
+    elif data in ("true", "false", ""):
+        style = '"'
+    elif " " in data and len(data) > 80:
+        style = "|"
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style=style)
+
+
 class _Dumper(yaml.SafeDumper):
     """No anchors/aliases (PaC reads these files as templates), block style for
-    long free-form strings so nothing depends on plain-scalar line folding."""
+    multi-line strings (shell scripts) and template-bearing strings so nothing
+    depends on plain-scalar line folding.
+
+    NOTE: representers are looked up in the class-level yaml_representers dict,
+    so the str representer must be registered explicitly — overriding the
+    represent_str method alone is dead code.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.add_representer(str, _represent_str)
 
     def ignore_aliases(self, data: object) -> bool:
         return True
-
-    def represent_str(self, data: str) -> yaml.Node:
-        style = None
-        if "\n" in data:
-            style = "|"
-        elif "{" in data or "}" in data:
-            style = "'"
-        elif data in ("true", "false", ""):
-            style = '"'
-        elif " " in data and len(data) > 80:
-            style = "|"
-        return self.represent_scalar("tag:yaml.org,2002:str", data, style=style)
 
 
 def render(image: Image, platform: str, refs: dict[str, dict]) -> str:
@@ -827,6 +839,11 @@ else:
             # taskRunSpecs must only reference tasks that exist (else InvalidTaskRunSpecs)
             task_names = {t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]}
             assert {t["pipelineTaskName"] for t in run["spec"]["taskRunSpecs"]} <= task_names
+            # StepSpec.script is a string in Tekton (an array fails PipelineRun validation)
+            for task in run["spec"]["pipelineSpec"]["tasks"]:
+                for step in task.get("taskSpec", {}).get("steps", []):
+                    assert isinstance(step.get("script"), str), f"{task['name']}: script must be a string"
+                    assert step["script"].startswith("#!/bin/bash")
 
         def test_no_tests_on_non_test_arches(self):
             image = Image(

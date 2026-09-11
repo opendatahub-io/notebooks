@@ -4,14 +4,15 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
+    build.appstudio.openshift.io/repo: 'https://github.com/opendatahub-io/notebooks?rev={{revision}}'
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: 'true'
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-comment: ^/build-jupyter-minimal-cpu-arm64
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main" && body.repository.full_name == "opendatahub-io/notebooks"
+    pipelinesascode.tekton.dev/on-cel-expression: |-
+      event == "pull_request" && target_branch == "main" && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-workbench-jupyter-minimal-cpu-py312-ubi9
@@ -29,7 +30,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-{{revision}}-arm64
+    value: 'quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-{{revision}}-arm64'
   - name: image-expires-after
     value: 5d
   - name: build-platforms
@@ -42,7 +43,7 @@ spec:
   - name: build-args-file
     value: jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf
   - name: hermetic
-    value: 'true'
+    value: "true"
   - name: prefetch-input
     value:
     - path: prefetch-input/odh
@@ -64,7 +65,7 @@ spec:
       type: string
     - name: revision
       type: string
-      default: ''
+      default: ""
     - name: output-image
       type: string
     - name: path-context
@@ -74,28 +75,28 @@ spec:
       type: string
     - name: hermetic
       type: string
-      default: 'false'
+      default: "false"
     - name: prefetch-input
       type: string
-      default: ''
+      default: ""
     - name: image-expires-after
       type: string
       default: 5d
     - name: build-image-index
       type: string
-      default: 'true'
+      default: "true"
     - name: enable-cache-proxy
       type: string
-      default: 'false'
+      default: "false"
     - name: privileged-nested
       type: string
-      default: 'false'
+      default: "false"
     - name: build-args
       type: array
       default: []
     - name: build-args-file
       type: string
-      default: ''
+      default: ""
     - name: build-platforms
       type: array
       default:
@@ -106,20 +107,21 @@ spec:
       default: custom-activation-key
     - name: source-date-epoch
       type: string
-      default: ''
+      default: ""
     - name: rewrite-timestamp
       type: string
-      default: 'false'
+      default: "false"
     - name: omit-history
       type: string
-      default: 'false'
+      default: "false"
     - name: skip-build
       type: string
-      default: 'false'
-      description: '"true" skips clone/prefetch/build stages so the test/provision stages can be developed against an existing image (image-under-test).'
+      default: "false"
+      description: |-
+        "true" skips clone/prefetch/build stages so the test/provision stages can be developed against an existing image (image-under-test).
     - name: image-under-test
       type: string
-      default: ''
+      default: ""
       description: Image to test when skip-build=true (e.g. a stable-branch build).
     results:
     - name: IMAGE_URL
@@ -176,7 +178,12 @@ spec:
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
       - name: config-file-content
-        value: "http:\n  read_timeout: 900\nruntime:\n  concurrency_limit: 8\n  subprocess_timeout: 3600\n"
+        value: |
+          http:
+            read_timeout: 900
+          runtime:
+            concurrency_limit: 8
+            subprocess_timeout: 3600
       - name: ACTIVATION_KEY
         value: $(params.rhel-subscription-activation-key)
       runAfter:
@@ -194,7 +201,7 @@ spec:
       - input: $(params.skip-build)
         operator: in
         values:
-        - 'false'
+        - "false"
       workspaces:
       - name: git-basic-auth
         workspace: git-auth
@@ -242,7 +249,7 @@ spec:
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       - name: IMAGE_APPEND_PLATFORM
-        value: 'true'
+        value: "true"
       - name: SOURCE_DATE_EPOCH
         value: $(params.source-date-epoch)
       - name: REWRITE_TIMESTAMP
@@ -264,7 +271,7 @@ spec:
       - input: $(params.skip-build)
         operator: in
         values:
-        - 'false'
+        - "false"
     - name: build-image-index
       params:
       - name: IMAGE
@@ -289,7 +296,7 @@ spec:
       - input: $(params.skip-build)
         operator: in
         values:
-        - 'false'
+        - "false"
     workspaces:
     - name: git-auth
       optional: true
