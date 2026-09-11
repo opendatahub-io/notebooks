@@ -152,7 +152,12 @@ then, in parallel (two test legs, each its own rootless pod):
   allowing unprivileged user namespaces (a Fedora default) — if a node
   profile disables those, the test legs fail and the fallback is an
   out-of-band privileged runner (a dedicated SA bound to the `privileged`
-  SCC, owned by the Konflux onboarding team) or EPHC.
+  SCC, owned by the Konflux onboarding team) or EPHC. Two container-side
+  prerequisites were also needed and are handled in the step's root phase:
+  a non-root user with a subuid range, and `cap_setuid` filecaps on
+  `newuidmap`/`newgidmap` (the Fedora image ships them without setuid or
+  filecaps, so rootless user-namespace setup fails with
+  `newuidmap: write to uid_map failed` otherwise).
 - **kind ≠ OpenShift.** Faithful to GHA, not an upgrade. EPHC is the
   documented upgrade path (see Context); it is deliberately not in v1.
 - **The iteration trigger is not graduation-ready.** No `pathChanged()`

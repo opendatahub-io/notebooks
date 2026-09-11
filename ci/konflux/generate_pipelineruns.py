@@ -144,15 +144,20 @@ def rootless_step_script(*body_sections: list[str]) -> str:
         "#!/bin/bash",
         "set -Eeuxo pipefail",
         "# --- root phase: packages + non-root user (rootless podman/kind below) ---",
-        "dnf install -y podman podman-docker git python3 curl make sudo libcap",
+        "dnf install -y podman podman-docker git python3 curl make sudo",
+        # diagnostics: pod capabilities + no_new_privs (rootless feasibility)
+        "grep -E 'CapEff|NoNewPrivs' /proc/self/status",
         'if [ "$(id -u)" = "0" ]; then',
         "  useradd -m tester 2>/dev/null || true",
         "  U=$(id -u tester)",
         '  grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester',
         '  mkdir -p "/run/user/$U" && chown tester "/run/user/$U"',
         # the fedora image ships newuidmap/newgidmap without setuid/filecaps;
-        # rootless user-namespace setup needs them (podman info: exit 125)
-        "  setcap cap_setuid+ep /usr/bin/newuidmap /usr/bin/newgidmap",
+        # rootless user-namespace setup needs them (podman info: exit 125).
+        # Filecaps need CAP_SETFCAP, which this pod may lack (setcap EPERM);
+        # the setuid bit only needs file ownership, so prefer it.
+        "  chmod u+s /usr/bin/newuidmap /usr/bin/newgidmap",
+        "  ls -l /usr/bin/newuidmap",
         "  sed -n '/^# __BODY_BELOW__/,$p' \"$0\" | tail -n +2 > /tmp/step-body.sh",
         "  chmod +x /tmp/step-body.sh",
         '  exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"',

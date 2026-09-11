@@ -93,7 +93,10 @@ Notes:
   subuid range and re-execs its body as that user (see
   `rootless_step_script`), then drives podman/kind rootless
   (`KIND_EXPERIMENTAL_PROVIDER=podman`). No privileged SCC is needed. This
-  relies on the node allowing unprivileged user namespaces (Fedora default).
+  relies on the node allowing unprivileged user namespaces (Fedora default),
+  and the root phase grants `cap_setuid` filecaps to `newuidmap`/`newgidmap`
+  — the Fedora image ships them without setuid/filecaps, and rootless
+  user-namespace setup requires them.
 - **The whole k8s leg is one step.** The kind cluster is podman containers
   *inside the pod*; a dependent task's pod could never reach it, and each
   Tekton step is its own container (so separate steps would kill the cluster
