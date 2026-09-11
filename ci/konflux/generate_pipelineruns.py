@@ -10,14 +10,20 @@ Pipeline shape (single inline pipelineSpec — no cluster-side Pipeline CR neede
     init -> clone-repository -> prefetch-dependencies -> build-images -> build-image-index
                                         (all skipped when skip-build=true)
 
-    then, in parallel (each test is its own task/pod):
-      test-testcontainers                     (podman in a privileged pod)
-      provision-kind -> test-makefile-deploy  (kind cluster in a privileged pod)
-                       -> test-openshift-pytest
+    then, in parallel (two test legs, each its own pod):
+      test-testcontainers   (rootless podman: testcontainers pytest)
+      test-k8s              (rootless podman + kind: make deploy/papermill,
+                             then openshift-marked pytest — one step because
+                             the kind cluster only lives inside this pod)
 
 GHA parity: this mirrors .github/workflows/build-notebooks-TEMPLATE.yaml
 (build, then testcontainers pytest, then make deploy/test/undeploy, then
-openshift pytest — which GHA runs serially in one job; here in parallel).
+openshift pytest — which GHA runs serially in one job; here the two legs
+run in parallel, and within the k8s leg the steps stay serial because they
+share one in-pod kind cluster).
+
+The tenant's SCCs forbid privileged containers (verified live), so the test
+pods run rootless podman/kind (see rootless_step_script).
 
 Usage:
 
@@ -97,11 +103,59 @@ KUBECTL_VERSION = "v1.34.1"
 # that range; bump deliberately.
 UV_VERSION = "0.12.13"
 UV_INSTALL_URL = f"https://astral.sh/uv/{UV_VERSION}/install.sh"
-PODMAN_SERVICE_START = [
-    # docker-compatible API on the podman socket (GHA's podman.socket equivalent)
-    "nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &",
-    "for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done",
-]
+def rootless_env_lines() -> list[str]:
+    """Rootless podman/kind environment (the tenant SCCs forbid privileged pods,
+    verified live: every usable SCC rejects .containers[0].privileged=true)."""
+    return [
+        "if [ -z \"${XDG_RUNTIME_DIR:-}\" ] || [ ! -w \"/run/user/$(id -u)\" ]; then",
+        "  mkdir -p /run/user/$(id -u) 2>/dev/null || true",
+        "fi",
+        'export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"',
+        'export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"',
+        "export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=\"$XDG_RUNTIME_DIR/podman/podman.sock\"",
+    ]
+
+
+def podman_service_start_lines() -> list[str]:
+    """docker-compatible API on the rootless podman socket (GHA podman.socket equivalent)."""
+    return [
+        "nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &",
+        "for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done",
+        "podman --version",
+    ]
+
+
+def rootless_step_script(*body_sections: list[str]) -> str:
+    """Step script that re-execs its body as a non-root user when running as root.
+
+    Tekton runs each step in its own container, and the tenant's SCCs forbid
+    privileged containers, so containers-in-the-pod (podman, kind) must run
+    rootless. Root phase (as root): install packages, create a user with a
+    subuid range, then re-exec the body (everything below the marker) as that
+    user. When the pod already runs non-root, the root phase is skipped.
+    """
+    body_lines: list[str] = []
+    for section in body_sections:
+        body_lines += section
+    header = [
+        "#!/bin/bash",
+        "set -Eeuxo pipefail",
+        "# --- root phase: packages + non-root user (rootless podman/kind below) ---",
+        "dnf install -y podman podman-docker git python3 curl make sudo",
+        'if [ "$(id -u)" = "0" ]; then',
+        "  useradd -m tester 2>/dev/null || true",
+        "  U=$(id -u tester)",
+        '  grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester',
+        "  mkdir -p /run/user/$U && chown tester /run/user/$U",
+        '  sed -n \'/^# __BODY_BELOW__/,$p\' "$0" | tail -n +2 > /tmp/step-body.sh',
+        "  chmod +x /tmp/step-body.sh",
+        "  exec su -s /bin/bash tester -c \"export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh\"",
+        "fi",
+        "# __BODY_BELOW__",
+        "set -Eeuxo pipefail",
+        "export PATH=\"$HOME/.local/bin:$HOME/bin:$PATH\"",
+    ]
+    return "\n".join(header + body_lines) + "\n"
 
 # ---------------------------------------------------------------------------
 # Image inventory
@@ -208,9 +262,12 @@ def bundle_task_refs() -> dict[str, dict]:
 
 
 def setup_uv_and_repo_lines() -> list[str]:
-    """Clone the PR revision and set up the repo's uv venv (GHA: uv venv + uv sync --group dev)."""
+    """Clone the PR revision and set up the repo's uv venv (GHA: uv venv + uv sync --group dev).
+
+    Runs as the non-root body user (home-dir uv install; PATH is set by
+    rootless_step_script).
+    """
     return [
-        "export UV_INSTALL_DIR=/usr/local",
         f"curl -LsSf {UV_INSTALL_URL} | sh",
         "uv python install 3.14",
         "git clone $(params.GIT_URL) src_code",
@@ -280,25 +337,13 @@ def git_param_declarations() -> list[dict]:
     ]
 
 
-def kubeconfig_param() -> tuple[list[dict], list[dict]]:
-    """param value (task level) + declaration (taskSpec level), from provision-kind."""
-    return (
-        [{"name": "KUBECONFIG", "value": "$(tasks.provision-kind.results.kubeconfig)"}],
-        [{"name": "KUBECONFIG", "type": "string"}],
-    )
-
-
-def kubeconfig_setup_lines() -> list[str]:
-    return [
-        "mkdir -p /root/.kube",
-        'echo "$(params.KUBECONFIG)" > /root/.kube/config',
-        "export KUBECONFIG=/root/.kube/config",
-        "kubectl get nodes",
-    ]
-
-
 def testcontainers_task(image: Image) -> dict:
-    """GHA parity: 'Run Testcontainers container tests (in PyTest)' step."""
+    """GHA parity: 'Run Testcontainers container tests (in PyTest)' step.
+
+    Rootless podman in the pod (the tenant SCCs forbid privileged containers).
+    The podman service and its consumer share one step: Tekton steps are
+    separate containers, and a service started in an earlier step dies with it.
+    """
     return {
         "name": "test-testcontainers",
         "runAfter": ["build-image-index"],
@@ -309,21 +354,19 @@ def testcontainers_task(image: Image) -> dict:
                 {
                     "name": "test",
                     "image": TEST_IMAGE,
-                    "securityContext": {"privileged": True},
                     "env": [
-                        {"name": "DOCKER_HOST", "value": "unix:///run/podman/podman.sock"},
-                        {"name": "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "value": "/run/podman/podman.sock"},
                         # GHA parity: pulling Ryuk from docker.io flakes CI
                         {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
                         {"name": "FORCE_COLOR", "value": "1"},
                     ],
-                    "script": test_script(
+                    "script": rootless_step_script(
                         # NOTE: never use '{{...}}' in a script line — PaC template-renders the
                         # whole file, so e.g. --format '{{.Version}}' is parsed as a template var
                         # and breaks the whole PipelineRun render.
-                        ["dnf install -y podman podman-docker git python3 curl", *PODMAN_SERVICE_START, "podman --version"],
+                        rootless_env_lines(),
                         setup_uv_and_repo_lines(),
                         resolve_image_lines(),
+                        podman_service_start_lines(),
                         [
                             'uv run pytest tests/containers -m "$(params.MARKERS)" '
                             '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy'
@@ -335,136 +378,93 @@ def testcontainers_task(image: Image) -> dict:
     }
 
 
-def provision_kind_task() -> dict:
-    """Provision a single-node kind cluster in a privileged pod.
+def k8s_test_task(image: Image) -> dict:
+    """The whole k8s test leg in ONE task/pod: kind cluster, make deploy/
+    test/undeploy (papermill), then the openshift-marked pytest.
+
+    One pod (and one step) because the kind cluster is podman containers
+    inside the pod — a dependent task's pod could never reach it, and each
+    Tekton step is its own container, so even separate steps in one task
+    would kill the cluster between steps. Everything kind/podman-related
+    therefore lives in a single step, sequentially, like GHA.
 
     GHA parity: provision-k8s provisions a single-node kubeadm cluster — plain
     k8s, not OpenShift (the 'openshift' markers work on plain k8s via the
     fake-scc label trick). EPHC (CSO, TestPlatformCluster claims) is the
     documented upgrade path for real-OpenShift testing — see ci/konflux/README.md.
     """
+    kind_tooling = [
+        "mkdir -p $HOME/bin",
+        f"curl -Lo $HOME/bin/kind https://kind.sigs.k8s.io/dl/{KIND_VERSION}/kind-linux-amd64",
+        "chmod +x $HOME/bin/kind",
+        f"curl -Lo $HOME/bin/kubectl https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl",
+        "chmod +x $HOME/bin/kubectl",
+        # kind drives podman directly (rootless); no long-running service needed
+        "export KIND_EXPERIMENTAL_PROVIDER=podman",
+    ]
+    body = [
+        *rootless_env_lines(),
+        *kind_tooling,
+        *setup_uv_and_repo_lines(),
+        *resolve_image_lines(),
+        # No TTL flag in kind v0.33; the cluster dies with the pod.
+        "kind create cluster --name tekton --wait 10m",
+        "kubectl cluster-info",
+        "podman pull ${IMAGE}",
+        "kind load docker-image ${IMAGE}",
+        "export KUBECONFIG=$HOME/.kube/config",
+        "kind get kubeconfig",
+        "kubectl get nodes -o wide",
+    ]
+    if image.has_makefile_tests:
+        # deploy9-<t> rewrites kustomization.yaml from IMAGE_REGISTRY + NOTEBOOK_TAG
+        body += [
+            'export IMAGE_REGISTRY="${IMAGE%%:*}"',
+            'export NOTEBOOK_TAG="${IMAGE##*:}"',
+            'export IMAGE_TAG="${IMAGE##*:}"',
+            "uv run python3 ci/cached-builds/make_test.py --target $(params.TARGET)",
+        ]
+    body += [
+        # the openshift-marked workbench tests also spin up local testcontainers
+        # (mysql etc.) — same step, so the podman service survives
+        *podman_service_start_lines(),
+        'uv run pytest tests/containers -m "$(params.MARKERS)" '
+        '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy',
+        "kind delete cluster --name tekton || true",
+    ]
     return {
-        "name": "provision-kind",
+        "name": "test-k8s",
         "runAfter": ["build-image-index"],
-        "params": image_params(),
+        "params": [
+            *git_params(),
+            *image_params(),
+            {"name": "TARGET", "value": image.make_target},
+            {"name": "MARKERS", "value": image.openshift_markers},
+        ],
         "taskSpec": {
-            "params": image_param_declarations(),
-            "results": [
-                {
-                    "name": "kubeconfig",
-                    "description": "kubeconfig for the kind cluster (kept under the 4KB result limit)",
-                }
+            "params": [
+                *git_param_declarations(),
+                *image_param_declarations(),
+                {"name": "TARGET", "type": "string"},
+                {"name": "MARKERS", "type": "string"},
             ],
-            "steps": [
-                {
-                    "name": "provision",
-                    "image": TEST_IMAGE,
-                    "securityContext": {"privileged": True},
-                    "script": test_script(
-                        [
-                            "dnf install -y podman podman-docker git python3 curl",
-                            # kind drives the docker CLI; route it to podman's docker-compatible API
-                            *PODMAN_SERVICE_START,
-                            "docker version",
-                            f"curl -Lo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/{KIND_VERSION}/kind-linux-amd64",
-                            "chmod +x /usr/local/bin/kind",
-                            f"curl -Lo /usr/local/bin/kubectl https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/amd64/kubectl",
-                            "chmod +x /usr/local/bin/kubectl",
-                            # No TTL flag in kind v0.33; the cluster dies with the pod.
-                            "kind create cluster --name tekton --wait 10m",
-                            "kubectl cluster-info",
-                            "kubectl get nodes -o wide",
-                        ],
-                        resolve_image_lines(),
-                        [
-                            "podman pull ${IMAGE}",
-                            "kind load docker-image ${IMAGE}",
-                            "kind get kubeconfig > /tmp/kubeconfig",
-                            "wc -c /tmp/kubeconfig",
-                            'cp /tmp/kubeconfig "$(results.kubeconfig.path)"',
-                        ],
-                    ),
-                }
-            ],
-        },
-    }
-
-
-def makefile_deploy_task(image: Image) -> dict:
-    """GHA parity: 'Run image tests' step (ci/cached-builds/make_test.py):
-    make deploy9-<t> && make test-<t> (papermill) && make undeploy9-<t>."""
-    kubeconfig_values, kubeconfig_declarations = kubeconfig_param()
-    return {
-        "name": "test-makefile-deploy",
-        "runAfter": ["provision-kind"],
-        "params": [*git_params(), *image_params(), *kubeconfig_values, {"name": "TARGET", "value": image.make_target}],
-        "taskSpec": {
-            "params": [*git_param_declarations(), *image_param_declarations(), *kubeconfig_declarations, {"name": "TARGET", "type": "string"}],
             "steps": [
                 {
                     "name": "test",
                     "image": TEST_IMAGE,
                     "env": [
+                        {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
                         {"name": "FORCE_COLOR", "value": "1"},
                         {"name": "PRODUCT", "value": "odh"},
                     ],
-                    "script": test_script(
-                        ["dnf install -y make git python3 curl", *kubeconfig_setup_lines()],
-                        setup_uv_and_repo_lines(),
-                        resolve_image_lines(),
-                        [
-                            # deploy9-<t> rewrites kustomization.yaml from IMAGE_REGISTRY + NOTEBOOK_TAG
-                            'export IMAGE_REGISTRY="${IMAGE%%:*}"',
-                            'export NOTEBOOK_TAG="${IMAGE##*:}"',
-                            'export IMAGE_TAG="${IMAGE##*:}"',
-                            "uv run python3 ci/cached-builds/make_test.py --target $(params.TARGET)",
-                        ],
-                    ),
+                    "script": rootless_step_script(body),
                 }
             ],
         },
     }
 
 
-def openshift_pytest_task(image: Image) -> dict:
-    """GHA parity: 'Run OpenShift container tests (in PyTest)' step."""
-    kubeconfig_values, kubeconfig_declarations = kubeconfig_param()
-    return {
-        "name": "test-openshift-pytest",
-        "runAfter": ["provision-kind"],
-        "params": [*git_params(), *image_params(), *kubeconfig_values, {"name": "MARKERS", "value": image.openshift_markers}],
-        "taskSpec": {
-            "params": [*git_param_declarations(), *image_param_declarations(), *kubeconfig_declarations, {"name": "MARKERS", "type": "string"}],
-            "steps": [
-                {
-                    "name": "test",
-                    "image": TEST_IMAGE,
-                    "securityContext": {"privileged": True},
-                    "env": [
-                        # the openshift-marked workbench tests also spin up local
-                        # testcontainers (mysql etc.), so the podman socket is needed here too
-                        {"name": "DOCKER_HOST", "value": "unix:///run/podman/podman.sock"},
-                        {"name": "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "value": "/run/podman/podman.sock"},
-                        {"name": "TESTCONTAINERS_RYUK_DISABLED", "value": "true"},
-                        {"name": "FORCE_COLOR", "value": "1"},
-                    ],
-                    "script": test_script(
-                        [
-                            "dnf install -y podman podman-docker git python3 curl",
-                            *PODMAN_SERVICE_START,
-                            *kubeconfig_setup_lines(),
-                        ],
-                        setup_uv_and_repo_lines(),
-                        resolve_image_lines(),
-                        [
-                            'uv run pytest tests/containers -m "$(params.MARKERS)" '
-                            '--image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy'
-                        ],
-                    ),
-                }
-            ],
-        },
-    }
+
 
 
 # ---------------------------------------------------------------------------
@@ -560,11 +560,10 @@ def build_tasks_section(image: Image, arch_key: str, refs: dict[str, dict], test
     ]
 
     if arch_key in test_arches:
+        # two parallel test legs (each its own pod): testcontainers, and the
+        # whole k8s leg (kind + make deploy/papermill + openshift pytest)
         tasks.append(testcontainers_task(image))
-        tasks.append(provision_kind_task())
-        if image.has_makefile_tests:
-            tasks.append(makefile_deploy_task(image))
-        tasks.append(openshift_pytest_task(image))
+        tasks.append(k8s_test_task(image))
 
     return tasks
 
@@ -634,11 +633,14 @@ def pipeline_spec(image: Image, platform: str, refs: dict[str, dict], test_arche
     }
 
 
-def compute_resources(has_tests: bool, has_makefile_tests: bool) -> list[dict]:
+def compute_resources(has_tests: bool) -> list[dict]:
     """taskRunSpecs overrides (mirrors the existing per-image PR pipelines).
 
     Only emit entries for tasks that actually exist in the pipeline: referencing a
     non-existent pipelineTaskName makes the whole PipelineRun InvalidTaskRunSpecs.
+
+    Test-pod memory mirrors GHA (the whole suite runs on a 7Gi runner); the
+    k8s leg needs the most (kind control plane + notebook pod + pytest).
     """
 
     def cr(cpu: str, memory: str, ephemeral: str | None = None) -> dict:
@@ -663,26 +665,16 @@ def compute_resources(has_tests: bool, has_makefile_tests: bool) -> list[dict]:
         result += [
             {
                 "pipelineTaskName": "test-testcontainers",
-                "computeResources": cr("4", "4Gi", "60Gi"),
+                "computeResources": cr("4", "4Gi", "40Gi"),
+                "timeout": "60m",
             },
+            # kind + papermill notebook + openshift pytest in one pod
             {
-                "pipelineTaskName": "provision-kind",
-                "computeResources": cr("4", "4Gi", "60Gi"),
+                "pipelineTaskName": "test-k8s",
+                "computeResources": cr("4", "6Gi", "60Gi"),
+                "timeout": "90m",
             },
         ]
-        if has_makefile_tests:
-            result.append(
-                {
-                    "pipelineTaskName": "test-makefile-deploy",
-                    "computeResources": cr("4", "4Gi", "40Gi"),
-                }
-            )
-        result.append(
-            {
-                "pipelineTaskName": "test-openshift-pytest",
-                "computeResources": cr("4", "4Gi", "40Gi"),
-            }
-        )
     return result
 
 
@@ -747,7 +739,7 @@ def pipelinerun(image: Image, platform: str, refs: dict[str, dict]) -> dict:
                 *([{"name": "prefetch-input", "value": image.prefetch_input}] if image.hermetic else []),
             ],
             "pipelineSpec": pipeline_spec(image, platform, refs, image.test_arches),
-            "taskRunSpecs": compute_resources(has_tests=arch_key in image.test_arches, has_makefile_tests=image.has_makefile_tests),
+            "taskRunSpecs": compute_resources(has_tests=arch_key in image.test_arches),
             "taskRunTemplate": {
                 # Per-component Konflux build SA (auto-created by build-service):
                 # quay pull/push for the component image + secret attachment for git-auth.
@@ -864,22 +856,23 @@ else:
             assert next(p["value"] for p in run["spec"]["params"] if p["name"] == "image-expires-after") == "5d"
             task_names = [t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]]
             assert task_names[:5] == ["init", "clone-repository", "prefetch-dependencies", "build-images", "build-image-index"]
+            # two parallel test legs (no more provision-kind / makefile / openshift tasks)
             assert "test-testcontainers" in task_names
-            assert "provision-kind" in task_names
-            assert "test-makefile-deploy" in task_names
-            assert "test-openshift-pytest" in task_names
-            # test stages run in parallel after the build (not serially like GHA)
-            for name in ("test-testcontainers", "provision-kind"):
+            assert "test-k8s" in task_names
+            assert not any(n in task_names for n in ("provision-kind", "test-makefile-deploy", "test-openshift-pytest"))
+            # test legs run in parallel after the build (not serially like GHA)
+            for name in ("test-testcontainers", "test-k8s"):
                 task = next(t for t in run["spec"]["pipelineSpec"]["tasks"] if t["name"] == name)
                 assert task["runAfter"] == ["build-image-index"]
             # taskRunSpecs must only reference tasks that exist (else InvalidTaskRunSpecs)
             task_names = {t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]}
             assert {t["pipelineTaskName"] for t in run["spec"]["taskRunSpecs"]} <= task_names
-            # StepSpec.script is a string in Tekton (an array fails PipelineRun validation)
+            # the tenant SCCs forbid privileged containers — no test step may request one
             for task in run["spec"]["pipelineSpec"]["tasks"]:
                 for step in task.get("taskSpec", {}).get("steps", []):
                     assert isinstance(step.get("script"), str), f"{task['name']}: script must be a string"
                     assert step["script"].startswith("#!/bin/bash")
+                    assert step.get("securityContext", {}).get("privileged") is not True, f"{task['name']}: privileged forbidden"
 
         def test_no_tests_on_non_test_arches(self):
             image = Image(

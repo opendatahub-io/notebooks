@@ -61,12 +61,13 @@ updated keeps the generated pipelines in sync.
 init -> clone-repository -> prefetch-dependencies -> build-images -> build-image-index
                                           (all skipped when skip-build=true)
 
-then, in parallel:
-  test-testcontainers                      podman (rootful) in a privileged pod;
-                                           pytest tests/containers (cpu markers)
-  provision-kind -> test-makefile-deploy   single-node kind cluster in a privileged
-  |                  (make deploy9/test/undeploy9 via ci/cached-builds/make_test.py)
-  -> test-openshift-pytest                 pytest tests/containers (openshift markers)
+then, in parallel (two test legs, each its own pod, both rootless):
+  test-testcontainers   rootless podman; pytest tests/containers (cpu markers)
+  test-k8s              rootless podman + single-node kind cluster, all in one
+                        step (the cluster only lives inside this pod):
+                          kind create -> make deploy9/test/undeploy9 (papermill,
+                          via ci/cached-builds/make_test.py) -> pytest
+                          tests/containers (openshift markers)
 ```
 
 Notes:
@@ -77,7 +78,7 @@ Notes:
   `on-pr-<sha>` index the existing `.tekton/*` pipelines produce.
 - **Image expiration: 5 days** (`image-expires-after: 5d`), same as the
   existing PR pipelines.
-- **Test cluster = kind in a privileged pod.** GHA's "openshift" tests
+- **Test cluster = kind in a pod (rootless).** GHA's "openshift" tests
   actually run on a single-node *kubeadm* cluster (plain k8s, not OpenShift)
   via `.github/actions/provision-k8s` — kind is the faithful equivalent and
   costs nothing per push. Real-OpenShift testing is the documented upgrade
@@ -85,12 +86,20 @@ Notes:
   `provision-ephemeral-cluster` tasks from `openshift/konflux-tasks`; verified
   installed in `open-data-hub-tenant`, with a worked example in
   `opendatahub-io/odh-konflux-central:integration-tests/olminstall/`).
-- **Test pods need a privileged SCC.** `kind`/rootful-podman require
-  `securityContext.privileged: true`. If the per-component build SA
-  (`build-pipeline-<component>`) lacks a privileged-capable SCC, the test
-  pods will be rejected at admission — the fix is a dedicated SA with the
-  `privileged` SCC (Konflux onboarding team) or a rootless-podman variant of
-  the test steps.
+- **The tenant SCCs forbid privileged containers** (verified live: every SCC
+  usable by the build SA rejects `.containers[0].privileged=true`, including
+  `appstudio-pipelines-scc` and the cluster `privileged` SCC). So the test
+  pods run **rootless**: the step script creates a non-root user with a
+  subuid range and re-execs its body as that user (see
+  `rootless_step_script`), then drives podman/kind rootless
+  (`KIND_EXPERIMENTAL_PROVIDER=podman`). No privileged SCC is needed. This
+  relies on the node allowing unprivileged user namespaces (Fedora default).
+- **The whole k8s leg is one step.** The kind cluster is podman containers
+  *inside the pod*; a dependent task's pod could never reach it, and each
+  Tekton step is its own container (so separate steps would kill the cluster
+  between them). `kind create`, the make deploy/papermill, and the
+  openshift-marked pytest therefore run sequentially in a single step, like
+  GHA. Only the testcontainers leg runs truly in parallel.
 - **Scans are intentionally not in v1** (build + tests only, matching the
   GHA job which does trivy + FIPS, not the Konflux scan set). The existing
   multi-arch pipelines still cover scans; a generator flag can add them.

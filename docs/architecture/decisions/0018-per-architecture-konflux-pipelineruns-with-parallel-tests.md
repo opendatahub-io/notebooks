@@ -75,8 +75,17 @@ GHA's "openshift" tests are a misnomer: the
 `provision-k8s` action provisions a single-node **kubeadm** cluster — plain
 k8s, not OpenShift (the workbench openshift-marked tests pass on plain k8s
 via the `fake-scc` namespace-label trick). A single-node **kind** cluster in
-a privileged Tekton pod is the faithful, near-free equivalent; GHA parity is
-the bar for v1.
+a Tekton pod is the faithful, near-free equivalent; GHA parity is the bar
+for v1.
+
+The pod cannot be privileged: **the tenant's SCCs forbid it.** This was
+verified live — the test pods failed at 0s with
+`unable to validate against any security context constraint`, and every SCC
+usable by the per-component build SA (`build-pipeline-<component>`) rejects
+`.containers[0].privileged=true` (including the Konflux
+`appstudio-pipelines-scc` and the cluster `privileged` SCC, which the SA
+simply isn't bound to). The tenant RBAC does not let us read SAs/SCCs or
+create bindings, so rootless is the only path available to this repo.
 
 Real-OpenShift testing is the documented upgrade path: EPHC/CSO
 (`TestPlatformCluster` claims, `provision-ephemeral-cluster` tasks from
@@ -97,10 +106,10 @@ generator (`ci/konflux/generate_pipelineruns.py`), committing the output to
 init -> clone-repository -> prefetch-dependencies -> build-images (1 platform)
      -> build-image-index                    (all skipped when skip-build=true)
 
-then, in parallel (one task/pod per test group):
-  test-testcontainers                       podman (rootful) in a privileged pod
-  provision-kind -> test-makefile-deploy    single-node kind cluster
-                   -> test-openshift-pytest
+then, in parallel (two test legs, each its own rootless pod):
+  test-testcontainers   rootless podman; testcontainers pytest
+  test-k8s              rootless podman + kind, all in one step:
+                        kind create -> make deploy/papermill -> openshift pytest
 ```
 
 - **v1 scope:** `jupyter-minimal` (cpu) only; tests only on amd64
@@ -114,8 +123,13 @@ then, in parallel (one task/pod per test group):
   produce. 5-day image expiration (`image-expires-after: 5d`), same as the
   existing PR pipelines.
 - **Tests:** kind-in-pod for the makefile-deploy and openshift-pytest legs;
-  podman-in-pod for testcontainers. `skip-build` + `image-under-test`
-  params allow iterating on the test/provision stages without rebuilding.
+  podman-in-pod for testcontainers. Because privileged pods are forbidden,
+  both legs run **rootless**: the step script creates a non-root user with a
+  subuid range and re-execs its body as that user, then drives podman/kind
+  rootless (`KIND_EXPERIMENTAL_PROVIDER=podman`). The kind cluster only lives
+  inside its pod (and each Tekton step is its own container), so the whole
+  k8s leg is a single step. `skip-build` + `image-under-test` params allow
+  iterating on the test stages without rebuilding.
 - **Scans are out of scope for v1** (build + tests only); the existing
   multi-arch pipelines continue to cover them.
 
@@ -132,11 +146,13 @@ then, in parallel (one task/pod per test group):
   and self-resolves as other pipelines finish — a re-trigger (or the next
   push) recovers it. The per-push 4x pipeline count raises the odds of
   hitting it; watch for this when triaging `prefetch-dependencies` failures.
-- **Test pods need a privileged SCC.** kind + rootful podman require
-  `securityContext.privileged: true` on the step. The per-component build
-  SA's SCC was not directly verifiable (tenant RBAC hides serviceaccounts);
-  if the test pods are rejected at admission, the fix is a dedicated SA with
-  the `privileged` SCC or a rootless-podman variant of the test steps.
+- **Test pods must be rootless (privileged is forbidden in this tenant).**
+  Verified live: the test pods were rejected at admission by every usable
+  SCC. The steps therefore run rootless podman/kind, which relies on the node
+  allowing unprivileged user namespaces (a Fedora default) — if a node
+  profile disables those, the test legs fail and the fallback is an
+  out-of-band privileged runner (a dedicated SA bound to the `privileged`
+  SCC, owned by the Konflux onboarding team) or EPHC.
 - **kind ≠ OpenShift.** Faithful to GHA, not an upgrade. EPHC is the
   documented upgrade path (see Context); it is deliberately not in v1.
 - **The iteration trigger is not graduation-ready.** No `pathChanged()`

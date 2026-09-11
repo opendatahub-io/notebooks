@@ -330,13 +330,7 @@ spec:
         steps:
         - name: test
           image: quay.io/fedora/fedora:43
-          securityContext:
-            privileged: true
           env:
-          - name: DOCKER_HOST
-            value: unix:///run/podman/podman.sock
-          - name: TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE
-            value: /run/podman/podman.sock
           - name: TESTCONTAINERS_RYUK_DISABLED
             value: "true"
           - name: FORCE_COLOR
@@ -344,11 +338,26 @@ spec:
           script: |
             #!/bin/bash
             set -Eeuxo pipefail
-            dnf install -y podman podman-docker git python3 curl
-            nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &
-            for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
-            podman --version
-            export UV_INSTALL_DIR=/usr/local
+            # --- root phase: packages + non-root user (rootless podman/kind below) ---
+            dnf install -y podman podman-docker git python3 curl make sudo
+            if [ "$(id -u)" = "0" ]; then
+              useradd -m tester 2>/dev/null || true
+              U=$(id -u tester)
+              grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester
+              mkdir -p /run/user/$U && chown tester /run/user/$U
+              sed -n '/^# __BODY_BELOW__/,$p' "$0" | tail -n +2 > /tmp/step-body.sh
+              chmod +x /tmp/step-body.sh
+              exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"
+            fi
+            # __BODY_BELOW__
+            set -Eeuxo pipefail
+            export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+            if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
+              mkdir -p /run/user/$(id -u) 2>/dev/null || true
+            fi
+            export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+            export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
+            export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$XDG_RUNTIME_DIR/podman/podman.sock"
             curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
             git clone $(params.GIT_URL) src_code
@@ -361,61 +370,14 @@ spec:
             fi
             IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
             echo "Testing image: ${IMAGE}"
+            nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &
+            for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
+            podman --version
             uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy
-    - name: provision-kind
+    - name: test-k8s
       runAfter:
       - build-image-index
       params:
-      - name: BUILT_IMAGE
-        value: $(params.output-image)
-      - name: IMAGE_UNDER_TEST
-        value: $(params.image-under-test)
-      - name: SKIP_BUILD
-        value: $(params.skip-build)
-      taskSpec:
-        params:
-        - name: BUILT_IMAGE
-          type: string
-        - name: IMAGE_UNDER_TEST
-          type: string
-        - name: SKIP_BUILD
-          type: string
-        results:
-        - name: kubeconfig
-          description: kubeconfig for the kind cluster (kept under the 4KB result limit)
-        steps:
-        - name: provision
-          image: quay.io/fedora/fedora:43
-          securityContext:
-            privileged: true
-          script: |
-            #!/bin/bash
-            set -Eeuxo pipefail
-            dnf install -y podman podman-docker git python3 curl
-            nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &
-            for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
-            docker version
-            curl -Lo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
-            chmod +x /usr/local/bin/kind
-            curl -Lo /usr/local/bin/kubectl https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
-            chmod +x /usr/local/bin/kubectl
-            kind create cluster --name tekton --wait 10m
-            kubectl cluster-info
-            kubectl get nodes -o wide
-            if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
-              echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1
-            fi
-            IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
-            echo "Testing image: ${IMAGE}"
-            podman pull ${IMAGE}
-            kind load docker-image ${IMAGE}
-            kind get kubeconfig > /tmp/kubeconfig
-            wc -c /tmp/kubeconfig
-            cp /tmp/kubeconfig "$(results.kubeconfig.path)"
-    - name: test-makefile-deploy
-      runAfter:
-      - provision-kind
-      params:
       - name: GIT_URL
         value: $(params.git-url)
       - name: REVISION
@@ -426,75 +388,8 @@ spec:
         value: $(params.image-under-test)
       - name: SKIP_BUILD
         value: $(params.skip-build)
-      - name: KUBECONFIG
-        value: $(tasks.provision-kind.results.kubeconfig)
       - name: TARGET
         value: jupyter-minimal-ubi9-python-3.12
-      taskSpec:
-        params:
-        - name: GIT_URL
-          type: string
-        - name: REVISION
-          type: string
-        - name: BUILT_IMAGE
-          type: string
-        - name: IMAGE_UNDER_TEST
-          type: string
-        - name: SKIP_BUILD
-          type: string
-        - name: KUBECONFIG
-          type: string
-        - name: TARGET
-          type: string
-        steps:
-        - name: test
-          image: quay.io/fedora/fedora:43
-          env:
-          - name: FORCE_COLOR
-            value: '1'
-          - name: PRODUCT
-            value: odh
-          script: |
-            #!/bin/bash
-            set -Eeuxo pipefail
-            dnf install -y make git python3 curl
-            mkdir -p /root/.kube
-            echo "$(params.KUBECONFIG)" > /root/.kube/config
-            export KUBECONFIG=/root/.kube/config
-            kubectl get nodes
-            export UV_INSTALL_DIR=/usr/local
-            curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
-            uv python install 3.14
-            git clone $(params.GIT_URL) src_code
-            cd src_code
-            git checkout $(params.REVISION)
-            uv venv --python 3.14
-            uv sync --group dev --locked
-            if [[ "${SKIP_BUILD}" == "true" && -z "${IMAGE_UNDER_TEST}" ]]; then
-              echo "ERROR: skip-build=true requires image-under-test" >&2; exit 1
-            fi
-            IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
-            echo "Testing image: ${IMAGE}"
-            export IMAGE_REGISTRY="${IMAGE%%:*}"
-            export NOTEBOOK_TAG="${IMAGE##*:}"
-            export IMAGE_TAG="${IMAGE##*:}"
-            uv run python3 ci/cached-builds/make_test.py --target $(params.TARGET)
-    - name: test-openshift-pytest
-      runAfter:
-      - provision-kind
-      params:
-      - name: GIT_URL
-        value: $(params.git-url)
-      - name: REVISION
-        value: $(params.revision)
-      - name: BUILT_IMAGE
-        value: $(params.output-image)
-      - name: IMAGE_UNDER_TEST
-        value: $(params.image-under-test)
-      - name: SKIP_BUILD
-        value: $(params.skip-build)
-      - name: KUBECONFIG
-        value: $(tasks.provision-kind.results.kubeconfig)
       - name: MARKERS
         value: openshift and not cuda and not rocm
       taskSpec:
@@ -509,35 +404,49 @@ spec:
           type: string
         - name: SKIP_BUILD
           type: string
-        - name: KUBECONFIG
+        - name: TARGET
           type: string
         - name: MARKERS
           type: string
         steps:
         - name: test
           image: quay.io/fedora/fedora:43
-          securityContext:
-            privileged: true
           env:
-          - name: DOCKER_HOST
-            value: unix:///run/podman/podman.sock
-          - name: TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE
-            value: /run/podman/podman.sock
           - name: TESTCONTAINERS_RYUK_DISABLED
             value: "true"
           - name: FORCE_COLOR
             value: '1'
+          - name: PRODUCT
+            value: odh
           script: |
             #!/bin/bash
             set -Eeuxo pipefail
-            dnf install -y podman podman-docker git python3 curl
-            nohup podman system service --time=0 unix:///run/podman/podman.sock >/tmp/podman-service.log 2>&1 &
-            for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
-            mkdir -p /root/.kube
-            echo "$(params.KUBECONFIG)" > /root/.kube/config
-            export KUBECONFIG=/root/.kube/config
-            kubectl get nodes
-            export UV_INSTALL_DIR=/usr/local
+            # --- root phase: packages + non-root user (rootless podman/kind below) ---
+            dnf install -y podman podman-docker git python3 curl make sudo
+            if [ "$(id -u)" = "0" ]; then
+              useradd -m tester 2>/dev/null || true
+              U=$(id -u tester)
+              grep -q "^tester:" /etc/subuid || usermod --add-subuids 100000-165535 tester
+              mkdir -p /run/user/$U && chown tester /run/user/$U
+              sed -n '/^# __BODY_BELOW__/,$p' "$0" | tail -n +2 > /tmp/step-body.sh
+              chmod +x /tmp/step-body.sh
+              exec su -s /bin/bash tester -c "export XDG_RUNTIME_DIR=/run/user/$U; bash /tmp/step-body.sh"
+            fi
+            # __BODY_BELOW__
+            set -Eeuxo pipefail
+            export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+            if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "/run/user/$(id -u)" ]; then
+              mkdir -p /run/user/$(id -u) 2>/dev/null || true
+            fi
+            export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+            export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
+            export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="$XDG_RUNTIME_DIR/podman/podman.sock"
+            mkdir -p $HOME/bin
+            curl -Lo $HOME/bin/kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+            chmod +x $HOME/bin/kind
+            curl -Lo $HOME/bin/kubectl https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
+            chmod +x $HOME/bin/kubectl
+            export KIND_EXPERIMENTAL_PROVIDER=podman
             curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
             git clone $(params.GIT_URL) src_code
@@ -550,7 +459,22 @@ spec:
             fi
             IMAGE="${IMAGE_UNDER_TEST:-${BUILT_IMAGE}}"
             echo "Testing image: ${IMAGE}"
+            kind create cluster --name tekton --wait 10m
+            kubectl cluster-info
+            podman pull ${IMAGE}
+            kind load docker-image ${IMAGE}
+            export KUBECONFIG=$HOME/.kube/config
+            kind get kubeconfig
+            kubectl get nodes -o wide
+            export IMAGE_REGISTRY="${IMAGE%%:*}"
+            export NOTEBOOK_TAG="${IMAGE##*:}"
+            export IMAGE_TAG="${IMAGE##*:}"
+            uv run python3 ci/cached-builds/make_test.py --target $(params.TARGET)
+            nohup podman system service --time=0 >/tmp/podman-service.log 2>&1 &
+            for i in $(seq 1 30); do podman info >/dev/null 2>&1 && break; sleep 1; done
+            podman --version
             uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" --log-level=DEBUG -o junit_family=legacy
+            kind delete cluster --name tekton || true
     workspaces:
     - name: git-auth
       optional: true
@@ -582,41 +506,23 @@ spec:
       requests:
         cpu: '4'
         memory: 4Gi
-        ephemeral-storage: 60Gi
+        ephemeral-storage: 40Gi
       limits:
         cpu: '4'
         memory: 4Gi
-        ephemeral-storage: 60Gi
-  - pipelineTaskName: provision-kind
+        ephemeral-storage: 40Gi
+    timeout: 60m
+  - pipelineTaskName: test-k8s
     computeResources:
       requests:
         cpu: '4'
-        memory: 4Gi
+        memory: 6Gi
         ephemeral-storage: 60Gi
       limits:
         cpu: '4'
-        memory: 4Gi
+        memory: 6Gi
         ephemeral-storage: 60Gi
-  - pipelineTaskName: test-makefile-deploy
-    computeResources:
-      requests:
-        cpu: '4'
-        memory: 4Gi
-        ephemeral-storage: 40Gi
-      limits:
-        cpu: '4'
-        memory: 4Gi
-        ephemeral-storage: 40Gi
-  - pipelineTaskName: test-openshift-pytest
-    computeResources:
-      requests:
-        cpu: '4'
-        memory: 4Gi
-        ephemeral-storage: 40Gi
-      limits:
-        cpu: '4'
-        memory: 4Gi
-        ephemeral-storage: 40Gi
+    timeout: 90m
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-cpu-py312-ubi9
   workspaces:
