@@ -23,6 +23,21 @@ Tag bumps for `quay.io/centos/centos` are blocked by `allowedVersions` in
 [`.github/renovate.json5`](../.github/renovate.json5); digest refreshes within
 `stream9` remain allowed.
 
+## PQC crypto policy
+
+Post-quantum crypto is required for OCP 5.0 (RHOAI 3.6+, tracked in
+RHOAIENG-84389). Every Dockerfile in `base-images/` runs
+`update-crypto-policies --set DEFAULT:PQ` as root — C9S carries the RHEL 9.8 PQ
+profile, and RHEL 10 will enable PQ by default. ODH workbench/runtime images
+inherit the policy from these bases.
+
+The same policy line is required in any image Dockerfile whose base does not
+already ship PQC: AIPCC bases have carried it since `3.6.0-ea.2`, while the
+RHOAI baseline images set it explicitly on top of
+`registry.redhat.io/rhel9/python-312` (not PQC by default on EL9). The coverage
+is enforced by `test_dockerfiles_pqc_crypto_policy_coverage` in
+[`tests/test_main.py`](../tests/test_main.py).
+
 ## Layout
 
 | Directory | Purpose |
