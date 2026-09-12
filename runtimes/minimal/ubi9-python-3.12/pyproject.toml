@@ -26,6 +26,14 @@ required-environments = [
     "sys_platform == 'linux' and platform_machine == 'ppc64le'",
     "sys_platform == 'linux' and platform_machine == 's390x'",
 ]
+
+override-dependencies = [
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
+    # RHAIENG-7491: 1.75.3 has gencode 6.33.5, incompatible with protobuf 6.31.1 runtime
+    "googleapis-common-protos==1.75.1",
+]
+
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
