@@ -4,7 +4,9 @@ import asyncio
 import importlib.util
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 if TYPE_CHECKING:
     from pytest import MonkeyPatch
@@ -104,3 +106,44 @@ def test_find_latest_odh_main_tag_disables_failure_logging_on_fallback(monkeypat
 
     assert result == f"main-{'a' * 40}"
     helper.assert_awaited_once_with("quay.io/example/image", update_env.ODH_TAG_PATTERN, semaphore, log_failure=False)
+
+
+@pytest.mark.parametrize("failure", ["missing", "timeout", "json", "unexpected", "nonzero"])
+@pytest.mark.parametrize("log_failure, should_log", [(False, False), (True, True)])
+def test_skopeo_inspect_config_honors_failure_logging(
+    monkeypatch: MonkeyPatch,
+    failure: str,
+    log_failure: bool,
+    should_log: bool,
+) -> None:
+    log = Mock()
+    monkeypatch.setattr(update_env, "log", log)
+
+    class Process:
+        returncode = 1 if failure == "nonzero" else 0
+
+    create_process = (
+        AsyncMock(side_effect=FileNotFoundError) if failure == "missing" else AsyncMock(return_value=Process())
+    )
+    communicate_side_effect = {
+        "timeout": TimeoutError,
+        "unexpected": RuntimeError("boom"),
+    }.get(failure)
+    if communicate_side_effect is not None:
+        communicate = AsyncMock(side_effect=communicate_side_effect)
+    elif failure == "json":
+        communicate = AsyncMock(return_value=(b"not-json", b""))
+    elif failure == "nonzero":
+        communicate = AsyncMock(return_value=(b"", b"inspect failed"))
+    else:
+        communicate = AsyncMock(return_value=(b"", b""))
+
+    monkeypatch.setattr(update_env.asyncio, "create_subprocess_exec", create_process)
+    monkeypatch.setattr(update_env, "_communicate", communicate)
+
+    result = asyncio.run(
+        update_env.skopeo_inspect_config("quay.io/example/image:tag", asyncio.Semaphore(1), log_failure=log_failure)
+    )
+
+    assert result == ("quay.io/example/image:tag", None)
+    assert (log.error.called or log.exception.called) is should_log

@@ -305,16 +305,20 @@ async def skopeo_inspect_config(
             return image_url, None
         return image_url, json.loads(stdout.decode())
     except FileNotFoundError:
-        log.error("skopeo not found — please install it")
+        if log_failure:
+            log.error("skopeo not found — please install it")
         return image_url, None
     except TimeoutError:
-        log.error("inspect timed out", image=image_url)
+        if log_failure:
+            log.error("inspect timed out", image=image_url)
         return image_url, None
     except json.JSONDecodeError:
-        log.error("failed to parse skopeo JSON", image=image_url)
+        if log_failure:
+            log.error("failed to parse skopeo JSON", image=image_url)
         return image_url, None
     except Exception:
-        log.exception("unexpected error", image=image_url)
+        if log_failure:
+            log.exception("unexpected error", image=image_url)
         return image_url, None
 
 
