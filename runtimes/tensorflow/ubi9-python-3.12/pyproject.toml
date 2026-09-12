@@ -40,6 +40,8 @@ override-dependencies = [
     # AIPCC-13675: https://redhat.atlassian.net/browse/AIPCC-13675
     # https://github.com/tensorflow/tensorflow/blob/r2.21/requirements_lock_3_12.txt#L552
     "protobuf==6.31.1",
+    # RHAIENG-7491: 1.75.3 has gencode 6.33.5, incompatible with protobuf 6.31.1 runtime
+    "googleapis-common-protos==1.75.1",
 ]
 
 environments = [

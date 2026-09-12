@@ -34,8 +34,10 @@ required-environments = [
 exclude-dependencies = ["py-spy"]
 
 override-dependencies = [
-    # tensorflow-rocm depends on protobuf>=3.20.3, <6.0.0 and kfp depends on protobuf>=6.31.1
+    # kfp depends on protobuf>=6.31.1,<7.0. tensorflow-rocm 2.20+redhat allows protobuf>=5.28.0 (no upper bound)
     "protobuf==6.31.1",
+    # RHAIENG-7491: 1.75.3 has gencode 6.33.5, incompatible with protobuf 6.31.1 runtime
+    "googleapis-common-protos==1.75.1",
 ]
 
 constraint-dependencies = [
