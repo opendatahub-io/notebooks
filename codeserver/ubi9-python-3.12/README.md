@@ -320,23 +320,84 @@ After building (e.g. `make codeserver-ubi9-python-3.12` or `podman build ...`), 
 image with Podman and open code-server in your browser:
 
 ```bash
-podman run -d --name codeserver -p 8080:8080 <your-image-name>:latest
+podman run -d --name codeserver -p 8888:8888 <your-image-name>:latest
 ```
 
-Then open **http://localhost:8080**. The container serves the UI via nginx on port 8080
-(proxying to code-server on 8787).
+Then open **http://localhost:8888/codeserver/**. Nginx listens on 8888 and proxies to
+code-server on 8787.
 
 To bind a local directory as the workspace (e.g. for development):
 
 ```bash
 podman run -d --name codeserver \
-  -p 8080:8080 \
+  -p 8888:8888 \
   -v /path/to/your/workspace:/opt/app-root/src:Z \
   <your-image-name>:latest
 ```
 
 Use `:Z` on Fedora/RHEL for SELinux; omit on macOS. Stop with `podman stop codeserver`
 and remove with `podman rm codeserver`.
+
+---
+
+## Copilot: optional strip + bring-your-own (BYO)
+
+By default the image **ships** proprietary GitHub Copilot and Claude agent SDK
+binaries compiled during the hermetic build (`STRIP_COPILOT_PROPRIETARY=false`).
+AI chat surfaces stay **enabled** (`chat.disableAIFeatures: false`) for Device Code
+auth validation (RHAIENG-6400).
+
+Set **`STRIP_COPILOT_PROPRIETARY=true`** at build time (Docker `--build-arg` or
+`build-args/*.conf`) to remove proprietary Copilot artifacts via
+`strip-copilot-proprietary.sh` before the image is assembled. That mode also:
+
+- disables AI chat by default (`chat.disableAIFeatures: true`)
+- opens workspace `README.md` on startup with BYO instructions
+- prints a terminal hint until `install-byo-copilot.sh` has been run
+
+Runtime behavior follows the build-time flag via `ENV STRIP_COPILOT_PROPRIETARY`.
+
+### Verify stripped build
+
+```bash
+chmod +x codeserver/ubi9-python-3.12/scripts/verify-no-copilot.sh
+./codeserver/ubi9-python-3.12/scripts/verify-no-copilot.sh \
+  quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12-3.6_$(date +%Y%m%d)
+```
+
+Build with stripping enabled, for example:
+
+```bash
+STRIP_COPILOT_PROPRIETARY=true make -C codeserver/ubi9-python-3.12 ...
+```
+
+### Run locally
+
+```bash
+podman run -d --name codeserver -p 8888:8888 <image-tag>
+# Open http://localhost:8888/codeserver/
+```
+
+### Enable Copilot on stripped images (user BYO — your license, not redistributed)
+
+When `STRIP_COPILOT_PROPRIETARY=true`, the workbench opens `README.md` on first
+launch with these instructions. Opening a **terminal** also prints a short hint
+until `install-byo-copilot.sh` has been run.
+
+Inside the workbench terminal (or via `podman exec`):
+
+```bash
+install-byo-copilot.sh
+podman restart codeserver   # from host — gallery config loads at startup
+```
+
+Then reload the browser, sign in to GitHub, and use Copilot with your subscription.
+
+**Important:** run `install-byo-copilot.sh` **before** signing in. If you already
+signed in and see *"extension cannot be installed because it was not found"*, run the
+script, restart the workbench, and retry setup.
+
+Options: `install-byo-copilot.sh --help`, `--offline` for air-gapped VSIX sideload.
 
 ---
 
