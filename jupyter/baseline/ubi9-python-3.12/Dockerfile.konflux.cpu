@@ -82,6 +82,154 @@ EOF
 USER 1001
 
 ####################
+# python-builder   #
+####################
+# [SDIST] Compile the pinned Python packages from source distributions
+# into /opt/app-root/src/wheels. The jupyter-baseline stage installs those wheels with
+# --no-index, so the shipped Python packages never come from precompiled
+# PyPI wheels.
+FROM cpu-base AS python-builder
+
+ARG BASELINE_SOURCE_CODE=jupyter/baseline/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
+
+USER 0
+
+# [SDIST] Toolchain for compiling sdists, from hermetic RPM locks.
+RUN /bin/bash <<'EOF'
+set -Eeuo pipefail
+PACKAGES=(
+    # C/C++ compilers for native extension builds
+    gcc-c++
+    # libffi headers for cffi's _cffi_backend (cffi is a build dep
+    # of many pinned packages)
+    libffi-devel
+    # BLAS/LAPACK development files for numpy
+    openblas-devel
+    # Rust compiler for Rust-based extensions (rpds-py)
+    rust
+    # Rust build tooling invoked by setuptools-rust and maturin
+    cargo
+    # Build generator for meson-python and scikit-build-core
+    ninja-build
+    # Build generator for scikit-build-core
+    cmake
+    # autoconf/automake (autoreconf) for patchelf's bootstrap.sh
+    autoconf
+    automake
+    # libtool for LT_INIT-based autotools builds
+    libtool
+    # zlib and image codecs for pillow
+    zlib-devel
+    libjpeg-turbo-devel
+    libtiff-devel
+    libpng-devel
+    # OpenSSL development files for cryptography's openssl-sys (rust)
+    openssl-devel
+    # pkg-config binary; native extensions discover system libraries through it
+    pkgconf-pkg-config
+)
+dnf install -y "${PACKAGES[@]}"
+dnf clean all
+rm -rf /var/cache/dnf /var/cache/yum
+EOF
+
+COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+
+# uv (the lock's own pinned version), as a wheel from the lock's own index
+# (PyPI for ODH, AIPCC for RHOAI) - compiling it from the rust sdist takes
+# ~17 min. uv drives the bootstrap below: parallel sdist builds and a
+# persistent wheel cache shared by every RUN in this stage.
+RUN /bin/bash <<'EOF'
+set -Eeuo pipefail
+UV_VERSION=$(sed -n 's/^uv==\([^ ;]*\).*/\1/p' ./requirements.txt)
+INDEX_URL=$(sed -n 's/^--index-url //p' ./requirements.txt)
+python3 -m pip install --no-cache-dir \
+    --index-url ${INDEX_URL:-https://pypi.org/simple} \
+    uv==${UV_VERSION}
+EOF
+
+# [SDIST] Build-system toolchain, compiled once from sdists and reused
+# by every package below via --no-build-isolation (ninja/cmake from dnf).
+# Self-referential backends (hatchling, cffi, ...) bootstrap through
+# build isolation. Pinned entries resolve cross-package spec conflicts:
+# flit-core<4 (several backends cap it) and maturin<2.
+RUN /bin/bash <<'EOF'
+set -Eeuo pipefail
+PYBIN=$(command -v python3)
+uv pip install --system --python $PYBIN --no-binary :all: \
+    setuptools wheel \
+    'setuptools-scm[toml]' setuptools-git-versioning setuptools-rust \
+    'maturin>=1.14.1,<2' 'flit-core>=3.12,<4' pdm-backend \
+    meson meson-python cython patchelf hatchling poetry-core \
+    scikit-build-core jupyter-packaging jupyter_builder mypy pybind11 \
+    puccinialin uv-build hatch-fancy-pypi-readme hatch-jupyter-builder \
+    hatch-nodejs-version hatch-vcs cffi packaging pkgconfig \
+    coherent-licensed colorama expandvars build
+EOF
+
+# Build-time importability for the no-isolation wheel step:
+# ipykernel build hook imports its own source, which imports
+# jupyter_client (and its import chain); notebook, jupyter-bokeh,
+# jupyter-server-proxy, jupyterlab-git-core and odh-kale declare
+# jupyterlab in build-system.requires (checked via importlib
+# metadata, so --no-deps suffices). Empirically, import ipykernel
+# needs exactly this closure (checked in a scratch container); the full
+# jupyterlab tree is
+# neither needed nor installable from sdists: its isolated build
+# envs self-reference through hatch-jupyter-builder -> jupyterlab.
+RUN /bin/bash <<'EOF'
+set -Eeuo pipefail
+JUPYTERLAB=$(sed -n 's/^jupyterlab==\([^ ;]*\).*/\1/p' ./requirements.txt)
+JCLIENT=$(sed -n 's/^jupyter-client==\([^ ;]*\).*/\1/p' ./requirements.txt)
+JCORE=$(sed -n 's/^jupyter-core==\([^ ;]*\).*/\1/p' ./requirements.txt)
+TRAITLETS=$(sed -n 's/^traitlets==\([^ ;]*\).*/\1/p' ./requirements.txt)
+PYZMQ=$(sed -n 's/^pyzmq==\([^ ;]*\).*/\1/p' ./requirements.txt)
+TORNADO=$(sed -n 's/^tornado==\([^ ;]*\).*/\1/p' ./requirements.txt)
+PLATFORMDIRS=$(sed -n 's/^platformdirs==\([^ ;]*\).*/\1/p' ./requirements.txt)
+DATEUTIL=$(sed -n 's/^python-dateutil==\([^ ;]*\).*/\1/p' ./requirements.txt)
+SIX=$(sed -n 's/^six==\([^ ;]*\).*/\1/p' ./requirements.txt)
+# python-dateutil builds in isolation: its setuptools_scm<8.0 pin is unsatisfiable
+# against the toolchain setuptools-scm
+python3 -m pip install --no-deps --no-binary :all: \
+    python-dateutil==${DATEUTIL}
+python3 -m pip install --no-deps --no-build-isolation --no-binary :all: \
+    jupyterlab==${JUPYTERLAB} \
+    jupyter-client==${JCLIENT} jupyter-core==${JCORE} \
+    traitlets==${TRAITLETS} pyzmq==${PYZMQ} tornado==${TORNADO} \
+    platformdirs==${PLATFORMDIRS} six==${SIX}
+EOF
+
+
+# [SDIST] Compile every pinned package from its sdist (--no-binary :all:)
+# in one pip invocation, against the toolchain installed above.
+# (pip wheel, not uv: uv has no `uv pip wheel`.)
+RUN /bin/bash <<'EOF'
+set -Eeuo pipefail
+export PIP_CACHE_DIR=/tmp/pip-cache
+mkdir -p /opt/app-root/src/wheels
+# strip --hash pins, line continuations and environment markers from
+# the pip-compiled lock so every entry is a plain name==version spec
+sed '/--hash/d' ./requirements.txt \
+    | tr -d '\\' | sed 's/[[:space:]]*$//' \
+    | grep '^[A-Za-z0-9_.-]*==' \
+    | sed 's/;.*$//' > /tmp/requirements-sdist.txt
+# python-dateutil pins setuptools_scm<8.0, which conflicts with the
+# toolchain's newer setuptools-scm; build just that one in isolation
+grep -v '^python-dateutil==' /tmp/requirements-sdist.txt > /tmp/requirements-shared.txt
+python3 -m pip wheel --no-deps --no-build-isolation --no-binary :all: \
+    -w /opt/app-root/src/wheels -r /tmp/requirements-shared.txt
+while IFS= read -r spec; do
+  python3 -m pip wheel --no-deps --no-binary :all: \
+      -w /opt/app-root/src/wheels "$spec"
+done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
+# Build backends create some wheels 0600 and pip moves them to the
+# wheel dir as-is; normalize so the read-only from-mount consumer
+# (USER 1001) can read every wheel.
+chmod 644 /opt/app-root/src/wheels/*.whl
+EOF
+
+####################
 # jupyter-minimal  #
 ####################
 FROM cpu-base AS jupyter-minimal
@@ -153,32 +301,49 @@ COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.tx
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
-# The raw RHEL Python base does not bootstrap uv the way AIPCC notebook bases
-# do. Install uv from the hermeto/cachi2 pip cache (offline) before the main
-# package install. Online `pip install uv` would break hermetic Konflux builds.
-# UV_VERSION is derived from this image's requirements.cpu.txt by scripts/dockerfile_fragments.py.
+# Install uv (build tool) before the main package install.
+# UV_VERSION is derived from this image's requirements.cpu.txt by
+# scripts/dockerfile_fragments.py.
+#
+# Runs as USER 1001:0: files under /opt/app-root must stay 1001:0-owned,
+# because ensure-openshift-site-packages.sh (USER 1001:0) cannot chmod
+# root-owned files (EPERM).
+USER 1001:0
+
 ### BEGIN UV version
 ARG UV_VERSION=0.12.5
 
 ### END UV version
-RUN python3 -m pip install --no-cache-dir --no-index \
-    --find-links /cachi2/output/deps/pip \
+RUN python3 -m pip install --no-cache-dir \
     "uv==${UV_VERSION}"
 
-USER 1001:0
-
-RUN /bin/bash <<'EOF'
+# [SDIST] Install all Python packages from the wheels compiled in the
+# python-builder stage. The wheel directory is mounted into this step;
+# uv opens the wheels read-write and the from-mount is read-only, so
+# they are served from a scratch copy removed before the layer
+# commits (the wheels never become image content).
+# Locally built wheels do not match the --hash pins in requirements.txt
+# (those pin the official PyPI artifacts), so install from a hash-free
+# requirements file.
+RUN --mount=from=python-builder,source=/opt/app-root/src/wheels,target=/wheels \
+    /bin/bash <<'EOF'
 set -Eeuxo pipefail
 umask 0002
 
-# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index).
-# /cachi2/output/deps/pip/ contains AIPCC wheels (and uv itself).
+sed '/--hash/d' ./requirements.txt | tr -d '\\' > ./requirements-nohash.txt
+
+# The from-mount is read-only and uv opens wheels read-write:
+# scratch copy in, removed before the layer commits.
+mkdir -p /tmp/wheels
+cp /wheels/*.whl /tmp/wheels/
+
 echo "Installing software and packages"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
-    --find-links /cachi2/output/deps/pip \
-    --requirements=./requirements.txt
+    --find-links /tmp/wheels \
+    --requirements=./requirements-nohash.txt
+rm -rf /tmp/wheels
 
 # JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist; no
 # PyPI wheels for argon2-cffi-bindings and other native deps). Skip Jupyter
