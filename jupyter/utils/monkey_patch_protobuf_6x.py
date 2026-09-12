@@ -1,4 +1,4 @@
-# Works with protobuf 6.30 – 6.31 (and probably later 6.x)
+# Works with protobuf 6.30+ and 7.x (patches removed MessageFactory.GetPrototype)
 
 import google.protobuf.message_factory as _mf
 

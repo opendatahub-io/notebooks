@@ -34,8 +34,11 @@ required-environments = [
 exclude-dependencies = ["py-spy"]
 
 override-dependencies = [
-    # tensorflow-rocm depends on protobuf>=3.20.3, <6.0.0 and kfp depends on protobuf>=6.31.1
-    "protobuf==6.31.1",
+    # tensorflow-rocm 2.20+redhat allows protobuf>=5.28.0 (no upper bound).
+    # AIPCC-13675: UPB segfault on s390x affects 6.33.5-6.33.6; fixed in 7.x.
+    # kfp 2.17.0's protobuf<7.0 is a conservative pin (gencode 6.31.1; APIs exist in 7.x).
+    # 7.x series only.
+    "protobuf>=7.36.1,<8",
 ]
 
 constraint-dependencies = [
