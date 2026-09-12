@@ -538,8 +538,9 @@ def parse_exclude_newer_from_lockfile(path: Path) -> str | None:
 def compile_command_for_lock_header(cmd: list[str]) -> str:
     """Build the ``uv pip compile`` command string stored in pylock header comments.
 
-    Omits the uv binary path (uses ``uv``), ``--exclude-newer``, ``--quiet``, and
-    ``--custom-compile-command`` so committed lockfiles do not embed cutoff timestamps.
+    Omits the uv binary path (uses ``uv``), ``--exclude-newer``, ``--upgrade``,
+    ``--quiet``, and ``--custom-compile-command`` so committed lockfiles do not
+    embed cutoff timestamps or one-off upgrade flags.
     """
     parts: list[str] = []
     skip_next = False
@@ -555,7 +556,7 @@ def compile_command_for_lock_header(cmd: list[str]) -> str:
         if arg in ("--exclude-newer", "--custom-compile-command"):
             skip_next = True
             continue
-        if arg == "--quiet":
+        if arg in ("--quiet", "--upgrade"):
             continue
         parts.append(arg)
     return " ".join(parts)
