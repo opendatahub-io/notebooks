@@ -31,6 +31,7 @@ import re
 import subprocess
 import sys
 import time
+import tomllib
 import urllib.request
 from pathlib import Path, PurePosixPath
 from urllib.parse import urljoin
@@ -79,6 +80,12 @@ def get_args():
         default=None,
         help="Target Python version, e.g. 3.12 (default: from RELEASE_PYTHON_VERSION env or current)",
     )
+    parser.add_argument(
+        "--pylock",
+        type=Path,
+        default=None,
+        help="Optional PEP 751 pylock.toml fallback when simple-index lookup fails",
+    )
     args = parser.parse_args()
 
     if args.arch is None:
@@ -99,7 +106,11 @@ def get_args():
         print(f"Error: not a file: {req_path}", file=sys.stderr)
         sys.exit(1)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    return req_path, args.output_dir.resolve(), args.arch, args.python_version
+    pylock_path = args.pylock.resolve() if args.pylock else None
+    if pylock_path is not None and not pylock_path.is_file():
+        print(f"Error: not a file: {pylock_path}", file=sys.stderr)
+        sys.exit(1)
+    return req_path, args.output_dir.resolve(), args.arch, args.python_version, pylock_path
 
 
 def detect_index_url(req_path: Path) -> str | None:
@@ -292,13 +303,54 @@ def fetch_pypi_urls(name: str, version: str, wanted_hashes: set[str]) -> list[tu
     return []
 
 
+def load_pylock_wheel_urls(pylock_path: Path) -> dict[tuple[str, str], list[tuple[str, str, str]]]:
+    """Map (name, version) to [(url, filename, sha256), ...] from a PEP 751 pylock."""
+    with open(pylock_path, "rb") as f:
+        data = tomllib.load(f)
+
+    result: dict[tuple[str, str], list[tuple[str, str, str]]] = {}
+    for pkg in data.get("packages", []):
+        name = str(pkg.get("name", ""))
+        version = str(pkg.get("version", ""))
+        if not name or not version:
+            continue
+        wheels: list[tuple[str, str, str]] = []
+        for wheel in pkg.get("wheels", []):
+            url = str(wheel.get("url", ""))
+            sha = str((wheel.get("hashes") or {}).get("sha256", ""))
+            if not url or not sha:
+                continue
+            filename = PurePosixPath(url.split("?", maxsplit=1)[0]).name
+            if filename:
+                wheels.append((url, filename, sha))
+        if wheels:
+            result[name, version] = wheels
+    return result
+
+
+def lookup_pylock_urls(
+    pylock_urls: dict[tuple[str, str], list[tuple[str, str, str]]],
+    name: str,
+    version: str,
+    wanted_hashes: set[str],
+) -> list[tuple[str, str, str]]:
+    candidates = pylock_urls.get((name, version), [])
+    if not candidates:
+        return []
+    if wanted_hashes:
+        return [(url, filename, sha) for url, filename, sha in candidates if sha in wanted_hashes]
+    return candidates
+
+
 def resolve_one(args: tuple) -> tuple[str, str, list[tuple[str, str, str]]]:
     """Resolve URLs for one package. Called in parallel."""
-    name, version, wanted_hashes, index_url, use_simple = args
+    name, version, wanted_hashes, index_url, use_simple, pylock_urls = args
     if use_simple:
         urls = fetch_simple_index_urls(index_url, name, version, wanted_hashes)
     else:
         urls = fetch_pypi_urls(name, version, wanted_hashes)
+    if not urls and pylock_urls:
+        urls = lookup_pylock_urls(pylock_urls, name, version, wanted_hashes)
     return name, version, urls
 
 
@@ -360,7 +412,7 @@ def file_sha256(path: Path) -> str:
 
 
 def main():
-    req_path, out_dir, arch, python_version = get_args()
+    req_path, out_dir, arch, python_version, pylock_path = get_args()
 
     index_url = detect_index_url(req_path)
     use_simple = index_url is not None and "pypi.org" not in index_url
@@ -374,6 +426,9 @@ def main():
     print(f"  python:       {python_version}")
     print(f"  index:        {index_url or 'PyPI (default)'}")
     print(f"  skip sdists:  {skip_sdists} (AIPCC={is_aipcc})")
+    pylock_urls = load_pylock_wheel_urls(pylock_path) if pylock_path else {}
+    if pylock_path:
+        print(f"  pylock:       {pylock_path} ({len(pylock_urls)} packages)")
     print()
 
     packages = parse_requirements(req_path)
@@ -386,7 +441,7 @@ def main():
         if should_skip_for_marker(marker, arch, python_version):
             skipped_marker.append(f"{name}=={version}")
         else:
-            to_resolve.append((name, version, hashes, index_url, use_simple))
+            to_resolve.append((name, version, hashes, index_url, use_simple, pylock_urls))
 
     if skipped_marker:
         print(f"\nSkipped by marker (platform_machine != '{arch}'): {len(skipped_marker)}")

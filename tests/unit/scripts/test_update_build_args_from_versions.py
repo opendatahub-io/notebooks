@@ -219,8 +219,6 @@ def write_versions_config(
                 version: "latest"
 
             baseline_cpu:
-              rhds:
-                channel: rhel
               odh:
                 origin: in-house
                 version: "latest"
@@ -459,8 +457,6 @@ def test_load_versions_config_rejects_non_scalar_cpu_version(tmp_path: Path) -> 
                     origin: in-house
                     version: "latest"
                 baseline_cpu:
-                  rhds:
-                    channel: rhel
                   odh:
                     origin: in-house
                     version: "latest"
@@ -2224,8 +2220,8 @@ def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
 def test_is_baseline_conf_path_detects_baseline_families() -> None:
     updater = load_updater()
     assert updater.is_baseline_conf_path(Path("jupyter/baseline/ubi9-python-3.12/build-args/cpu.conf"))
-    assert updater.is_baseline_conf_path(Path("runtimes/baseline/ubi9-python-3.12/build-args/konflux.cpu.conf"))
-    assert updater.is_baseline_conf_path(Path("codeserver-baseline/ubi9-python-3.12/build-args/konflux.cpu.conf"))
+    assert updater.is_baseline_conf_path(Path("runtimes/baseline/ubi9-python-3.12/build-args/cpu.conf"))
+    assert updater.is_baseline_conf_path(Path("codeserver-baseline/ubi9-python-3.12/build-args/cpu.conf"))
     assert not updater.is_baseline_conf_path(Path("jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf"))
 
 
@@ -2240,25 +2236,10 @@ def test_plan_updates_resolves_baseline_cpu_conf_files(tmp_path: Path, monkeypat
     write_versions_config(tmp_path / "versions_config.yml", rhds_os_base="el9.8")
 
     odh_conf = tmp_path / "jupyter/baseline/ubi9-python-3.12/build-args/cpu.conf"
-    rhds_conf = tmp_path / "jupyter/baseline/ubi9-python-3.12/build-args/konflux.cpu.conf"
     write_conf(
         odh_conf,
         "BASE_IMAGE=registry.redhat.io/rhel9/python-312:9.8-1",
         "RELEASE=3.6",
-    )
-    write_conf(
-        rhds_conf,
-        "BASE_IMAGE=registry.redhat.io/rhel9/python-312:9.8-1",
-        "RELEASE=3.6",
-    )
-
-    rhel_repo = "registry.redhat.io/rhel9/python-312"
-    stub_rhds_repository_tags(
-        monkeypatch,
-        updater,
-        {
-            rhel_repo: ("9.8-100", "9.8-300", "9.9-400"),
-        },
     )
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
@@ -2267,32 +2248,3 @@ def test_plan_updates_resolves_baseline_cpu_conf_files(tmp_path: Path, monkeypat
     assert (
         pinned_base_image("quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest") in by_path[odh_conf].updated_text
     )
-    assert pinned_base_image(f"{rhel_repo}:9.8-300") in by_path[rhds_conf].updated_text
-
-
-def test_plan_updates_includes_codeserver_baseline_conf_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    updater = load_updater()
-    write_versions_config(tmp_path / "versions_config.yml", rhds_os_base="el9.8")
-
-    rhds_conf = tmp_path / "codeserver-baseline/ubi9-python-3.12/build-args/konflux.cpu.conf"
-    write_conf(rhds_conf, "BASE_IMAGE=registry.redhat.io/rhel9/python-312:9.8-1", "RELEASE=3.6")
-
-    rhel_repo = "registry.redhat.io/rhel9/python-312"
-    stub_rhds_repository_tags(monkeypatch, updater, {rhel_repo: ("9.8-250",)})
-
-    updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
-    by_path = {update.path: update for update in updates}
-
-    assert rhds_conf in by_path
-    assert pinned_base_image(f"{rhel_repo}:9.8-250") in by_path[rhds_conf].updated_text
-
-
-def test_load_versions_config_rejects_invalid_baseline_cpu_rhds_channel(tmp_path: Path) -> None:
-    updater = load_updater()
-    config = tmp_path / "versions_config.yml"
-    write_versions_config(config)
-    text = config.read_text(encoding="utf-8")
-    config.write_text(text.replace("channel: rhel", "channel: fast", 1), encoding="utf-8")
-
-    with pytest.raises(ValueError, match="Invalid baseline_cpu rhds channel"):
-        updater.load_versions_config(config)

@@ -2,13 +2,22 @@
 from __future__ import annotations
 
 import pathlib
+import subprocess
 import tempfile
 from typing import TYPE_CHECKING
+from unittest import mock
 
 import pytest
 
 from ci.logging_config import configure_logging
-from scripts.sandbox import _copy_tree, _ignored_dir_names, _load_dockerignore, setup_sandbox
+from scripts.sandbox import (
+    _copy_tree,
+    _ignored_dir_names,
+    _is_container_build,
+    _load_dockerignore,
+    run_command_with_retries,
+    setup_sandbox,
+)
 
 if TYPE_CHECKING:
     import pyfakefs.fake_filesystem
@@ -19,6 +28,44 @@ ROOT_DIR = pathlib.Path(__file__).parent.parent
 @pytest.fixture(autouse=True)
 def _setup_logging():
     configure_logging()
+
+
+class TestRunCommandWithRetries:
+    def test_container_build_retries_on_failure(self):
+        with (
+            mock.patch("scripts.sandbox.subprocess.check_call") as check_call,
+            mock.patch("scripts.sandbox.time.sleep") as sleep,
+        ):
+            check_call.side_effect = [
+                subprocess.CalledProcessError(125, ["podman", "build"]),
+                subprocess.CalledProcessError(125, ["podman", "build"]),
+                None,
+            ]
+            run_command_with_retries(["podman", "build", "--tag", "test", "."])
+            assert check_call.call_count == 3
+            assert sleep.call_count == 2
+
+    def test_container_build_raises_after_max_attempts(self):
+        with (
+            mock.patch("scripts.sandbox.subprocess.check_call") as check_call,
+            mock.patch("scripts.sandbox.time.sleep"),
+        ):
+            check_call.side_effect = subprocess.CalledProcessError(125, ["podman", "build"])
+            with pytest.raises(subprocess.CalledProcessError):
+                run_command_with_retries(["podman", "build", "--tag", "test", "."])
+            assert check_call.call_count == 3
+
+    def test_non_build_command_does_not_retry(self):
+        with mock.patch("scripts.sandbox.subprocess.check_call") as check_call:
+            check_call.side_effect = subprocess.CalledProcessError(1, ["echo", "hi"])
+            with pytest.raises(subprocess.CalledProcessError):
+                run_command_with_retries(["echo", "hi"])
+            assert check_call.call_count == 1
+
+    def test_is_container_build(self):
+        assert _is_container_build(["podman", "build", "."]) is True
+        assert _is_container_build(["docker", "build", "."]) is True
+        assert _is_container_build(["podman", "run", "."]) is False
 
 
 class TestSandbox:

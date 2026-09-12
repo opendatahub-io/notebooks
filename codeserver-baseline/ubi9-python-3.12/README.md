@@ -1,15 +1,13 @@
 # codeserver-baseline/ubi9-python-3.12
 
 Code-server (VS Code in the browser) image with Python 3.12 for the baseline
-workbench variant, supporting both the **ODH c9s** and **RHDS / RHOAI** build paths.
+workbench variant. Baseline images are **ODH-only** (no RHDS/RHOAI build path).
 
-## Architecture (PyPI + product-specific base)
+## Architecture (PyPI + ODH c9s base)
 
-- **ODH `BASE_IMAGE`**: `quay.io/opendatahub/odh-base-image-cpu-py312-c9s` via `build-args/cpu.conf`
-- **RHDS `BASE_IMAGE`**: `registry.redhat.io/rhel9/python-312` via `build-args/konflux.cpu.conf`
+- **`BASE_IMAGE`**: `quay.io/opendatahub/odh-base-image-cpu-py312-c9s` via `build-args/cpu.conf`
 - **Python index**: public PyPI (`pylock.toml` + `requirements.cpu.txt` at component root)
-- **ODH RPM/generic prefetch**: `prefetch-input/odh` (UBI + CentOS Stream repos)
-- **RHDS RPM/generic prefetch**: `prefetch-input/rhds` (RHEL subscription / Pulp repos)
+- **RPM/generic prefetch**: `prefetch-input/odh` (UBI + CentOS Stream repos)
 - **Hermetic**: Cachi2/Hermeto prefetch for RPMs, npm, and pip (`hermetic: true` in `.tekton/`)
 - **Deps**: lean baseline set (ipykernel/jupyter/notebook/debugpy/ripgrep) — no datascience meta-package
 - **Multi-arch**: image builds on x86_64, aarch64, ppc64le, and s390x; the Jupyter stack
@@ -88,28 +86,19 @@ source .venv/bin/activate
 # Optional: clear pip cache when switching arch or fixing a bad prefetch
 # rm -rf cachi2/output/deps/pip
 
-# ODH / upstream — BUILD_ARCH must match the platform you will build
+# BUILD_ARCH must match the platform you will build
 RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
   ./scripts/lockfile-generators/prefetch-all.sh \
     --component-dir codeserver-baseline/ubi9-python-3.12
-
-# RHDS / RHOAI — BUILD_ARCH must match the platform you will build
-RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
-  ./scripts/lockfile-generators/prefetch-all.sh \
-    --component-dir codeserver-baseline/ubi9-python-3.12 --rhds \
-    --activation-key my-key --org my-org
 ```
 
-Use the build args and hermetic variant that match your target product:
-
 ```bash
-PRODUCT=odh make codeserver-baseline-ubi9-python-3.12
-PRODUCT=rhoai make codeserver-baseline-ubi9-python-3.12
+make codeserver-baseline-ubi9-python-3.12
 ```
 
 This single command orchestrates all five lockfile generators:
 1. Generic artifacts (GPG keys, node headers, oc client, VS Code extensions)
-2. Pip wheels (lean baseline set via AIPCC / RHOAI index)
+2. Pip wheels (lean baseline set from public PyPI)
 3. NPM packages (code-server + VS Code extensions)
 4. RPMs (gcc, nodejs, nginx, etc. via Hermeto from UBI/CentOS Stream or RHEL repos)
 5. Go modules (go.mod/go.sum via Hermeto; used by images that build Go binaries)
@@ -119,14 +108,11 @@ Lockfiles are organized into variant subdirectories under `prefetch-input/`:
 ```text
 prefetch-input/
 ├── repos/           # shared DNF repo definitions (ubi, centos, epel, rhsm-pulp)
-├── odh/             # upstream lockfiles (UBI + CentOS Stream repos)
+├── odh/             # lockfiles (UBI + CentOS Stream repos)
 │   ├── rpms.in.yaml           # references ../repos/*.repo
 │   ├── rpms.lock.yaml
 │   ├── artifacts.in.yaml
 │   └── artifacts.lock.yaml
-├── rhds/            # downstream lockfiles (RHEL subscription repos)
-│   ├── rpms.in.yaml           # references ../repos/*.repo + /etc/yum.repos.d/redhat.repo
-│   └── artifacts.in.yaml
 ├── code-server/     # git submodule (shared)
 └── patches/         # patch files (shared)
 ```
@@ -138,7 +124,7 @@ cachi2/output/deps/
 ├── generic/    # GPG keys, VS Code .vsix extensions (ripgrep from pip, oc from RPM)
 ├── rpm/        # RPM packages + repodata/ (includes openshift-clients)
 ├── npm/        # npm tarballs
-└── pip/        # Python wheels (RHOAI index: ripgrep, uv, micropipenv, etc.)
+└── pip/        # Python wheels (public PyPI: ripgrep, uv, micropipenv, etc.)
 ```
 
 > **Tip:** You only need to re-run this when inputs change (e.g. after editing
@@ -277,7 +263,7 @@ committed and up-to-date.
 ```yaml
 # .tekton/odh-workbench-codeserver-baseline-...-pull-request.yaml (abbreviated)
 - name: build-args-file
-  value: codeserver-baseline/ubi9-python-3.12/build-args/konflux.cpu.conf
+  value: codeserver-baseline/ubi9-python-3.12/build-args/cpu.conf
 - name: hermetic
   value: 'true'
 - name: prefetch-input
@@ -317,9 +303,9 @@ the container at `/cachi2`. This gives the Dockerfile the same
 | Path inside container | Contents |
 |-----------------------|----------|
 | `/cachi2/output/deps/rpm/` | All RPM packages plus `repodata/` metadata. The Dockerfile points dnf at this directory as a local repo |
-| `/cachi2/output/deps/pip/` | Python wheels prefetched from the RHOAI index. Installed with `uv pip install --no-index --find-links /cachi2/output/deps/pip` |
+| `/cachi2/output/deps/pip/` | Python wheels prefetched from public PyPI. Installed with `uv pip install --no-index --find-links /cachi2/output/deps/pip` |
 | `/cachi2/output/deps/npm/` | npm tarballs. `package-lock.json` resolved URLs are rewritten to `file:///cachi2/output/deps/npm/` so `npm ci --offline` finds them |
-| `/cachi2/output/deps/generic/` | GPG keys, VS Code .vsix extensions. Ripgrep comes from the RHOAI Python wheel in deps/pip; the oc client is installed via the openshift-clients RPM (deps/rpm). Node headers from nodejs-devel RPM; Electron download skipped. |
+| `/cachi2/output/deps/generic/` | GPG keys, VS Code .vsix extensions. Ripgrep comes from the prefetched Python wheel in deps/pip; the oc client is installed via the openshift-clients RPM (deps/rpm). Node headers from nodejs-devel RPM; Electron download skipped. |
 
 The `:z` suffix is a SELinux relabel flag for podman — it allows the container
 process to read the bind-mounted directory on SELinux-enabled hosts (Fedora,

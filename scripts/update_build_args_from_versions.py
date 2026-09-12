@@ -60,7 +60,6 @@ CPU_BASE_IMAGE_SCHEMA = {
     "odh": POLICY_SCHEMA,
 }
 BASELINE_CPU_BASE_IMAGE_SCHEMA = {
-    "rhds": POLICY_SCHEMA,
     "odh": POLICY_SCHEMA,
 }
 logger = logging.getLogger(__name__)
@@ -96,7 +95,6 @@ ROOT_SCHEMA = {
 }
 
 RHDS_CHANNELS = frozenset({"fast", "stable"})
-RHDS_BASELINE_CHANNELS = frozenset({"rhel"})
 ODH_ORIGINS = frozenset({"in-house", "midstream"})
 RHDS_STABLE_OVERRIDE_ACCELERATORS = frozenset({"cuda", "rocm"})
 RHDS_TAG_RE = re.compile(r"^(?P<version>\d+\.\d+\.\d+)(?:-(?P<phase>ea\.\d+))?-(?P<build>\d+)$")
@@ -422,24 +420,6 @@ def validate_distribution_policy(
         raise ValueError(f"odh in-house origin at {context} requires a numeric acc_version")
 
 
-def validate_baseline_cpu_rhds_policy(policy: object, *, context: str) -> None:
-    if not isinstance(policy, dict):
-        raise ValueError(f"Expected mapping at {context}")
-
-    actual_keys = set(policy)
-    if actual_keys != {"channel"}:
-        unexpected_keys = sorted(actual_keys - {"channel"})
-        missing_keys = sorted({"channel"} - actual_keys)
-        if unexpected_keys:
-            raise ValueError(f"Unexpected keys under {context}: {', '.join(unexpected_keys)}")
-        if missing_keys:
-            raise ValueError(f"Missing keys under {context}: {', '.join(missing_keys)}")
-
-    channel = scalar_to_string(policy["channel"])
-    if channel not in RHDS_BASELINE_CHANNELS:
-        raise ValueError(f"Invalid baseline_cpu rhds channel at {context}: {channel}")
-
-
 def normalize_gpu_flavor_config(
     flavor_policy: object,
     *,
@@ -566,10 +546,6 @@ def normalize_base_image_config(
             release=release,
         )
 
-    validate_baseline_cpu_rhds_policy(
-        mapping["baseline_cpu"]["rhds"],
-        context="baseline_cpu.rhds",
-    )
     validate_distribution_policy(
         mapping["baseline_cpu"]["odh"],
         distribution="odh",

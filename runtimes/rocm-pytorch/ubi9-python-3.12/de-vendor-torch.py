@@ -78,6 +78,29 @@ def link_lib(srcdir: str, basename: str, dstdir: str) -> None:
     print(f"  {link_path} -> {target}")
 
 
+def link_triton_plugins() -> None:
+    """Expose libtriton.so next to Triton plugin .so files for ldd/runtime loading.
+
+    Triton 3.7+ ships plugin shared objects under triton/plugins/ that link against
+    libtriton.so in triton/_C/. The loader does not search _C/ when resolving plugins.
+    """
+    rel_target = os.path.join("..", "_C", "libtriton.so")
+    for lib_root in ("/opt/app-root/lib", "/opt/app-root/lib64"):
+        site_packages = os.path.join(lib_root, PYTHON, "site-packages")
+        plugins = os.path.join(site_packages, "triton", "plugins")
+        libtriton = os.path.join(site_packages, "triton", "_C", "libtriton.so")
+        if not os.path.isdir(plugins):
+            continue
+        if not os.path.isfile(libtriton):
+            print(f"WARNING: {libtriton} not found, skipping triton plugin link", file=sys.stderr)
+            continue
+        link_path = os.path.join(plugins, "libtriton.so")
+        if os.path.lexists(link_path):
+            os.unlink(link_path)
+        os.symlink(rel_target, link_path)
+        print(f"  {link_path} -> {rel_target}")
+
+
 def main() -> None:
     print("De-vendoring PyTorch ROCm libraries")
     print(f"  ROCM_LIB:  {ROCM_LIB}")
@@ -102,6 +125,8 @@ def main() -> None:
             shutil.rmtree(dst)
         os.symlink(src, dst)
         print(f"  {dst} -> {src}")
+
+    link_triton_plugins()
 
     print("De-vendoring complete.")
 

@@ -40,7 +40,6 @@ def _minimal_valid_config() -> dict:
                     "odh": {"origin": "in-house", "version": "latest"},
                 },
                 "baseline_cpu": {
-                    "rhds": {"channel": "rhel"},
                     "odh": {"origin": "in-house", "version": "latest"},
                 },
                 "cuda": {
