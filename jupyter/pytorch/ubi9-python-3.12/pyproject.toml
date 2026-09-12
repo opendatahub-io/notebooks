@@ -49,8 +49,10 @@ override-dependencies = [
     # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
     # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
     "urllib3>=2.7.0",
-    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
-    "protobuf==6.31.1",
+    # AIPCC-13675: UPB segfault on s390x affects protobuf 6.33.5-6.33.6; fixed in 7.x.
+    # kfp 2.17.0's protobuf<7.0 is a conservative pin (gencode 6.31.1; APIs exist in 7.x).
+    # 7.x series only.
+    "protobuf>=7.36.1,<8",
     # RHAIENG-6408: CVE-2026-59890 — torch 2.11.0 wheel metadata caps setuptools<82;
     # override until torch 2.13+ on AIPCC (pytorch#187262). Runtime qualification: test_image_entrypoint_starts.
     "setuptools>=83.0.0",
