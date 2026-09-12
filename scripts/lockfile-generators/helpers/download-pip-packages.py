@@ -234,7 +234,14 @@ def fetch_simple_index_urls(
 
         # Detect JSON response (PEP 658 / core-metadata format) vs HTML (PEP 503)
         if html.lstrip().startswith("{"):
-            data = json.loads(html)
+            try:
+                data = json.loads(html)
+            except (json.JSONDecodeError, AttributeError) as e:
+                print(
+                    f"  ERROR: malformed JSON from index for {name}: {e}",
+                    file=sys.stderr,
+                )
+                return []
             out = []
             for f in data.get("files", []):
                 filename = f.get("filename", "")
