@@ -65,8 +65,14 @@ class TestBaseImage:
 
                         count_scanned += 1
 
+                        # Drop empty entries (e.g. from an unset LD_LIBRARY_PATH): an
+                        # empty path element makes the dynamic loader search the current
+                        # working directory, which could shadow a library under test.
+                        configured_paths = [
+                            entry for entry in os.environ.get("LD_LIBRARY_PATH", "").split(os.pathsep) if entry
+                        ]
                         extra_paths = [
-                            os.environ.get("LD_LIBRARY_PATH", ""),
+                            *configured_paths,
                             # $ORIGIN
                             os.path.dirname(dlib),
                             # torchvision needs libtorch_cpu.so, libc10_cuda.so from torch
