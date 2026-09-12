@@ -132,7 +132,12 @@ packages:
   - jansson
   - jq
   - libsndfile
+  # patch/rsync: needed by the rpm-base stage's dnf install. The c9s base
+  # image no longer ships them preinstalled (base refresh 2026-09), and they
+  # are not in the base image's reachable dnf repos, so prefetch them.
+  - patch
   - perl
+  - rsync
   - skopeo
   - tar
   - wget
