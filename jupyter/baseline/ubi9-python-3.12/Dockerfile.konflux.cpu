@@ -153,10 +153,16 @@ COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.tx
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
-# The raw RHEL Python base does not bootstrap uv the way AIPCC notebook bases
-# do. Install uv from the hermeto/cachi2 pip cache (offline) before the main
+# Install uv from the hermeto/cachi2 pip cache (offline) before the main
 # package install. Online `pip install uv` would break hermetic Konflux builds.
-# UV_VERSION is derived from this image's requirements.cpu.txt by scripts/dockerfile_fragments.py.
+# UV_VERSION is derived from this image's requirements.cpu.txt by
+# scripts/dockerfile_fragments.py.
+#
+# Runs as USER 1001:0: files under /opt/app-root must stay 1001:0-owned,
+# because ensure-openshift-site-packages.sh (USER 1001:0) cannot chmod
+# root-owned files (EPERM).
+USER 1001:0
+
 ### BEGIN UV version
 ARG UV_VERSION=0.12.5
 
@@ -164,8 +170,6 @@ ARG UV_VERSION=0.12.5
 RUN python3 -m pip install --no-cache-dir --no-index \
     --find-links /cachi2/output/deps/pip \
     "uv==${UV_VERSION}"
-
-USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
