@@ -228,8 +228,10 @@ podman run --rm \
 # Hermeto runs as root inside the container.  On rootful podman (GHA
 # runners), the output files are owned by root:root.  Without this fix,
 # the host user cannot move/modify them in later steps.
-if ! test -w "$HERMETO_STAGING/deps/rpm" 2>/dev/null; then
-  sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING" 2>/dev/null || true
+# Check for foreign-owned files (not just the top-level dir) so nested
+# root-owned entries are caught.  Fail loudly if chown cannot repair.
+if find "$HERMETO_STAGING" \( ! -uid "$(id -u)" -o ! -gid "$(id -g)" \) -print -quit | grep -q .; then
+  sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING"
 fi
 
 # Merge RPM output into the shared cachi2/output/ tree.  Other prefetch

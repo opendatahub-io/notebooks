@@ -66,19 +66,22 @@ podman run --rm \
   fetch-deps --source /source --output /output "$HERMETO_JSON"
 
 # Hermeto may run as root; fix ownership so the host user can use the files.
-if ! test -w "$HERMETO_STAGING/deps/gomod" 2>/dev/null; then
-  sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING" 2>/dev/null || true
+# Check for foreign-owned files (not just the top-level dir) so nested
+# root-owned entries are caught.  Fail loudly if chown cannot repair.
+if find "$HERMETO_STAGING" \( ! -uid "$(id -u)" -o ! -gid "$(id -g)" \) -print -quit | grep -q .; then
+  sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING"
 fi
 
 # Merge into shared cachi2/output. If multiple gomod prefetch paths are used,
 # later runs merge into the same deps/gomod tree (Go module cache layout).
 mkdir -p "$HERMETO_OUTPUT/deps/gomod"
 if [[ -d "$HERMETO_STAGING/deps/gomod" ]]; then
-  cp -a "$HERMETO_STAGING/deps/gomod"/* "$HERMETO_OUTPUT/deps/gomod/" 2>/dev/null || true
+  cp -a "$HERMETO_STAGING/deps/gomod"/. "$HERMETO_OUTPUT/deps/gomod/"
 elif [[ -d "$HERMETO_STAGING/deps" ]]; then
   # Some hermeto versions may use a different subdir; merge whatever is under deps/
   for sub in "$HERMETO_STAGING/deps"/*/; do
-    [[ -d "$sub" ]] && cp -a "$sub"* "$HERMETO_OUTPUT/deps/gomod/" 2>/dev/null || true
+    [[ -d "$sub" ]] || continue
+    cp -a "$sub"/. "$HERMETO_OUTPUT/deps/gomod/"
   done
 fi
 # Preserve bom and build-config if present (last run wins)
