@@ -146,6 +146,15 @@ image's own entrypoint as a child on `/start`). The k8s exec API was probed
 and rejected by RBAC (the pipeline SA cannot even `get pods`), so the agent
 is the only in-pod transport.
 
+The test **step** also runs in the image under test (`$(params.BUILT_IMAGE)`,
+`runAsUser 0` — the workbench images' default user is 1001): these images
+ship bash/git/curl/tar/python3/uv, so the step needs no package-manager
+installs (no `dnf`), and the pod's image pull is shared with the sidecar.
+The papermill leg runs pytest with `--capture=no` (it selects exactly one
+test) so the papermill run output streams to the task log on success — GHA
+parity; the test prints the output and the same text lands in the PR
+comment's tail.
+
 - **v1 scope:** `jupyter-minimal` (cpu) only; tests only on amd64
   (non-amd64 test pods would need qemu binfmt, impractical for ppc64le/s390x).
   Arch matrix per flavor: cpu = amd64/arm64/ppc64le/s390x,

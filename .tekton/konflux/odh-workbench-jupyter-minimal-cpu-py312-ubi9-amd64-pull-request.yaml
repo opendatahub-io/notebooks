@@ -363,7 +363,9 @@ spec:
               memory: 2Gi
         steps:
         - name: test
-          image: quay.io/fedora/fedora:43
+          image: $(params.BUILT_IMAGE)
+          securityContext:
+            runAsUser: 0
           env:
           - name: BUILT_IMAGE
             value: $(params.BUILT_IMAGE)
@@ -390,10 +392,10 @@ spec:
           script: |
             #!/bin/bash
             set -Eeuxo pipefail
-            dnf install -y git python3 curl
-            export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+            export PATH="$HOME/.local/bin:$HOME/bin:/opt/app-root/bin:$PATH"
+            mkdir -p /workspace
             cd /workspace
-            curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
+            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
             git clone "$(params.GIT_URL)" src_code
             cd src_code
@@ -409,7 +411,7 @@ spec:
             for i in $(seq 1 120); do python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8899/status', timeout=1)" >/dev/null 2>&1 && break; sleep 1; done
             python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8899/status', timeout=2).read().decode())"
             PYTEST_EXIT=0
-            uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" -vvv --color=yes > /tmp/pytest.log 2>&1 || PYTEST_EXIT=$?
+            uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" -vvv --color=yes  > /tmp/pytest.log 2>&1 || PYTEST_EXIT=$?
             tail -60 /tmp/pytest.log || true
             GH_TOKEN=$(cat "$(workspaces.basic-auth.path)/git-provider-token" 2>/dev/null || true)
             if [ -n "$GH_TOKEN" ]; then
@@ -492,7 +494,9 @@ spec:
               memory: 2Gi
         steps:
         - name: test
-          image: quay.io/fedora/fedora:43
+          image: $(params.BUILT_IMAGE)
+          securityContext:
+            runAsUser: 0
           env:
           - name: BUILT_IMAGE
             value: $(params.BUILT_IMAGE)
@@ -519,10 +523,10 @@ spec:
           script: |
             #!/bin/bash
             set -Eeuxo pipefail
-            dnf install -y git python3 curl
-            export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+            export PATH="$HOME/.local/bin:$HOME/bin:/opt/app-root/bin:$PATH"
+            mkdir -p /workspace
             cd /workspace
-            curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
+            command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
             uv python install 3.14
             git clone "$(params.GIT_URL)" src_code
             cd src_code
@@ -538,7 +542,7 @@ spec:
             for i in $(seq 1 120); do python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8899/status', timeout=1)" >/dev/null 2>&1 && break; sleep 1; done
             python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8899/status', timeout=2).read().decode())"
             PYTEST_EXIT=0
-            uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" -vvv --color=yes > /tmp/pytest.log 2>&1 || PYTEST_EXIT=$?
+            uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" -vvv --color=yes --capture=no > /tmp/pytest.log 2>&1 || PYTEST_EXIT=$?
             tail -60 /tmp/pytest.log || true
             GH_TOKEN=$(cat "$(workspaces.basic-auth.path)/git-provider-token" 2>/dev/null || true)
             if [ -n "$GH_TOKEN" ]; then

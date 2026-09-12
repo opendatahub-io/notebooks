@@ -92,8 +92,9 @@ Notes:
   `capabilities.add: [SYS_ADMIN]` probe was rejected at admission
   (`capability may not be added`). The test legs therefore run the image
   under test as a plain pod **sidecar** whose main process is the sidecar
-  exec agent; the test step (a plain fedora container, no capabilities)
-  drives it over a localhost HTTP control plane. The k8s exec API was probed
+  exec agent; the test step — the image under test itself, which ships
+  git/curl/python3/uv (no dnf installs; runAsUser 0) — drives it over a
+  localhost HTTP control plane. The k8s exec API was probed
   and rejected by RBAC (the pipeline SA cannot even `get pods`), so the agent
   is the only in-pod transport. Full evidence and the out-of-pod options map
   (mapt kind-on-AWS, EPHC/CSO `TestPlatformCluster` claims — the paths for

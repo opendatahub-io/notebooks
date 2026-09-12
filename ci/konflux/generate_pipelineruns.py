@@ -104,11 +104,16 @@ FLAVOR_PIP_ARCHES = {
 # test pod (too slow/flaky for ppc64le/s390x). Extend per image as needed.
 DEFAULT_TEST_ARCHES = {"x86_64"}
 
-# Test pod tooling (pinned for reproducibility)
-TEST_IMAGE = "quay.io/fedora/fedora:43"
-# Pinned so the test pods don't drift past pyproject.toml's [tool.uv]
-# required-version (">=0.11.8,<0.13") when a newer uv releases. Must stay in
-# that range; bump deliberately.
+# Test step image: the image under test itself ($(params.BUILT_IMAGE) at
+# render time). These workbench images already ship bash, git, curl, tar,
+# python3 and uv, so the step needs no package-manager installs (no dnf), and
+# the pod's image pull is shared with the sidecar. If a future test image lacks
+# a required binary, the step fails fast on the first use (set -Ee) and the
+# fix is either in the image or a dedicated tooling image here.
+# Pinned fallback uv, only installed when the image ships none: it keeps the
+# test pods inside pyproject.toml's [tool.uv] required-version
+# (">=0.11.8,<0.13") when a newer uv releases. Must stay in that range; bump
+# deliberately. (Images built from this repo's Dockerfiles ship an in-range uv.)
 UV_VERSION = "0.12.13"
 UV_INSTALL_URL = f"https://astral.sh/uv/{UV_VERSION}/install.sh"
 
@@ -225,7 +230,9 @@ def setup_uv_and_repo_lines() -> list[str]:
     Runs as root (home-dir uv install; PATH is set by sidecar_step_script).
     """
     return [
-        f"curl -LsSf {UV_INSTALL_URL} | sh",
+        # the workbench images ship uv in pyproject's required-version range;
+        # the pinned installer is the fallback for images that do not
+        f"command -v uv >/dev/null || curl -LsSf {UV_INSTALL_URL} | sh",
         "uv python install 3.14",
         'git clone "$(params.GIT_URL)" src_code',
         "cd src_code",
@@ -300,11 +307,14 @@ def sidecar_step_script(body_lines: list[str]) -> str:
     test runs as a pod sidecar and is driven through the sidecar agent's
     localhost control plane.
     """
+    # No package-manager installs: the step runs in the image under test,
+    # which ships bash/git/curl/tar/python3/uv (verified per image build).
     header = [
         "#!/bin/bash",
         "set -Eeuxo pipefail",
-        "dnf install -y git python3 curl",
-        'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"',
+        # the workbench image's app bin (uv, python3) may not be on PATH
+        'export PATH="$HOME/.local/bin:$HOME/bin:/opt/app-root/bin:$PATH"',
+        "mkdir -p /workspace",
         "cd /workspace",
     ]
     return "\n".join(header + body_lines) + "\n"
@@ -347,7 +357,15 @@ def gh_report_lines(label: str) -> list[str]:
     ]
 
 
-def sidecar_test_task(image: Image, arch_key: str, *, task_name: str, markers: str, report_label: str) -> dict:
+def sidecar_test_task(
+    image: Image,
+    arch_key: str,
+    *,
+    task_name: str,
+    markers: str,
+    report_label: str,
+    pytest_extra: str = "",
+) -> dict:
     """One sidecar-based test leg (task/pod per leg; legs run in parallel).
 
     Sidecar design (the runtime-free path): the image under test runs as a
@@ -360,10 +378,14 @@ def sidecar_test_task(image: Image, arch_key: str, *, task_name: str, markers: s
     its localhost HTTP control plane — start the entrypoint, exec commands,
     copy files, restart the server. The k8s-exec-API alternative was probed
     and rejected by RBAC (the pipeline SA cannot even `get pods`), so the
-    agent is the only in-pod transport. A pytest summary is posted as a PR
-    comment (via the PaC git-auth secret, key git-provider-token) because
-    this tenant GCs pod logs within ~2 min of failure — the comment is the
-    persistent sink.
+    agent is the only in-pod transport. The test step runs in the image under
+    test itself (git/curl/python3/uv preinstalled — no dnf; runAsUser 0
+    because the workbench images' default user is 1001). A pytest summary is
+    posted as a PR comment (via the PaC git-auth secret, key
+    git-provider-token) because this tenant GCs pod logs within ~2 min of
+    failure — the comment is the persistent sink. pytest_extra carries
+    per-leg pytest flags (the papermill leg uses --capture=no so the
+    papermill run output streams to the task log on success, GHA parity).
     """
     # uname-style arch for the container_arch fixture (the PLR is per-arch);
     # keys are the canonical PLATFORM_ARCH_KEY values (x86_64, arm64, ...)
@@ -383,7 +405,10 @@ def sidecar_test_task(image: Image, arch_key: str, *, task_name: str, markers: s
         agent_wait,
         "python3 -c \"import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8899/status', timeout=2).read().decode())\"",
         "PYTEST_EXIT=0",
-        'uv run pytest tests/containers -m "$(params.MARKERS)" --image="${IMAGE}" -vvv --color=yes > /tmp/pytest.log 2>&1 || PYTEST_EXIT=$?',
+        (
+            f'uv run pytest tests/containers -m "$(params.MARKERS)" --image="${{IMAGE}}" -vvv --color=yes {pytest_extra}'
+            " > /tmp/pytest.log 2>&1 || PYTEST_EXIT=$?"
+        ),
         "tail -60 /tmp/pytest.log || true",
         *gh_report_lines(report_label),
         'exit "${PYTEST_EXIT}"',
@@ -443,7 +468,11 @@ def sidecar_test_task(image: Image, arch_key: str, *, task_name: str, markers: s
             "steps": [
                 {
                     "name": "test",
-                    "image": TEST_IMAGE,
+                    # the image under test itself: git/curl/python3/uv are
+                    # preinstalled (no dnf), and the pod's image pull is
+                    # shared with the sidecar container.
+                    "image": "$(params.BUILT_IMAGE)",
+                    "securityContext": {"runAsUser": 0},
                     "env": [
                         *image_env(),
                         {"name": "FORCE_COLOR", "value": "1"},
@@ -481,6 +510,9 @@ def papermill_task(image: Image, arch_key: str) -> dict:
     Runs the image's test_notebook.ipynb via papermill against the image's
     installed stack — cluster-free (tests/containers/workbenches/
     papermill_test.py). Images without a test_notebook.ipynb skip at runtime.
+    --capture=no: this leg selects exactly one test, and that test prints the
+    papermill run output (stdout) on success so it reaches the task log, the
+    way GHA's papermill step streamed it.
     """
     return sidecar_test_task(
         image,
@@ -488,6 +520,7 @@ def papermill_task(image: Image, arch_key: str) -> dict:
         task_name="test-papermill",
         markers="papermill",
         report_label="papermill test run",
+        pytest_extra="--capture=no",
     )
 
 
@@ -902,8 +935,8 @@ else:
             task_names = {t["name"] for t in run["spec"]["pipelineSpec"]["tasks"]}
             assert {t["pipelineTaskName"] for t in run["spec"]["taskRunSpecs"]} <= task_names
             # the tenant SCCs reject privileged:true (and per-step CAP_SYS_ADMIN)
-            # — no step may request either (sidecar design: the test steps are
-            # plain fedora containers, no capabilities at all)
+            # — no step may request either (sidecar design: the test steps need
+            # no capabilities at all)
             for task in run["spec"]["pipelineSpec"]["tasks"]:
                 for step in task.get("taskSpec", {}).get("steps", []):
                     assert isinstance(step.get("script"), str), f"{task['name']}: script must be a string"
@@ -928,7 +961,11 @@ else:
             assert sidecar_env["SUT_ENTRYPOINT"] == "start-notebook.sh"
             assert sidecar_env["SUT_SERVER_LOG"] == "/shared/server.log"
             step = task["taskSpec"]["steps"][0]
-            assert "securityContext" not in step
+            # the step runs in the image under test (no dnf: git/curl/python3/
+            # uv are preinstalled); runAsUser 0 because the workbench images'
+            # default user is 1001
+            assert step["image"] == "$(params.BUILT_IMAGE)"
+            assert step["securityContext"] == {"runAsUser": 0}
             step_env = {e["name"]: e["value"] for e in step["env"]}
             assert step_env["SUT_AGENT_URL"] == "http://127.0.0.1:8899"
             assert step_env["SUT_ARCH"] == "x86_64"
@@ -943,6 +980,11 @@ else:
             assert "base64 -d > /shared/agent.py" in script
             assert "pytest tests/containers" in script
             assert "git-provider-token" in script
+            # no package-manager installs: the image under test ships the
+            # tooling (regression: the dnf line came back once)
+            assert "dnf" not in script
+            # testcontainers leg: no capture override (default capture)
+            assert "--capture=no" not in script
             # the report step must generate report.json before curling it, and
             # the curl must be non-fatal (a missing file once failed a green
             # run via CURLE_READ_ERROR under set -e)
@@ -953,7 +995,12 @@ else:
             params = {p["name"]: p["value"] for p in task["params"]}
             assert params["MARKERS"] == "papermill"
             assert task["taskSpec"]["sidecars"][0]["image"] == "$(params.BUILT_IMAGE)"
-            assert "python3 /tmp/post_report.py" in task["taskSpec"]["steps"][0]["script"]
+            pm_script = task["taskSpec"]["steps"][0]["script"]
+            assert "python3 /tmp/post_report.py" in pm_script
+            # GHA parity: the papermill run output streams to the task log on
+            # success (the single selected test prints it)
+            assert "--capture=no" in pm_script
+            assert "dnf" not in pm_script
 
         def test_script_vars_resolved(self):
             """Every shell variable referenced in a generated step script must be

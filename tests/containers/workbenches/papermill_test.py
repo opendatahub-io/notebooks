@@ -159,6 +159,13 @@ class TestPapermillNotebook:
                     ]
                 )
                 assert ecode == 0, f"papermill failed:\n{output.decode()}"
+            with allure.step("Papermill run output (printed on success, GHA parity)"):
+                # GHA's papermill step streamed the run output to the job log;
+                # print it here so the task log shows the notebook execution
+                # even on success. The Konflux sidecar task runs pytest with
+                # --capture=no for exactly this reason (the local testcontainers
+                # runs capture it like any other passing test).
+                print(output.decode(), end="" if output.decode().endswith("\n") else "\n")
             with allure.step("No FAILED entries in the papermill stderr file"):
                 ecode, error_output = container.exec(["cat", f"{output_prefix}_error.txt"])
                 if ecode == 0 and "FAILED" in error_output.decode():
