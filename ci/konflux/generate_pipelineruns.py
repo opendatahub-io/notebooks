@@ -314,6 +314,10 @@ def sidecar_step_script(body_lines: list[str]) -> str:
         "set -Eeuxo pipefail",
         # the workbench image's app bin (uv, python3) may not be on PATH
         'export PATH="$HOME/.local/bin:$HOME/bin:/opt/app-root/bin:$PATH"',
+        # the workbench images export UV_*/PIP_* env pointing at the Red Hat
+        # packages mirror (their own build index); the dev-dependency sync
+        # must use plain uv defaults like the GHA jobs do
+        "unset UV_INDEX_URL UV_CONFIG_FILE UV_NO_CACHE PIP_INDEX_URL PIP_CONFIG_FILE",
         "mkdir -p /workspace",
         "cd /workspace",
     ]
