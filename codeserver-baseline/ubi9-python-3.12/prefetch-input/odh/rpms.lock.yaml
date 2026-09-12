@@ -4,6 +4,34 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/a/apr-1.7.0-12.el9_3.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 125170
+    checksum: sha256:374ddeebd8141091d4930fe1d80482af730729037f08e092c3a4e417973d66a5
+    name: apr
+    evr: 1.7.0-12.el9_3
+    sourcerpm: apr-1.7.0-12.el9_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/a/apr-util-1.6.1-23.el9_8.1.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 104447
+    checksum: sha256:b4c94d506b7b13a740c2d3a43e6327b6f7f51f5e11e45c547a3af87e519999e3
+    name: apr-util
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/a/apr-util-bdb-1.6.1-23.el9_8.1.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 18671
+    checksum: sha256:5f156c039be2fd167b11b5df639b62b9831590d775a134a1a3fc8de87bec781d
+    name: apr-util-bdb
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/a/apr-util-openssl-1.6.1-23.el9_8.1.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 20817
+    checksum: sha256:ef8c953e60430b1cf73a5bd43726f3ec09f7a7fc5dac767c7938e47de19f75bf
+    name: apr-util-openssl
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/a/autoconf-2.69-41.el9.noarch.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 697155
@@ -732,6 +760,13 @@ arches:
     name: m4
     evr: 1.4.19-1.el9
     sourcerpm: m4-1.4.19-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/m/mod_http2-2.0.26-6.el9_8.2.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 168506
+    checksum: sha256:18213307cd7f451d644a7da4401fbd6b9d091a5920cae61ffb670d402401aa55
+    name: mod_http2
+    evr: 2.0.26-6.el9_8.2
+    sourcerpm: mod_http2-2.0.26-6.el9_8.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 92062
@@ -851,6 +886,13 @@ arches:
     name: opus
     evr: 1.3.1-10.el9
     sourcerpm: opus-1.3.1-10.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/p/patch-2.7.6-16.el9.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 129037
+    checksum: sha256:335c720da3caa41822737dd431d91a4adc79c85dedbe4483ecaf58bc83767610
+    name: patch
+    evr: 2.7.6-16.el9
+    sourcerpm: patch-2.7.6-16.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/p/pcre-cpp-8.44-4.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 26773
@@ -2048,6 +2090,13 @@ arches:
     name: diffutils
     evr: 3.7-12.el9
     sourcerpm: diffutils-3.7-12.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/e/ed-1.14.2-12.el9.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 78931
+    checksum: sha256:3bce4ce6243886c448e58f589b79e3ac829fcde53d1ff13d5906a8cdc22be091
+    name: ed
+    evr: 1.14.2-12.el9
+    sourcerpm: ed-1.14.2-12.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/e/environment-modules-5.3.0-2.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 605165
@@ -2524,6 +2573,13 @@ arches:
     name: lz4-libs
     evr: 1.9.3-5.el9
     sourcerpm: lz4-1.9.3-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/m/mailcap-2.1.49-5.el9.noarch.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 35492
+    checksum: sha256:6c880effa119e3eaf709ba6290a4f6e2b7294de64baf19ee84f672a89e732090
+    name: mailcap
+    evr: 2.1.49-5.el9
+    sourcerpm: mailcap-2.1.49-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/m/make-4.3-8.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 550249
@@ -3231,6 +3287,34 @@ arches:
     name: glibc-devel
     evr: 2.34-277.el9
     sourcerpm: glibc-2.34-277.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-2.4.62-15.el9.aarch64.rpm
+    repoid: appstream
+    size: 48010
+    checksum: sha256:d23761573b503d79b1539c18dcccf6a1febd5a809c7b54f48befa9c1d9a3d7d5
+    name: httpd
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-core-2.4.62-15.el9.aarch64.rpm
+    repoid: appstream
+    size: 1567239
+    checksum: sha256:76cca70c173bd9bd74e02a28a51632635f7170b29a7babfdaa27ecf6df74965d
+    name: httpd-core
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-filesystem-2.4.62-15.el9.noarch.rpm
+    repoid: appstream
+    size: 12980
+    checksum: sha256:4d03fa36e9fb577b9e6906f0e2bd39babb6c0090ff50f79989cddf62184a8a49
+    name: httpd-filesystem
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-tools-2.4.62-15.el9.aarch64.rpm
+    repoid: appstream
+    size: 82047
+    checksum: sha256:26039be2785864f34b85771a45e006285612badd10444afc28f28082925c9de3
+    name: httpd-tools
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/kernel-headers-5.14.0-742.el9.aarch64.rpm
     repoid: appstream
     size: 1873913
@@ -3378,6 +3462,13 @@ arches:
     name: mesa-libgbm
     evr: 26.1.1-1.el9
     sourcerpm: mesa-26.1.1-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/mod_lua-2.4.62-15.el9.aarch64.rpm
+    repoid: appstream
+    size: 58501
+    checksum: sha256:e8eb375947485f185dcacca85c6309b1a5ef25861f182de38c3dc5e72544208b
+    name: mod_lua
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/nginx-1.20.1-31.el9.aarch64.rpm
     repoid: appstream
     size: 38160
@@ -4715,6 +4806,13 @@ arches:
     name: python3-libselinux
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/rsync-3.2.5-9.el9.aarch64.rpm
+    repoid: baseos
+    size: 418992
+    checksum: sha256:2818a726e543e12b87b9b7b2e80291e0cc5cb1760ef987ee63861e8d3cfb094e
+    name: rsync
+    evr: 3.2.5-9.el9
+    sourcerpm: rsync-3.2.5-9.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/shadow-utils-4.9-17.el9.aarch64.rpm
     repoid: baseos
     size: 1242951
@@ -4836,16 +4934,44 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/repodata/b966aa1638dbbb5ca74c37f368b6cec0a3db4075bc672cb1758ab92aed1ca575-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/repodata/839eb6b6be2cd0c982f52934021ec115bab4f6af7845bdbf79d6a6c9b3b08544-modules.yaml.gz
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 8815
-    checksum: sha256:b966aa1638dbbb5ca74c37f368b6cec0a3db4075bc672cb1758ab92aed1ca575
+    checksum: sha256:839eb6b6be2cd0c982f52934021ec115bab4f6af7845bdbf79d6a6c9b3b08544
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/repodata/34ca4edf97306440fe749058f09d43512fcdf8ea384ab2de21bc22b4294769c2-modules.yaml.xz
     repoid: appstream
     size: 16912
     checksum: sha256:34ca4edf97306440fe749058f09d43512fcdf8ea384ab2de21bc22b4294769c2
 - arch: ppc64le
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/a/apr-1.7.0-12.el9_3.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 144334
+    checksum: sha256:680f7ece233fcd28f6a51f73bf31a7e6b97990c1ebb8c3cbfb7d285cfab7eb6e
+    name: apr
+    evr: 1.7.0-12.el9_3
+    sourcerpm: apr-1.7.0-12.el9_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/a/apr-util-1.6.1-23.el9_8.1.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 115557
+    checksum: sha256:8bdce71bdb8b163c942236aff3467d542276feafd46a4cb79b0d708b4aa11188
+    name: apr-util
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/a/apr-util-bdb-1.6.1-23.el9_8.1.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 18990
+    checksum: sha256:e1d5118a5e7cbf5c821b346a1e295e11c0c32ff3c4a011e0ea9aba5a9ed2a914
+    name: apr-util-bdb
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/a/apr-util-openssl-1.6.1-23.el9_8.1.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 21275
+    checksum: sha256:adf51f28bef2a5b4a20cb4fe4c5cf5b17bbbaca224329c0f12fa9952f15b13dc
+    name: apr-util-openssl
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/a/autoconf-2.69-41.el9.noarch.rpm
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 697155
@@ -5588,6 +5714,13 @@ arches:
     name: m4
     evr: 1.4.19-1.el9
     sourcerpm: m4-1.4.19-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/m/mod_http2-2.0.26-6.el9_8.2.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 182779
+    checksum: sha256:01e36ddd94e3cfd338e0d84a73d2a52d63dcc4503308d8c4c5db94e72a0016fb
+    name: mod_http2
+    evr: 2.0.26-6.el9_8.2
+    sourcerpm: mod_http2-2.0.26-6.el9_8.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 106314
@@ -5707,6 +5840,13 @@ arches:
     name: opus
     evr: 1.3.1-10.el9
     sourcerpm: opus-1.3.1-10.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/p/patch-2.7.6-16.el9.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 142892
+    checksum: sha256:c23a58b186b09c53cb618d0fadfa74a9a25dbb74566d6efe7de4de1d0da841a0
+    name: patch
+    evr: 2.7.6-16.el9
+    sourcerpm: patch-2.7.6-16.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/p/pcre-cpp-8.44-4.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 28359
@@ -6904,6 +7044,13 @@ arches:
     name: diffutils
     evr: 3.7-12.el9
     sourcerpm: diffutils-3.7-12.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/e/ed-1.14.2-12.el9.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 82622
+    checksum: sha256:4db0d11688f24b55b218cb472852062026bbf89046b19290edec4a80ee6dcd45
+    name: ed
+    evr: 1.14.2-12.el9
+    sourcerpm: ed-1.14.2-12.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/e/environment-modules-5.3.0-2.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 605401
@@ -7394,6 +7541,13 @@ arches:
     name: lz4-libs
     evr: 1.9.3-5.el9
     sourcerpm: lz4-1.9.3-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/m/mailcap-2.1.49-5.el9.noarch.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 35492
+    checksum: sha256:6c880effa119e3eaf709ba6290a4f6e2b7294de64baf19ee84f672a89e732090
+    name: mailcap
+    evr: 2.1.49-5.el9
+    sourcerpm: mailcap-2.1.49-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/m/make-4.3-8.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 567121
@@ -8087,6 +8241,34 @@ arches:
     name: glibc-devel
     evr: 2.34-277.el9
     sourcerpm: glibc-2.34-277.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/httpd-2.4.62-15.el9.ppc64le.rpm
+    repoid: appstream
+    size: 49066
+    checksum: sha256:c4a617b61534d75f92a45e07bf5e1b9b169103ca11a547635acdfffcf3fbbd66
+    name: httpd
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/httpd-core-2.4.62-15.el9.ppc64le.rpm
+    repoid: appstream
+    size: 1674291
+    checksum: sha256:911f35b5bbd8ca20fc68aaec319c9d4eb095a13e0563855ba01a9796a4e9ba89
+    name: httpd-core
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/httpd-filesystem-2.4.62-15.el9.noarch.rpm
+    repoid: appstream
+    size: 12980
+    checksum: sha256:4d03fa36e9fb577b9e6906f0e2bd39babb6c0090ff50f79989cddf62184a8a49
+    name: httpd-filesystem
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/httpd-tools-2.4.62-15.el9.ppc64le.rpm
+    repoid: appstream
+    size: 84950
+    checksum: sha256:70a80922983431d2cb88bcc96ca7ab4f289159bc1f5e68bbcf57bd324b417f73
+    name: httpd-tools
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/kernel-headers-5.14.0-742.el9.ppc64le.rpm
     repoid: appstream
     size: 1897733
@@ -8241,6 +8423,13 @@ arches:
     name: mesa-libgbm
     evr: 26.1.1-1.el9
     sourcerpm: mesa-26.1.1-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/mod_lua-2.4.62-15.el9.ppc64le.rpm
+    repoid: appstream
+    size: 64302
+    checksum: sha256:ae1f98d6b40243b2620a40e0e35ce1328b1c73855f8797b30a7e759ab5ef1c2c
+    name: mod_lua
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/nginx-1.20.1-31.el9.ppc64le.rpm
     repoid: appstream
     size: 38198
@@ -9578,6 +9767,13 @@ arches:
     name: python3-libselinux
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/rsync-3.2.5-9.el9.ppc64le.rpm
+    repoid: baseos
+    size: 452866
+    checksum: sha256:ba5481d098b203df7f142fb7eb25a59b86edaacd6886b72cd9298c19c97a6f76
+    name: rsync
+    evr: 3.2.5-9.el9
+    sourcerpm: rsync-3.2.5-9.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/shadow-utils-4.9-17.el9.ppc64le.rpm
     repoid: baseos
     size: 1272492
@@ -9699,16 +9895,44 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/repodata/23e4c0e2a672611f3c8195c118365e30d52ce55d075b11dd30bea224335d74f1-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/repodata/c022afa9a6162c48e2b882f8e06a093d4b8c98deada3151352a516230fea3da0-modules.yaml.gz
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 8729
-    checksum: sha256:23e4c0e2a672611f3c8195c118365e30d52ce55d075b11dd30bea224335d74f1
+    checksum: sha256:c022afa9a6162c48e2b882f8e06a093d4b8c98deada3151352a516230fea3da0
   - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/repodata/fc97d63cf2c2d2586d77558eef50f286a2dcc95232147423e1745312f811cb01-modules.yaml.xz
     repoid: appstream
     size: 16916
     checksum: sha256:fc97d63cf2c2d2586d77558eef50f286a2dcc95232147423e1745312f811cb01
 - arch: s390x
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/a/apr-1.7.0-12.el9_3.s390x.rpm
+    repoid: ubi-9-for-s390x-appstream-rpms
+    size: 127831
+    checksum: sha256:9090e7d69ca99a08bbbba87196d2692e1c6f64de72a50efd577d10719ec56fd7
+    name: apr
+    evr: 1.7.0-12.el9_3
+    sourcerpm: apr-1.7.0-12.el9_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/a/apr-util-1.6.1-23.el9_8.1.s390x.rpm
+    repoid: ubi-9-for-s390x-appstream-rpms
+    size: 104223
+    checksum: sha256:ef30ed34a60dd2eca071f0adcd96cb7ba862d5de7900d1b3b72e1b957abfdf84
+    name: apr-util
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/a/apr-util-bdb-1.6.1-23.el9_8.1.s390x.rpm
+    repoid: ubi-9-for-s390x-appstream-rpms
+    size: 18382
+    checksum: sha256:880fc5a8b1c9394ebfe051a903049052090931ff065108bc6d8ceda403ddd022
+    name: apr-util-bdb
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/a/apr-util-openssl-1.6.1-23.el9_8.1.s390x.rpm
+    repoid: ubi-9-for-s390x-appstream-rpms
+    size: 20985
+    checksum: sha256:2b3ea9aa461d67fa0148f8dbc540f4f8d0043bd03086ab586d4132eec638b424
+    name: apr-util-openssl
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/a/autoconf-2.69-41.el9.noarch.rpm
     repoid: ubi-9-for-s390x-appstream-rpms
     size: 697155
@@ -10465,6 +10689,13 @@ arches:
     name: m4
     evr: 1.4.19-1.el9
     sourcerpm: m4-1.4.19-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/m/mod_http2-2.0.26-6.el9_8.2.s390x.rpm
+    repoid: ubi-9-for-s390x-appstream-rpms
+    size: 170072
+    checksum: sha256:c5b8c9f589c9e260230f5e01ef5cff4213eaf55297303696a81ad2c400bad3d7
+    name: mod_http2
+    evr: 2.0.26-6.el9_8.2
+    sourcerpm: mod_http2-2.0.26-6.el9_8.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.s390x.rpm
     repoid: ubi-9-for-s390x-appstream-rpms
     size: 94813
@@ -10584,6 +10815,13 @@ arches:
     name: opus
     evr: 1.3.1-10.el9
     sourcerpm: opus-1.3.1-10.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/p/patch-2.7.6-16.el9.s390x.rpm
+    repoid: ubi-9-for-s390x-appstream-rpms
+    size: 131823
+    checksum: sha256:6aa764094daede9f0cddafa11c0b2b9c6f25c4b03264645bd77251ac3c7a418d
+    name: patch
+    evr: 2.7.6-16.el9
+    sourcerpm: patch-2.7.6-16.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/Packages/p/pcre-cpp-8.44-4.el9.s390x.rpm
     repoid: ubi-9-for-s390x-appstream-rpms
     size: 25994
@@ -11781,6 +12019,13 @@ arches:
     name: diffutils
     evr: 3.7-12.el9
     sourcerpm: diffutils-3.7-12.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/e/ed-1.14.2-12.el9.s390x.rpm
+    repoid: ubi-9-for-s390x-baseos-rpms
+    size: 78804
+    checksum: sha256:9c75eba2588c47ffdc20ee314fee11b1363541e8c4660491c1c55b46e45c20e5
+    name: ed
+    evr: 1.14.2-12.el9
+    sourcerpm: ed-1.14.2-12.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/e/environment-modules-5.3.0-2.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 604248
@@ -12236,6 +12481,13 @@ arches:
     name: lz4-libs
     evr: 1.9.3-5.el9
     sourcerpm: lz4-1.9.3-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/m/mailcap-2.1.49-5.el9.noarch.rpm
+    repoid: ubi-9-for-s390x-baseos-rpms
+    size: 35492
+    checksum: sha256:6c880effa119e3eaf709ba6290a4f6e2b7294de64baf19ee84f672a89e732090
+    name: mailcap
+    evr: 2.1.49-5.el9
+    sourcerpm: mailcap-2.1.49-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/m/make-4.3-8.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 553451
@@ -12943,6 +13195,34 @@ arches:
     name: glibc-headers
     evr: 2.34-277.el9
     sourcerpm: glibc-2.34-277.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/httpd-2.4.62-15.el9.s390x.rpm
+    repoid: appstream
+    size: 47963
+    checksum: sha256:a4514d4f3f7fb6fc6024489ae089300acea1a21175dd4d088a9713976674091a
+    name: httpd
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/httpd-core-2.4.62-15.el9.s390x.rpm
+    repoid: appstream
+    size: 1545738
+    checksum: sha256:c14e9e1766f285e5962d5017a0580e09df5666980053a9910a41bedb7068e92c
+    name: httpd-core
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/httpd-filesystem-2.4.62-15.el9.noarch.rpm
+    repoid: appstream
+    size: 12980
+    checksum: sha256:4d03fa36e9fb577b9e6906f0e2bd39babb6c0090ff50f79989cddf62184a8a49
+    name: httpd-filesystem
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/httpd-tools-2.4.62-15.el9.s390x.rpm
+    repoid: appstream
+    size: 82668
+    checksum: sha256:91b1493116922b47e3732cbb949edaa7c7a8ca0b7819499b697b201b000e4651
+    name: httpd-tools
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/kernel-headers-5.14.0-742.el9.s390x.rpm
     repoid: appstream
     size: 1903937
@@ -13097,6 +13377,13 @@ arches:
     name: mesa-libgbm
     evr: 26.1.1-1.el9
     sourcerpm: mesa-26.1.1-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/mod_lua-2.4.62-15.el9.s390x.rpm
+    repoid: appstream
+    size: 58754
+    checksum: sha256:e4d77d1cdd58e4670ff970c88c40aeec4e71fdd49cce855b8671bd2baaf96da2
+    name: mod_lua
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/nginx-1.20.1-31.el9.s390x.rpm
     repoid: appstream
     size: 38174
@@ -14413,6 +14700,13 @@ arches:
     name: python3-libselinux
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/rsync-3.2.5-9.el9.s390x.rpm
+    repoid: baseos
+    size: 420743
+    checksum: sha256:45b1b1ed6e239440a6c32e1de27f2d71cc09eb62d06e6bcdcb25e1226324e857
+    name: rsync
+    evr: 3.2.5-9.el9
+    sourcerpm: rsync-3.2.5-9.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/shadow-utils-4.9-17.el9.s390x.rpm
     repoid: baseos
     size: 1242954
@@ -14534,16 +14828,44 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/repodata/39c455a2c18e80dca6ab495093d84b2020e3665f6e1a1a97278c4bccc9c5c5d3-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/repodata/8d9cb077e19e332b5a893b3584a7bf9900b2002fe248eb2890afc7e394bf5591-modules.yaml.gz
     repoid: ubi-9-for-s390x-appstream-rpms
     size: 8470
-    checksum: sha256:39c455a2c18e80dca6ab495093d84b2020e3665f6e1a1a97278c4bccc9c5c5d3
+    checksum: sha256:8d9cb077e19e332b5a893b3584a7bf9900b2002fe248eb2890afc7e394bf5591
   - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/repodata/d7fbdcf63e9f0588a177a227913b142e0a6694f61ff343b66291f3ef7cecc140-modules.yaml.xz
     repoid: appstream
     size: 16824
     checksum: sha256:d7fbdcf63e9f0588a177a227913b142e0a6694f61ff343b66291f3ef7cecc140
 - arch: x86_64
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/a/apr-1.7.0-12.el9_3.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 129032
+    checksum: sha256:7a8d216d45355f7b656777fcb874a0803d5e97a3e7575b8b58dc7bf608919459
+    name: apr
+    evr: 1.7.0-12.el9_3
+    sourcerpm: apr-1.7.0-12.el9_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/a/apr-util-1.6.1-23.el9_8.1.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 103077
+    checksum: sha256:883147c3c2fdc0f53ea41d9b79a23c33263b20b3cc8d644c7894e348fb502977
+    name: apr-util
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/a/apr-util-bdb-1.6.1-23.el9_8.1.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 18606
+    checksum: sha256:f425baa0a827f052a01fa3539a17d8314fe1eb43e8d2006cd14bacc72ba28b94
+    name: apr-util-bdb
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/a/apr-util-openssl-1.6.1-23.el9_8.1.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 21140
+    checksum: sha256:4b210b595528c750ff1f58ac99e7ebb3dc197052e652779a61fdafd6d9755e61
+    name: apr-util-openssl
+    evr: 1.6.1-23.el9_8.1
+    sourcerpm: apr-util-1.6.1-23.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/a/autoconf-2.69-41.el9.noarch.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 697155
@@ -15293,6 +15615,13 @@ arches:
     name: m4
     evr: 1.4.19-1.el9
     sourcerpm: m4-1.4.19-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/m/mod_http2-2.0.26-6.el9_8.2.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 173889
+    checksum: sha256:624ddb8883a44786afe061d2c45170db0e78479523c3c8071943fb99709dcfd4
+    name: mod_http2
+    evr: 2.0.26-6.el9_8.2
+    sourcerpm: mod_http2-2.0.26-6.el9_8.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 89670
@@ -15412,6 +15741,13 @@ arches:
     name: opus
     evr: 1.3.1-10.el9
     sourcerpm: opus-1.3.1-10.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/patch-2.7.6-16.el9.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 133240
+    checksum: sha256:d2e0307a2d1d4eff0c2db406841030461b35864926916f2a92244427d89316be
+    name: patch
+    evr: 2.7.6-16.el9
+    sourcerpm: patch-2.7.6-16.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/pcre-cpp-8.44-4.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 27327
@@ -16609,6 +16945,13 @@ arches:
     name: diffutils
     evr: 3.7-12.el9
     sourcerpm: diffutils-3.7-12.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/e/ed-1.14.2-12.el9.x86_64.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 79993
+    checksum: sha256:5fb3c625fd1ace94f133522bdaf4768abd78f029e20886b8e4aed2d6d1aac664
+    name: ed
+    evr: 1.14.2-12.el9
+    sourcerpm: ed-1.14.2-12.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/e/environment-modules-5.3.0-2.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 604214
@@ -17092,6 +17435,13 @@ arches:
     name: lz4-libs
     evr: 1.9.3-5.el9
     sourcerpm: lz4-1.9.3-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/m/mailcap-2.1.49-5.el9.noarch.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 35492
+    checksum: sha256:6c880effa119e3eaf709ba6290a4f6e2b7294de64baf19ee84f672a89e732090
+    name: mailcap
+    evr: 2.1.49-5.el9
+    sourcerpm: mailcap-2.1.49-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/m/make-4.3-8.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 553896
@@ -17806,6 +18156,34 @@ arches:
     name: glibc-headers
     evr: 2.34-277.el9
     sourcerpm: glibc-2.34-277.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-2.4.62-15.el9.x86_64.rpm
+    repoid: appstream
+    size: 48483
+    checksum: sha256:9577e980b8faaa9e25d8cd80290bedb75929b88d2873dab24fdfbecf40c57929
+    name: httpd
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-core-2.4.62-15.el9.x86_64.rpm
+    repoid: appstream
+    size: 1589165
+    checksum: sha256:57ff55c67fb116af679cec9cfb46a822d0cffb1311fee1fa36399dac3ec6a0b2
+    name: httpd-core
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-filesystem-2.4.62-15.el9.noarch.rpm
+    repoid: appstream
+    size: 12980
+    checksum: sha256:4d03fa36e9fb577b9e6906f0e2bd39babb6c0090ff50f79989cddf62184a8a49
+    name: httpd-filesystem
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-tools-2.4.62-15.el9.x86_64.rpm
+    repoid: appstream
+    size: 83769
+    checksum: sha256:1f9db649d08661513cc607f5756b9ce6e2b9f771d650b807150a7c4f94299a56
+    name: httpd-tools
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/kernel-headers-5.14.0-742.el9.x86_64.rpm
     repoid: appstream
     size: 1913161
@@ -17946,6 +18324,13 @@ arches:
     name: mesa-libgbm
     evr: 26.1.1-1.el9
     sourcerpm: mesa-26.1.1-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/mod_lua-2.4.62-15.el9.x86_64.rpm
+    repoid: appstream
+    size: 60795
+    checksum: sha256:0cdb1803c4e16fd4714063bd620b12064af4b47af31b883081b2208044ec5393
+    name: mod_lua
+    evr: 2.4.62-15.el9
+    sourcerpm: httpd-2.4.62-15.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/nginx-1.20.1-31.el9.x86_64.rpm
     repoid: appstream
     size: 38206
@@ -19297,6 +19682,13 @@ arches:
     name: python3-libselinux
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/rsync-3.2.5-9.el9.x86_64.rpm
+    repoid: baseos
+    size: 423739
+    checksum: sha256:65509f9001d3b0811b282262a4a6caa15892d0a40d334969003ed171d79cba28
+    name: rsync
+    evr: 3.2.5-9.el9
+    sourcerpm: rsync-3.2.5-9.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/shadow-utils-4.9-17.el9.x86_64.rpm
     repoid: baseos
     size: 1250273
@@ -19418,10 +19810,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/repodata/1a1de5428df1ee84974753430c6c5004d3cf95d72bfde8bd4acdca5ae59439db-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/repodata/645a0951f63641712bc86c42ba663b02e8c728400459c032d36503ea3f1c51c1-modules.yaml.gz
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 8371
-    checksum: sha256:1a1de5428df1ee84974753430c6c5004d3cf95d72bfde8bd4acdca5ae59439db
+    checksum: sha256:645a0951f63641712bc86c42ba663b02e8c728400459c032d36503ea3f1c51c1
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/repodata/0e1bbac09e7f76898c5a9c9dfa23589933a8fbcf9e4700b31046b704624b2697-modules.yaml.xz
     repoid: appstream
     size: 16860
