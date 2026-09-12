@@ -29,6 +29,8 @@ ODH_BASE_ENABLE_RULE_DESCRIPTION = "ODH BASE_IMAGE digest updates on opendatahub
 ODH_BASE_MANAGER_DESCRIPTION = "Update BASE_IMAGE in ODH (non-konflux) build-args conf files"
 ODH_BASE_MANAGER_FILE_PATTERN = "/(jupyter|codeserver|runtimes)/.+/build-args/(cpu|cuda|rocm)\\.conf$/"
 ODH_BASE_PACKAGE_PATTERN = "/^quay\\.io\\/opendatahub\\//"
+SEPARATE_MINOR_PATCH_RULE_DESCRIPTION = "Separate minor and patch base image upgrades"
+SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES = [f"!{ODH_BASE_PACKAGE_PATTERN}"]
 
 
 @dataclass(frozen=True)
@@ -213,6 +215,28 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
             errors.append("CentOS Stream pin rule must set pinDigests: true")
 
     errors.extend(validate_odh_base_image_policy(config.get("customManagers"), package_rules))
+
+    separate_minor_patch_rule = next(
+        (
+            rule
+            for rule in package_rules
+            if isinstance(rule, dict) and rule.get("description", "").startswith(SEPARATE_MINOR_PATCH_RULE_DESCRIPTION)
+        ),
+        None,
+    )
+    if separate_minor_patch_rule is None:
+        errors.append(f"missing packageRule: {SEPARATE_MINOR_PATCH_RULE_DESCRIPTION!r}")
+    else:
+        if separate_minor_patch_rule.get("matchManagers") != ["custom.regex"]:
+            errors.append("separateMinorPatch rule must match custom.regex manager only")
+        if separate_minor_patch_rule.get("matchPackageNames") != SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES:
+            errors.append(
+                "separateMinorPatch rule matchPackageNames must be "
+                f"{SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES!r} (exclude ODH BASE_IMAGE, no minor/patch axis), "
+                f"got {separate_minor_patch_rule.get('matchPackageNames')!r}"
+            )
+        if separate_minor_patch_rule.get("separateMinorPatch") is not True:
+            errors.append("separateMinorPatch rule must set separateMinorPatch: true")
 
     return errors
 

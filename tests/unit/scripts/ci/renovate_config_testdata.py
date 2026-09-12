@@ -16,6 +16,8 @@ from scripts.ci.validate_renovate_config import (
     ODH_REPO,
     PREFIX_RULE_DESCRIPTION,
     REQUIRED_ENABLED_MANAGERS,
+    SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES,
+    SEPARATE_MINOR_PATCH_RULE_DESCRIPTION,
     MintMakerRepoPolicy,
 )
 
@@ -93,6 +95,15 @@ def odh_base_image_enable_rule() -> dict[str, Any]:
     }
 
 
+def separate_minor_patch_rule() -> dict[str, Any]:
+    return {
+        "description": SEPARATE_MINOR_PATCH_RULE_DESCRIPTION,
+        "matchManagers": ["custom.regex"],
+        "matchPackageNames": list(SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES),
+        "separateMinorPatch": True,
+    }
+
+
 def minimal_valid_config(*extra_rules: dict[str, Any]) -> dict[str, Any]:
     package_rules: list[dict[str, Any]] = [prefix_rule()]
     for policy in MINTMAKER_POLICIES:
@@ -101,6 +112,7 @@ def minimal_valid_config(*extra_rules: dict[str, Any]) -> dict[str, Any]:
     package_rules.append(centos_stream_pin_rule())
     package_rules.append(odh_base_image_disable_rule())
     package_rules.append(odh_base_image_enable_rule())
+    package_rules.append(separate_minor_patch_rule())
     package_rules.extend(extra_rules)
     return {
         "enabledManagers": list(REQUIRED_ENABLED_MANAGERS),
