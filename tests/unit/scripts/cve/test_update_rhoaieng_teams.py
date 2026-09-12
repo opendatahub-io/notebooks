@@ -8,17 +8,12 @@ import pytest
 from scripts.cve import create_cve_trackers as cct
 
 if TYPE_CHECKING:
-    from pytest import CaptureFixture, MonkeyPatch
+    from pytest import CaptureFixture
 
 
 @pytest.fixture
 def mock_client() -> MagicMock:
     return MagicMock()
-
-
-@pytest.fixture(autouse=True)
-def _clean_team_env(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_RHAIENG_TEAM_OPTION_ID", raising=False)
 
 
 def test_update_rhoaieng_teams_no_updates_needed(mock_client: MagicMock) -> None:
