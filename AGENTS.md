@@ -27,6 +27,7 @@ discovery); `AGENTS.md` remains the single source of truth — edit only this fi
 | [`ci/agentic-reviewer/AGENTS.md`](ci/agentic-reviewer/AGENTS.md) | You are editing Antigravity PR review / CI summary agents |
 | [`tests/browser/AGENTS.md`](tests/browser/AGENTS.md) | You are editing Playwright tests or browser tooling |
 | [docs/agents/testing.md](docs/agents/testing.md) | You need the test catalog: types, markers, commands, CI parity |
+| [docs/bodies-of-water.md](docs/bodies-of-water.md) / [docs/bodies-of-water-troubleshooting.md](docs/bodies-of-water-troubleshooting.md) | You are working the Stream→Lake→Ocean (ODH/RHOAI) release flow, promoting between branches, or debugging a cross-org sync/build |
 | `ci/security-scan/` | You need Quay vulnerability scan results or the weekly security workflow |
 | [docs/ai-coding-assistant-project-config.md](docs/ai-coding-assistant-project-config.md) | You need the cross-tool `AGENTS.md` / `CLAUDE.md` / skills layout |
 | [`.agents/skills/`](.agents/skills/) | You are authoring or discovering Agent Skills |
