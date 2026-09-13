@@ -88,10 +88,16 @@ USER 1001
 # into /opt/app-root/src/wheels. The jupyter-baseline stage installs those wheels with
 # --no-index, so the shipped Python packages never come from precompiled
 # PyPI wheels.
+#
+# One documented exception: ast-serialize vendors ruff rust crates that require
+# rustc >= 1.95; RHEL 9.8 EUS (RHOAI) ships rust 1.92, so for that flavor the
+# package is installed from its prebuilt wheel. c9s (ODH) has a newer rust and
+# builds it from its sdist like every other package.
 FROM cpu-base AS python-builder
 
 ARG BASELINE_SOURCE_CODE=jupyter/baseline/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
+ARG PRODUCT
 
 USER 0
 
@@ -216,6 +222,13 @@ sed '/--hash/d' ./requirements.txt \
     | sed 's/;.*$//' > /tmp/requirements-sdist.txt
 # python-dateutil pins setuptools_scm<8.0, which conflicts with the
 # toolchain's newer setuptools-scm; build just that one in isolation
+# ast-serialize needs rustc >= 1.95, unavailable on RHEL 9.8 (RHOAI); carve it
+# out of the sdist set there (prebuilt wheel below) and keep it sdist-built on ODH
+touch /tmp/requirements-exception.txt
+if [ "$PRODUCT" = "rhoai" ]; then
+  grep '^ast-serialize==' /tmp/requirements-sdist.txt > /tmp/requirements-exception.txt
+  grep -v '^ast-serialize==' /tmp/requirements-sdist.txt > /tmp/requirements-sdist.txt
+fi
 grep -v '^python-dateutil==' /tmp/requirements-sdist.txt > /tmp/requirements-shared.txt
 python3 -m pip wheel --no-deps --no-build-isolation --no-binary :all: \
     -w /opt/app-root/src/wheels -r /tmp/requirements-shared.txt
@@ -223,6 +236,11 @@ while IFS= read -r spec; do
   python3 -m pip wheel --no-deps --no-binary :all: \
       -w /opt/app-root/src/wheels "$spec"
 done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
+# the RHOAI exception above, installed from its prebuilt wheel
+if [ -s /tmp/requirements-exception.txt ]; then
+  python3 -m pip wheel --no-deps --no-build-isolation \
+      -w /opt/app-root/src/wheels -r /tmp/requirements-exception.txt
+fi
 # Build backends create some wheels 0600 and pip moves them to the
 # wheel dir as-is; normalize so the read-only from-mount consumer
 # (USER 1001) can read every wheel.
