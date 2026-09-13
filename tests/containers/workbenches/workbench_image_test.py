@@ -3,27 +3,25 @@ from __future__ import annotations
 import http.client
 import logging
 import os
-import pathlib
 import platform
-import tempfile
 import time
-import urllib.error
-import urllib.request
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 import allure
 import docker.types
 import pytest
-import testcontainers.core.container
 import testcontainers.core.docker_client
 import testcontainers.core.network
-import testcontainers.core.waiting_utils
 
-from tests.containers import docker_utils, kubernetes_utils, podman_machine_utils
+from tests.containers import container_transport, docker_utils, kubernetes_utils, podman_machine_utils
+
+# the workbench container class moved to container_transport (ABC + two
+# implementations: testcontainers and sidecar); the name is kept for the
+# many test call sites — transport selection happens in the factory, in
+# exactly one place (see ADR-0018)
+WorkbenchContainer = container_transport.workbench_container
 
 if TYPE_CHECKING:
-    from types import TracebackType
-
     from tests.containers.conftest import Image
 
 
@@ -192,98 +190,9 @@ class TestWorkbenchImage:
             image.deploy(container_name="notebook-tests-pod")
 
 
-class WorkbenchContainer(testcontainers.core.container.DockerContainer):
-    """Testcontainer for JupyterLab and code-server only (see ``skip_if_not_workbench_image``)."""
-
-    def __init__(
-        self,
-        port: int = 8888,
-        **kwargs,
-    ) -> None:
-        super().__init__(**kwargs)
-
-        self.port = port
-        self.with_exposed_ports(self.port)
-
-    @testcontainers.core.waiting_utils.wait_container_is_ready(urllib.error.URLError)
-    def _connect(
-        self, container_host: str | None = None, container_port: int | None = None, base_url: str = ""
-    ) -> None:
-        """
-        :param container_host: overrides the container host IP in connection check to use direct access
-        :param container_port: overrides the container port
-        :param base_url: needs to be with a leading /
-        """
-        # are we still alive?
-        self.get_wrapped_container().reload()
-        assert self.get_wrapped_container().status != "exited"
-
-        # connect
-        host = container_host or self.get_container_host_ip()
-        # Podman publishes IPv4 ports; connecting to "localhost" may resolve to ::1 first.
-        if host == "localhost":
-            host = "127.0.0.1"
-        port = container_port or self.get_exposed_port(self.port)
-        try:
-            # host may be an ipv6 address, need to be careful with formatting this
-            host_for_url = f"[{host}]" if ":" in host else host
-            # /api redirects to /codeserver/healthz/ and avoids the / -> /codeserver/ hop
-            # (absolute redirects on / previously broke Podman port-forward readiness checks).
-            probe_path = base_url or "/api"
-            result = urllib.request.urlopen(
-                urllib.request.Request(f"http://{host_for_url}:{port}{probe_path}"), timeout=1
-            )
-        except urllib.error.URLError as e:
-            raise e
-
-        # get /
-        try:
-            if result.status != 200:
-                raise ConnectionError(f"Failed to connect to container, {result.status=}")
-        finally:
-            result.close()
-
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(
-        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
-    ) -> None:
-        with docker_utils.BestEffortCleanup(exc_type):
-            docker_utils.NotebookContainer(self).stop(timeout=0)
-
-    def start(self, wait_for_readiness: bool = True) -> WorkbenchContainer:
-        super().start()
-        container_id = self.get_wrapped_container().id
-        assert container_id is not None
-        docker_client = testcontainers.core.docker_client.DockerClient().client
-        logging.debug(docker_client.api.inspect_container(container_id)["HostConfig"])
-        if wait_for_readiness:
-            self._connect()
-        return self
-
-    def exec_script(
-        self,
-        script_content: str,
-        script_name: str = "test_script.py",
-        dest: str = "/opt/app-root/src",
-        python: str = "python",
-    ) -> tuple[int, str]:
-        """Copy a Python script into the container and execute it.
-
-        Note: script_name and dest are not sanitized against path traversal (CWE-22)
-        because all callers are hardcoded test code in this repo, not user input.
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            script_path = pathlib.Path(tmpdir) / script_name
-            script_path.write_text(script_content)
-            docker_utils.container_cp(self.get_wrapped_container(), src=str(script_path), dst=dest)
-        exit_code, output = self.exec([python, f"{dest}/{script_name}"])
-        assert exit_code is not None, f"exec() returned no exit code for script {script_name}"
-        return exit_code, output.decode()
-
-
-def _wait_for_http_inside_container(container: WorkbenchContainer, port: int = 8888, timeout: float = 120) -> None:
+def _wait_for_http_inside_container(
+    container: container_transport.Container, port: int = 8888, timeout: float = 120
+) -> None:
     """Poll HTTP readiness from inside the container (for network-isolated containers where port publishing is unavailable)."""
     check_script = f"import urllib.request; urllib.request.urlopen('http://localhost:{port}', timeout=2)"
     deadline = time.monotonic() + timeout
@@ -302,7 +211,7 @@ def _wait_for_http_inside_container(container: WorkbenchContainer, port: int = 8
 
 def grab_and_check_logs(
     subtests: pytest.Subtests,
-    container: WorkbenchContainer,
+    container: container_transport.Container,
     extra_allowed: list[str] | None = None,
 ) -> None:
     # Here is a list of blocked keywords we don't want to see in the log messages during the container/workbench

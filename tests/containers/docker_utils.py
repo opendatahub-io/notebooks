@@ -2,71 +2,25 @@ from __future__ import annotations
 
 import contextlib
 import io
-import logging
-import os.path
 import socket as pysocket
 import sys
 import tarfile
 import time
-from os import PathLike
 from typing import TYPE_CHECKING
 
 import podman
-import testcontainers.core.container
 
 import tests.containers.pydantic_schemas
+from tests.containers import container_transport, sidecar_transport
+from tests.containers.container_transport import BestEffortCleanup  # re-export (historical import path)
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
+    from os import PathLike
 
     import docker.client
+    import testcontainers.core.container
     from docker.models.containers import Container
-
-
-class BestEffortCleanup:
-    """Context manager that suppresses cleanup errors only when another exception is in-flight.
-
-    If cleanup raises and no other exception is active, the error propagates normally.
-    If cleanup raises while handling another exception, the error is logged and suppressed
-    so the original exception is not masked.
-
-    Design choices:
-
-    - Class-based, not @contextmanager: a generator-based CM's try/yield/except
-      catches body and cleanup exceptions indistinguishably.
-
-    - Auto-detection uses sys.exc_info() in __enter__, not __exit__: inside
-      __exit__, sys.exc_info() already reflects the cleanup error being handled,
-      not the original. Capturing in __enter__ gets the correct answer.
-
-    Usage in __exit__ (pass exc_type so auto-detect is skipped):
-        with BestEffortCleanup(exc_type):
-            container.stop()
-
-    Usage in @contextmanager finally (auto-detects via sys.exc_info):
-        with BestEffortCleanup():
-            container.stop()
-    """
-
-    def __init__(self, exc_type: type[BaseException] | None = None) -> None:
-        self._has_active_exception = exc_type is not None
-
-    def __enter__(self) -> None:
-        if not self._has_active_exception:
-            self._has_active_exception = sys.exc_info()[0] is not None
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object,
-    ) -> bool:
-        if exc_type is None:
-            return False
-        if not self._has_active_exception:
-            return False
-        logging.exception("Cleanup failed (suppressed because another exception is active)")
-        return True
 
 
 class NotebookContainer:
@@ -103,13 +57,21 @@ def running_container(
     group_add: list[int] | None = None,
     env: dict[str, str] | None = None,
     **kwargs,
-) -> Generator[testcontainers.core.container.DockerContainer]:
+) -> Generator[container_transport.SleepContainer]:
     """Start a container with 'sleep infinity' and stop it on exit.
 
     GID 0 is always added (OpenShift runs with root supplemental group for /opt/app-root access).
+
+    Transport selection (the single place): SUT_AGENT_URL set (the Konflux
+    in-pod test stage) yields a :class:`SidecarSleepContainer` — the sidecar
+    agent process IS the "sleep infinity" and execs run as the requested user;
+    otherwise the docker/podman transport.
     """
+    if sidecar_transport.sidecar_mode():
+        yield container_transport.SidecarSleepContainer(image=image, user=user, env=env)
+        return
     groups = sorted({0, *(group_add or [])})
-    container = testcontainers.core.container.DockerContainer(image=image, user=user, group_add=groups, **kwargs)
+    container = container_transport.TestcontainersSleepContainer(image=image, user=user, group_add=groups, **kwargs)
     if env:
         for key, value in env.items():
             container.with_env(key, value)
@@ -123,44 +85,21 @@ def running_container(
 
 
 def container_cp(
-    container: Container | testcontainers.core.container.DockerContainer,
+    container: Container
+    | testcontainers.core.container.DockerContainer
+    | container_transport.Container
+    | container_transport.SleepContainer,
     src: str | PathLike,
     dst: str,
     user: int | None = None,
     group: int | None = None,
 ) -> None:
+    """Copy a file or directory into a container of any transport.
+
+    Delegates to ``container_transport.container_cp`` (dispatch on the
+    transport ABCs; legacy docker-py/testcontainers handles still work).
     """
-    Copies a file or directory into a container.
-
-    Accepts either a docker-py ``Container`` or a testcontainers ``DockerContainer``
-    (the latter is unwrapped — ``DockerContainer`` has no ``put_archive``).
-    From https://stackoverflow.com/questions/46390309/how-to-copy-a-file-from-host-to-container-using-docker-py-docker-sdk
-    """
-    if isinstance(container, testcontainers.core.container.DockerContainer):
-        container = container.get_wrapped_container()
-
-    fh = io.BytesIO()
-    tar = tarfile.open(fileobj=fh, mode="w:gz")
-
-    def tar_filter(f: tarfile.TarInfo) -> tarfile.TarInfo:
-        if user is not None:
-            f.uid = user
-        if group is not None:
-            f.gid = group
-        return f
-
-    logging.debug(f"Adding {src=} to archive {dst=}")
-    try:
-        tar.add(
-            src,
-            arcname=os.path.basename(src),
-            filter=tar_filter if (user is not None or group is not None) else None,
-        )
-    finally:
-        tar.close()
-
-    fh.seek(0)
-    container.put_archive(dst, fh)
+    container_transport.container_cp(container, src, dst, user=user, group=group)
 
 
 def from_container_cp(container: Container, src: str, dst: str) -> None:

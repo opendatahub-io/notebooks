@@ -11,13 +11,15 @@ import allure
 import pytest
 
 from tests import PROJECT_ROOT
-from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from pytest import Subtests
+
+    from tests.containers import conftest
+    from tests.containers.container_transport import Container
 
 CODESERVER_WORKSPACE_ROOT = PROJECT_ROOT / "codeserver/ubi9-python-3.12"
 CODESERVER_BASELINE_WORKSPACE_ROOT = PROJECT_ROOT / "codeserver-baseline/ubi9-python-3.12"
@@ -52,7 +54,7 @@ def _healthz_url(*, nb_prefix: str | None = None) -> str:
     return f"http://127.0.0.1:8888{probe_path}"
 
 
-def _wait_for_healthz(container: WorkbenchContainer, *, nb_prefix: str | None = None, timeout: float = 120) -> None:
+def _wait_for_healthz(container: Container, *, nb_prefix: str | None = None, timeout: float = 120) -> None:
     """Poll code-server readiness via the platform probe path inside the container."""
     healthz_url = _healthz_url(nb_prefix=nb_prefix)
     deadline = time.monotonic() + timeout
@@ -69,7 +71,7 @@ def _wait_for_healthz(container: WorkbenchContainer, *, nb_prefix: str | None = 
     raise TimeoutError(f"code-server healthz did not become ready at {healthz_url} within {timeout}s")
 
 
-def _fetch_healthz(container: WorkbenchContainer, *, nb_prefix: str | None = None) -> dict[str, Any]:
+def _fetch_healthz(container: Container, *, nb_prefix: str | None = None) -> dict[str, Any]:
     """Return the parsed code-server healthz JSON from the platform probe path."""
     healthz_url = _healthz_url(nb_prefix=nb_prefix)
     exit_code, output = container.exec(["curl", "-sS", "-f", "-L", "--max-time", "5", healthz_url])
@@ -84,7 +86,7 @@ def _codeserver_workspace_root(codeserver_image: conftest.Image) -> Path:
     return CODESERVER_WORKSPACE_ROOT
 
 
-def _install_culling_stack(container: WorkbenchContainer, codeserver_image: conftest.Image) -> None:
+def _install_culling_stack(container: Container, codeserver_image: conftest.Image) -> None:
     """Install workspace CGI + httpd + nginx proxy templates and reload the serving stack.
 
     Baked images may lag workspace; tests must exercise current routing, not only CGI bash logic.
@@ -94,15 +96,10 @@ def _install_culling_stack(container: WorkbenchContainer, codeserver_image: conf
     httpd_conf_path = codeserver_root / "httpd/httpd.conf"
     proxy_template_path = codeserver_root / "nginx/serverconf/proxy.conf.template"
     proxy_template_nbprefix_path = codeserver_root / "nginx/serverconf/proxy.conf.template_nbprefix"
-    wrapped = container.get_wrapped_container()
-    docker_utils.container_cp(wrapped, str(access_cgi_path), "/opt/app-root/api/kernels", user=1001, group=0)
-    docker_utils.container_cp(wrapped, str(httpd_conf_path), "/etc/httpd/conf", user=1001, group=0)
-    docker_utils.container_cp(
-        wrapped, str(proxy_template_path), "/opt/app-root/etc/nginx.default.d", user=1001, group=0
-    )
-    docker_utils.container_cp(
-        wrapped, str(proxy_template_nbprefix_path), "/opt/app-root/etc/nginx.default.d", user=1001, group=0
-    )
+    container.cp(access_cgi_path, "/opt/app-root/api/kernels", user=1001, group=0)
+    container.cp(httpd_conf_path, "/etc/httpd/conf", user=1001, group=0)
+    container.cp(proxy_template_path, "/opt/app-root/etc/nginx.default.d", user=1001, group=0)
+    container.cp(proxy_template_nbprefix_path, "/opt/app-root/etc/nginx.default.d", user=1001, group=0)
 
     # Mirror run-nginx.sh template selection, then reload nginx and httpd.
     # Use `httpd -k start|graceful` (daemonizes) — NOT `httpd -D FOREGROUND &` under
@@ -135,16 +132,14 @@ pgrep httpd >/dev/null
     assert exit_code == 0, f"failed to reload nginx/httpd stack: {output.decode(errors='replace')}"
 
 
-def _container_epoch_s(container: WorkbenchContainer) -> float:
+def _container_epoch_s(container: Container) -> float:
     """Return the container's current Unix epoch seconds (avoids host/container clock skew)."""
     exit_code, output = container.exec(["date", "+%s"])
     assert exit_code == 0, f"date failed: {output.decode(errors='replace')}"
     return float(output.decode().strip())
 
 
-def _get_kernels_via_http(
-    container: WorkbenchContainer, *, kernels_path: str
-) -> tuple[int, list[dict[str, Any]] | None]:
+def _get_kernels_via_http(container: Container, *, kernels_path: str) -> tuple[int, list[dict[str, Any]] | None]:
     """GET the culling kernels URL through nginx→httpd (not a direct CGI bash invoke)."""
     assert kernels_path.startswith("/"), f"kernels_path must be absolute, got {kernels_path!r}"
     url = f"http://127.0.0.1:8888{kernels_path}"
@@ -162,7 +157,7 @@ def _get_kernels_via_http(
 
 
 def _invoke_access_cgi_with_healthz_stub(
-    container: WorkbenchContainer, *, healthz_payload: dict[str, Any]
+    container: Container, *, healthz_payload: dict[str, Any]
 ) -> list[dict[str, Any]]:
     """Direct CGI invoke with a stubbed healthz body (HTTP path cannot inject curl stubs under httpd)."""
     payload = shlex.quote(json.dumps(healthz_payload, separators=(",", ":")))
@@ -288,13 +283,7 @@ class TestCullingApi:
             with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
                 container.start(wait_for_readiness=False)
                 access_cgi_path = _codeserver_workspace_root(codeserver_image) / "nginx/api/kernels/access.cgi"
-                docker_utils.container_cp(
-                    container.get_wrapped_container(),
-                    str(access_cgi_path),
-                    "/opt/app-root/api/kernels",
-                    user=1001,
-                    group=0,
-                )
+                container.cp(access_cgi_path, "/opt/app-root/api/kernels", user=1001, group=0)
 
                 before = _container_epoch_s(container)
                 kernels = _invoke_access_cgi_with_healthz_stub(container, healthz_payload={"status": "alive"})
