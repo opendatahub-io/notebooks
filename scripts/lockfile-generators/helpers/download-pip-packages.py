@@ -232,6 +232,28 @@ def fetch_simple_index_urls(
             )
             return []
 
+        # Detect JSON response (PEP 658 / core-metadata format) vs HTML (PEP 503)
+        if html.lstrip().startswith("{"):
+            try:
+                data = json.loads(html)
+            except (json.JSONDecodeError, AttributeError) as e:
+                print(
+                    f"  ERROR: malformed JSON from index for {name}: {e}",
+                    file=sys.stderr,
+                )
+                return []
+            out = []
+            for f in data.get("files", []):
+                filename = f.get("filename", "")
+                download_url = f.get("url", "")
+                sha = (f.get("hashes") or {}).get("sha256", "")
+                if not filename or not download_url or not sha:
+                    continue
+                filename = PurePosixPath(filename).name
+                if sha in wanted_hashes:
+                    out.append((download_url, filename, sha))
+            return out
+
         out = []
         for m in re.finditer(r'<a\s+href="([^"]*?)#sha256=([a-f0-9]+)"[^>]*>([^<]+)</a>', html):
             download_url, sha, filename = m.group(1), m.group(2), m.group(3).strip()
