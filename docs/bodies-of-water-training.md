@@ -35,7 +35,7 @@ Set expectations up front:
   docs/code-flow-odh-to-rhoai.md, a mechanism reference verified against the actual repos,
   pipelines, and Slack announcements in August 2026) — not assumptions.
 
-Timebox: ~20 min talk + Q&A. Slides 4 and 5 (train divergence + cherry-picking) are the
+Timebox: ~20 min talk + Q&A. Slides 5 and 6 (train divergence + cherry-picking) are the
 heart of the session; don't rush them even if the early ones go fast.
 -->
 
@@ -147,6 +147,24 @@ The invariants (repeat these — they're the exam answers):
 Likely question: "why two orgs at all?" — ODH is the midstream we can develop in the open;
 RHDS is the product org where the release trains, the AIPCC base images, and the production
 catalogs live. The auto-sync is the bridge.
+-->
+
+---
+
+# Branch map — RHDS trains (live)
+
+The two 3.6 trains in `red-hat-data-services/notebooks` — **auto-merge targets the newest, the other is frozen**:
+
+![RHDS branch list — ea.2 is the auto-merge target, ea.1 is frozen](images/bodies-of-water/06-rhds-trains.png){width:88%}
+
+<!-- notes:
+CONTEXT (1 min) — the live counterpart of the ASCII map on the previous slide.
+
+Same two branches the divergence rule is about: rhoai-3.6-ea.2 (newest — receives the
+RHDS main → train auto-merge) and rhoai-3.6-ea.1 (frozen — cherry-pick only, by us).
+The list is filtered on "rhoai-3.6"; the fix/* rows between them are unrelated PR branches.
+RHDS main (not in this filtered view) is the DevOps-owned branch that receives ODH main
+first — see the sync-config screenshot on the gates slide.
 -->
 
 ---
@@ -300,6 +318,34 @@ nightly-only code path. Triage the stable PipelineRun; fix on main; re-promote.
 
 ---
 
+# Gates — the two sync mechanisms (live)
+
+Our FF workflow (left) and the DevOps sync config it pairs with (right) — **the boxes mark what actually moves code**:
+
+<div style="display:flex; gap:10px; margin-top:18px;">
+  <div style="width:48.5%;">
+    <img src="images/bodies-of-water/04-gha-ff-stable.png" style="width:100%;">
+    <div style="font-size:15px; color:#57606a; margin-top:4px;">Stream → Lake: FF-only, <code>dry_run</code> first</div>
+  </div>
+  <div style="width:48.5%;">
+    <img src="images/bodies-of-water/07-sync-upstream-source-map.png" style="width:100%;">
+    <div style="font-size:15px; color:#57606a; margin-top:4px;">DevOps sync config — we never edit it</div>
+  </div>
+</div>
+
+<!-- notes:
+CONTEXT (1 min) — the two mechanisms from the gates table, in the actual UI.
+
+Left: the "Merge main into stable (fast-forward only)" workflow page. The "Run workflow"
+disclosure takes a dry_run input — run dry_run first as a habit; every past run was a
+manual trigger. Right: the upstream-source-map.yaml entry in rhods-devops-infra that
+defines hop one of the RHOAI path — ODH main → RHDS main, automerge on, .tekton/ and the
+params files excluded. If the sync misbehaves, the answer lives in that file, in that
+repo — not ours.
+-->
+
+---
+
 # Testing at each stage
 
 | Stage | Command / system |
@@ -402,6 +448,52 @@ ordering mistake (bumping before publishing) possible-to-avoid and visible in th
 
 ---
 
+# Runbook — the UI (live)
+
+Steps 3–5 in the actual UI — **the red boxes are exactly what you click**:
+
+<div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px;">
+  <div style="width:31.8%;">
+    <img src="images/bodies-of-water/02-gha-create-release.png" style="width:100%;">
+    <div style="font-size:14px; color:#57606a; margin-top:3px;">3 · "Create release" — the <em>Run workflow</em> trigger + run history</div>
+  </div>
+  <div style="width:31.8%;">
+    <img src="images/bodies-of-water/02b-gha-create-release-runmenu.png" style="width:100%;">
+    <div style="font-size:14px; color:#57606a; margin-top:3px;">3 · the dispatch form: tag / name / branch</div>
+  </div>
+  <div style="width:31.8%;">
+    <img src="images/bodies-of-water/03-gha-update-tags.png" style="width:100%;">
+    <div style="font-size:14px; color:#57606a; margin-top:3px;">5 · "Update Tekton Tags" — opens a PR, merge it</div>
+  </div>
+  <div style="width:31.8%;">
+    <img src="images/bodies-of-water/05-gha-release-kickoff.png" style="width:100%;">
+    <div style="font-size:14px; color:#57606a; margin-top:3px;">"Release Kickoff Action" — <code>make kickoff-release</code></div>
+  </div>
+  <div style="width:31.8%;">
+    <img src="images/bodies-of-water/08-release-tracker-203.png" style="width:100%;">
+    <div style="font-size:14px; color:#57606a; margin-top:3px;">4 · the per-cycle tracker (opendatahub-community)</div>
+  </div>
+</div>
+
+<!-- notes:
+CONTEXT (2 min) — every action in the runbook, in the interface where it actually happens.
+
+Top left, step 3 (publish): the "Create release" workflow page — the "Run workflow"
+disclosure is the workflow_dispatch trigger, and the run history shows every past run was
+a manual trigger. Top middle, still step 3: clicking the trigger opens the dispatch form
+with the three inputs — Release Tag, Name of the release, Target Branch (the screenshot
+shows the real defaults for the cycle). Top right, step 5 (post-release): "Update Tekton
+Tags" — same trigger shape, but it opens a PR; merge it. Bottom left: the "Release
+Kickoff Action" — the workflow wrapper around make kickoff-release that keeps stable
+current between releases. Bottom right, step 4: the per-cycle [Release Tracker] issue in
+opendatahub-community — the current one is 3.6.0-EA2 (#203); each cycle gets its own and
+it is closed at the end of the cycle.
+These are screenshots of the real signed-in UI captured for this training — the layout may
+shift, but the trigger shape (workflow_dispatch disclosure) is stable.
+-->
+
+---
+
 # What to do when — quick reference
 
 | Situation | Do |
@@ -409,8 +501,8 @@ ordering mistake (bumping before publishing) possible-to-avoid and visible in th
 | New feature / normal fix | PR to `main`, land when gates are green |
 | Must reach ODH nightly | Land on `main` → FF to `stable` (GHA, `dry_run` first) |
 | Must reach **newest** train | Land on `main` — flows via RHDS `main`; verify via nightly |
-| Must reach **older/frozen** train | Cherry-pick downward (procedure on slide 5) |
-| ODH release cycle | 6-step runbook (slide 8) |
+| Must reach **older/frozen** train | Cherry-pick downward (procedure on slide 6) |
+| ODH release cycle | 6-step runbook (slide 10) |
 | CVE on a release branch | `docs/cves/` workflows + fix-cve agent flow |
 | Something's broken | `docs/bodies-of-water-troubleshooting.md` |
 
@@ -430,7 +522,7 @@ Walk each row with a one-line concrete example so it sticks:
   RHDS main → newest train); your job is verification (RHOAI nightly build + Jenkins), not
   action.
 - Older/frozen train: "X must be in 3.6-ea.1 which froze last week" → cherry-pick down,
-  slide 5 procedure, review before the train's freeze. Nobody else will do this for you.
+  slide 6 procedure, review before the train's freeze. Nobody else will do this for you.
   (This is the row that has actually cost us time already — the EA1 episode.)
 - ODH release cycle: the six steps; the Jira ticket is the runbook.
 - CVE on a release branch: docs/cves/ has the per-language workflows (python.md, nodejs.md)
