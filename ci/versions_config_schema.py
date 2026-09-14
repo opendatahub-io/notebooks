@@ -133,19 +133,9 @@ class CpuArtifact(StrictModel):
     odh: OdhCpuPolicy
 
 
-class RhdsRhelCpuPolicy(StrictModel):
-    """RHDS baseline CPU policy: bare RHEL Python base image (OS-stream tags)."""
-
-    channel: Literal["rhel"] = Field(
-        title="Channel",
-        description='Must be "rhel" for baseline images that start from registry.redhat.io/rhel9/python-*.',
-    )
-
-
 class BaselineCpuArtifact(StrictModel):
-    """Shared CPU base-image policy for baseline workbench/runtime images."""
+    """ODH-only CPU base-image policy for baseline workbench/runtime images."""
 
-    rhds: RhdsRhelCpuPolicy
     odh: OdhCpuPolicy
 
 
@@ -253,7 +243,6 @@ def build_json_schema() -> dict[str, Any]:
                     "odh": {"origin": "in-house", "version": "latest"},
                 },
                 "baseline_cpu": {
-                    "rhds": {"channel": "rhel"},
                     "odh": {"origin": "in-house", "version": "latest"},
                 },
                 "cuda": {

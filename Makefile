@@ -160,7 +160,13 @@ define image
 	$(info #*# Image build Dockerfile: <$(DOCKERFILE)> #(MACHINE-PARSED LINE)#*#...)
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
-	$(call build_image,$(1),$(DOCKERFILE),$(CONF_FILE))
+	$(if $(filter rhoai,$(PRODUCT)),\
+		$(if $(wildcard $(CONF_FILE)),\
+			$(call build_image,$(1),$(DOCKERFILE),$(CONF_FILE)),\
+			$(info Skipping RHOAI build for ODH-only target $(1): no $(CONF_FILE))\
+		),\
+		$(call build_image,$(1),$(DOCKERFILE),$(CONF_FILE))\
+	)
 
 	$(if $(PUSH_IMAGES:no=),
 		$(call push_image,$(1))

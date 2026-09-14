@@ -60,17 +60,13 @@
     },
     "BaselineCpuArtifact": {
       "additionalProperties": false,
-      "description": "Shared CPU base-image policy for baseline workbench/runtime images.",
+      "description": "ODH-only CPU base-image policy for baseline workbench/runtime images.",
       "properties": {
-        "rhds": {
-          "$ref": "#/$defs/RhdsRhelCpuPolicy"
-        },
         "odh": {
           "$ref": "#/$defs/OdhCpuPolicy"
         }
       },
       "required": [
-        "rhds",
         "odh"
       ],
       "title": "BaselineCpuArtifact",
@@ -291,23 +287,6 @@
       "title": "RhdsFastGpuPolicy",
       "type": "object"
     },
-    "RhdsRhelCpuPolicy": {
-      "additionalProperties": false,
-      "description": "RHDS baseline CPU policy: bare RHEL Python base image (OS-stream tags).",
-      "properties": {
-        "channel": {
-          "const": "rhel",
-          "description": "Must be \"rhel\" for baseline images that start from registry.redhat.io/rhel9/python-*.",
-          "title": "Channel",
-          "type": "string"
-        }
-      },
-      "required": [
-        "channel"
-      ],
-      "title": "RhdsRhelCpuPolicy",
-      "type": "object"
-    },
     "RhdsStableCpuPolicy": {
       "additionalProperties": false,
       "description": "RHDS CPU policy for the stable channel (version is derived from release.full_version).",
@@ -393,9 +372,6 @@
             }
           },
           "baseline_cpu": {
-            "rhds": {
-              "channel": "rhel"
-            },
             "odh": {
               "origin": "in-house",
               "version": "latest"

@@ -454,12 +454,6 @@ files = ["/usr/bin/launcher-v2"]
 error = "ErrNotDynLinked"
 files = ["/usr/local/pandoc/bin/pandoc"]
 
-# odh-workbench-jupyter-baseline-cpu-py312-rhel9
-[[payload.odh-workbench-jupyter-baseline-cpu-py312-rhel9.ignore]]
-# Pandoc: bundled for notebook PDF/LaTeX export; not a crypto boundary. Track: RHOAIENG-58626.
-error = "ErrNotDynLinked"
-files = ["/usr/local/pandoc/bin/pandoc"]
-
 # when scanning with `scan local --path`
 [[ignore]]
 error = "ErrNotDynLinked"

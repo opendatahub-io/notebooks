@@ -99,6 +99,36 @@ jobs:
           submodules: recursive
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
 
+      # ODH-only targets (e.g. baseline workbench images) ship no konflux.*.conf for
+      # RHDS/RHOAI. Skip subscription builds here so fork PRs pass before workflow
+      # matrix changes land on the default branch (pull_request_target uses base YAML).
+      - name: Check RHOAI subscription build prerequisites
+        id: rhoai_build
+        run: |
+          set -Eeuxo pipefail
+          if [ "${{ inputs.subscription }}" != "true" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          COMPONENT_DIR=$(python3 -c "import sys, os; sys.path.insert(0, 'ci/cached-builds'); import gha_pr_changed_files as g; print(g.get_build_directory(os.environ['MAKE_TARGET']))")
+          DOCKERFILE=$(python3 -c "import sys, os; sys.path.insert(0, 'ci/cached-builds'); import gha_pr_changed_files as g; print(g.get_build_dockerfile(os.environ['MAKE_TARGET']))")
+          FLAVOR=$(echo "$DOCKERFILE" | sed -n 's/.*\.\([^.]*\)$/\1/p')
+          FLAVOR=${FLAVOR:-cpu}
+          KONFLUX_CONF="$COMPONENT_DIR/build-args/konflux.${FLAVOR}.conf"
+          if [ ! -f "$KONFLUX_CONF" ]; then
+            echo "ODH-only target: no $KONFLUX_CONF — skipping RHOAI subscription build"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          MAKE_TARGET: ${{ inputs.target }}
+
+      - name: RHOAI build skipped (ODH-only target)
+        if: ${{ steps.rhoai_build.outputs.skip == 'true' }}
+        run: |
+          echo "This target does not ship RHDS/RHOAI konflux build configuration; subscription build intentionally skipped."
+
       # https://github.com/docker/setup-qemu-action?tab=readme-ov-file#about
       # https://www.itix.fr/blog/qemu-user-static-with-podman/
       - name: Set up QEMU for non-native architecture
@@ -109,7 +139,7 @@ jobs:
 
       # do this early because it's fast and why not
       - name: Unlock git-crypt and configure registry auth
-        if: ${{ inputs.subscription }}
+        if: ${{ inputs.subscription && steps.rhoai_build.outputs.skip != 'true' }}
         uses: ./.github/actions/git-crypt-auth
         with:
           git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
@@ -118,7 +148,7 @@ jobs:
       # This runs slower than storing the entitlement certificates with git-crypt,
       #  but on the other hand, it's then not necessary to regularly update them in the repo.
       - name: Add subscriptions from GitHub secret
-        if: ${{ inputs.subscription }}
+        if: ${{ inputs.subscription && steps.rhoai_build.outputs.skip != 'true' }}
         run: |
           # https://access.redhat.com/solutions/5870841
           # https://github.com/containers/common/issues/1735
@@ -349,6 +379,7 @@ jobs:
       # appear on the command line.
       - name: "Prefetch hermetic build dependencies"
         id: prefetch
+        if: ${{ steps.rhoai_build.outputs.skip != 'true' }}
         run: |
           set -Eeuxo pipefail
           # Derive component dir from Makefile (single source of truth). Works for all
@@ -411,6 +442,7 @@ jobs:
 
       - name: "Build: make ${{ inputs.target }}"
         id: make-target
+        if: ${{ steps.rhoai_build.outputs.skip != 'true' }}
         run: |
           # Print disk and memory stats every 30s so OOM/disk-full failures
           # leave a breadcrumb trail in the logs.

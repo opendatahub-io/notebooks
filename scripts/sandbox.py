@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from typing import Literal, cast
 
 import structlog
@@ -18,6 +19,10 @@ from scripts.buildinputs_runner import buildinputs
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
 log = structlog.get_logger()
+
+# Quay/Akamai TLS flakes during base-image pulls are intermittent; retry before failing CI.
+BUILD_MAX_ATTEMPTS = 3
+BUILD_RETRY_DELAY_SECONDS = 5
 
 
 class Args(argparse.Namespace):
@@ -53,11 +58,33 @@ def main() -> int:
         command = [arg if arg != "{};" else tmpdir for arg in args.remaining[1:]]
         print(f"running {command=}")
         try:
-            subprocess.check_call(command)
+            run_command_with_retries(command)
         except subprocess.CalledProcessError as err:
             log.error("Failed to execute process", command=err.cmd, returncode=err.returncode)
             return err.returncode
     return 0
+
+
+def _is_container_build(command: list[str]) -> bool:
+    return len(command) >= 2 and command[0] in {"podman", "docker"} and command[1] == "build"
+
+
+def run_command_with_retries(command: list[str]) -> None:
+    max_attempts = BUILD_MAX_ATTEMPTS if _is_container_build(command) else 1
+    for attempt in range(1, max_attempts + 1):
+        try:
+            subprocess.check_call(command)
+            return
+        except subprocess.CalledProcessError as err:
+            if attempt >= max_attempts:
+                raise
+            log.warning(
+                "Container build failed, retrying",
+                attempt=attempt,
+                max_attempts=max_attempts,
+                returncode=err.returncode,
+            )
+            time.sleep(BUILD_RETRY_DELAY_SECONDS * attempt)
 
 
 def extract_build_args(remaining: list[str]) -> dict[str, str]:

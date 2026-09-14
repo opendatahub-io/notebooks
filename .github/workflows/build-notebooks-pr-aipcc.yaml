@@ -69,7 +69,9 @@ jobs:
     # rhds/notebooks builds from AIPCC bases and requires pull_request_target trigger
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
+      matrix_rhoai: ${{ steps.gen.outputs.matrix_rhoai }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
+      has_rhoai_jobs: ${{ steps.gen.outputs.has_rhoai_jobs }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -119,9 +121,9 @@ jobs:
     needs: ["authorize", "gen"]
     strategy:
       fail-fast: false
-      matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
+      matrix: "${{ fromJson(needs.gen.outputs.matrix_rhoai) }}"
     uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
-    if: ${{ fromJson(needs.gen.outputs.has_jobs) }}
+    if: ${{ fromJson(needs.gen.outputs.has_rhoai_jobs) }}
     with:
       target: "${{ matrix.target }}"
       python: "${{ matrix.python }}"

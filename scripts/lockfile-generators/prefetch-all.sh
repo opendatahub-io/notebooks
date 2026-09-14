@@ -185,6 +185,17 @@ if [[ ! -d "$VARIANT_DIR" ]]; then
   echo "Note: Variant directory not found ($VARIANT_DIR). Steps 1 and 4 (generic, RPM) will be skipped if their inputs are missing."
 fi
 
+# ODH-only workbench/runtime images (e.g. baseline) ship no konflux.<flavor>.conf for
+# RHDS/RHOAI. Skip subscription prefetch so fork PRs pass before workflow YAML
+# changes land on the default branch (pull_request_target uses base workflows).
+if [[ "$VARIANT" == "rhds" ]]; then
+  KONFLUX_CONF="$COMPONENT_DIR/build-args/konflux.${FLAVOR}.conf"
+  if [[ ! -f "$KONFLUX_CONF" ]]; then
+    echo "ODH-only image (missing $KONFLUX_CONF) — skipping RHDS prefetch"
+    exit 0
+  fi
+fi
+
 echo "=============================================="
 echo " prefetch-all.sh"
 echo "  component : $COMPONENT_DIR"
@@ -252,9 +263,15 @@ if [[ -f "$PYPROJECT" ]]; then
     ARCH=$(uname -m)
   fi
 
-  # Download wheels (parallel, arch-filtered)
+  # Download wheels (parallel, arch-filtered). When uv.lock.d/pylock exists,
+  # pass it as a fallback for packages missing from the simple index page.
+  PYLOCK_ARGS=()
+  PYLOCK_FILE="$COMPONENT_DIR/uv.lock.d/pylock.${FLAVOR}.toml"
+  if [[ -f "$PYLOCK_FILE" ]]; then
+    PYLOCK_ARGS=(--pylock "$PYLOCK_FILE")
+  fi
   python3 "$SCRIPTS_PATH/helpers/download-pip-packages.py" \
-      --arch "$ARCH" "$REQUIREMENTS_FILE"
+      --arch "$ARCH" "${PYLOCK_ARGS[@]}" "$REQUIREMENTS_FILE"
   STEPS_RUN=$((STEPS_RUN + 1))
   echo ""
 else

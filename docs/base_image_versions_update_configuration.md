@@ -148,18 +148,11 @@ baseline_cpu:
   odh:
     origin: in-house
     version: latest
-  rhds:
-    channel: rhel
 ```
 
-- **ODH** (`cpu.conf`): same resolution as `artifacts.base_image.cpu.odh`
-  (`quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest`).
-- **RHDS** (`konflux.cpu.conf`): bare RHEL Python base from
-  `registry.redhat.io/rhel9/python-<compact-python>`. Tags follow the OS stream
-  derived from `release.rhds_os_base` without the `el` prefix (`el9.8` → `9.8-*`
-  tags such as `9.8-1787081761`). The sync picks the highest published build for
-  that stream via `skopeo list-tags`. Baseline RHDS targets do not participate in
-  RHDS fast bundle-phase inference.
+Baseline images are **ODH-only**. **ODH** (`cpu.conf`) uses the same resolution as
+`artifacts.base_image.cpu.odh`
+(`quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest`).
 
 ## RHDS Resolution Rules
 
