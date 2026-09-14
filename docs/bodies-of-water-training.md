@@ -14,10 +14,29 @@ size: 16:9
 **RHAIENG-1264** · docs PR [opendatahub-io/notebooks#4583](https://github.com/opendatahub-io/notebooks/pull/4583)
 
 <!-- notes:
-Setup: this is the in-team training for the Bodies of Water adoption (epic RHAIENG-1273).
-Goal after 20 min: everyone can say what goes where, which gates protect each transition,
-and what to do when a train freezes. Source of truth after this deck:
-docs/bodies-of-water.md (workflow) + docs/bodies-of-water-troubleshooting.md (fixes).
+OPENING (2 min)
+
+Framing: this is the in-team training for the Bodies of Water adoption, part of the
+Notebooks adoption epic RHAIENG-1273. The specific ticket this closes (with the docs and
+troubleshooting guide) is RHAIENG-1264, "Documentation & Training".
+
+Goal after ~20 minutes: every attendee can (a) say what code goes where, (b) name the gate
+that protects each transition, and (c) say exactly what to do when a train freezes and a fix
+is still needed. That third item is the one that actually bites us in practice.
+
+Set expectations up front:
+- The repo is our single source of truth. We deliberately did NOT create a Google doc for
+  Notebooks (other teams did; we chose the docs/-in-repo path so the workflow lives next to
+  the code and the CI that enforces it). Everything referenced today is a committed file.
+- The deck is orientation, not the doc. After this session the two files people should
+  know are docs/bodies-of-water.md (the workflow) and docs/bodies-of-water-troubleshooting.md
+  (the fixes). The deck mirrors their section order on purpose.
+- Everything in this deck is grounded in verified-live investigation (the PR includes
+  docs/code-flow-odh-to-rhoai.md, a mechanism reference verified against the actual repos,
+  pipelines, and Slack announcements in August 2026) — not assumptions.
+
+Timebox: ~20 min talk + Q&A. Slides 4 and 5 (train divergence + cherry-picking) are the
+heart of the session; don't rush them even if the early ones go fast.
 -->
 
 ---
@@ -33,11 +52,37 @@ One release strategy, all RHOAI components — **three stages, quality gates, ex
 | **Ocean** (RHOAI) | Product-releasable | `rhoai-X.Y` trains in `red-hat-data-services/notebooks` — **RHOAI Nightly + RC/GA** |
 
 <!-- notes:
-Canonical design doc: "Release Strategy – The Bodies Of Water" (Andrew Ballantyne) — foundational
-design, not actively maintained; live phase status is RHOAIENG-28641.
-Our signoff (in the cross-team signoff table): Notebooks · Jiri Daněk · 2025-08-05 ·
-Stream=main, Lake=stable, Ocean=rhoai, RHDS branch=main.
-Mechanism deep-dive (verified live): docs/code-flow-odh-to-rhoai.md.
+CONTEXT (2 min)
+
+Where this comes from: the "Bodies of Water" strategy is the shared RHOAI release model
+(designed by Andrew Ballantyne, 2025). The original Google doc is the *foundational design* —
+it is NOT actively maintained, and phase status for the whole program lives in Jira
+(RHOAIENG-28641). Don't send people to the doc for "current" status; send them to the Jira.
+
+Why Red Hat adopted it, in one breath: before BoW every component had its own ad-hoc
+upstream→downstream flow. BoW standardizes on three "bodies of water" with explicit quality
+gates and explicit transition processes, so every component (operator, dashboard, model
+server, notebooks, ...) moves through the same shape of pipeline and the same vocabulary.
+The marketing line for Stream is "Your development. Your way." — component teams keep full
+autonomy on their trunk.
+
+Walk the table row by row, keeping the emphasis on "for us":
+- STREAM = main in opendatahub-io/notebooks (this repo). Nothing is special about it — it's
+  where we always develop. The BoW framing just names it.
+- LAKE = stable in the same repo. Two things to stress: it is the ODH integration point, and
+  ODH Nightly builds come from it. If you want your change in the ODH nightly, it has to be
+  on stable — that's the whole Stream→Lake transition.
+- OCEAN = the red-hat-data-services/notebooks org: `main` there (Ocean, DevOps-owned) plus
+  the `rhoai-X.Y` release trains. RHOAI Nightly, RC, and GA all build from the trains.
+
+The signoff: every team signs off its branch mapping in a cross-team signoff table inside
+the canonical BoW doc. Ours: Notebooks · Jiri Daněk · 2025-08-05 · Stream=main, Lake=stable,
+Ocean=rhoai, RHDS branch=main. If we ever rename a branch, that row must be updated — that's
+a standing obligation, not a one-time event.
+
+Likely question: "is ODH also RHOAI?" — No. ODH is the open-data hub distribution (Lake);
+RHOAI is the commercial product (Ocean). Our code flows ODH first, then RHOAI. The midstream
+(ODH) side is where fixes land first by norm.
 -->
 
 ---
@@ -56,10 +101,41 @@ opendatahub-io/notebooks                     red-hat-data-services/notebooks
 - We **never commit directly** to `stable` or to any RHDS branch
 
 <!-- notes:
-Key invariant: stable is an ancestor of main. If it isn't, something was committed to stable
-by hand and the fast-forward GHA will (correctly) refuse.
-ODH nightly is built from stable by Konflux (open-data-hub-tenant); kickoff = make kickoff-release
-or the Release Kickoff Action GHA (versions_config.yml).
+CONTEXT (3 min) — make people memorize the three rules at the bottom.
+
+Left side (opendatahub-io/notebooks — this repo):
+- main: everything lands here first — features, fixes, CVEs, dependency bumps. Prow/Tide
+  merges via the merge bot; there is no direct push.
+- stable: the ODH integration branch. ODH Nightly is built from stable by Konflux
+  (open-data-hub-tenant). The branch's freshness is driven by "release kickoff":
+  make kickoff-release (or the "Release Kickoff Action" GitHub Action) applies the
+  versions_config.yml overrides and opens a PR. If nobody kicks off, the nightly serves
+  whatever stable already had.
+- 2025a / 2024b / ...: ODH GA release branches, one per ODH release cycle. Image tags for an
+  ODH release are built from these (e.g. a 3.6 ODH release off the 3.6 branch with
+  3.6-v1.48-style tags). These are cut per cycle; they are separate from the RHOAI trains —
+  don't confuse an ODH GA branch with a rhoai-X.Y train.
+
+Right side (red-hat-data-services/notebooks — downstream):
+- main: the Ocean. DevOps owns it. It receives stable via their auto-sync; we don't commit
+  here directly.
+- rhoai-X.Y: the release trains (e.g. rhoai-3.5, rhoai-3.6-ea.1, rhoai-3.6-ea.2). Konflux
+  builds run from these branches (never from main), and the nudge chain (operator → bundle
+  → FBC fragment) turns green train builds into catalog entries. RHOAI Nightly and RC/GA
+  come from the trains.
+
+The invariants (repeat these — they're the exam answers):
+1. stable must always be an ancestor of main. If it isn't, something was committed to
+   stable by hand and the fast-forward workflow will (correctly) refuse to run.
+2. We never commit directly to stable, to RHDS main, or to any train. Every change reaches
+   those branches through the two mechanisms: the FF workflow (ours) and the auto-sync
+   (DevOps').
+3. .tekton/ in both repos is synced read-only from konflux-central — never hand-edit it
+   (that's in the repo's hard rules too).
+
+Likely question: "why two orgs at all?" — ODH is the midstream we can develop in the open;
+RHDS is the product org where the release trains, the AIPCC base images, and the production
+catalogs live. The auto-sync is the bridge.
 -->
 
 ---
@@ -80,9 +156,34 @@ after 3.6-ea.2 onboarded:
 - First real occurrence: **2026-08-24 EA1/EA2 onboarding**
 
 <!-- notes:
-This is the single most important slide — the EA1 code freeze moved Aug 21 → Aug 31 and EA2 was
-onboarded, so EA1 stopped receiving auto-merge. Ask the room: "if a fix lands on main today and
-EA1 is still open, what happens?" Answer: nothing, unless we cherry-pick.
+CONTEXT (4 min) — the most important slide. Slow down here.
+
+The mechanism: DevOps auto-merge from stable targets exactly ONE train — the newest
+onboarded one. When the next train is onboarded, the switch flips. This is by design: once
+the new train exists, everything merging to main is "next release" work and must NOT leak
+into the frozen train.
+
+The real story (tell it as a story — it's the one people will remember):
+- The 3.6 EA1 code freeze was originally 2026-08-21, then moved to 2026-08-31.
+- Before that, EA2 (rhoai-3.6-ea.2) was onboarded.
+- DevOps announced (Slack, #wg-3_6_ea1-openshift-ai-release, Aug 24 2026): auto-merge now
+  targets rhoai-3.6-ea.2 only. EA1 stopped receiving it.
+- Consequence we hit immediately: work that had landed on main after the EA1 cut was no
+  longer reaching EA1 at all — not because it was wrong, but because the switch had flipped.
+- Ownership clarification from the announcement: cherry-picking downward to the frozen train
+  is the COMPONENT TEAM's job. DevOps will not do it for us.
+
+Ask the room (make them answer out loud): "A security fix lands on main today. EA1 is still
+open and still shipping. What happens?" Correct answer: nothing, automatically. The fix is
+on EA2 (and on main/stable). If EA1 needs it, someone cherry-picks it down — and that
+someone is us.
+
+If anyone asks "why not just keep auto-merging EA1 too?" — because main keeps moving with
+3.7/next-release work after EA1 freezes; keeping the pipe open would leak that into a
+frozen train. The divergence IS the freeze mechanism.
+
+Transition: "So how do we do the cherry-pick without producing garbage? Next slide — and
+there's a cautionary tale."
 -->
 
 ---
@@ -91,8 +192,8 @@ EA1 is still open, what happens?" Answer: nothing, unless we cherry-pick.
 
 1. Branch **from the older train** — never merge a newer train into it
 2. Cherry-pick **product commits only** (Dockerfiles, lockfiles, `ci/`, `scripts/`, `manifests/`)
-3. **`.tekton/` stays byte-identical to that train** — PipelineRuns are synced per-branch from
-   konflux-central and *differ between trains*
+3. **`.tekton/` stays byte-identical to that train** — PipelineRuns are synced per-branch
+   from konflux-central and *differ between trains*
 4. PR against the older train; review + approve before freeze
 5. Verify train builds (expect branch-locked dep fallout)
 
@@ -100,9 +201,39 @@ EA1 is still open, what happens?" Answer: nothing, unless we cherry-pick.
 GitHub cannot retarget a PR head) → closed. A *new branch from EA1* with cherry-picks → merged.
 
 <!-- notes:
-Real example: red-hat-data-services/notebooks PR #2806 (closed, dirty) vs #2807 (merged, clean).
-Typical fallout to pre-empt: branch-locked deps (e.g. libxkbfile-devel present on main, absent on
-the train) → refresh the TRAIN's lockfiles, not main's (auto-sync won't carry it downward).
+CONTEXT (4 min) — the procedure and the war story.
+
+Walk the 5 steps, but the "why" behind steps 1 and 3 is what matters:
+
+Step 1 — branch from the older train, never merge newer→older. A merge drags in EVERYTHING
+newer-train has, including its .tekton/ pipeline definitions and its image tags. That's a
+foreign pipeline world on top of the frozen train. Also a hard mechanical problem: a GitHub
+PR's head is fixed — you cannot retarget it. Once the PR is the wrong shape, it's a
+write-off.
+
+Step 3 — .tekton/ differs per train by design: each release branch resolves its Konflux
+pipelines from ITS OWN konflux-central branch (pipeline refs are git-resolved at
+{{ target_branch }}). Copying .tekton/ from EA2 onto EA1 means EA1's builds run EA2's
+pipelines with EA2's tag expectations. Byte-identical to the train is not pedantry, it's
+the correctness condition.
+
+The war story (#2806 → #2807, red-hat-data-services/notebooks):
+- #2806: attempted EA2→EA1 merge. Dirty: foreign .tekton/, tag retargets baked in. Could not
+  be retargeted. Closed.
+- #2807: new branch cut from rhoai-3.6-ea.1, product commits cherry-picked, .tekton/ left
+  exactly as EA1 had it. Merged.
+Moral: when in doubt, cut fresh from the target train. Never salvage a dirty PR.
+
+Step 5 — branch-locked dependency fallout, the #1 post-merge surprise: a package present in
+main's lockfiles can be absent from the train's (historical example: libxkbfile-devel —
+build green on main, red on the train). The fix is to refresh THE TRAIN'S lockfiles (not
+main's — auto-sync won't carry the refresh downward): cut a branch from the train,
+make refresh-lock-files against the train's base images; for the code-server npm side,
+scripts/lockfile-generators/download-npm.sh regenerates the npm lock inputs. Pre-empt this
+when you cherry-pick dependency changes at all.
+
+Likely question: "can we ask DevOps to re-run the sync for the old train?" — No; the sync
+deliberately doesn't target it anymore. Cherry-pick PR is the only path.
 -->
 
 ---
@@ -117,11 +248,41 @@ the train) → refresh the TRAIN's lockfiles, not main's (auto-sync won't carry 
 | nightly → RC/GA | **DevOps-owned** | our job: keep the train green |
 
 <!-- notes:
-ODH nightly: Konflux open-data-hub-tenant from stable; smoke via Jenkins autotrigger-smoke;
-on-demand ITS scenario its-trigger-nightly.
-RHOAI nightly: scheduled Konflux pipelines from the train; Jenkins tier1/2/3 sanity+smoke against
-rhoai-fbc-fragment:rhoai-X.Y-nightly. Green train build cascades into the catalog via the
-operator→bundle→FBC nudge chain (code-flow doc §6).
+CONTEXT (3 min)
+
+The mental model to give the room: each arrow in the branch map is guarded by a gate, and
+each gate is observable — you can always SEE whether a transition is allowed. There are no
+invisible handoffs.
+
+Row 1 — PR → main. Two independent CI systems (docs/ci.md is the canonical reference):
+- GitHub Actions for code quality: code-quality.yaml (lint/pytest static), unit tests +
+  doctests + Go tests, and the container integration tests (testcontainers, test-containers.yaml).
+- Konflux PR builds for the images actually changed on the PR (Pipelines-as-Code; /retest
+  and /test comment commands re-run failed checks; docs/konflux.md §"PR comment triggers").
+- Merge is Prow/Tide: humans add /lgtm /approve; Tide merges automatically once the
+  thresholds are met (docs/tide.md). There is no manual "merge" button path.
+
+Row 2 — main → stable. The "Merge main into stable (fast-forward only)" workflow
+(merge-main-to-stable-fast-forward.yaml; added for RHOAIENG-60781). It verifies stable is an
+ancestor of main and fast-forwards; run it with dry_run: true first as a habit. After the
+FF, the real gate is the ODH nightly: the build from stable must be green and its smokes
+pass (Jenkins ods-ci smokes; on-demand its-trigger-nightly ITS scenario). If the nightly
+breaks, the fix goes to main and re-promotes — never a hotfix on stable itself.
+
+Row 3 — stable → train. DevOps auto-sync (GitHub Actions in red-hat-data-services/
+rhods-devops-infra, driven by configmaps in that repo). The gate on this transition is the
+RHOAI nightly: build from the train + product-level E2E on Jenkins — specifically the
+ods-ci 0500__ide suite and opendatahub-tests, run against the nightly FBC fragment. These
+are the tests that catch "builds fine, but the workbench is broken in the product".
+
+Row 4 — nightly → RC/GA. Owned end-to-end by DevOps (Stage Promoter, release CRs, image
+mirroring to registry.redhat.io). Our contribution is entirely upstream of this: a green
+train. If RC is red because of our image, that's a release-channel incident and we respond
+within the SLA — see the troubleshooting doc's escalation matrix.
+
+Likely question: "what if the ODH nightly is red but main's PR was green?" — stable picked up
+a commit whose inputs (base images, lockfiles) differ from what the PR ran against, or a
+nightly-only code path. Triage the stable PipelineRun; fix on main; re-promote.
 -->
 
 ---
@@ -140,9 +301,32 @@ operator→bundle→FBC nudge chain (code-flow doc §6).
 Full catalog: **`docs/agents/testing.md`** ← this was the training gap from last year; it's covered now.
 
 <!-- notes:
-Recall the Nov 2025 training note on RHAIENG-1264: QE had seen in-repo tests but not the
-downstream IDE surface. Pointer: ods-ci 0500__ide for product E2E, per-image "what should work
-once built" notes being gathered next to Dockerfiles (RHOAIENG-24093).
+CONTEXT (2 min) — tie this to the ticket history; it's a callback the room will appreciate.
+
+The callback: in the Nov 2025 training note on RHAIENG-1264 (a joking comment, but it
+identified the real gap), QE had seen the in-repo tests — but the downstream IDE test
+surface (the ods-ci 0500__ide suite) had never been mentioned. So people knew how to test
+the code, but not how the code gets validated inside the product. That's what this slide
+closes: the mapping from local commands to the nightly systems that actually gate releases.
+
+Walk the table top-down (the path a change travels):
+- make test / make test-unit: static pytest + unit + doctests + Go tests. No containers
+  needed. The fast local signal.
+- make test-integration with --image=: container integration tests (testcontainers — spins
+  the image up, runs against it). This is where "does the image actually work" gets checked
+  per PR for changed images.
+- PR automatics: code-quality GHAs + Konflux PR builds. /retest and /test to re-run flakes.
+- make test-<notebook>: papermill smoke of the example notebooks against a DEPLOYED
+  workbench — needs a cluster; this is the "does a user see a working notebook" check.
+- ODH nightly: Jenkins ods-ci smokes + the ITS scenario its-trigger-nightly (latest
+  auto-released ODH build).
+- RHOAI nightly: Jenkins tier1/2/3 sanity+smoke against rhoai-fbc-fragment:rhoai-X.Y-nightly,
+  plus the product E2E (ods-ci 0500__ide, opendatahub-tests).
+
+Point to docs/agents/testing.md as the permanent reference (types, markers, commands, CI
+parity). Also: per-image "what should work once built" notes are being gathered next to the
+Dockerfiles (RHOAIENG-24093) — so when someone asks "how do I know my pytorch image is
+correct", the answer gets better over time.
 -->
 
 ---
@@ -159,9 +343,46 @@ Recurring ticket per cycle — template [RHAIENG-6297](https://redhat.atlassian.
 6. **Clone the ticket** for the next cycle, bump tags
 
 <!-- notes:
-Ordering gotcha: Update Tekton Tags runs AFTER publishing (the ticket's own warning).
-The Update-Tekton-Tags GHA fails if it can't find exactly one previous tag in .tekton/*.yaml —
-check for stale leftovers first.
+CONTEXT (4 min) — this is the part people will actually execute. The Jira ticket IS the
+runbook; the steps here are the same six the ticket enumerates, mapped to the real
+workflows in .github/workflows/.
+
+Step 1 — Verify code freeze. Two sources: the ODH release tracker issue (see step 4 for
+where it lives) and the ODH Release Google Calendar. Both must agree. Don't publish into a
+window the calendar says is frozen.
+
+Step 2 — Validate image tags. Look at .tekton/*.yaml and manifests/odh/base/params-latest.env:
+they carry the image tag for the release cycle. Format is <train>-v<NN> with NO patch
+version — e.g. 3.5-v1.47, and for EA cycles 3.6_ea1-v1.48 (the "Update Tekton Tags" regex
+accepts both the legacy 2025a-v1.41 letter-year form and the new X.Y(_eaN)?-vNN form).
+If you see a patch version in there, stop — that's a mistake.
+
+Step 3 — Publish. Run the "Create release" workflow (create-release.yaml). Inputs:
+release_tag (e.g. v1.48.0), release_name (e.g. 3.6-v1.48.0), target branch. Under the hood
+it runs: gh release create "$TAG" --title="$NAME-$TAG" --generate-notes --target "$BRANCH".
+Critical: the tag you publish must be the SAME tag the image builds used. The images are
+already built and tagged; the release just names that state.
+
+Step 4 — Comment the tracker. The release tracker MOVED: it is now
+opendatahub-io/workbenches-operator#107. The old one (opendatahub-community#202) is now
+operator-release-values only. If you comment a notebooks release on #202 you just confused
+the operator team — and yes, this has a history. The ticket itself says: "Update the issue
+with the newly published release".
+
+Step 5 — Post-release tag bump. ONLY AFTER the release is published: run the "Update Tekton
+Tags" workflow (update-tags.yaml) with the NEXT cycle's tag (e.g. 3.5-v1.47 → 3.6_ea1-v1.48).
+It finds the previous tag in .tekton/*.yaml + params-latest.env, rewrites it, and opens a PR
+on branch update-tekton-tag-<new>. Two gotchas: (a) ordering — running this BEFORE the
+release would bump the tag the release is supposed to carry; (b) the workflow fails if it
+can't find exactly one previous tag — if it errors, check for stale leftovers in .tekton/
+first. Then merge the PR promptly so the next cycle starts clean.
+
+Step 6 — Clone the ticket for the next cycle and bump all the tag values. The template is
+RHAIENG-6297; the current one is RHAIENG-7156. Cloning keeps the runbook alive per cycle.
+
+Likely question: "why two workflows, not one?" — because the publish and the bump are
+different points in time with different failure modes; keeping them separate makes the
+ordering mistake (bumping before publishing) possible-to-avoid and visible in the ticket.
 -->
 
 ---
@@ -173,14 +394,34 @@ check for stale leftovers first.
 | New feature / normal fix | PR to `main`, land when gates are green |
 | Must reach ODH nightly | Land on `main` → FF to `stable` (GHA, `dry_run` first) |
 | Must reach **newest** train | Automatic after `stable` — verify via nightly |
-| Must reach **older/frozen** train | Cherry-pick downward (procedure on slide 6) |
+| Must reach **older/frozen** train | Cherry-pick downward (procedure on slide 5) |
 | ODH release cycle | 6-step runbook (slide 8) |
 | CVE on a release branch | `docs/cves/` workflows + fix-cve agent flow |
 | Something's broken | `docs/bodies-of-water-troubleshooting.md` |
 
 <!-- notes:
-This table is the training artifact — tell the team it lives in the doc, not just the deck.
-Emphasize row 4: nobody else will do it for you.
+CONTEXT (2 min) — this table IS the training artifact. Say so out loud.
+
+Tell the room: "You don't need to remember the deck. You need this table, and it's in the
+doc (docs/bodies-of-water.md, section 'What to do when'). Screenshot it, or just know where
+it is."
+
+Walk each row with a one-line concrete example so it sticks:
+- New feature: "you built X" → PR to main, all gates green, Tide merges. No other branch
+  involved. 90% of your days are this row.
+- ODH nightly: "X must be in the ODH nightly by Friday" → land on main, run the FF workflow
+  (dry_run first), confirm the nightly build picked it up.
+- Newest train: "X must be in 3.6-ea.2" → it flows automatically once it's on stable; your
+  job is verification (RHOAI nightly build + Jenkins), not action.
+- Older/frozen train: "X must be in 3.6-ea.1 which froze last week" → cherry-pick down,
+  slide 5 procedure, review before the train's freeze. Nobody else will do this for you.
+  (This is the row that has actually cost us time already — the EA1 episode.)
+- ODH release cycle: the six steps; the Jira ticket is the runbook.
+- CVE on a release branch: docs/cves/ has the per-language workflows (python.md, nodejs.md)
+  and the agent flow (agents-cve-autofix.md) — CVEs on release branches have per-branch
+  constraint + lockfile verification steps; don't improvise.
+- Something's broken: don't debug from memory — the troubleshooting doc has the symptom →
+  cause → fix table. If it's not there, that's a doc gap; tell us and we'll add the row.
 -->
 
 ---
@@ -198,9 +439,38 @@ Emphasize row 4: nobody else will do it for you.
 Full table + escalation matrix (office hours Tue, `#rhoai-devtestops-requests`) in the troubleshooting doc.
 
 <!-- notes:
-Also in the doc: sbom-syft-generate StepOverride on legacy trains (escalate, don't patch .tekton/),
-nudge-chain stalls (check operator→bundle→FBC nudge PRs), release tag-format mistakes.
-Escalate with: PipelineRun name + branch + failing step.
+CONTEXT (3 min) — the five highest-value symptom→fix pairs, then the escalation path.
+
+Row by row, with the depth that's not on the slide:
+1. "My main change isn't on the train" — first question: is it the NEWEST train or an older
+   one? Newest: it's in flight, check the sync run. Older: it will NEVER arrive
+   automatically — that's the divergence rule, not a bug. Cherry-pick down.
+2. "The FF workflow refuses to run" — stable is not an ancestor of main, meaning someone
+   committed to stable directly (or an old merge). Fix: never commit to stable; if it
+   already happened, use the "Sync branches through Pull Request" workflow
+   (sync-branches-through-pr.yml) and review the result carefully. The workflow refusing is
+   CORRECT behavior — it's protecting the invariant.
+3. "Green on main, red on the train" — branch-locked dependencies. The train's lockfiles
+   were cut earlier; a package (historically libxkbfile-devel) exists in main's lock state
+   but not the train's. Fix the TRAIN's lockfiles (cut from the train, refresh, PR to the
+   train). Refreshing main does nothing for the train — auto-sync won't carry it down.
+4. "Same build passes, then fails with a corrupt npm tarball" — stale cachi2 cache in the
+   build pod. Clear cachi2/output/deps/npm in the failing stage and re-run. It's
+   infrastructure, not your code.
+5. "I pushed to the branch and no Konflux build started" — the trigger CEL has a
+   pathChanged() guard and nudge-file mechanics; some pushes legitimately don't build.
+   docs/konflux.md has "Why pushing a branch may not trigger builds" + the known-issues
+   section (duplicate checks, prefetch quirks, trigger name matching).
+
+Also in the doc, not on the slide: sbom-syft-generate StepOverride failures on legacy trains
+(escalate to DevOps — do NOT patch .tekton/ yourself), nudge-chain stalls (check the nudge
+PRs in rhods-operator → bundle → RHOAI-Build-Config in order), and release tag-format
+mistakes.
+
+ESCALATION (make sure they know where): RHOAI DevTestOps office hours are Tuesdays, and
+the standing channel is #rhoai-devtestops-requests. What to attach: the failed PipelineRun
+name + branch + the exact step that failed. "It's broken" without a PipelineRun name gets
+you a slower answer.
 -->
 
 ---
@@ -221,9 +491,33 @@ Escalate with: PipelineRun name + branch + failing step.
 Keep the row current in the [canonical signoff table](https://docs.google.com/document/d/1LXbAylu-1rCw1gkqNuhLoPC5tzD70gg0jdGy-SBgyYI/edit) if branch names ever change.
 
 <!-- notes:
-This closes the "knowledge transfer to DevOps" AC: DevOps has everything they need (branch names,
-sync config pointers, our release-branch contract) and a clear boundary for what they operate.
-Questions/requests: DevTestOps office hours (Tuesdays) or #rhoai-devtestops-requests.
+CONTEXT (2 min) — this slide closes the "knowledge transfer to DevOps" acceptance criterion.
+The point: the boundary is explicit, and both sides know their side of it.
+
+What DevOps owns (do not edit these in our repos — change requests go through them):
+- The auto-sync itself: GitHub Actions in red-hat-data-services/rhods-devops-infra,
+  configured by configmaps there (upstream-source-map.yaml for the upstream→downstream
+  nightly sync; main-release-source-map.yaml for main→RHOAI-branch sync). If the sync is
+  misbehaving, the fix lives in THAT repo, not ours.
+- The Konflux pipeline definitions: synced read-only from konflux-central (the ODH org's
+  odh-konflux-central for ODH, RHDS's konflux-central for RHOAI) into our .tekton/.
+  Hand-editing .tekton/ is a hard repo rule violation — your edit will be overwritten and
+  your build may run a pipeline world that doesn't match your branch.
+- Train management (onboarding, freeze switches), RC/GA promotion (Stage Promoter, release
+  CRs), and image mirroring (registry.redhat.io mirroring, ImageDigestMirrorSet for
+  disconnected/proxy pulls).
+
+What WE provide (the signoff contract):
+- The branch mapping in the signoff table — Notebooks · main/stable/rhoai · RHDS main,
+  signed 2025-08-05. This is the machine-usable contract the sync and build systems rely on.
+- Our ODH release branches and release tags (the six-step runbook keeps them current).
+- A green train: our builds passing on the trains is our contribution to every nightly, RC,
+  and GA. And fast response when a train is red because of us.
+- The standing obligation: if a branch name ever changes, update the row in the canonical
+  signoff table. Stale signoffs are how syncs break silently.
+
+How to reach them: DevTestOps office hours (Tuesdays) and #rhoai-devtestops-requests.
+Use them for sync failures, train onboarding questions, and Konflux trigger issues.
 -->
 
 ---
@@ -240,6 +534,32 @@ Questions/requests: DevTestOps office hours (Tuesdays) or #rhoai-devtestops-requ
 **Next live rehearsal: the upcoming ODH release (RHAIENG-7156).**
 
 <!-- notes:
-Close with: the release ticket is the runbook; the deck is the orientation.
-Suggest the team opens the quick-reference table in the doc during their next release-touching task.
+CLOSING (2 min)
+
+The doc map, in the order to learn it:
+- docs/bodies-of-water.md — the workflow. Branch strategy, gates, the release runbook, the
+  "what to do when" table, the DevOps KT. If you read one file, read this one.
+- docs/bodies-of-water-troubleshooting.md — the fixes. Symptom → cause → fix table plus the
+  escalation matrix. Keep it in your head as "the thing to open when it's broken".
+- docs/code-flow-odh-to-rhoai.md — the mechanism deep-dive (sync pipelines, Konflux builds,
+  the nudge chain, RC/GA promotion), verified against the live systems. Read this when you
+  need to UNDERSTAND why something behaves the way it does, not when you need to act.
+- docs/agents/testing.md (test catalog), docs/konflux.md (builds/triggers), docs/ci.md
+  (which CI owns which failure) — the supporting references the workflow doc links to.
+
+Jira: the adoption epic is RHAIENG-1273 (sibling tickets cover quality gates, validation,
+branch strategy, on-demand E2E, transitions — the whole program); RHAIENG-1264 is the
+docs/training ticket this session closes.
+
+The callback for the room: the deck is orientation; the doc is the reference; and the next
+ODH release (RHAIENG-7156) is a LIVE REHEARSAL of the six-step runbook. When that release
+comes around, the ticket IS the runbook — the first person to own it should open
+docs/bodies-of-water.md next to it and walk the two together.
+
+Ask the room to do ONE concrete thing before the next release: during their next
+release-touching task, open the "what to do when" table in the doc and use it. If a row is
+missing or wrong, that's a PR to the doc — the docs improve as we use them.
+
+Thank them; take questions. If a question exposes a gap, capture it as a follow-up on
+RHAIENG-1264 (or the relevant 127x sibling) rather than trying to answer it on the spot.
 -->
