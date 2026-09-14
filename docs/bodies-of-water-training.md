@@ -74,6 +74,8 @@ Walk the table row by row, keeping the emphasis on "for us":
   on stable — that's the whole Stream→Lake transition.
 - OCEAN = the red-hat-data-services/notebooks org: `main` there (Ocean, DevOps-owned) plus
   the `rhoai-X.Y` release trains. RHOAI Nightly, RC, and GA all build from the trains.
+  Key subtlety: the trains are fed from ODH `main` (via RHDS `main`), NOT from `stable`.
+  `stable` is the ODH-only copy of the same stream.
 
 The signoff: every team signs off its branch mapping in a cross-team signoff table inside
 the canonical BoW doc. Ours: Notebooks · Jiri Daněk · 2025-08-05 · Stream=main, Lake=stable,
@@ -81,8 +83,9 @@ Ocean=rhoai, RHDS branch=main. If we ever rename a branch, that row must be upda
 a standing obligation, not a one-time event.
 
 Likely question: "is ODH also RHOAI?" — No. ODH is the open-data hub distribution (Lake);
-RHOAI is the commercial product (Ocean). Our code flows ODH first, then RHOAI. The midstream
-(ODH) side is where fixes land first by norm.
+RHOAI is the commercial product (Ocean). Both are fed from the same stream (our main): ODH
+via stable (fast-forward), RHOAI via RHDS main (auto-sync). The midstream (ODH) side is
+where fixes land first by norm.
 -->
 
 ---
@@ -91,13 +94,15 @@ RHOAI is the commercial product (Ocean). Our code flows ODH first, then RHOAI. T
 
 ```
 opendatahub-io/notebooks                     red-hat-data-services/notebooks
-  main        (Stream) — all dev lands here   main         (Ocean) — DevOps-owned
-  stable      (Lake) ─── ODH nightly build ─▶ rhoai-X.Y    (trains) — auto-synced
-  2025a/…     (ODH GA branches)                         └─ RHOAI nightly + RC/GA
+  main  (Stream) — all dev lands here ─────▶  main  (Ocean) — DevOps-owned
+    │ FF-only GHA                              │ auto-merge (newest train only)
+    ▼                                          ▼
+  stable (Lake) — ODH nightly + GA          rhoai-X.Y (trains) — RHOAI nightly + RC/GA
+  2025a/… (ODH GA branches)
 ```
 
-- `main` → `stable`: **fast-forward only**, via the "Merge main into stable" GHA (`dry_run` first)
-- `stable` → train: **DevOps auto-sync** (`rhods-devops-infra` GitHub Actions)
+- `main` → `stable`: **fast-forward only** — "Merge main into stable" GHA (`dry_run` first); feeds **ODH only**
+- `main` → RHDS `main` → train: **DevOps auto-sync** (`rhods-devops-infra` GHAs), **newest train only**
 - We **never commit directly** to `stable` or to any RHDS branch
 
 <!-- notes:
@@ -117,12 +122,18 @@ Left side (opendatahub-io/notebooks — this repo):
   don't confuse an ODH GA branch with a rhoai-X.Y train.
 
 Right side (red-hat-data-services/notebooks — downstream):
-- main: the Ocean. DevOps owns it. It receives stable via their auto-sync; we don't commit
-  here directly.
-- rhoai-X.Y: the release trains (e.g. rhoai-3.5, rhoai-3.6-ea.1, rhoai-3.6-ea.2). Konflux
-  builds run from these branches (never from main), and the nudge chain (operator → bundle
-  → FBC fragment) turns green train builds into catalog entries. RHOAI Nightly and RC/GA
-  come from the trains.
+- main: the Ocean. DevOps owns it. It receives ODH `main` via their auto-sync
+  (upstream-source-map.yaml: opendatahub-io/notebooks@main → red-hat-data-services/
+  notebooks@main, .tekton/ + params excluded); we don't commit here directly.
+- rhoai-X.Y: the release trains (e.g. rhoai-3.5, rhoai-3.6-ea.1, rhoai-3.6-ea.2). Cut from
+  RHDS `main` by DevOps onboarding; auto-merge (main-release-auto-merge.yaml) feeds the
+  NEWEST train only. Konflux builds run from these branches (never from main), and the
+  nudge chain (operator → bundle → FBC fragment) turns green train builds into catalog
+  entries. RHOAI Nightly and RC/GA come from the trains.
+
+Emphasize the fan-out: ODH `main` is the single source that feeds BOTH waters — `stable`
+(ODH) via fast-forward, and RHDS `main` (→ trains) via auto-sync. `stable` is NOT on the
+RHOAI path.
 
 The invariants (repeat these — they're the exam answers):
 1. stable must always be an ancestor of main. If it isn't, something was committed to
@@ -142,26 +153,26 @@ catalogs live. The auto-sync is the bridge.
 
 # ⚠️ The train-divergence rule
 
-When a **new train is onboarded**, auto-merge from `stable` **switches to it**:
+When a **new train is onboarded**, auto-merge from RHDS `main` **switches to it**:
 
 ```
-before:  stable ──auto-merge──▶ rhoai-3.6-ea.1
+before:  RHDS main ──auto-merge──▶ rhoai-3.6-ea.1
 after 3.6-ea.2 onboarded:
-  stable ──auto-merge──▶ rhoai-3.6-ea.2        ✅ automatic
-  stable ──✋───────────▶ rhoai-3.6-ea.1        ❌ manual, by us
+  RHDS main ──auto-merge──▶ rhoai-3.6-ea.2     ✅ automatic
+  RHDS main ──✋───────────▶ rhoai-3.6-ea.1     ❌ manual, by us
 ```
 
-- Work on `main`/`stable` after the cut reaches **only the newest train** automatically
+- Work on ODH `main` after the cut reaches **only the newest train** automatically (ODH `main` → RHDS `main` → train)
 - Anything still needed on an **older (frozen) train**: **we cherry-pick downward — DevOps will not**
 - First real occurrence: **2026-08-24 EA1/EA2 onboarding**
 
 <!-- notes:
 CONTEXT (4 min) — the most important slide. Slow down here.
 
-The mechanism: DevOps auto-merge from stable targets exactly ONE train — the newest
-onboarded one. When the next train is onboarded, the switch flips. This is by design: once
-the new train exists, everything merging to main is "next release" work and must NOT leak
-into the frozen train.
+The mechanism: DevOps auto-merge from RHDS `main` (main-release-auto-merge.yaml) targets
+exactly ONE RHOAI train — the newest onboarded one. When the next train is onboarded, the
+switch flips. This is by design: once the new train exists, everything merging to ODH main
+is "next release" work and must NOT leak into the frozen train.
 
 The real story (tell it as a story — it's the one people will remember):
 - The 3.6 EA1 code freeze was originally 2026-08-21, then moved to 2026-08-31.
@@ -244,7 +255,7 @@ deliberately doesn't target it anymore. Cherry-pick PR is the only path.
 |---|---|---|
 | PR → `main` | PR + Prow/Tide (`/lgtm` `/approve`), merge bot | code-quality GHAs, unit tests, testcontainers integration, Konflux PR builds |
 | `main` → `stable` | FF-only GHA | `stable` ancestor of `main`; then **ODH nightly** build + smoke/ITS pass |
-| `stable` → train | DevOps auto-sync | **RHOAI nightly** build + Jenkins E2E (ods-ci `0500__ide`, opendatahub-tests) |
+| `main` → RHDS `main` → train | DevOps auto-sync (2 hops) | **RHOAI nightly** build + Jenkins E2E (ods-ci `0500__ide`, opendatahub-tests) |
 | nightly → RC/GA | **DevOps-owned** | our job: keep the train green |
 
 <!-- notes:
@@ -269,11 +280,13 @@ FF, the real gate is the ODH nightly: the build from stable must be green and it
 pass (Jenkins ods-ci smokes; on-demand its-trigger-nightly ITS scenario). If the nightly
 breaks, the fix goes to main and re-promotes — never a hotfix on stable itself.
 
-Row 3 — stable → train. DevOps auto-sync (GitHub Actions in red-hat-data-services/
-rhods-devops-infra, driven by configmaps in that repo). The gate on this transition is the
-RHOAI nightly: build from the train + product-level E2E on Jenkins — specifically the
-ods-ci 0500__ide suite and opendatahub-tests, run against the nightly FBC fragment. These
-are the tests that catch "builds fine, but the workbench is broken in the product".
+Row 3 — ODH main → RHDS main → train. Two hops, both DevOps GitHub Actions in
+red-hat-data-services/rhods-devops-infra (upstream-source-map.yaml for the first hop,
+main-release-auto-merge.yaml + main-release-source-map.yaml for the second; newest train
+only). The gate on this transition is the RHOAI nightly: build from the train +
+product-level E2E on Jenkins — specifically the ods-ci 0500__ide suite and
+opendatahub-tests, run against the nightly FBC fragment. These are the tests that catch
+"builds fine, but the workbench is broken in the product".
 
 Row 4 — nightly → RC/GA. Owned end-to-end by DevOps (Stage Promoter, release CRs, image
 mirroring to registry.redhat.io). Our contribution is entirely upstream of this: a green
@@ -338,7 +351,7 @@ Recurring ticket per cycle — template [RHAIENG-6297](https://redhat.atlassian.
 1. **Verify code freeze** — release tracker + ODH Release calendar
 2. **Validate image tags** — `.tekton/*.yaml` + `params-latest.env`; format `<train>-v<NN>`, **no patch version** (e.g. `3.5-v1.47`)
 3. **Publish** — **"Create release"** GHA, *same tag as the image builds* (creates git tag + GitHub release)
-4. **Comment the tracker** — [workbenches-operator#107](https://github.com/opendatahub-io/workbenches-operator/issues/107) ⚠️ *not* `opendatahub-community#202` (operator-only now)
+4. **Comment the tracker** — the cycle's `[Release Tracker]` issue in `opendatahub-io/opendatahub-community` (per-cycle! current: [#203 — 3.6.0-EA2](https://github.com/opendatahub-io/opendatahub-community/issues/203))
 5. **Post-release** — **"Update Tekton Tags"** GHA for the *next* cycle (opens a PR — merge it)
 6. **Clone the ticket** for the next cycle, bump tags
 
@@ -363,11 +376,13 @@ it runs: gh release create "$TAG" --title="$NAME-$TAG" --generate-notes --target
 Critical: the tag you publish must be the SAME tag the image builds used. The images are
 already built and tagged; the release just names that state.
 
-Step 4 — Comment the tracker. The release tracker MOVED: it is now
-opendatahub-io/workbenches-operator#107. The old one (opendatahub-community#202) is now
-operator-release-values only. If you comment a notebooks release on #202 you just confused
-the operator team — and yes, this has a history. The ticket itself says: "Update the issue
-with the newly published release".
+Step 4 — Comment the tracker. Trackers are PER-RELEASE-CYCLE: each ODH release gets its own
+"[Release Tracker]" issue in opendatahub-io/opendatahub-community, and it is closed when the
+cycle ends. For 3.6.0-EA2 the current one is #203; the EA1 cycle used #202 (now closed — the
+EA1 cycle also had a mirror in workbenches-operator#107, also closed). Find the current
+cycle's tracker on the opendatahub-community issues list before you comment. If you comment
+a release on a CLOSED/previous tracker you've filed it in the wrong cycle — remove the wrong
+comment. The ticket itself says: "Update the issue with the newly published release".
 
 Step 5 — Post-release tag bump. ONLY AFTER the release is published: run the "Update Tekton
 Tags" workflow (update-tags.yaml) with the NEXT cycle's tag (e.g. 3.5-v1.47 → 3.6_ea1-v1.48).
@@ -393,7 +408,7 @@ ordering mistake (bumping before publishing) possible-to-avoid and visible in th
 |---|---|
 | New feature / normal fix | PR to `main`, land when gates are green |
 | Must reach ODH nightly | Land on `main` → FF to `stable` (GHA, `dry_run` first) |
-| Must reach **newest** train | Automatic after `stable` — verify via nightly |
+| Must reach **newest** train | Land on `main` — flows via RHDS `main`; verify via nightly |
 | Must reach **older/frozen** train | Cherry-pick downward (procedure on slide 5) |
 | ODH release cycle | 6-step runbook (slide 8) |
 | CVE on a release branch | `docs/cves/` workflows + fix-cve agent flow |
@@ -411,8 +426,9 @@ Walk each row with a one-line concrete example so it sticks:
   involved. 90% of your days are this row.
 - ODH nightly: "X must be in the ODH nightly by Friday" → land on main, run the FF workflow
   (dry_run first), confirm the nightly build picked it up.
-- Newest train: "X must be in 3.6-ea.2" → it flows automatically once it's on stable; your
-  job is verification (RHOAI nightly build + Jenkins), not action.
+- Newest train: "X must be in 3.6-ea.2" → it flows automatically once it's on main (main →
+  RHDS main → newest train); your job is verification (RHOAI nightly build + Jenkins), not
+  action.
 - Older/frozen train: "X must be in 3.6-ea.1 which froze last week" → cherry-pick down,
   slide 5 procedure, review before the train's freeze. Nobody else will do this for you.
   (This is the row that has actually cost us time already — the EA1 episode.)
@@ -478,7 +494,7 @@ you a slower answer.
 # Who owns what (DevOps knowledge transfer)
 
 **DevOps owns** — don't edit, request changes:
-- `stable` → train auto-sync (GHAs in `rhods-devops-infra`)
+- ODH `main` → RHDS `main` → train auto-sync (GHAs in `rhods-devops-infra`; newest train only)
 - Konflux pipelines: `.tekton/` synced read-only from `konflux-central` — **never hand-edit**
 - Train management, RC/GA, image mirroring
 

@@ -1,7 +1,8 @@
 # Bodies of Water: Notebooks Troubleshooting Guide
 
 Companion to [bodies-of-water.md](bodies-of-water.md): symptom → cause → fix for the
-Stream → Lake → Ocean flow of the Notebooks component (ODH `main`/`stable` → RHOAI trains).
+Stream → Lake → Ocean flow of the Notebooks component (ODH `main` → `stable` for the ODH
+deliverable; ODH `main` → RHDS `main` → RHOAI trains for the product).
 
 ## Quick table
 
@@ -17,13 +18,13 @@ Stream → Lake → Ocean flow of the Notebooks component (ODH `main`/`stable` �
 | Duplicate Konflux checks on RHDS PRs | Two integrations watching the same event | Expected in some windows; see [konflux.md: Duplicate Konflux checks](konflux.md#duplicate-konflux-checks-on-red-hat-data-servicesnotebooks-prs) |
 | Merged PR does not reach the catalog (FBC fragment) | Nudge chain stall (operator→bundle→FBC) | Check the nudge PRs in `rhods-operator` / bundle / RHOAI-Build-Config repos; escalate to DevOps with the component build PipelineRun |
 | ODH release image has the wrong tag | Tag format mistake (patch version included) or Update-Tekton-Tags PR not merged | Tags are `<train>-v<NN>` with **no patch version**; after publishing, merge the "Update Tekton Tags" PR promptly |
-| Commented release on the wrong tracker | Old `opendatahub-community#202` tracker still linked | Use [opendatahub-io/workbenches-operator#107](https://github.com/opendatahub-io/workbenches-operator/issues/107); remove the wrong comment (it confuses the operator team) |
+| Commented a release on a closed/previous tracker | Trackers are **per-release-cycle** — each `[Release Tracker]` issue is closed when its cycle ends | Use the *current* `[Release Tracker]` issue in [opendatahub-io/opendatahub-community](https://github.com/opendatahub-io/opendatahub-community/issues) (e.g. `#203` for 3.6.0-EA2); remove the wrong comment |
 
-## Sync failures (DevOps auto-sync, stable → train)
+## Sync failures (DevOps auto-sync: ODH `main` → RHDS `main` → train)
 
-The sync is a GitHub Action in
-[`red-hat-data-services/rhods-devops-infra`](https://github.com/red-hat-data-services/rhods-devops-infra);
-failures notify in Slack.
+The sync is two hops, both GitHub Actions in
+[`red-hat-data-services/rhods-devops-infra`](https://github.com/red-hat-data-services/rhods-devops-infra)
+(config: `upstream-source-map.yaml`, `main-release-source-map.yaml`); failures notify in Slack.
 
 1. Open the failed sync run's logs; look for:
    `CONFLICT (content)`, `Automatic merge failed`, `Patch failed`.
@@ -31,9 +32,9 @@ failures notify in Slack.
    - midstream (`opendatahub-io`) modifications diverged from what the train already has,
    - downstream-only patches on the train overlap with our upstream change,
    - files we deleted or renamed upstream.
-3. Resolve in our repo: make the train-side state reachable from `stable` (usually a
-   follow-up PR on `stable`/`main` adjusting the content), then ask DevOps to **re-run the
-   sync** — do not push to the train yourself.
+3. Resolve in our repo: make the train-side state reachable from ODH `main` (usually a
+   follow-up PR on `main` adjusting the content), then ask DevOps to **re-run the
+   sync** — do not push to RHDS `main` or the train yourself.
 
 ## Cherry-picking downward (older/frozen trains)
 
@@ -70,9 +71,9 @@ failures notify in Slack.
   `.tekton/*.yaml` — check for stale leftovers first.
 - **Ordering**: run "Update Tekton Tags" **after** "Create release" (the release must exist
   before the tag for the *next* cycle moves).
-- **Tracker**: notebook releases are commented on
-  [workbenches-operator#107](https://github.com/opendatahub-io/workbenches-operator/issues/107),
-  **not** `opendatahub-community#202` (operator-only since the tracker move).
+- **Tracker**: notebook releases are commented on the *current* per-cycle `[Release Tracker]`
+  issue in [opendatahub-io/opendatahub-community](https://github.com/opendatahub-io/opendatahub-community/issues)
+  (e.g. `#203` — 3.6.0-EA2; the EA1 cycle used `#202`, which is now closed).
 
 ## Escalation
 
