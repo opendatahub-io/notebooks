@@ -20,7 +20,7 @@ source "$(dirname "$0")/hermeto-common.sh"
 
 # Run hermeto in a container; requires podman and network access.
 hermeto() {
-  podman_args=(--rm --userns=keep-id -i)
+  local -a podman_args=(--rm --userns=keep-id -i)
   [ -t 0 ] && podman_args+=(-t)
   podman run "${podman_args[@]}" \
     -v "$PWD:$PWD:z" \
