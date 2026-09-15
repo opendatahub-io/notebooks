@@ -56,7 +56,30 @@ HERMETO_JSON=$(jq -n --arg path "$PREFETCH_DIR" '{type: "gomod", path: $path}')
 # dir so we can merge into the shared cachi2/output/ without destroying other
 # dep types (pip, npm, rpm, generic).
 HERMETO_STAGING=$(mktemp -d)
-trap 'rm -rf "$HERMETO_STAGING"' EXIT
+
+cleanup_staging() {
+  local status=$?
+  trap - EXIT
+
+  if find "$HERMETO_STAGING" \
+    \( ! -uid "$(id -u)" -o ! -gid "$(id -g)" \) \
+    -print -quit | grep -q .; then
+    if ! sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING"; then
+      echo "Error: cannot repair Hermeto staging ownership: $HERMETO_STAGING" >&2
+      if (( status == 0 )); then status=1; fi
+      exit "$status"
+    fi
+  fi
+
+  if ! rm -rf -- "$HERMETO_STAGING"; then
+    echo "Error: cannot clean up Hermeto staging: $HERMETO_STAGING" >&2
+    if (( status == 0 )); then status=1; fi
+  fi
+
+  exit "$status"
+}
+
+trap cleanup_staging EXIT
 
 echo "--- Downloading Go modules via hermeto ---"
 podman run --rm \
