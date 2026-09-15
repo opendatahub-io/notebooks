@@ -571,8 +571,7 @@ Row by row, with the depth that's not on the slide:
    docs/konflux.md has "Why pushing a branch may not trigger builds" + the known-issues
    section (duplicate checks, prefetch quirks, trigger name matching).
 
-Also in the doc, not on the slide: sbom-syft-generate StepOverride failures on legacy trains
-(escalate to DevOps — do NOT patch .tekton/ yourself), nudge-chain stalls (check the nudge
+Also in the doc, not on the slide: nudge-chain stalls (check the nudge
 PRs in rhods-operator → bundle → RHOAI-Build-Config in order), and release tag-format
 mistakes.
 
