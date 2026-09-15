@@ -207,10 +207,11 @@ fi
 # prefetch steps already placed in cachi2/output/deps/.
 # =========================================================================
 HERMETO_STAGING=$(mktemp -d)
-trap 'rm -rf "$HERMETO_STAGING" ${CDN_CERT_DIR:+"$CDN_CERT_DIR"}' EXIT
+trap 'cleanup_staging "$HERMETO_STAGING" "${CDN_CERT_DIR:-}"' EXIT
 
 echo "--- Downloading RPMs via hermeto ---"
 podman run --rm \
+  --userns=keep-id \
   -v "$(pwd)/$PREFETCH_DIR:/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   ${CDN_CERT_DIR:+-v "$CDN_CERT_DIR:/certs:ro,z"} \
@@ -221,6 +222,7 @@ podman run --rm \
 # so the Dockerfile can `dnf install` from the local repo.
 echo "--- Generating repo metadata ---"
 podman run --rm \
+  --userns=keep-id \
   -v "$HERMETO_STAGING:/output:z" \
   "$HERMETO_IMAGE" \
   inject-files /output --for-output-dir /cachi2/output
@@ -228,14 +230,17 @@ podman run --rm \
 # Hermeto runs as root inside the container.  On rootful podman (GHA
 # runners), the output files are owned by root:root.  Without this fix,
 # the host user cannot move/modify them in later steps.
-if ! test -w "$HERMETO_STAGING/deps/rpm" 2>/dev/null; then
-  sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING" 2>/dev/null || true
-fi
+# Check for foreign-owned files (not just the top-level dir) so nested
+# root-owned entries are caught.  Fail loudly if chown cannot repair.
+repair_foreign_ownership "$HERMETO_STAGING"
 
 # Merge RPM output into the shared cachi2/output/ tree.  Other prefetch
 # scripts (pip, npm, generic artifacts) may have already placed their
 # output under cachi2/output/deps/, so we only replace the rpm/ subtree.
 mkdir -p "$HERMETO_OUTPUT/deps"
+if [[ -e "$HERMETO_OUTPUT/deps/rpm" ]]; then
+  repair_foreign_ownership "$HERMETO_OUTPUT/deps/rpm"
+fi
 rm -rf "$HERMETO_OUTPUT/deps/rpm"
 mv "$HERMETO_STAGING/deps/rpm" "$HERMETO_OUTPUT/deps/rpm"
 cp -f "$HERMETO_STAGING/bom.json" "$HERMETO_OUTPUT/bom.json"
