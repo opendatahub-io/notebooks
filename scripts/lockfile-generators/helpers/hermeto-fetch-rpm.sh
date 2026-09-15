@@ -211,6 +211,7 @@ trap 'cleanup_staging "$HERMETO_STAGING" "${CDN_CERT_DIR:-}"' EXIT
 
 echo "--- Downloading RPMs via hermeto ---"
 podman run --rm \
+  --userns=keep-id \
   -v "$(pwd)/$PREFETCH_DIR:/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   ${CDN_CERT_DIR:+-v "$CDN_CERT_DIR:/certs:ro,z"} \
@@ -221,6 +222,7 @@ podman run --rm \
 # so the Dockerfile can `dnf install` from the local repo.
 echo "--- Generating repo metadata ---"
 podman run --rm \
+  --userns=keep-id \
   -v "$HERMETO_STAGING:/output:z" \
   "$HERMETO_IMAGE" \
   inject-files /output --for-output-dir /cachi2/output

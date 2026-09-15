@@ -60,6 +60,7 @@ trap 'cleanup_staging "$HERMETO_STAGING"' EXIT
 
 echo "--- Downloading Go modules via hermeto ---"
 podman run --rm \
+  --userns=keep-id \
   -v "$(pwd):/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   "$HERMETO_IMAGE" \

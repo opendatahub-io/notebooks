@@ -22,7 +22,7 @@ source "$(dirname "$0")/hermeto-common.sh"
 hermeto() {
   TTY_FLAG=""
   [ -t 0 ] && TTY_FLAG="-t"
-  podman run --rm -i $TTY_FLAG \
+  podman run --rm --userns=keep-id -i $TTY_FLAG \
     -v "$PWD:$PWD:z" \
     -w "$PWD" \
     "$HERMETO_IMAGE" \
