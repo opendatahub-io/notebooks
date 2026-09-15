@@ -1,4 +1,4 @@
-import {Page, TestInfo} from "@playwright/test";
+import {expect, Page, TestInfo} from "@playwright/test";
 
 export async function waitForStableDOM(page: Page, pageRootSelector: string, checkPeriod: number, timeout: number): Promise<void> {
     // https://github.com/cypress-io/cypress/issues/5275#issuecomment-1003669708
@@ -85,4 +85,32 @@ export async function takeScreenshot(page: Page, testInfo: TestInfo, filename: s
     testInfo.attachments.push({name: 'screenshot', path: screenshotPath, contentType: 'image/png'});
     // Take the screenshot itself.
     await page.screenshot({path: screenshotPath, timeout: 5000});
+}
+
+/**
+ * Assert the codeserver startup surface:
+ * - STRIP_COPILOT_PROPRIETARY=true: workspace README tab
+ * - default (false) or older pinned images: built-in Welcome page
+ */
+export async function assertStartupSurface(page: Page, testInfo: TestInfo): Promise<void> {
+    const readmeTab = page.getByRole('tab', { name: /README\.md/i })
+    const readmeVisible = await readmeTab.waitFor({state: 'visible', timeout: 5000})
+        .then(() => true)
+        .catch(() => false)
+
+    if (readmeVisible) {
+        await expect(readmeTab).toBeVisible()
+        const workbench = page.locator("div.monaco-workbench")
+        // README preview content lives in a webview/iframe; tab + editor surface is enough.
+        await expect(workbench.locator(".editor-container, .editor-instance").first()).toBeVisible({timeout: 15000})
+        await waitForNextRender(page)
+        await takeScreenshot(page, testInfo, "workspace-readme.png")
+        return
+    }
+
+    await expect(page.getByRole('tab', { name: /Welcome/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'code-server', level: 1 })).toBeVisible()
+    await expect(page.getByText('Editing evolved')).toBeVisible()
+    await waitForNextRender(page)
+    await takeScreenshot(page, testInfo, "welcome.png")
 }

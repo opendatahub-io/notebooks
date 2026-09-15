@@ -1,7 +1,7 @@
 // Copyright (c) 2019 Coder Technologies Inc.
 // https://github.com/coder/code-server/blob/main/test/e2e/models/CodeServer.ts
 
-import {Page} from "@playwright/test";
+import {expect, Page} from "@playwright/test";
 import * as path from "node:path";
 
 import {log as rootLog} from "../logger";
@@ -11,6 +11,8 @@ import {log as rootLog} from "../logger";
  */
 export class CodeServer {
     private readonly logger = rootLog.getSubLogger({name: "CodeServer"});
+    /** Set when startup README is present (STRIP_COPILOT_PROPRIETARY=true). */
+    private strippedCopilotImage: boolean | undefined
 
     constructor(public readonly page: Page, public readonly url: string) {
     }
@@ -33,7 +35,80 @@ export class CodeServer {
      * Wait for a tab to open for the specified file.
      */
     async waitForTab(file: string): Promise<void> {
-        await this.page.waitForSelector(`.tab :text("${path.basename(file)}")`)
+        const basename = path.basename(file)
+        await expect(this.page.locator(".tab").filter({hasText: basename}).first()).toBeVisible({timeout: 15000})
+    }
+
+    /**
+     * Wait until the integrated terminal shell is ready for input.
+     * When STRIP_COPILOT_PROPRIETARY=true, .bashrc prints a BYO Copilot banner on
+     * first open; wait for that to finish before typing.
+     */
+    async waitForTerminalReady(): Promise<void> {
+        const textarea = this.page.locator("textarea.xterm-helper-textarea")
+        await textarea.waitFor({state: "visible", timeout: 15000})
+        await textarea.click()
+        if (this.strippedCopilotImage) {
+            // .bashrc prints a BYO Copilot banner on first open; xterm screen text is
+            // not reliably in the DOM, so use a short settle instead of text matching.
+            await this.page.waitForTimeout(2000)
+            await textarea.press("Enter")
+        }
+        await textarea.click()
+    }
+
+    /**
+     * Run a shell command in the focused integrated terminal.
+     * Uses the xterm helper textarea so keystrokes cannot leak to the workbench.
+     */
+    async runTerminalCommand(command: string): Promise<void> {
+        const textarea = this.page.locator("textarea.xterm-helper-textarea")
+        await textarea.waitFor({state: "visible", timeout: 15000})
+        await textarea.click()
+        await textarea.pressSequentially(command, {delay: 50})
+        await textarea.press("Enter")
+    }
+
+    /**
+     * Close the workspace README preview opened on first launch when
+     * STRIP_COPILOT_PROPRIETARY=true (workbench.startupEditor = "readme").
+     */
+    async dismissStartupReadme(): Promise<void> {
+        const readmeTab = this.page.getByRole("tab", {name: /README\.md/i})
+        if (!(await readmeTab.isVisible().catch(() => false))) {
+            this.strippedCopilotImage = false
+            return
+        }
+        this.strippedCopilotImage = true
+        await readmeTab.click()
+        await this.page.keyboard.press("Control+W")
+        await expect(readmeTab).not.toBeVisible({timeout: 10000})
+    }
+
+    /**
+     * Return keyboard focus to the workbench shell (README webview can steal it).
+     */
+    async focusWorkbench(): Promise<void> {
+        await this.page.locator("div.monaco-workbench").click({position: {x: 50, y: 50}, force: true})
+    }
+
+    /**
+     * Run a command through the command palette (F1).
+     */
+    async executeCommandViaPalette(command: string): Promise<void> {
+        await this.page.keyboard.press("F1")
+        await this.page.locator(".quick-input-widget").waitFor({state: "visible", timeout: 5000})
+        await this.page.keyboard.type(command, {delay: 30})
+        // Enter is more reliable than clicking a list row across VS Code versions.
+        await this.page.keyboard.press("Enter")
+    }
+
+    private async closeQuickInputIfOpen(): Promise<void> {
+        const quickInput = this.page.locator(".quick-input-widget")
+        if (await quickInput.isVisible().catch(() => false)) {
+            await this.page.keyboard.press("Escape")
+            await quickInput.waitFor({state: "hidden", timeout: 5000}).catch(() => undefined)
+        }
     }
 
     /**
@@ -44,15 +119,26 @@ export class CodeServer {
      * clobbering parallel tests.
      */
     async focusTerminal() {
+        await this.dismissStartupReadme()
+        await this.focusWorkbench()
+
+        const terminalCommand = "Terminal: Create New Terminal"
         const doFocus = async (): Promise<boolean> => {
-            await this.executeCommandViaMenus("Terminal: Create New Terminal")
-            try {
-                await this.page.waitForLoadState("load")
-                await this.page.waitForSelector("textarea.xterm-helper-textarea:focus-within", { timeout: 5000 })
-                return true
-            } catch (_error) {
-                return false
+            await this.closeQuickInputIfOpen()
+
+            for (const runCommand of [
+                () => this.executeCommandViaPalette(terminalCommand),
+                () => this.executeCommandViaMenus(terminalCommand),
+            ]) {
+                try {
+                    await runCommand()
+                    await this.page.waitForSelector("textarea.xterm-helper-textarea:focus-within", { timeout: 5000 })
+                    return true
+                } catch (_error) {
+                    await this.closeQuickInputIfOpen()
+                }
             }
+            return false
         }
 
         let attempts = 1
@@ -65,11 +151,27 @@ export class CodeServer {
     }
 
     /**
-     * Open a file by using menus.
+     * Open a workspace file via the Explorer, falling back to File → Open File.
      */
     async openFile(file: string) {
+        const basename = path.basename(file)
+        await this.dismissStartupReadme()
+        await this.focusWorkbench()
+        await this.closeQuickInputIfOpen()
+
+        try {
+            await this.executeCommandViaPalette("View: Show Explorer")
+            const fileEntry = this.page.getByRole("treeitem", {name: basename, exact: true})
+            await expect(fileEntry).toBeVisible({timeout: 30000})
+            await fileEntry.dblclick()
+            await this.waitForTab(file)
+            return
+        } catch (_error) {
+            await this.closeQuickInputIfOpen()
+        }
+
         await this.navigateMenus(["File", "Open File..."])
-        await this.navigateQuickInput([path.basename(file)])
+        await this.navigateQuickInput([basename])
         await this.waitForTab(file)
     }
 
