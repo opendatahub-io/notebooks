@@ -98,6 +98,10 @@ Each notebook image uses a single `Dockerfile.konflux.<variant>`; `PRODUCT` sele
 which build-args conf file and manifest set the Makefile passes to the build.
 Both variants can be built locally or on Konflux/Tekton.
 
+The branch/release flow these builds feed into (Stream→Lake→Ocean, quality gates,
+ODH/RHOAI release process) is documented in
+[docs/bodies-of-water.md](docs/bodies-of-water.md).
+
 ### OpenShift file ownership during image build (#3928)
 
 Notebook images target OpenShift arbitrary UID with supplemental **gid 0**. Hermetic
