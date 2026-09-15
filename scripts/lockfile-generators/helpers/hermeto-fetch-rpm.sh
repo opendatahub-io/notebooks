@@ -207,35 +207,7 @@ fi
 # prefetch steps already placed in cachi2/output/deps/.
 # =========================================================================
 HERMETO_STAGING=$(mktemp -d)
-
-cleanup_staging() {
-  local status=$?
-  trap - EXIT
-
-  if find "$HERMETO_STAGING" \
-    \( ! -uid "$(id -u)" -o ! -gid "$(id -g)" \) \
-    -print -quit | grep -q .; then
-    if ! sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING"; then
-      echo "Error: cannot repair Hermeto staging ownership: $HERMETO_STAGING" >&2
-      if (( status == 0 )); then status=1; fi
-      exit "$status"
-    fi
-  fi
-
-  if ! rm -rf -- "$HERMETO_STAGING"; then
-    echo "Error: cannot clean up Hermeto staging: $HERMETO_STAGING" >&2
-    if (( status == 0 )); then status=1; fi
-  fi
-
-  if [[ -n ${CDN_CERT_DIR:-} ]] && ! rm -rf -- "$CDN_CERT_DIR"; then
-    echo "Error: cannot clean up CDN certificate staging: $CDN_CERT_DIR" >&2
-    if (( status == 0 )); then status=1; fi
-  fi
-
-  exit "$status"
-}
-
-trap cleanup_staging EXIT
+trap 'cleanup_staging "$HERMETO_STAGING" "${CDN_CERT_DIR:-}"' EXIT
 
 echo "--- Downloading RPMs via hermeto ---"
 podman run --rm \
@@ -258,9 +230,7 @@ podman run --rm \
 # the host user cannot move/modify them in later steps.
 # Check for foreign-owned files (not just the top-level dir) so nested
 # root-owned entries are caught.  Fail loudly if chown cannot repair.
-if find "$HERMETO_STAGING" \( ! -uid "$(id -u)" -o ! -gid "$(id -g)" \) -print -quit | grep -q .; then
-  sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING"
-fi
+repair_foreign_ownership "$HERMETO_STAGING"
 
 # Merge RPM output into the shared cachi2/output/ tree.  Other prefetch
 # scripts (pip, npm, generic artifacts) may have already placed their
