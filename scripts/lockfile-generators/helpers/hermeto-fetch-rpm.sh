@@ -236,6 +236,9 @@ repair_foreign_ownership "$HERMETO_STAGING"
 # scripts (pip, npm, generic artifacts) may have already placed their
 # output under cachi2/output/deps/, so we only replace the rpm/ subtree.
 mkdir -p "$HERMETO_OUTPUT/deps"
+if [[ -e "$HERMETO_OUTPUT/deps/rpm" ]]; then
+  repair_foreign_ownership "$HERMETO_OUTPUT/deps/rpm"
+fi
 rm -rf "$HERMETO_OUTPUT/deps/rpm"
 mv "$HERMETO_STAGING/deps/rpm" "$HERMETO_OUTPUT/deps/rpm"
 cp -f "$HERMETO_STAGING/bom.json" "$HERMETO_OUTPUT/bom.json"
