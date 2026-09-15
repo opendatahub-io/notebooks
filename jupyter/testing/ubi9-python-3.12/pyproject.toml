@@ -1,0 +1,29 @@
+[project]
+name = "testing-notebook"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+# Hermetic public-PyPI spike - using only packages available on public PyPI
+# NOTE: pandoc-rhai removed - see spike findings for Pandoc/PDF export solution
+dependencies = [
+    "uv",
+    "micropipenv[toml]",
+
+    "odh-notebooks-meta-jupyterlab-deps",
+    # pandoc-rhai removed: not on public PyPI (RHAI internal)
+    # PDF export will need alternative solution (see spike Section D)
+
+    # Base packages
+    "wheel",
+    "setuptools",
+]
+
+[tool.uv.sources]
+odh-notebooks-meta-jupyterlab-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
+
+[tool.uv]
+# Use ONLY public PyPI - no internal indexes
+index-url = "https://pypi.org/simple/"
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+]
