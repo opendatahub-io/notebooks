@@ -30,7 +30,7 @@ same check; `--strict` only adds stricter checks). `code-quality.yaml` uses the
 `code-quality: write` permission scope (required by `upload-code-coverage` and
 accepted by GitHub's own runners), but act's schema predates that scope and fails:
 
-```
+```text
 Error: workflow is not valid. 'code-quality.yaml': ... Unknown Property code-quality
 Actions YAML Schema Validation Error detected:
 For more information, see: https://nektosact.com/usage/schema.html
