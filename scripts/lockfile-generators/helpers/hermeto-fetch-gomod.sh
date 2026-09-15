@@ -97,6 +97,12 @@ fi
 
 # Merge into shared cachi2/output. If multiple gomod prefetch paths are used,
 # later runs merge into the same deps/gomod tree (Go module cache layout).
+if [[ -e "$HERMETO_OUTPUT/deps/gomod" ]] \
+  && find "$HERMETO_OUTPUT/deps/gomod" \
+    \( ! -uid "$(id -u)" -o ! -gid "$(id -g)" \) \
+    -print -quit | grep -q .; then
+  sudo chown -R "$(id -u):$(id -g)" "$HERMETO_OUTPUT/deps/gomod"
+fi
 mkdir -p "$HERMETO_OUTPUT/deps/gomod"
 if [[ -d "$HERMETO_STAGING/deps/gomod" ]]; then
   cp -a "$HERMETO_STAGING/deps/gomod"/. "$HERMETO_OUTPUT/deps/gomod/"
