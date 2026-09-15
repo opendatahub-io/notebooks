@@ -24,7 +24,7 @@ what we do, when, and where to escalate.
 **Both waters are fed from the same stream** — `main` fans out in two directions; `stable` does
 *not* feed RHOAI:
 
-```
+```text
 opendatahub-io/notebooks                     red-hat-data-services/notebooks
   main  (Stream) ──────────────────────────▶  main  (Ocean — DevOps-owned, auto-synced
     │                                           from ODH main; .tekton/ + params excluded)

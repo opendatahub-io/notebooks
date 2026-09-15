@@ -92,7 +92,7 @@ where fixes land first by norm.
 
 # Branch map
 
-```
+```text
 opendatahub-io/notebooks                     red-hat-data-services/notebooks
   main  (Stream) — all dev lands here ─────▶  main  (Ocean) — DevOps-owned
     │ FF-only GHA                              │ auto-merge (newest train only)
@@ -173,7 +173,7 @@ first — see the sync-config screenshot on the gates slide.
 
 When a **new train is onboarded**, auto-merge from RHDS `main` **switches to it**:
 
-```
+```text
 before:  RHDS main ──auto-merge──▶ rhoai-3.6-ea.1
 after 3.6-ea.2 onboarded:
   RHDS main ──auto-merge──▶ rhoai-3.6-ea.2     ✅ automatic
@@ -554,10 +554,11 @@ Row by row, with the depth that's not on the slide:
    one? Newest: it's in flight, check the sync run. Older: it will NEVER arrive
    automatically — that's the divergence rule, not a bug. Cherry-pick down.
 2. "The FF workflow refuses to run" — stable is not an ancestor of main, meaning someone
-   committed to stable directly (or an old merge). Fix: never commit to stable; if it
-   already happened, use the "Sync branches through Pull Request" workflow
-   (sync-branches-through-pr.yml) and review the result carefully. The workflow refusing is
-   CORRECT behavior — it's protecting the invariant.
+   committed to stable directly (or an old merge). The workflow refusing is CORRECT
+   behavior — it's protecting the invariant. The recovery flow: (a) identify what actually
+   landed on stable and why; (b) cherry-pick those fixes onto main; (c) force-push main to
+   stable so stable tracks main again. Prevention is the real fix: never commit directly to
+   stable, and avoid diverging it whenever possible.
 3. "Green on main, red on the train" — branch-locked dependencies. The train's lockfiles
    were cut earlier; a package (historically libxkbfile-devel) exists in main's lock state
    but not the train's. Fix the TRAIN's lockfiles (cut from the train, refresh, PR to the

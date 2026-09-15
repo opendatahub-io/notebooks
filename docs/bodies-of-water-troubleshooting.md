@@ -9,7 +9,7 @@ deliverable; ODH `main` → RHDS `main` → RHOAI trains for the product).
 | Symptom | Most likely cause | Fix |
 |---|---|---|
 | Change on `main` never appears on a RHOAI train | Train divergence: auto-merge targets only the **newest** onboarded train | Cherry-pick downward by hand — [procedure](bodies-of-water.md#how-to-cherry-pick-downward-cleanly) |
-| Fast-forward `main` → `stable` GHA fails | `stable` is not an ancestor of `main` (direct commits/merges landed on `stable`) | Rebase `main` onto `stable`, or use **"Sync branches through Pull Request"** (`.github/workflows/sync-branches-through-pr.yml`) with a careful review; prevent by never committing to `stable` directly |
+| Fast-forward `main` → `stable` GHA fails | `stable` is not an ancestor of `main` (direct commits/merges landed on `stable`) | Identify what landed on `stable` and why; **cherry-pick those fixes onto `main`**, then **force-push `main` to `stable`** so `stable` tracks `main` again; prevent by never committing to `stable` directly |
 | ODH nightly build fails but `main` PR was green | `stable` picked up a commit whose gates ran against different base/lockfiles, or a nightly-only code path | Triage the Konflux PipelineRun for `stable`; fix on `main` and re-promote — do not hotfix `stable` |
 | Build passes on `main`, fails on an older RHOAI train | Branch-locked dependencies (e.g. an rpm present in `main` lockfiles but not the train's, historically `libxkbfile-devel`) | Refresh that train's lockfiles (rpm/npm) — see [below](#build-failures-on-downstream-trains) |
 | Same build fails intermittently in cachi2 with a corrupt npm tarball | Stale/corrupt cachi2 cache in the build pod | Clear the cache dir in the failing build stage (`cachi2/output/deps/npm`) and re-run |
