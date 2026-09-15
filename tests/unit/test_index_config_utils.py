@@ -26,7 +26,7 @@ index-url = https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-u
 def test_uv_index_url_from_config_reads_index_url():
     config_text = """# uv.toml
 index-url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
-native-tls = true
+system-certs = true
 """
 
     assert (
