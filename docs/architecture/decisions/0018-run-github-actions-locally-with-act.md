@@ -42,7 +42,7 @@ test with `-W`** — act only validates the files it loads.
 
 ### 2. The official platform images are abandoned
 
-Our jobs run on `ubuntu-26.04` (self-hosted runner label), which act has no
+Our jobs run on `ubuntu-26.04` (GitHub-hosted runner label), which act has no
 built-in mapping for — a `-P` platform mapping is required. The image act's docs
 point at, `nektos/act-environments-ubuntu`, has not been updated since February
 2020 (per act's own `IMAGES.md`; Docker Hub retains only the 18.04 tags). We build
@@ -50,7 +50,7 @@ a one-line image from the same OS as the CI runners — native arm64 on Apple
 Silicon, so no `--container-architecture` emulation is needed.
 
 The image must **keep its apt package lists** (no `rm -rf /var/lib/apt/lists/*`):
-the `apt-install` action passes `update: 'false'`, relying on the self-hosted
+the `apt-install` action passes `update: 'false'`, relying on the GitHub-hosted
 runners' pre-seeded index. On a bare distro image, `apt-get install git-crypt`
 fails with `E: Unable to locate package`.
 
@@ -61,6 +61,12 @@ Workflow secrets (e.g. `GIT_CRYPT_KEY`) are supplied via `--secret-file`
 the real key; without it, a scratch "fixture" repo with a synthetic git-crypt key
 (git-crypt 0.8.0 layout: `.git/git-crypt/keys/default`, `filter=git-crypt` line in
 `.gitattributes`) exercises everything except the real key↔blob pairing.
+
+> [!WARNING]
+> Use the synthetic fixture and a synthetic secret file by default. A real
+> `GIT_CRYPT_KEY` is passed to repository-controlled workflow and composite-action
+> code and can be disclosed by a modified checkout. Run with a real key only for
+> a trusted checkout; keep the secret file outside the worktree with mode 600.
 
 ## Decision
 
@@ -75,11 +81,19 @@ Adopt the following local setup for running workflows with act:
      -W .github/workflows/test-git-crypt-auth.yaml \
      -P ubuntu-26.04=act-ubuntu-2604 \
      --secret-file "$SECRETS_FILE" \
-     --pull=false
+     --pull=false \
+     --container-daemon-socket -
    ```
 
    `workflow_dispatch` avoids `branches:`/`paths:` filters; `--pull=false` avoids
-   registry lookups for the local image.
+   registry lookups for the local image. `--container-daemon-socket -` prevents
+   `act` from mounting the host Docker socket into the workflow container.
+
+   > [!WARNING]
+   > Treat this as a trusted-checkout procedure. The workflow runs repository-
+   > controlled code, and this command does not provide host-network isolation.
+   > Do not run it against untrusted changes when using credentials or other
+   > sensitive local resources.
 
 2. **A one-line local runner image** matching the CI runner OS:
 
