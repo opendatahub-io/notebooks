@@ -206,3 +206,44 @@ def test_write_commit_env_sorts_and_uses_utf8(tmp_path: Path) -> None:
     update_env.write_commit_env([("z-key", "last"), ("a-key", "first")], destination)
 
     assert destination.read_text(encoding="utf-8") == "a-key=first\nz-key=last\n"
+
+
+@pytest.mark.parametrize("failure", ["missing", "timeout", "json", "unexpected", "nonzero"])
+@pytest.mark.parametrize("log_failure, should_log", [(False, False), (True, True)])
+def test_skopeo_inspect_config_honors_failure_logging(
+    monkeypatch: MonkeyPatch,
+    failure: str,
+    log_failure: bool,
+    should_log: bool,
+) -> None:
+    log = Mock()
+    monkeypatch.setattr(update_env, "log", log)
+
+    class Process:
+        returncode = 1 if failure == "nonzero" else 0
+
+    create_process = (
+        AsyncMock(side_effect=FileNotFoundError) if failure == "missing" else AsyncMock(return_value=Process())
+    )
+    communicate_side_effect = {
+        "timeout": TimeoutError,
+        "unexpected": RuntimeError("boom"),
+    }.get(failure)
+    if communicate_side_effect is not None:
+        communicate = AsyncMock(side_effect=communicate_side_effect)
+    elif failure == "json":
+        communicate = AsyncMock(return_value=(b"not-json", b""))
+    elif failure == "nonzero":
+        communicate = AsyncMock(return_value=(b"", b"inspect failed"))
+    else:
+        communicate = AsyncMock(return_value=(b"", b""))
+
+    monkeypatch.setattr(update_env.asyncio, "create_subprocess_exec", create_process)
+    monkeypatch.setattr(update_env, "_communicate", communicate)
+
+    result = asyncio.run(
+        update_env.skopeo_inspect_config("quay.io/example/image:tag", asyncio.Semaphore(1), log_failure=log_failure)
+    )
+
+    assert result == ("quay.io/example/image:tag", None)
+    assert (log.error.called or log.exception.called) is should_log

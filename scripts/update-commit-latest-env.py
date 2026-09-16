@@ -301,6 +301,11 @@ async def skopeo_inspect_config(
     log_failure: bool = True,
 ) -> tuple[str, dict | None]:
     """Return (image_url, config) from skopeo inspect --config, or (image_url, None) on failure."""
+
+    def _log_exception(message: str) -> None:
+        if log_failure:
+            log.exception(message, image=image_url)
+
     cmd = [
         "skopeo",
         "inspect",
@@ -324,17 +329,14 @@ async def skopeo_inspect_config(
             return image_url, None
         return image_url, json.loads(stdout.decode())
     except FileNotFoundError:
-        log.error("skopeo not found — please install it")
-        return image_url, None
+        _log_exception("skopeo not found — please install it")
     except TimeoutError:
-        log.error("inspect timed out", image=image_url)
-        return image_url, None
+        _log_exception("inspect timed out")
     except json.JSONDecodeError:
-        log.error("failed to parse skopeo JSON", image=image_url)
-        return image_url, None
+        _log_exception("failed to parse skopeo JSON")
     except Exception:
-        log.exception("unexpected error", image=image_url)
-        return image_url, None
+        _log_exception("unexpected error")
+    return image_url, None
 
 
 async def find_latest_tag_by_skopeo_created(
