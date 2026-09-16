@@ -75,6 +75,25 @@ RHOAI_TAG_PATTERN = re.compile(r"^rhoai-\d+\.\d+$")
 
 log = structlog.get_logger()
 
+try:
+    sentinel = seninel
+except NameError:
+
+    class sentinel:  # ruff: ignore[invalid-class-name]
+        """PEP 661 `sentinel()` polyfill
+
+        The is not _SKIP check can break if the _SKIP object is copied or passed through pickle in a multiprocessing queue.
+         Enums do not have this vulnerability."""
+
+        def __init__(self, /, name: str) -> None:
+            self.name = name
+
+        def __repr__(self) -> str:
+            return f"<sentinel name={self.name!r}>"
+
+
+_SKIP = sentinel("_SKIP")
+
 
 def load_workbench_images(params_path: pathlib.Path) -> list[tuple[str, str]]:
     """Return (variable, image_url) pairs for odh-workbench-* lines only."""
@@ -450,10 +469,10 @@ async def collect_rhoai_entries(
     rhoai_tag: str,
     semaphore: asyncio.Semaphore,
 ) -> list[tuple[str, str]] | None:
-    async def process_one(variable: str, odh_url: str) -> tuple[str, str] | None:
+    async def process_one(variable: str, odh_url: str) -> tuple[str, str] | _SKIP | None:
         if _is_rstudio_entry(variable, odh_url):
             log.info("RHOAI: skipping RStudio workbench entry", variable=variable)
-            return "", ""
+            return _SKIP
 
         image_url = f"{rhoai_image_base(variable, odh_url)}:{rhoai_tag}"
         _, cfg = await skopeo_inspect_config(image_url, semaphore)
@@ -469,7 +488,7 @@ async def collect_rhoai_entries(
     results = await asyncio.gather(*[process_one(variable, odh_url) for variable, odh_url in workbench_images])
     if any(result is None for result in results):
         return None
-    entries = [entry for entry in results if entry and entry[0]]
+    entries = [entry for entry in results if entry is not _SKIP and entry is not None]
     if not entries:
         log.error("RHOAI: no workbench entries produced after filtering")
         return None
