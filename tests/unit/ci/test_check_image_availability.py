@@ -63,7 +63,7 @@ def make_create_subprocess_exec(
 ) -> Any:
     """Return an async callable that yields *process*, optionally asserting argv shape."""
 
-    async def _create(*args: Any, **kwargs: Any) -> FakeProcess:  # noqa: RUF029
+    async def _create(*args: Any, **kwargs: Any) -> FakeProcess:  # ruff: ignore[unused-async]
         if expected_argv_prefix is not None:
             assert tuple(args[: len(expected_argv_prefix)]) == expected_argv_prefix
         return process
@@ -129,44 +129,6 @@ class TestParseEnvFile:
     def test_missing_file_returns_empty(self, tmp_path: Path) -> None:
         result = mod.parse_env_file(tmp_path / "nonexistent.env")
         assert result == []
-
-
-# ---------------------------------------------------------------------------
-# Duplicate image URL detection
-# ---------------------------------------------------------------------------
-
-
-class TestDuplicateDetection:
-    """The main() function exits with 1 when the same image URL appears under two variables."""
-
-    def test_duplicate_urls_detected(self, tmp_path: Path) -> None:
-        env = tmp_path / "params.env"
-        env.write_text(
-            "VAR_A=quay.io/org/img:same\nVAR_B=quay.io/org/img:same\n",
-        )
-        entries = mod.parse_env_file(env)
-
-        seen_urls: dict[str, str] = {}
-        duplicates: list[tuple[str, str, str]] = []
-        for variable, image_url in entries:
-            if image_url in seen_urls:
-                duplicates.append((image_url, seen_urls[image_url], variable))
-            seen_urls[image_url] = variable
-
-        assert len(duplicates) == 1
-        assert duplicates[0] == ("quay.io/org/img:same", "VAR_A", "VAR_B")
-
-    def test_no_duplicates_when_urls_differ(self, tmp_path: Path) -> None:
-        env = tmp_path / "params.env"
-        env.write_text(
-            "A=quay.io/org/img:v1\nB=quay.io/org/img:v2\n",
-        )
-        entries = mod.parse_env_file(env)
-
-        seen_urls: dict[str, str] = {}
-        for variable, image_url in entries:
-            assert image_url not in seen_urls
-            seen_urls[image_url] = variable
 
 
 # ---------------------------------------------------------------------------
@@ -368,7 +330,7 @@ class TestCheckImage:
         self._run(_test())
 
     def test_timeout(self) -> None:
-        async def _test() -> mod.ImageCheckResult:
+        async def _test() -> Any:
             semaphore = asyncio.Semaphore(1)
             fake = FakeProcess(hang=True)
             with (
@@ -431,7 +393,7 @@ class TestRunChecks:
         async def _test() -> None:
             call_count = 0
 
-            async def _create(*args: Any, **kwargs: Any) -> FakeProcess:  # noqa: RUF029
+            async def _create(*args: Any, **kwargs: Any) -> FakeProcess:  # ruff: ignore[unused-async]
                 nonlocal call_count
                 call_count += 1
                 if call_count == 1:
@@ -556,3 +518,33 @@ class TestShouldUseRichOutput:
     def test_ci_returns_false(self) -> None:
         with patch.dict(os.environ, {"CI": "true"}):
             assert mod.should_use_rich_output() is False
+
+
+class TestMain:
+    def test_requires_an_env_file(self) -> None:
+        with patch.object(mod.sys, "argv", ["check-image-availability.py"]):
+            assert asyncio.run(mod.main()) == 2
+
+    def test_requires_skopeo(self) -> None:
+        with (
+            patch.object(mod.sys, "argv", ["check-image-availability.py", "params.env"]),
+            patch.object(mod.shutil, "which", return_value=None),
+        ):
+            assert asyncio.run(mod.main()) == 2
+
+    def test_rejects_missing_env_file(self, tmp_path: Path) -> None:
+        missing = tmp_path / "missing.env"
+        with (
+            patch.object(mod.sys, "argv", ["check-image-availability.py", str(missing)]),
+            patch.object(mod.shutil, "which", return_value="skopeo"),
+        ):
+            assert asyncio.run(mod.main()) == 2
+
+    def test_rejects_duplicate_images(self, tmp_path: Path) -> None:
+        env = tmp_path / "params.env"
+        env.write_text("A=quay.io/org/img:v1\nB=quay.io/org/img:v1\n")
+        with (
+            patch.object(mod.sys, "argv", ["check-image-availability.py", str(env)]),
+            patch.object(mod.shutil, "which", return_value="skopeo"),
+        ):
+            assert asyncio.run(mod.main()) == 1
