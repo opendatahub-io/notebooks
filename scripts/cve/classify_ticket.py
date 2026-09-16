@@ -22,20 +22,6 @@ from typing import Any
 
 from scripts.cve.jira_client import JiraClient
 
-PACKAGE_TYPES = ("python", "rpm", "go", "java", "npm", "unknown")
-TICKET_ROLES = ("rhaieng_parent", "rhoaieng_child", "other")
-ACTIONS = ("autofix", "rpm_check", "skip", "needs_info")
-VERDICTS = (
-    "not_fixable",
-    "needs_info",
-    "already_fixed",
-    "not_a_bug",
-    "committed",
-    "no_changes",
-    "blocked",
-    "research",
-)
-
 GO_MODULE_RE = re.compile(
     r"(?:github\.com|golang\.org|gopkg\.in|go\.etcd\.io)/[\w./-]+",
     re.IGNORECASE,

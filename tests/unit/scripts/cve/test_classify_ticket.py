@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from scripts.cve.classify_ticket import classify_ticket
+import pytest
 
-if TYPE_CHECKING:
-    from pytest import Subtests
+from scripts.cve.classify_ticket import classify_ticket, main
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "classify"
 
@@ -17,57 +15,46 @@ def _load_fixture(key: str) -> dict:
         return json.load(handle)
 
 
-def test_python_rhaieng_parent_autofix() -> None:
+@pytest.mark.parametrize(
+    ("fixture_key", "package_type", "ticket_role", "action", "verdict", "package", "branch"),
+    [
+        ("RHAIENG-6341", "python", "rhaieng_parent", "autofix", None, "pillow", "rhoai-3.4"),
+        ("RHOAIENG-77242", "unknown", "rhoaieng_child", "skip", "not_fixable", None, "rhoai-3.4"),
+        ("RHAIENG-6695", "go", "rhaieng_parent", "skip", "not_fixable", "github.com/docker/docker", "rhoai-3.5"),
+        ("RHAIENG-6699", "rpm", "rhaieng_parent", "rpm_check", None, "nginx", "rhoai-3.5"),
+        (
+            "RHAIENG-6792",
+            "java",
+            "rhaieng_parent",
+            "skip",
+            "not_fixable",
+            "com.fasterxml.jackson.core:jackson-databind",
+            "rhoai-3.5",
+        ),
+        ("RHAIENG-6810", "npm", "rhaieng_parent", "skip", "not_fixable", "code-server", "rhoai-3.4"),
+    ],
+)
+def test_fixture_classifications(
+    fixture_key: str,
+    package_type: str,
+    ticket_role: str,
+    action: str,
+    verdict: str | None,
+    package: str | None,
+    branch: str | None,
+) -> None:
+    result = classify_ticket(_load_fixture(fixture_key))
+    assert result.package_type == package_type
+    assert result.ticket_role == ticket_role
+    assert result.action == action
+    assert result.verdict == verdict
+    assert result.package == package
+    assert result.branch == branch
+
+
+def test_python_parent_includes_cve_id() -> None:
     result = classify_ticket(_load_fixture("RHAIENG-6341"))
-    assert result.package_type == "python"
-    assert result.ticket_role == "rhaieng_parent"
-    assert result.action == "autofix"
-    assert result.verdict is None
-    assert result.package == "pillow"
-    assert result.branch == "rhoai-3.4"
     assert "CVE-2026-59205" in result.cve_ids
-
-
-def test_rhoaieng_child_skipped() -> None:
-    result = classify_ticket(_load_fixture("RHOAIENG-77242"))
-    assert result.ticket_role == "rhoaieng_child"
-    assert result.action == "skip"
-    assert result.verdict == "not_fixable"
-
-
-def test_go_rhaieng_parent_not_fixable() -> None:
-    result = classify_ticket(_load_fixture("RHAIENG-6695"))
-    assert result.package_type == "go"
-    assert result.ticket_role == "rhaieng_parent"
-    assert result.action == "skip"
-    assert result.verdict == "not_fixable"
-    assert "github.com/docker/docker" in (result.package or "")
-
-
-def test_rpm_rhaieng_parent_rpm_check() -> None:
-    result = classify_ticket(_load_fixture("RHAIENG-6699"))
-    assert result.package_type == "rpm"
-    assert result.ticket_role == "rhaieng_parent"
-    assert result.action == "rpm_check"
-    assert result.package == "nginx"
-    assert result.branch == "rhoai-3.5"
-
-
-def test_java_rhaieng_parent_not_fixable() -> None:
-    result = classify_ticket(_load_fixture("RHAIENG-6792"))
-    assert result.package_type == "java"
-    assert result.ticket_role == "rhaieng_parent"
-    assert result.action == "skip"
-    assert result.verdict == "not_fixable"
-
-
-def test_npm_rhaieng_parent_not_fixable() -> None:
-    result = classify_ticket(_load_fixture("RHAIENG-6810"))
-    assert result.package_type == "npm"
-    assert result.ticket_role == "rhaieng_parent"
-    assert result.action == "skip"
-    assert result.verdict == "not_fixable"
-    assert result.package == "code-server"
 
 
 def test_openssl_not_classified_as_python() -> None:
@@ -117,17 +104,13 @@ def test_autofix_without_branch_needs_info() -> None:
     assert result.branch is None
 
 
-def test_epic_scenarios(subtests: Subtests) -> None:
-    """Cover all six epic test-plan scenarios via fixtures."""
-    scenarios = {
-        "python rhoai-3.4 parent": ("RHAIENG-6341", "autofix"),
-        "rhoaieng per-image child": ("RHOAIENG-77242", "skip"),
-        "nginx rpm rhsa path": ("RHAIENG-6699", "rpm_check"),
-        "docker go not_fixable": ("RHAIENG-6695", "skip"),
-        "jackson java not_fixable": ("RHAIENG-6792", "skip"),
-        "code-server npm not_fixable": ("RHAIENG-6810", "skip"),
-    }
-    for name, (key, expected_action) in scenarios.items():
-        with subtests.test(msg=name):
-            result = classify_ticket(_load_fixture(key))
-            assert result.action == expected_action
+def test_main_loads_fixture(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["RHAIENG-6341", "--fixture-dir", str(FIXTURE_DIR), "--pretty"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["action"] == "autofix"
+    assert payload["dry_run"] is False
+
+
+def test_main_rejects_fixture_path_outside_dir() -> None:
+    with pytest.raises(SystemExit):
+        main(["../RHAIENG-6341", "--fixture-dir", str(FIXTURE_DIR)])
