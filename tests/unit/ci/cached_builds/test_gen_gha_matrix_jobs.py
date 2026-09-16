@@ -14,7 +14,7 @@ _CI_CACHED_BUILDS = Path(__file__).resolve().parents[4] / "ci" / "cached-builds"
 if str(_CI_CACHED_BUILDS) not in sys.path:
     sys.path.insert(0, str(_CI_CACHED_BUILDS))
 
-import gen_gha_matrix_jobs as gm  # noqa: E402  # type: ignore[reportMissingImports]
+import gen_gha_matrix_jobs as gm  # ruff: ignore[module-import-not-at-top-of-file]  # type: ignore[reportMissingImports]
 
 SAMPLE_MAKEFILE_OUTPUT = """\
 # GNU Make 4.3
@@ -69,239 +69,80 @@ class TestFilterRhelImages:
     ]
 
     def test_include_keeps_all(self) -> None:
-        result = gm.filter_rhel_images(self.TARGETS, gm.RhelImages.INCLUDE)
+        result = gm.filter_rhel_targets(self.TARGETS, gm.RhelImages.INCLUDE)
         assert result == self.TARGETS
 
     def test_exclude_removes_rhel(self) -> None:
-        result = gm.filter_rhel_images(self.TARGETS, gm.RhelImages.EXCLUDE)
+        result = gm.filter_rhel_targets(self.TARGETS, gm.RhelImages.EXCLUDE)
         assert result == ["jupyter-minimal-ubi9-python-3.12", "codeserver-ubi9-python-3.12"]
 
     def test_include_only_keeps_only_rhel(self) -> None:
-        result = gm.filter_rhel_images(self.TARGETS, gm.RhelImages.INCLUDE_ONLY)
+        result = gm.filter_rhel_targets(self.TARGETS, gm.RhelImages.INCLUDE_ONLY)
         assert result == ["jupyter-datascience-rhel9-python-3.12", "runtime-rhel9-python-3.12"]
 
     def test_empty_targets(self) -> None:
-        assert gm.filter_rhel_images([], gm.RhelImages.INCLUDE) == []
-        assert gm.filter_rhel_images([], gm.RhelImages.EXCLUDE) == []
-        assert gm.filter_rhel_images([], gm.RhelImages.INCLUDE_ONLY) == []
+        assert gm.filter_rhel_targets([], gm.RhelImages.INCLUDE) == []
+        assert gm.filter_rhel_targets([], gm.RhelImages.EXCLUDE) == []
+        assert gm.filter_rhel_targets([], gm.RhelImages.INCLUDE_ONLY) == []
 
     def test_no_rhel_targets_with_include_only(self) -> None:
         targets = ["jupyter-minimal-ubi9-python-3.12"]
-        assert gm.filter_rhel_images(targets, gm.RhelImages.INCLUDE_ONLY) == []
+        assert gm.filter_rhel_targets(targets, gm.RhelImages.INCLUDE_ONLY) == []
 
 
 class TestAssignPlatforms:
-    def test_amd64_only_non_compatible_target(self) -> None:
-        targets = ["some-generic-target"]
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        assert result == [("some-generic-target", "linux/amd64")]
-
-    def test_arm64_compatible_target_gets_both_platforms(self) -> None:
-        targets = ["codeserver-ubi9-python-3.12"]
-        assert targets[0] in gm.ARM64_COMPATIBLE
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/amd64" in platforms
-        assert "linux/arm64" in platforms
-
-    def test_arm64_exclude_removes_arm64_platform(self) -> None:
-        targets = ["codeserver-ubi9-python-3.12"]
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.EXCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/amd64" in platforms
-        assert "linux/arm64" not in platforms
-
-    def test_arm64_only_suppresses_amd64_and_s390x(self) -> None:
-        targets = ["codeserver-ubi9-python-3.12"]
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.ONLY,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/amd64" not in platforms
-        assert "linux/arm64" in platforms
-        assert "linux/s390x" not in platforms
-
-    def test_ppc64le_compatible_target(self) -> None:
-        targets = ["jupyter-minimal-ubi9-python-3.12"]
-        assert targets[0] in gm.PPC64LE_COMPATIBLE
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/ppc64le" in platforms
-
-    def test_ppc64le_exclude(self) -> None:
-        targets = ["jupyter-minimal-ubi9-python-3.12"]
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.EXCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/ppc64le" not in platforms
-
-    def test_s390x_compatible_target(self) -> None:
-        targets = ["runtime-minimal-ubi9-python-3.12"]
-        assert targets[0] in gm.S390X_COMPATIBLE
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/s390x" in platforms
-
-    def test_s390x_exclude(self) -> None:
-        targets = ["runtime-minimal-ubi9-python-3.12"]
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.EXCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/s390x" not in platforms
-
-    def test_s390x_only_suppresses_amd64_and_arm64(self) -> None:
-        targets = ["runtime-minimal-ubi9-python-3.12"]
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.ONLY,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/amd64" not in platforms
-        assert "linux/arm64" not in platforms
-        assert "linux/s390x" in platforms
-
-    def test_empty_targets(self) -> None:
-        result = gm.assign_platforms(
-            [],
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        assert result == []
-
-    def test_multi_platform_target(self) -> None:
-        targets = ["jupyter-minimal-ubi9-python-3.12"]
-        assert targets[0] in gm.PPC64LE_COMPATIBLE
-        assert targets[0] in gm.S390X_COMPATIBLE
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert platforms == ["linux/amd64", "linux/ppc64le", "linux/s390x"]
-
-    def test_s390x_only_suppresses_amd64_and_arm64_on_arm64_target(self) -> None:
-        targets = ["codeserver-ubi9-python-3.12"]
-        assert targets[0] in gm.ARM64_COMPATIBLE
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.ONLY,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/arm64" not in platforms
-        assert "linux/amd64" not in platforms
-
-    def test_arm64_only_suppresses_amd64_and_s390x_on_s390x_target(self) -> None:
-        targets = ["runtime-minimal-ubi9-python-3.12"]
-        assert targets[0] in gm.S390X_COMPATIBLE
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.ONLY,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/s390x" not in platforms
-        assert "linux/amd64" not in platforms
-
-    def test_arm64_only_suppresses_ppc64le(self) -> None:
-        targets = ["jupyter-minimal-ubi9-python-3.12"]
-        assert targets[0] in gm.PPC64LE_COMPATIBLE
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.ONLY,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.INCLUDE,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/ppc64le" not in platforms
-
-    def test_s390x_only_suppresses_ppc64le(self) -> None:
-        targets = ["jupyter-minimal-ubi9-python-3.12"]
-        assert targets[0] in gm.PPC64LE_COMPATIBLE
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.INCLUDE,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.ONLY,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/ppc64le" not in platforms
-
-    def test_both_only_skips_amd64(self) -> None:
-        targets = ["some-target"]
-        result = gm.assign_platforms(
-            targets,
-            arm64_images=gm.Arm64Images.ONLY,
-            ppc64le_images=gm.Ppc64leImages.INCLUDE,
-            s390x_images=gm.S390xImages.ONLY,
-        )
-        platforms = [p for _, p in result]
-        assert "linux/amd64" not in platforms
-
     @pytest.mark.parametrize(
-        "arm64, ppc64le, s390x, expect_ppc64le",
+        "arm64, ppc64le, s390x, expected",
         [
-            (gm.Arm64Images.EXCLUDE, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.EXCLUDE, False),
-            (gm.Arm64Images.EXCLUDE, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.INCLUDE, False),
-            (gm.Arm64Images.EXCLUDE, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.ONLY, False),
-            (gm.Arm64Images.EXCLUDE, gm.Ppc64leImages.INCLUDE, gm.S390xImages.EXCLUDE, True),
-            (gm.Arm64Images.EXCLUDE, gm.Ppc64leImages.INCLUDE, gm.S390xImages.INCLUDE, True),
-            (gm.Arm64Images.EXCLUDE, gm.Ppc64leImages.INCLUDE, gm.S390xImages.ONLY, False),
-            (gm.Arm64Images.INCLUDE, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.EXCLUDE, False),
-            (gm.Arm64Images.INCLUDE, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.INCLUDE, False),
-            (gm.Arm64Images.INCLUDE, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.ONLY, False),
-            (gm.Arm64Images.INCLUDE, gm.Ppc64leImages.INCLUDE, gm.S390xImages.EXCLUDE, True),
-            (gm.Arm64Images.INCLUDE, gm.Ppc64leImages.INCLUDE, gm.S390xImages.INCLUDE, True),
-            (gm.Arm64Images.INCLUDE, gm.Ppc64leImages.INCLUDE, gm.S390xImages.ONLY, False),
-            (gm.Arm64Images.ONLY, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.EXCLUDE, False),
-            (gm.Arm64Images.ONLY, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.INCLUDE, False),
-            (gm.Arm64Images.ONLY, gm.Ppc64leImages.EXCLUDE, gm.S390xImages.ONLY, False),
-            (gm.Arm64Images.ONLY, gm.Ppc64leImages.INCLUDE, gm.S390xImages.EXCLUDE, False),
-            (gm.Arm64Images.ONLY, gm.Ppc64leImages.INCLUDE, gm.S390xImages.INCLUDE, False),
-            (gm.Arm64Images.ONLY, gm.Ppc64leImages.INCLUDE, gm.S390xImages.ONLY, False),
+            pytest.param(
+                gm.Arm64Images.INCLUDE,
+                gm.Ppc64leImages.INCLUDE,
+                gm.S390xImages.INCLUDE,
+                ["linux/amd64", "linux/arm64", "linux/ppc64le", "linux/s390x"],
+                id="default",
+            ),
+            pytest.param(
+                gm.Arm64Images.ONLY,
+                gm.Ppc64leImages.INCLUDE,
+                gm.S390xImages.INCLUDE,
+                ["linux/amd64", "linux/arm64", "linux/ppc64le"],
+                id="arm64-only",
+            ),
+            pytest.param(
+                gm.Arm64Images.INCLUDE,
+                gm.Ppc64leImages.INCLUDE,
+                gm.S390xImages.ONLY,
+                ["linux/amd64", "linux/ppc64le", "linux/s390x"],
+                id="s390x-only",
+            ),
+            pytest.param(
+                gm.Arm64Images.INCLUDE,
+                gm.Ppc64leImages.INCLUDE,
+                gm.S390xImages.EXCLUDE,
+                ["linux/amd64", "linux/arm64", "linux/ppc64le"],
+                id="s390x-exclude",
+            ),
+            pytest.param(
+                gm.Arm64Images.INCLUDE,
+                gm.Ppc64leImages.EXCLUDE,
+                gm.S390xImages.INCLUDE,
+                ["linux/amd64", "linux/arm64", "linux/s390x"],
+                id="ppc64le-exclude",
+            ),
+            pytest.param(
+                gm.Arm64Images.ONLY,
+                gm.Ppc64leImages.EXCLUDE,
+                gm.S390xImages.ONLY,
+                [],
+                id="arm64-and-s390x-only",
+            ),
+            pytest.param(
+                gm.Arm64Images.ONLY,
+                gm.Ppc64leImages.INCLUDE,
+                gm.S390xImages.ONLY,
+                ["linux/ppc64le"],
+                id="arm64-and-s390x-only-with-ppc64le",
+            ),
         ],
     )
     def test_ppc64le_all_flag_permutations(
@@ -309,16 +150,12 @@ class TestAssignPlatforms:
         arm64: gm.Arm64Images,
         ppc64le: gm.Ppc64leImages,
         s390x: gm.S390xImages,
-        expect_ppc64le: bool,
+        expected: list[str],
     ) -> None:
         targets = ["jupyter-minimal-ubi9-python-3.12"]
-        assert targets[0] in gm.PPC64LE_COMPATIBLE
         result = gm.assign_platforms(targets, arm64_images=arm64, ppc64le_images=ppc64le, s390x_images=s390x)
-        platforms = [p for _, p in result]
-        if expect_ppc64le:
-            assert "linux/ppc64le" in platforms
-        else:
-            assert "linux/ppc64le" not in platforms
+        platforms = [platform for _, platform in result]
+        assert platforms == expected
 
 
 class TestBuildMatrixOutput:
@@ -401,7 +238,7 @@ class TestEndToEndMatrixGeneration:
         with patch("makefile_helper.dry_run_makefile", return_value=makefile_output):
             targets = gm.extract_image_targets(makefile_dir=tmp_path)
 
-        targets = gm.filter_rhel_images(targets, gm.RhelImages.INCLUDE)
+        targets = gm.filter_rhel_targets(targets, gm.RhelImages.INCLUDE)
         targets_with_platform = gm.assign_platforms(
             targets,
             arm64_images=gm.Arm64Images.INCLUDE,
@@ -429,7 +266,7 @@ class TestEndToEndMatrixGeneration:
         with patch("makefile_helper.dry_run_makefile", return_value=makefile_output):
             targets = gm.extract_image_targets(makefile_dir=tmp_path)
 
-        targets = gm.filter_rhel_images(targets, gm.RhelImages.EXCLUDE)
+        targets = gm.filter_rhel_targets(targets, gm.RhelImages.EXCLUDE)
         targets_with_platform = gm.assign_platforms(
             targets,
             arm64_images=gm.Arm64Images.INCLUDE,
