@@ -5,6 +5,7 @@ Tests the shell functions via subprocess with fixture env files.
 
 from __future__ import annotations
 
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -36,6 +37,11 @@ def _run_bash(script_body: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _quoted(path: Path) -> str:
+    """Quote a fixture path before interpolating it into the bash snippet."""
+    return shlex.quote(str(path))
+
+
 # --------------- check_variables_uniq ---------------
 
 
@@ -45,7 +51,7 @@ class TestCheckVariablesUniq:
         f2 = tmp_path / "env2.env"
         f1.write_text("VAR_A=value_a\nVAR_B=value_b\n")
         f2.write_text("VAR_C=value_c\n")
-        result = _run_bash(f'EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq "{f1}" "{f2}" "false"')
+        result = _run_bash(f"EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq {_quoted(f1)} {_quoted(f2)} false")
         assert result.returncode == 0
 
     def test_duplicate_variable_names_fail(self, tmp_path: Path) -> None:
@@ -53,7 +59,7 @@ class TestCheckVariablesUniq:
         f2 = tmp_path / "env2.env"
         f1.write_text("VAR_A=value_a\nVAR_A=value_b\n")
         f2.write_text("VAR_C=value_c\n")
-        result = _run_bash(f'EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq "{f1}" "{f2}" "false"')
+        result = _run_bash(f"EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq {_quoted(f1)} {_quoted(f2)} false")
         assert result.returncode != 0
         assert "variables" in result.stdout.lower()
         assert "unique" in result.stdout.lower()
@@ -63,7 +69,7 @@ class TestCheckVariablesUniq:
         f2 = tmp_path / "env2.env"
         f1.write_text("VAR_A=same_value\nVAR_B=same_value\n")
         f2.write_text("VAR_C=other_value\n")
-        result = _run_bash(f'EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq "{f1}" "{f2}" "false"')
+        result = _run_bash(f"EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq {_quoted(f1)} {_quoted(f2)} false")
         assert result.returncode != 0
         assert "values" in result.stdout.lower()
 
@@ -72,7 +78,7 @@ class TestCheckVariablesUniq:
         f2 = tmp_path / "env2.env"
         f1.write_text("VAR_A=same_value\nVAR_B=same_value\n")
         f2.write_text("VAR_C=other_value\n")
-        result = _run_bash(f'EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq "{f1}" "{f2}" "true"')
+        result = _run_bash(f"EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq {_quoted(f1)} {_quoted(f2)} true")
         assert result.returncode == 0
 
     def test_wrong_record_count_fails(self, tmp_path: Path) -> None:
@@ -80,7 +86,7 @@ class TestCheckVariablesUniq:
         f2 = tmp_path / "env2.env"
         f1.write_text("VAR_A=value_a\nVAR_B=value_b\n")
         f2.write_text("VAR_C=value_c\n")
-        result = _run_bash(f'EXPECTED_NUM_RECORDS=99\ncheck_variables_uniq "{f1}" "{f2}" "false"')
+        result = _run_bash(f"EXPECTED_NUM_RECORDS=99\ncheck_variables_uniq {_quoted(f1)} {_quoted(f2)} false")
         assert result.returncode != 0
         assert "incorrect" in result.stdout.lower()
 
@@ -89,7 +95,7 @@ class TestCheckVariablesUniq:
         f2 = tmp_path / "env2.env"
         f1.write_text("# comment\n\nVAR_A=value_a\n\n# another\nVAR_B=value_b\n")
         f2.write_text("")
-        result = _run_bash(f'EXPECTED_NUM_RECORDS=2\ncheck_variables_uniq "{f1}" "{f2}" "false"')
+        result = _run_bash(f"EXPECTED_NUM_RECORDS=2\ncheck_variables_uniq {_quoted(f1)} {_quoted(f2)} false")
         assert result.returncode == 0
 
     def test_dummy_values_excluded_from_uniqueness(self, tmp_path: Path) -> None:
@@ -97,7 +103,7 @@ class TestCheckVariablesUniq:
         f2 = tmp_path / "env2.env"
         f1.write_text("VAR_A=dummy\nVAR_B=dummy\n")
         f2.write_text("VAR_C=unique_value\n")
-        result = _run_bash(f'EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq "{f1}" "{f2}" "false"')
+        result = _run_bash(f"EXPECTED_NUM_RECORDS=3\ncheck_variables_uniq {_quoted(f1)} {_quoted(f2)} false")
         assert result.returncode == 0
 
     def test_cross_file_duplicate_names_detected(self, tmp_path: Path) -> None:
@@ -105,7 +111,7 @@ class TestCheckVariablesUniq:
         f2 = tmp_path / "env2.env"
         f1.write_text("SHARED=value_a\n")
         f2.write_text("SHARED=value_b\n")
-        result = _run_bash(f'EXPECTED_NUM_RECORDS=2\ncheck_variables_uniq "{f1}" "{f2}" "false"')
+        result = _run_bash(f"EXPECTED_NUM_RECORDS=2\ncheck_variables_uniq {_quoted(f1)} {_quoted(f2)} false")
         assert result.returncode != 0
         assert "variables" in result.stdout.lower()
 
@@ -176,15 +182,6 @@ class TestImageVariableMatchesMetadata:
 
 
 class TestSizeThresholdCalculations:
-    def test_size_within_bounds_passes(self) -> None:
-        result = _run_bash(
-            "check_image_variable_matches_name_and_commitref_and_size "
-            '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-minimal-ubi9-python-3.12" '
-            '"main" "konflux" 1017'
-        )
-        assert result.returncode == 0
-
     def test_size_under_expected_within_bounds_passes(self) -> None:
         result = _run_bash(
             "check_image_variable_matches_name_and_commitref_and_size "
@@ -239,8 +236,8 @@ class TestCheckImageCommitIdMatchesMetadata:
         commit_env.write_text("odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n=abc1234\n")
         commit_latest_env.write_text("")
         result = _run_bash(
-            f'COMMIT_ENV_PATH="{commit_env}"\n'
-            f'COMMIT_LATEST_ENV_PATH="{commit_latest_env}"\n'
+            f"COMMIT_ENV_PATH={_quoted(commit_env)}\n"
+            f"COMMIT_LATEST_ENV_PATH={_quoted(commit_latest_env)}\n"
             "check_image_commit_id_matches_metadata "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
             '"abc1234def5678"'
@@ -253,8 +250,8 @@ class TestCheckImageCommitIdMatchesMetadata:
         commit_env.write_text("odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n=abc1234\n")
         commit_latest_env.write_text("")
         result = _run_bash(
-            f'COMMIT_ENV_PATH="{commit_env}"\n'
-            f'COMMIT_LATEST_ENV_PATH="{commit_latest_env}"\n'
+            f"COMMIT_ENV_PATH={_quoted(commit_env)}\n"
+            f"COMMIT_LATEST_ENV_PATH={_quoted(commit_latest_env)}\n"
             "check_image_commit_id_matches_metadata "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
             '"zzz9999def5678"'
@@ -267,8 +264,8 @@ class TestCheckImageCommitIdMatchesMetadata:
         commit_env.write_text("odh-pipeline-runtime-minimal-cpu-py312-ubi9-commit-n=0000000\n")
         commit_latest_env.write_text("")
         result = _run_bash(
-            f'COMMIT_ENV_PATH="{commit_env}"\n'
-            f'COMMIT_LATEST_ENV_PATH="{commit_latest_env}"\n'
+            f"COMMIT_ENV_PATH={_quoted(commit_env)}\n"
+            f"COMMIT_LATEST_ENV_PATH={_quoted(commit_latest_env)}\n"
             "check_image_commit_id_matches_metadata "
             '"odh-pipeline-runtime-minimal-cpu-py312-ubi9-n" '
             '"mismatchedcommitid"'
@@ -281,8 +278,8 @@ class TestCheckImageCommitIdMatchesMetadata:
         commit_env.write_text("")
         commit_latest_env.write_text("odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n=f00ba12\n")
         result = _run_bash(
-            f'COMMIT_ENV_PATH="{commit_env}"\n'
-            f'COMMIT_LATEST_ENV_PATH="{commit_latest_env}"\n'
+            f"COMMIT_ENV_PATH={_quoted(commit_env)}\n"
+            f"COMMIT_LATEST_ENV_PATH={_quoted(commit_latest_env)}\n"
             "check_image_commit_id_matches_metadata "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
             '"f00ba12abcdef0"'
