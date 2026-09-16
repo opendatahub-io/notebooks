@@ -1062,6 +1062,7 @@ function check_image() {
     echo "---------------------------------------------"
 }
 
+# TEST_BOUNDARY: keep testable definitions above this line.
 # ------------------------------ MAIN SCRIPT --------------------------------- #
 
 ret_code=0

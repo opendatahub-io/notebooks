@@ -14,12 +14,12 @@ _SCRIPT_PATH = _REPO_ROOT / "ci" / "check-params-env.sh"
 
 
 def _get_functions_source() -> str:
-    """Extract function definitions and global variables (everything before the MAIN SCRIPT section)."""
+    """Extract definitions before the script's stable test boundary."""
     lines = _SCRIPT_PATH.read_text().splitlines()
     for i, line in enumerate(lines):
-        if "MAIN SCRIPT" in line:
+        if line == "# TEST_BOUNDARY: keep testable definitions above this line.":
             return "\n".join(lines[:i])
-    raise RuntimeError("Could not find MAIN SCRIPT marker in ci/check-params-env.sh")
+    raise RuntimeError("Could not find TEST_BOUNDARY marker in ci/check-params-env.sh")
 
 
 _FUNCTIONS_SOURCE = _get_functions_source()
@@ -124,7 +124,7 @@ class TestImageVariableMatchesMetadata:
         result = _run_bash(
             "check_image_variable_matches_name_and_commitref_and_size "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-minimal-ubi9-python-3.12" '
+            '"opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9" '
             '"main" "konflux" 1017'
         )
         assert result.returncode == 0
@@ -143,7 +143,7 @@ class TestImageVariableMatchesMetadata:
         result = _run_bash(
             "check_image_variable_matches_name_and_commitref_and_size "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-minimal-ubi9-python-3.12" '
+            '"opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9" '
             '"main" "wrong-build" 1017'
         )
         assert result.returncode != 0
@@ -162,7 +162,7 @@ class TestImageVariableMatchesMetadata:
         result = _run_bash(
             "check_image_variable_matches_name_and_commitref_and_size "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-minimal-ubi9-python-3.12" '
+            '"opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9" '
             '"" "konflux" 1017'
         )
         assert result.returncode == 0
@@ -171,7 +171,7 @@ class TestImageVariableMatchesMetadata:
         result = _run_bash(
             "check_image_variable_matches_name_and_commitref_and_size "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-minimal-ubi9-python-3.12" '
+            '"opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9" '
             '"wrong-branch" "konflux" 1017'
         )
         assert result.returncode != 0
@@ -186,7 +186,7 @@ class TestSizeThresholdCalculations:
         result = _run_bash(
             "check_image_variable_matches_name_and_commitref_and_size "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-minimal-ubi9-python-3.12" '
+            '"opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9" '
             '"main" "konflux" 950'
         )
         assert result.returncode == 0
@@ -196,7 +196,7 @@ class TestSizeThresholdCalculations:
         result = _run_bash(
             "check_image_variable_matches_name_and_commitref_and_size "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-minimal-ubi9-python-3.12" '
+            '"opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9" '
             '"main" "konflux" 1200'
         )
         assert result.returncode != 0
@@ -207,7 +207,7 @@ class TestSizeThresholdCalculations:
         result = _run_bash(
             "check_image_variable_matches_name_and_commitref_and_size "
             '"odh-workbench-jupyter-datascience-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-datascience-ubi9-python-3.12" '
+            '"opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9" '
             '"main" "konflux" 1700'
         )
         assert result.returncode != 0
@@ -220,7 +220,7 @@ class TestSizeThresholdCalculations:
             "SIZE_ABSOLUTE_TRESHOLD=50\n"
             "check_image_variable_matches_name_and_commitref_and_size "
             '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-n" '
-            '"odh-notebook-jupyter-minimal-ubi9-python-3.12" '
+            '"opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9" '
             '"main" "konflux" 1080'
         )
         assert result.returncode != 0
