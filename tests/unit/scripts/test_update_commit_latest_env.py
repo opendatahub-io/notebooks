@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock, call
+
+import pytest
 
 if TYPE_CHECKING:
     from pytest import MonkeyPatch
@@ -104,3 +107,102 @@ def test_find_latest_odh_main_tag_disables_failure_logging_on_fallback(monkeypat
 
     assert result == f"main-{'a' * 40}"
     helper.assert_awaited_once_with("quay.io/example/image", update_env.ODH_TAG_PATTERN, semaphore, log_failure=False)
+
+
+def test_load_workbench_images_filters_comments_and_non_workbench_entries(tmp_path: Path) -> None:
+    params = tmp_path / "params.env"
+    params.write_text(
+        "# comment\n"
+        "odh-workbench-jupyter-minimal-cpu-py312-ubi9-n=quay.io/opendatahub/image:tag\n"
+        "pipeline-runtime-n=dummy\n"
+        "odh-workbench-rstudio-n=quay.io/opendatahub/rstudio:tag\n",
+        encoding="utf-8",
+    )
+
+    assert update_env.load_workbench_images(params) == [
+        ("odh-workbench-jupyter-minimal-cpu-py312-ubi9-n", "quay.io/opendatahub/image:tag"),
+        ("odh-workbench-rstudio-n", "quay.io/opendatahub/rstudio:tag"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("image", "expected"),
+    [
+        ("quay.io/opendatahub/image:tag", ("quay.io/opendatahub/image", "tag")),
+        ("quay.io/opendatahub/image", ("quay.io/opendatahub/image", "")),
+    ],
+)
+def test_parse_image_ref(image: str, expected: tuple[str, str]) -> None:
+    assert update_env.parse_image_ref(image) == expected
+
+
+def test_parse_quay_repository_rejects_other_hosts() -> None:
+    with pytest.raises(ValueError, match=r"not a quay\.io repository"):
+        update_env.parse_quay_repository("registry.example/image")
+
+
+def test_skopeo_list_tags_handles_invalid_payload(monkeypatch: MonkeyPatch) -> None:
+    process = AsyncMock(returncode=0)
+    process.communicate.return_value = (b'{"Tags": "not-a-list"}', b"")
+    monkeypatch.setattr(update_env.asyncio, "create_subprocess_exec", AsyncMock(return_value=process))
+
+    result = asyncio.run(update_env.skopeo_list_tags("quay.io/example/image", asyncio.Semaphore(1)))
+
+    assert result == []
+
+
+def test_skopeo_inspect_config_uses_argument_list_and_extracts_config(monkeypatch: MonkeyPatch) -> None:
+    process = AsyncMock(returncode=0)
+    config = {"config": {"Labels": {"vcs-ref": "abcdef1234567"}}}
+    process.communicate.return_value = (json.dumps(config).encode(), b"")
+    create_process = AsyncMock(return_value=process)
+    monkeypatch.setattr(update_env.asyncio, "create_subprocess_exec", create_process)
+
+    result = asyncio.run(update_env.skopeo_inspect_config("quay.io/example/image:tag", asyncio.Semaphore(1)))
+
+    assert result == ("quay.io/example/image:tag", config)
+    assert create_process.await_args == call(
+        "skopeo",
+        "inspect",
+        "--override-os=linux",
+        "--override-arch=amd64",
+        "--retry-times=3",
+        "--config",
+        "docker://quay.io/example/image:tag",
+        stdout=update_env.asyncio.subprocess.PIPE,
+        stderr=update_env.asyncio.subprocess.PIPE,
+    )
+
+
+def test_skopeo_inspect_config_handles_missing_skopeo(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(update_env.asyncio, "create_subprocess_exec", AsyncMock(side_effect=FileNotFoundError))
+
+    result = asyncio.run(update_env.skopeo_inspect_config("quay.io/example/image:tag", asyncio.Semaphore(1)))
+
+    assert result == ("quay.io/example/image:tag", None)
+
+
+def test_communicate_kills_process_after_timeout(monkeypatch: MonkeyPatch) -> None:
+    process = AsyncMock()
+    process.kill = Mock()
+
+    async def communicate_forever() -> tuple[bytes, bytes]:
+        await asyncio.sleep(1)
+        return b"", b""
+
+    process.communicate.side_effect = communicate_forever
+    monkeypatch.setattr(update_env, "SKOPEO_TIMEOUT_SEC", 0.001)
+
+    with pytest.raises(TimeoutError):
+        asyncio.run(update_env._communicate(process))
+
+    process.kill.assert_called_once_with()
+    process.wait.assert_awaited_once_with()
+
+
+def test_write_commit_env_sorts_and_uses_utf8(tmp_path: Path) -> None:
+    destination = tmp_path / "commit-latest.env"
+
+    update_env.write_commit_env([("z-key", "last"), ("a-key", "first")], destination)
+
+    assert destination.read_text(encoding="utf-8") == "a-key=first\nz-key=last\n"
