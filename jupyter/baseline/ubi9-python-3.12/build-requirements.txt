@@ -1,0 +1,35 @@
+# Build backends and tools required to build the locked sdists offline.
+# This file is prefetched by Cachi2 and is not installed into the runtime
+# environment as a dependency set.
+setuptools
+wheel
+setuptools-scm
+setuptools-git-versioning
+setuptools-rust
+maturin>=1.14.1,<2
+flit-core>=3.12,<4
+pdm-backend
+meson
+meson-python
+cython
+patchelf
+hatchling
+poetry-core
+scikit-build-core
+jupyter-packaging
+jupyter-builder
+mypy
+pybind11
+puccinialin
+uv-build
+hatch-fancy-pypi-readme
+hatch-jupyter-builder
+hatch-nodejs-version
+hatch-vcs
+cffi
+packaging
+pkgconfig
+coherent-licensed
+colorama
+expandvars
+build

@@ -7,6 +7,8 @@ Hermetic baseline Jupyter workbench image with Python 3.12 on UBI 9.
 - RPMs and Python packages are installed from Cachi2 prefetch inputs.
 - Installs Python packages from `requirements.${PYLOCK_FLAVOR}.txt` with
   `--no-index --find-links /cachi2/output/deps/pip`.
+- Prefetches the separate `build-requirements.txt` toolchain used to compile
+  sdists, so the image build does not contact PyPI.
 - Keeps JupyterLab feature set (Elyra, Kale, PDF export) with a lean Python footprint.
 - **Multi-arch**: Konflux builds all four Linux arches; JupyterLab/Elyra/Kale Python deps
   install on **x86_64 + aarch64 only** (PyPI wheel gap on ppc64le/s390x), using explicit

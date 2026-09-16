@@ -141,6 +141,7 @@ rm -rf /var/cache/dnf /var/cache/yum
 EOF
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+COPY ${BASELINE_SOURCE_CODE}/build-requirements.txt ./build-requirements.txt
 
 # uv (the lock's own pinned version), as a wheel from the lock's own index
 # (PyPI for ODH, AIPCC for RHOAI) - compiling it from the rust sdist takes
@@ -149,9 +150,8 @@ COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.tx
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
 UV_VERSION=$(sed -n 's/^uv==\([^ ;]*\).*/\1/p' ./requirements.txt)
-INDEX_URL=$(sed -n 's/^--index-url //p' ./requirements.txt)
-python3 -m pip install --no-cache-dir \
-    --index-url ${INDEX_URL:-https://pypi.org/simple} \
+python3 -m pip install --no-cache-dir --no-index \
+    --find-links /cachi2/output/deps/pip \
     uv==${UV_VERSION}
 EOF
 
@@ -163,15 +163,9 @@ EOF
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
 PYBIN=$(command -v python3)
-uv pip install --system --python $PYBIN --no-binary :all: \
-    setuptools wheel \
-    'setuptools-scm[toml]' setuptools-git-versioning setuptools-rust \
-    'maturin>=1.14.1,<2' 'flit-core>=3.12,<4' pdm-backend \
-    meson meson-python cython patchelf hatchling poetry-core \
-    scikit-build-core jupyter-packaging jupyter_builder mypy pybind11 \
-    puccinialin uv-build hatch-fancy-pypi-readme hatch-jupyter-builder \
-    hatch-nodejs-version hatch-vcs cffi packaging pkgconfig \
-    coherent-licensed colorama expandvars build
+uv pip install --system --python $PYBIN --no-index \
+    --find-links /cachi2/output/deps/pip --no-binary :all: \
+    -r ./build-requirements.txt
 EOF
 
 # Build-time importability for the no-isolation wheel step:
@@ -197,9 +191,11 @@ DATEUTIL=$(sed -n 's/^python-dateutil==\([^ ;]*\).*/\1/p' ./requirements.txt)
 SIX=$(sed -n 's/^six==\([^ ;]*\).*/\1/p' ./requirements.txt)
 # python-dateutil builds in isolation: its setuptools_scm<8.0 pin is unsatisfiable
 # against the toolchain setuptools-scm
-python3 -m pip install --no-deps --no-binary :all: \
+python3 -m pip install --no-deps --no-index \
+    --find-links /cachi2/output/deps/pip --no-binary :all: \
     python-dateutil==${DATEUTIL}
-python3 -m pip install --no-deps --no-build-isolation --no-binary :all: \
+python3 -m pip install --no-deps --no-index \
+    --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
     jupyterlab==${JUPYTERLAB} \
     jupyter-client==${JCLIENT} jupyter-core==${JCORE} \
     traitlets==${TRAITLETS} pyzmq==${PYZMQ} tornado==${TORNADO} \
@@ -230,15 +226,18 @@ if [ "$PRODUCT" = "rhoai" ]; then
   grep -v '^ast-serialize==' /tmp/requirements-sdist.txt > /tmp/requirements-sdist.txt
 fi
 grep -v '^python-dateutil==' /tmp/requirements-sdist.txt > /tmp/requirements-shared.txt
-python3 -m pip wheel --no-deps --no-build-isolation --no-binary :all: \
+python3 -m pip wheel --no-deps --no-index \
+    --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
     -w /opt/app-root/src/wheels -r /tmp/requirements-shared.txt
 while IFS= read -r spec; do
-  python3 -m pip wheel --no-deps --no-binary :all: \
+  python3 -m pip wheel --no-deps --no-index \
+      --find-links /cachi2/output/deps/pip --no-binary :all: \
       -w /opt/app-root/src/wheels "$spec"
 done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
 # the RHOAI exception above, installed from its prebuilt wheel
 if [ -s /tmp/requirements-exception.txt ]; then
-  python3 -m pip wheel --no-deps --no-build-isolation \
+  python3 -m pip wheel --no-deps --no-index \
+      --find-links /cachi2/output/deps/pip --no-build-isolation \
       -w /opt/app-root/src/wheels -r /tmp/requirements-exception.txt
 fi
 # Build backends create some wheels 0600 and pip moves them to the
@@ -332,7 +331,8 @@ USER 1001:0
 ARG UV_VERSION=0.12.10
 
 ### END UV version
-RUN python3 -m pip install --no-cache-dir \
+RUN python3 -m pip install --no-cache-dir --no-index \
+    --find-links /cachi2/output/deps/pip \
     "uv==${UV_VERSION}"
 
 # [SDIST] Install all Python packages from the wheels compiled in the

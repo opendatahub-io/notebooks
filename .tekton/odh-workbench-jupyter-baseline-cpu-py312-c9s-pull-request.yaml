@@ -58,7 +58,7 @@ spec:
       type: pip
       binary:
         arch: "x86_64,aarch64,ppc64le,s390x"
-      requirements_files: [requirements.cpu.txt]
+      requirements_files: [requirements.cpu.txt, build-requirements.txt]
   - name: additional-tags
     value:
     - 3.6_ea2-v1.49
