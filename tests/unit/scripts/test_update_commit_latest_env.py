@@ -206,6 +206,8 @@ def test_write_commit_env_sorts_and_uses_utf8(tmp_path: Path) -> None:
     update_env.write_commit_env([("z-key", "last"), ("a-key", "first")], destination)
 
     assert destination.read_text(encoding="utf-8") == "a-key=first\nz-key=last\n"
+
+
 @pytest.mark.parametrize("failure", ["missing", "timeout", "json", "unexpected", "nonzero"])
 @pytest.mark.parametrize("log_failure, should_log", [(False, False), (True, True)])
 def test_skopeo_inspect_config_honors_failure_logging(
