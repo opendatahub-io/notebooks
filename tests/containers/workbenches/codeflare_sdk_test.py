@@ -22,8 +22,11 @@ class TestCodeFlareSDK:
         def check_codeflare_sdk() -> None:
             import importlib.metadata  # ruff: ignore[import-outside-top-level]
 
-            import codeflare_sdk  # ruff: ignore[import-outside-top-level]
-            from codeflare_sdk import Cluster, ClusterConfiguration  # ruff: ignore[import-outside-top-level]
+            import codeflare_sdk  # pyright: ignore[reportMissingImports]  # ruff: ignore[import-outside-top-level]
+            from codeflare_sdk import (  # pyright: ignore[reportMissingImports]  # ruff: ignore[import-outside-top-level]
+                Cluster,
+                ClusterConfiguration,
+            )
 
             version = importlib.metadata.version("codeflare-sdk")
             assert version.startswith("0."), f"Unexpected CodeFlare SDK version: {version}"
