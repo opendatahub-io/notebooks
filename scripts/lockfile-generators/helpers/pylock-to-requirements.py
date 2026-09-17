@@ -130,9 +130,11 @@ def collect_index_hashes(pkg: dict, *, sdist_hashes: str = SDIST_HASHES_EL9_FALL
     # source. Keep its sdist hash in the generated requirements even though a
     # compatible pure-Python wheel exists; otherwise Hermeto cannot prefetch
     # the artifact required by Dockerfile.konflux.cpu's --no-binary build.
+    # The baseline image also builds jupyterlab from source in its explicit
+    # sdist bootstrap step; keep that archive available to Hermeto.
     include_sdist = (
         sdist_hashes in (SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER)
-        and (not has_el9_wheel or pkg.get("name") == "python-dateutil")
+        and (not has_el9_wheel or pkg.get("name") in {"python-dateutil", "jupyterlab"})
     )
     if include_sdist:
         sdist = pkg.get("sdist")
