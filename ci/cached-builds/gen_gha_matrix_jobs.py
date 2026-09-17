@@ -57,6 +57,20 @@ def target_needs_subscription(target: str) -> bool:
     return "rhel" in target
 
 
+# Baseline workbench/runtime images are ODH-only (no konflux.cpu.conf / RHDS prefetch).
+ODH_ONLY_BASELINE_TARGETS = frozenset(
+    {
+        "jupyter-baseline-ubi9-python-3.12",
+        "codeserver-baseline-ubi9-python-3.12",
+        "runtime-baseline-ubi9-python-3.12",
+    }
+)
+
+
+def target_supports_rhoai_build(target: str) -> bool:
+    return target not in ODH_ONLY_BASELINE_TARGETS
+
+
 def extract_image_targets(
     makefile_dir: pathlib.Path | str | None = None, env: dict[str, str] | None = None
 ) -> list[str]:
@@ -147,25 +161,36 @@ def assign_platforms(
     return targets_with_platform
 
 
+def matrix_entries(entries: list[tuple[str, str]]) -> list[dict[str, str | bool]]:
+    return [
+        {
+            "target": target,
+            "python": "3.12",
+            "platform": platform,
+            "subscription": target_needs_subscription(target),
+        }
+        for (target, platform) in entries
+    ]
+
+
 def build_matrix_output(targets_with_platform: list[tuple[str, str]]) -> list[str]:
     # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
+    rhoai_targets_with_platform = [
+        (target, platform) for (target, platform) in targets_with_platform if target_supports_rhoai_build(target)
+    ]
     return [
         "matrix="
         + json.dumps(
-            {
-                "include": [
-                    {
-                        "target": target,
-                        "python": "3.12",
-                        "platform": platform,
-                        "subscription": target_needs_subscription(target),
-                    }
-                    for (target, platform) in targets_with_platform
-                ],
-            },
+            {"include": matrix_entries(targets_with_platform)},
+            separators=(",", ":"),
+        ),
+        "matrix_rhoai="
+        + json.dumps(
+            {"include": matrix_entries(rhoai_targets_with_platform)},
             separators=(",", ":"),
         ),
         "has_jobs=" + json.dumps(len(targets_with_platform) > 0, separators=(",", ":")),
+        "has_rhoai_jobs=" + json.dumps(len(rhoai_targets_with_platform) > 0, separators=(",", ":")),
     ]
 
 
@@ -257,6 +282,12 @@ class TestSelf(unittest.TestCase):
         assert target_needs_subscription("runtime-baseline-ubi9-python-3.12") is False
         assert target_needs_subscription("cuda-jupyter-minimal-ubi9-python-3.12") is False
         assert target_needs_subscription("runtime-rhel-cuda-tensorflow-ubi9-python-3.12") is True
+
+    def test_target_supports_rhoai_build(self):
+        assert target_supports_rhoai_build("jupyter-baseline-ubi9-python-3.12") is False
+        assert target_supports_rhoai_build("codeserver-baseline-ubi9-python-3.12") is False
+        assert target_supports_rhoai_build("runtime-baseline-ubi9-python-3.12") is False
+        assert target_supports_rhoai_build("jupyter-minimal-ubi9-python-3.12") is True
 
     def test_filter_rhel_targets_excludes_rhel_marked_targets(self):
         targets = [
