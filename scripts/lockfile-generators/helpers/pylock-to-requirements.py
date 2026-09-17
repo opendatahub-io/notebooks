@@ -126,7 +126,14 @@ def collect_index_hashes(pkg: dict, *, sdist_hashes: str = SDIST_HASHES_EL9_FALL
         if wheel_is_el9_compatible(whl.get("url", "")):
             has_el9_wheel = True
 
-    include_sdist = sdist_hashes in (SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER) and not has_el9_wheel
+    # The baseline Konflux image deliberately compiles python-dateutil from
+    # source. Keep its sdist hash in the generated requirements even though a
+    # compatible pure-Python wheel exists; otherwise Hermeto cannot prefetch
+    # the artifact required by Dockerfile.konflux.cpu's --no-binary build.
+    include_sdist = (
+        sdist_hashes in (SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER)
+        and (not has_el9_wheel or pkg.get("name") == "python-dateutil")
+    )
     if include_sdist:
         sdist = pkg.get("sdist")
         if isinstance(sdist, dict):
