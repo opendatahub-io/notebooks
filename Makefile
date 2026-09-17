@@ -23,6 +23,8 @@ endif
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 3.6
 RELEASE_PYTHON_VERSION	 ?= 3.12
+CHECK_PAYLOAD_VERSION ?= 0.3.17
+CHECK_PAYLOAD_CONFIG_OVERLAY := scripts/check-payload/.overlay.toml
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 # security options for podman (label=disable fixes permission denied on macOS rootful)
@@ -170,7 +172,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-build-args-from-versions sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release kickoff-release clean-rpm-lockfile-cache
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-build-args-from-versions sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release kickoff-release clean-rpm-lockfile-cache check-payload-config
 # CI uses the pre-built container image via buildinputs_runner.py instead
 ifneq ($(CI),true)
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
@@ -182,6 +184,12 @@ bin/buildinputs: scripts/buildinputs/buildinputs.go scripts/buildinputs/go.mod s
 	$(info Building a Go helper for Dockerfile dependency analysis...)
 	GOTOOLCHAIN=auto GONOSUMDB=golang.org/toolchain \
 	  go build -C "scripts/buildinputs" -o "$(ROOT_DIR)/$@" ./...
+
+.PHONY: check-payload-config
+check-payload-config: $(CHECK_PAYLOAD_CONFIG_OVERLAY)
+	@curl --fail --location --silent --show-error --retry 3 \
+		"https://raw.githubusercontent.com/openshift/check-payload/$(CHECK_PAYLOAD_VERSION)/config.toml"
+	@cat "$(CHECK_PAYLOAD_CONFIG_OVERLAY)"
 
 ####################################### Buildchain for Python using ubi9 #####################################
 

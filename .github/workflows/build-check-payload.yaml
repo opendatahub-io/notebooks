@@ -6,7 +6,9 @@ name: Build check-payload image
     branches: [main, stable, 'rhoai-*']
     paths: &check_payload_paths
       - .github/workflows/build-check-payload.yaml
+      - Makefile
       - scripts/check-payload/Dockerfile
+      - scripts/check-payload/.overlay.toml
   pull_request:
     paths: *check_payload_paths
   workflow_dispatch:
@@ -94,11 +96,12 @@ jobs:
           docker export "$cid" | tar -C "${scan_root}" -xf -
           docker rm "$cid"
 
-          # -c config.toml suppresses known false positives (e.g. ldconfig
-          # is statically linked by design in glibc)
+          effective_config="${RUNNER_TEMP}/check-payload-config.toml"
+          make check-payload-config CHECK_PAYLOAD_VERSION="${CHECK_PAYLOAD_VERSION}" > "${effective_config}"
+
           docker run --rm --user=0 \
             -v "${scan_root}:${scan_root}:ro" \
-            -v "${PWD}/scripts/check-payload/config.toml:/config.toml:ro" \
+            -v "${effective_config}:/config.toml:ro" \
             "${CHECK_PAYLOAD_IMAGE}" \
             scan local --path "${scan_root}" -c /config.toml
 

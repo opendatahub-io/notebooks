@@ -15,6 +15,8 @@ This image is ~50 MB compressed (`ubi9-minimal` base for `rpm` + static binary).
 
 ## Version management
 
-The version is pinned in `.github/workflows/build-check-payload.yaml` as `CHECK_PAYLOAD_VERSION: "0.3.17"` and passed to the Dockerfile as a build arg. To bump, update that env var and the `:0.3.17` tag reference in `build-notebooks-TEMPLATE.yaml`.
+The version is pinned as `CHECK_PAYLOAD_VERSION: "0.3.17"` in the workflows and passed to the Dockerfile as a build arg. The effective scan config is composed at runtime by `make check-payload-config`: it concatenates the upstream `config.toml` for that version with `.overlay.toml`. To bump, update the version in both workflows.
+
+The upstream config is not inherited when `--config` is used, so the overlay target always fetches and concatenates the pinned upstream file before adding repository-specific rules.
 
 Releases: https://github.com/openshift/check-payload/releases
