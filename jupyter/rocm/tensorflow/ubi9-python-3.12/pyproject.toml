@@ -62,7 +62,7 @@ override-dependencies = [
     # RHAIENG-5052: CVE-2026-39892 — force past codeflare-sdk==0.34.0 pin cryptography==46.0.3
     "cryptography>=46.0.7",
     # RHOAIENG-59282 + RHOAIENG-54270: CVE-2026-23490 + CVE-2026-30922 pyasn1 DoS vulnerabilities
-    "pyasn1>=0.6.3",
+    "pyasn1>=0.6.4",
     # tf2onnx has pinned protobuf version, that causes conflict with other packages
     "protobuf==6.31.1",
     # RHAIENG-6359: CVE-2026-12484; match CUDA tensorflow notebook
@@ -79,7 +79,7 @@ override-dependencies = [
 constraint-dependencies = [
     # RHAIENG-4275: CVE-2026-27489 ONNX path traversal vulnerability
     # Replaces stale onnx<1.19.0 (ml_dtypes float4_e2m1fn issue resolved by ml_dtypes>=0.5.0)
-    "onnx>=1.21.0",
+    "onnx>=1.22.0",
 ]
 
 environments = [
