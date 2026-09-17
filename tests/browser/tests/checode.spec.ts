@@ -93,6 +93,13 @@ async function pickQuickInputOption(page: import('@playwright/test').Page, text:
   await page.keyboard.press('Enter');
 }
 
+async function focusCheCodeTerminal(page: import('@playwright/test').Page) {
+  await runCommand(page, 'Terminal: Create New Terminal')
+  await expect(page.locator('#terminal')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('textarea.xterm-helper-textarea')).toBeVisible({ timeout: 15000 })
+  await page.locator('textarea.xterm-helper-textarea').focus()
+}
+
 test.describe('che-code', { tag: '@checode' }, () => {
   test.beforeAll(setupTestcontainers)
 
@@ -107,8 +114,19 @@ test.describe('che-code', { tag: '@checode' }, () => {
     await utils.takeScreenshot(page, testInfo, "welcome.png")
   })
 
-  test('terminal runs a command', { annotation: { type: 'issue', description: 'che-code terminal is broken' } }, () => {
-    test.fixme();
+  test('terminal runs a command', async ({codeServer, page}) => {
+    safeTimeout(90000)
+    await loadEditor(codeServer, page)
+
+    await test.step("open the integrated terminal", async () => {
+      await focusCheCodeTerminal(page)
+    })
+
+    await test.step("execute a terminal command", async () => {
+      await page.keyboard.type("printf 'Che Code terminal works\\n'")
+      await page.keyboard.press('Enter')
+      await expect(page.locator('.xterm-rows')).toContainText('Che Code terminal works', { timeout: 15000 })
+    })
   })
 
   test('python extension is active', async ({codeServer, page}) => {
@@ -191,7 +209,29 @@ test.describe('che-code', { tag: '@checode' }, () => {
     })
   })
 
-  test('activity tracker writes last-activity file', { annotation: { type: 'issue', description: 'depends on terminal which is broken' } }, () => {
-    test.fixme();
+  test('activity tracker writes last-activity file', async ({codeServer, page}) => {
+    safeTimeout(90000)
+    await loadEditor(codeServer, page)
+
+    const getLastActivity = async (): Promise<number> => {
+      const response = await page.request.get(`${codeServer.url}/api/kernels/`)
+      expect(response.ok()).toBe(true)
+      const kernels = await response.json() as Array<{ last_activity: string }>
+      expect(kernels).toHaveLength(1)
+      return Date.parse(kernels[0]!.last_activity)
+    }
+
+    const before = await getLastActivity()
+
+    // The activity tracker debounces writes for five seconds. Wait until the
+    // initial timestamp is outside that window before generating terminal input.
+    await expect.poll(() => Date.now() - before, { timeout: 15000 }).toBeGreaterThan(5000)
+
+    await focusCheCodeTerminal(page)
+    await page.keyboard.type("echo activity")
+    await page.keyboard.press('Enter')
+
+    await expect.poll(getLastActivity, { timeout: 30000, intervals: [1000, 2000, 5000] })
+      .toBeGreaterThan(before)
   })
 });
