@@ -66,6 +66,12 @@ files = [
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
     # che-code wrapper: pre-built ripgrep from Dev Spaces che-code image (RHOAIENG-58626)
     "/opt/app-root/checode/node_modules/@vscode/ripgrep/bin/rg",
+    # Che Code bundles additional static helper binaries; they do not perform
+    # cryptographic operations and are covered by the workbench FIPS exclusion.
+    "/opt/app-root/checode/node_modules/@github/copilot-linux-x64/ripgrep/bin/linux-x64/rg",
+    "/opt/app-root/checode/node_modules/@github/copilot-linux-x64/tgrep/bin/linux-x64/tgrep",
+    "/opt/app-root/checode/node_modules/@vscode/ripgrep-universal/bin/linux-x64/rg",
+    "/opt/app-root/checode/node_modules/@vscode/sandbox-runtime/vendor/seccomp/x64/apply-seccomp",
     # Che Code bundles static Copilot search helpers. They are third-party
     # tooling and are not used as crypto or system executables.
     "/opt/app-root/checode/extensions/copilot/node_modules/@anthropic-ai/claude-agent-sdk/vendor/ripgrep/arm64-linux/rg",
