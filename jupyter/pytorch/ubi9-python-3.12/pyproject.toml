@@ -70,7 +70,7 @@ override-dependencies = [
     # RHAIENG-5052: CVE-2026-39892 — force past codeflare-sdk==0.34.0 pin cryptography==46.0.3
     "cryptography>=46.0.7",
     # RHOAIENG-59282 + RHOAIENG-54270: CVE-2026-23490 + CVE-2026-30922 pyasn1 DoS vulnerabilities
-    "pyasn1>=0.6.3",
+    "pyasn1>=0.6.4",
     # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
     # odh-elyra -> appengine-python-standard caps urllib3<2; override required (constraints unsatisfiable)
     # Upstream: https://github.com/elyra-ai/elyra/issues/3325

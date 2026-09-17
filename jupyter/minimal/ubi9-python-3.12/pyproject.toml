@@ -23,7 +23,7 @@ dependencies = [
 [tool.uv]
 override-dependencies = [
     # RHOAIENG-59282 + RHOAIENG-54270: CVE-2026-23490 + CVE-2026-30922 pyasn1 DoS vulnerabilities
-    "pyasn1>=0.6.3",
+    "pyasn1>=0.6.4",
 ]
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",

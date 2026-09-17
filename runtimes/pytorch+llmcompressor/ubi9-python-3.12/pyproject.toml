@@ -56,7 +56,7 @@ override-dependencies = [
     # Force Pillow past llmcompressor 0.9.0.3 upper bound (<=12.2.0) for CVE-2026-59205 et al.
     "pillow>=12.3.0",
     # RHOAIENG-59282 + RHOAIENG-54270: CVE-2026-23490 + CVE-2026-30922 pyasn1 DoS vulnerabilities
-    "pyasn1>=0.6.3",
+    "pyasn1>=0.6.4",
 ]
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
