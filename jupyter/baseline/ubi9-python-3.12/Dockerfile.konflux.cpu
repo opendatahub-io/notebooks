@@ -134,11 +134,18 @@ PACKAGES=(
     openssl-devel
     # pkg-config binary; native extensions discover system libraries through it
     pkgconf-pkg-config
+    # PyZMQ must link against the prefetched system library instead of having
+    # its sdist fetch bundled libzmq/libsodium during the hermetic build.
+    zeromq-devel
 )
 dnf install -y "${PACKAGES[@]}"
 dnf clean all
 rm -rf /var/cache/dnf /var/cache/yum
 EOF
+
+# Fondue/AIPCC uses the system ZeroMQ build for PyZMQ source installs. Without
+# this, PyZMQ's CMake backend downloads libsodium from the public internet.
+ENV PYZMQ_NO_BUNDLE=1
 
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY ${BASELINE_SOURCE_CODE}/build-requirements.txt ./build-requirements.txt
