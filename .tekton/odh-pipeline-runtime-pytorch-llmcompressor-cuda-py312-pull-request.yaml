@@ -57,8 +57,6 @@ spec:
     value: rhel-subscription-activation-key-rhoai-devops-for-notebooks-rhel9-6
   - name: prefetch-input
     value:
-    - path: prefetch-input/rhds
-      type: rpm
     - path: runtimes/pytorch+llmcompressor/ubi9-python-3.12
       type: pip
       binary:
