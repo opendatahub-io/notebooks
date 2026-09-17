@@ -189,10 +189,10 @@ TORNADO=$(sed -n 's/^tornado==\([^ ;]*\).*/\1/p' ./requirements.txt)
 PLATFORMDIRS=$(sed -n 's/^platformdirs==\([^ ;]*\).*/\1/p' ./requirements.txt)
 DATEUTIL=$(sed -n 's/^python-dateutil==\([^ ;]*\).*/\1/p' ./requirements.txt)
 SIX=$(sed -n 's/^six==\([^ ;]*\).*/\1/p' ./requirements.txt)
-# python-dateutil builds in isolation: its setuptools_scm<8.0 pin is unsatisfiable
-# against the toolchain setuptools-scm
+# python-dateutil is pure Python; use its prefetched wheel.  The requirements
+# lock intentionally omits its sdist because an EL9-compatible wheel exists.
 python3 -m pip install --no-deps --no-index \
-    --find-links /cachi2/output/deps/pip --no-binary :all: \
+    --find-links /cachi2/output/deps/pip \
     python-dateutil==${DATEUTIL}
 python3 -m pip install --no-deps --no-index \
     --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
@@ -216,8 +216,8 @@ sed '/--hash/d' ./requirements.txt \
     | tr -d '\\' | sed 's/[[:space:]]*$//' \
     | grep '^[A-Za-z0-9_.-]*==' \
     | sed 's/;.*$//' > /tmp/requirements-sdist.txt
-# python-dateutil pins setuptools_scm<8.0, which conflicts with the
-# toolchain's newer setuptools-scm; build just that one in isolation
+# python-dateutil is installed from its prefetched wheel above because the
+# lockfile does not include its sdist when an EL9-compatible wheel exists.
 # ast-serialize needs rustc >= 1.95, unavailable on RHEL 9.8 (RHOAI); carve it
 # out of the sdist set there (prebuilt wheel below) and keep it sdist-built on ODH
 touch /tmp/requirements-exception.txt
@@ -229,11 +229,6 @@ grep -v '^python-dateutil==' /tmp/requirements-sdist.txt > /tmp/requirements-sha
 python3 -m pip wheel --no-deps --no-index \
     --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
     -w /opt/app-root/src/wheels -r /tmp/requirements-shared.txt
-while IFS= read -r spec; do
-  python3 -m pip wheel --no-deps --no-index \
-      --find-links /cachi2/output/deps/pip --no-binary :all: \
-      -w /opt/app-root/src/wheels "$spec"
-done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
 # the RHOAI exception above, installed from its prebuilt wheel
 if [ -s /tmp/requirements-exception.txt ]; then
   python3 -m pip wheel --no-deps --no-index \
