@@ -17,7 +17,7 @@ import testcontainers.core.container
 
 import ntb
 from tests import index_config_utils
-from tests.containers import docker_utils
+from tests.containers import conftest, docker_utils
 from tests.public_index_image_utils import is_public_index_image
 
 LOGGER = logging.getLogger(__name__)
@@ -311,6 +311,10 @@ class TestBaseImage:
           https://redhat-internal.slack.com/archives/C0987K24BNV/p1761159166691689
         - Customer docs: https://access.redhat.com/articles/7137881
         """
+        image_metadata = conftest.get_image_metadata(image)
+        if image_metadata.workbench_type is conftest.WorkbenchType.CHE_CODE:
+            pytest.skip("che-code is PyPI-first (RHAISTRAT-1482), no AIPCC index")
+
         public_index_image = is_public_index_image(image)
 
         with docker_utils.running_container(image=image) as container:

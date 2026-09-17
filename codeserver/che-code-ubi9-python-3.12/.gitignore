@@ -1,0 +1,6 @@
+# Extension bundles are generated build artifacts. Existing bundles required by
+# the Che Code image remain tracked; newly generated bundles stay untracked.
+extensions/*/dist/**/*.js
+
+# Python Environment Tools binary is a generated Che Code build input.
+utils/pet

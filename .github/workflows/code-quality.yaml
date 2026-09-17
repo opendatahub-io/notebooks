@@ -61,6 +61,9 @@ jobs:
         if: github.event_name != 'pull_request'
         run: bash ci/generate_code.sh
 
+      - name: Rehydrate Git LFS screenshots
+        run: git lfs checkout tests/manual/runtime_elyra/images
+
       - name: Check there aren't any modified files present
         run: |
           clean=$(git status --porcelain)

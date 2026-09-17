@@ -173,7 +173,13 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
                 for path in buildinputs(
                     target_directory + "/" + dockerfile,
                     platform=cast("Platform", f"linux/{get_go_arch()}"),
-                    build_args={"BASE_IMAGE": "fake-image"},
+                    # Che Code has a second FROM stage controlled by
+                    # CHECODE_IMAGE; provide both common image args so the
+                    # dependency scanner can parse every multi-stage target.
+                    build_args={
+                        "BASE_IMAGE": "fake-image",
+                        "CHECODE_IMAGE": "fake-image",
+                    },
                 )
             ]
         )

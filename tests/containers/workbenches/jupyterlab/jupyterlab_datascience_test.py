@@ -188,13 +188,12 @@ except Exception as e:
             # Code-server image uses /opt/app-root/bin/python3; others use default python.
             # Detection: label "name" contains "-code-server-" (set in Dockerfile.konflux.cpu). Fallback: image ref
             # contains "codeserver" when daemon is Podman and labels came from ContainerConfig (conftest handles that).
-            name_label = datascience_image.labels.get("name", "")
-            is_codeserver = "-code-server-" in name_label or "codeserver" in datascience_image.name.lower()
-            python_exe = "/opt/app-root/bin/python3" if is_codeserver else "python"
+            is_vscode = datascience_image.workbench_type.is_vscode
+            python_exe = "/opt/app-root/bin/python3" if is_vscode else "python"
             print(f"Using python executable: {python_exe}")
 
             # RHOAIENG-140: code-server image users are expected to install their own db clients
-            if is_codeserver:
+            if is_vscode:
                 exit_code, output = container.exec(
                     [python_exe, "-m", "pip", "install", f"mysql-connector-python=={MYSQL_CONNECTOR_PYTHON_VERSION}"]
                 )

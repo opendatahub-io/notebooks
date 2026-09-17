@@ -2,7 +2,7 @@
 // #!/usr/bin/env -S node --no-warnings --loader ts-node/esm
 import {chromium} from 'playwright';
 import type {Browser, Page} from "@playwright/test";
-import {log} from '../tests/logger';
+import {log} from '../tests/logger.ts';
 
 async function main() {
     // https://playwright.dev/docs/browsers#google-chrome--microsoft-edge

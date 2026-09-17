@@ -38,6 +38,8 @@ export default defineConfig<ConfigFixtures>({
       codeServerSource: CodeServerSource.image(process.env['TEST_TARGET']),
     } : {}),
 
+    ignoreHTTPSErrors: true,
+
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
 
@@ -76,6 +78,7 @@ function getProjects() {
       name: 'Google Chrome',
       use: { ...devices['Desktop Chrome'], channel: 'chrome',
         headless: false,  // the CDP browser configured below is not affected by this
+        launchOptions: { args: ['--remote-debugging-port=9222'] },
         /* custom properties, comment out as needed */
         connectCDP: false as const,  // false | number: connect to an existing browser running at given port (e.g. 9222)
         codeServerSource:  // prefers url if specified, otherwise will start the specified docker image

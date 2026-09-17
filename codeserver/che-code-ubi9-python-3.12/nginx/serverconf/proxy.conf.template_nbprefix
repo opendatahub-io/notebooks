@@ -1,0 +1,68 @@
+###############
+# api calls from probes get to che-code /healthz endpoint
+# che-code serves /healthz at ${NB_PREFIX}/healthz via --server-base-path
+###############
+location = ${NB_PREFIX}/api {
+    return 302  ${NB_PREFIX}/healthz;
+    access_log  off;
+}
+
+location ${NB_PREFIX}/api/ {
+    return 302  ${NB_PREFIX}/healthz;
+    access_log  off;
+}
+###############
+
+###############
+# api calls from culler get to CGI processing
+###############
+location = ${NB_PREFIX}/api/kernels {
+    return 302 ${NB_PREFIX}/api/kernels/;
+    access_log  off;
+}
+
+location ${NB_PREFIX}/api/kernels/ {
+  proxy_pass http://127.0.0.1:8080/api/kernels/;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  gzip off;
+  access_log off;
+}
+###############
+
+###############
+# Upstream che-code (quay.io/che-incubator) generates HTML referencing
+# ./oss-dev/static/... but doesn't route that prefix. Strip it so the
+# request reaches the server's actual static file handler.
+###############
+location ${NB_PREFIX}/oss-dev/ {
+    rewrite ^${NB_PREFIX}/oss-dev/(.*)$ ${NB_PREFIX}/$1 last;
+}
+
+###############
+# Everything else -> che-code server
+# No rewrite needed: --server-base-path handles NB_PREFIX internally
+###############
+location = ${NB_PREFIX} {
+    return 302 ${NB_PREFIX}/;
+}
+
+location ${NB_PREFIX}/ {
+    proxy_pass http://workbench_server;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_read_timeout 20d;
+
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $custom_scheme;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-NginX-Proxy true;
+    proxy_redirect off;
+
+    access_log /var/log/nginx/checode.access.log json if=$loggable;
+}
+###############

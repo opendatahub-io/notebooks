@@ -1,0 +1,18 @@
+{
+  "name": "kubeflow-github-authentication",
+  "displayName": "Kubeflow GitHub Authentication",
+  "description": "GitHub device authentication commands for Che Code",
+  "publisher": "eclipse-che",
+  "version": "0.0.3",
+  "engines": { "vscode": "^1.100.0" },
+  "activationEvents": ["*"],
+  "main": "./dist/extension.js",
+  "browser": "./dist/extension.js",
+  "extensionKind": ["ui", "workspace"],
+  "contributes": {
+    "commands": [
+      { "command": "github-authentication.device-code-flow.authentication", "title": "GitHub: Device Authentication" },
+      { "command": "github-authentication.device-code-flow.remove-token", "title": "GitHub: Remove Device Authentication Token" }
+    ]
+  }
+}
