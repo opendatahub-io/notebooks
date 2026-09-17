@@ -75,23 +75,30 @@ function patchDeviceCodeProvider(extensionPath) {
   );
 }
 
-if (githubAuthPath) patchDeviceCodeProvider(githubAuthPath);
+function patchWebActivation(extensionPath) {
+  const extension = fs.readFileSync(extensionPath, "utf8");
+  // Che Code's remote extension host loads the main Node bundle, even though
+  // the browser client also has a web-worker host. Both bundles otherwise
+  // return after registering only the device-code command, so the built-in
+  // `github` authentication provider is never registered for Copilot.
+  const activationGuard =
+    /if\(![A-Za-z_$][\w$]*\)\{[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*\);return\}/g;
+  activationGuard.lastIndex = extension.indexOf("device code");
+  const matches = [...extension.matchAll(activationGuard)];
+  if (matches.length !== 1) {
+    throw new Error(`Expected one GitHub web activation guard in ${extensionPath}, found ${matches.length}`);
+  }
+  const guard = matches[0][0];
+  fs.writeFileSync(extensionPath, extension.replace(guard, guard.replace(";return", "")));
+}
+
+if (githubAuthPath) {
+  patchDeviceCodeProvider(githubAuthPath);
+  patchWebActivation(githubAuthPath);
+}
 if (githubAuthBrowserPath) {
   patchDeviceCodeProvider(githubAuthBrowserPath);
-
-  // The upstream browser bundle deliberately takes the vscode.dev path, which
-  // exposes only the device-code command and returns before registering the
-  // `github` authentication provider. Che Code still needs that provider for
-  // the built-in Accounts/Copilot sign-in flow, so use the full provider path.
-  const browserExtension = fs.readFileSync(githubAuthBrowserPath, "utf8");
-  const browserActivation = "if(!Ty){hT(r);return}";
-  if (!browserExtension.includes(browserActivation)) {
-    throw new Error(`Could not find the browser activation branch in ${githubAuthBrowserPath}`);
-  }
-  fs.writeFileSync(
-    githubAuthBrowserPath,
-    browserExtension.replace(browserActivation, "if(!Ty){hT(r)}"),
-  );
+  patchWebActivation(githubAuthBrowserPath);
 }
 
 if (githubAuthPackagePath) {
