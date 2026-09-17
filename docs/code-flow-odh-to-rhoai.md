@@ -21,7 +21,7 @@ The whole thing is the **Stream → Lake → Ocean** release strategy
 > For the *team workflow* (what to do when, release process, troubleshooting), see
 > [bodies-of-water.md](bodies-of-water.md) and [bodies-of-water-troubleshooting.md](bodies-of-water-troubleshooting.md).
 
-```
+```text
                      opendatahub-io (UPSTREAM / "Lake")                red-hat-data-services (DOWNSTREAM / "Ocean")
 ┌──────────────────────────────────────────────────┐        ┌──────────────────────────────────────────────────────┐
 │  opendatahub-io/notebooks                          │        │  red-hat-data-services/notebooks                      │
@@ -160,7 +160,7 @@ Three mechanisms exist; which is used is per-component. (The Bodies doc: *"7/12 
 **The auto-nudge chain** (from Slack `#rhoai-devtestops-requests`, RHAIENG-3124) — how one workbench build
 cascades into a new catalog:
 
-```
+```text
 Workbench code change (red-hat-data-services/notebooks release branch)
   → Konflux Component Build (push pipeline, .tekton/*-push.yaml;
        build-nudges-ref + build-nudge-files: build/operator-nudging.yaml)
@@ -206,7 +206,7 @@ Workbench code change (red-hat-data-services/notebooks release branch)
 
 The nightly is a **scheduled** cascade that ends in `-nightly`-tagged images + an FBC fragment. Verified chain:
 
-```
+```text
 rhods-devops-infra/.github/workflows/trigger-nightlies.yaml   on: schedule cron '0 0 * * *'
   └ reads src/config/releases.yaml → benc-uk/workflow-dispatch → per release branch:
 rhods-operator/.github/workflows/trigger-nightly-operator-build.yaml
