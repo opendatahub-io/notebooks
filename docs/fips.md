@@ -100,8 +100,10 @@ for each release. Example:
 
 ### Local and CI scans
 
-The file [`scripts/check-payload/config.toml`](../scripts/check-payload/config.toml)
-contains suppressions for these binaries. This config is used when running
+The file [`scripts/check-payload/.overlay.toml`](../scripts/check-payload/.overlay.toml)
+contains repository-specific suppressions for these binaries. CI composes it with
+the pinned upstream config using `make check-payload-config` before running
+the scanner. This effective config is used when running
 `check-payload` locally or in CI (e.g. the `fips-check` GitHub Actions job) but
 does **not** affect the Konflux release pipeline.
 

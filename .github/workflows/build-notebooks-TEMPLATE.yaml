@@ -63,6 +63,7 @@ jobs:
       TRIVY_VERSION: 0.73.0
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
+      CHECK_PAYLOAD_VERSION: "0.3.17"
       # Makefile variables
       BUILD_ARCH: ${{ inputs.platform }}
       RELEASE_PYTHON_VERSION: ${{ inputs.python }}
@@ -640,18 +641,20 @@ jobs:
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
+          effective_config="${RUNNER_TEMP}/check-payload-config.toml"
+          make check-payload-config CHECK_PAYLOAD_VERSION="${CHECK_PAYLOAD_VERSION}" > "${effective_config}"
           PODMAN="$(which podman)"
           # Pull via the CONTAINER_HOST remote client (has GHCR auth); sudo podman runs as root and lacks credentials
           "${PODMAN}" pull "${CHECK_PAYLOAD_IMAGE}"
           IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
           sudo "${PODMAN}" run --rm --user=0 \
             -v "${IMAGE_MOUNT_DIR}:${IMAGE_MOUNT_DIR}:ro,z" \
-            -v "${PWD}/scripts/check-payload/config.toml:/config.toml:ro,z" \
+            -v "${effective_config}:/config.toml:ro,z" \
             "${CHECK_PAYLOAD_IMAGE}" \
             scan local --path "${IMAGE_MOUNT_DIR}" -c /config.toml
           sudo "${PODMAN}" image unmount --all
         env:
-          CHECK_PAYLOAD_IMAGE: ghcr.io/${{ github.repository }}/check-payload:0.3.17
+          CHECK_PAYLOAD_IMAGE: ghcr.io/${{ github.repository }}/check-payload:${{ env.CHECK_PAYLOAD_VERSION }}
 
       # endregion
 
