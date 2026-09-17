@@ -112,6 +112,9 @@ UV_NO_CACHE=true UV_LINK_MODE=copy uv pip install \
     --find-links /cachi2/output/deps/pip \
     ipykernel
 
+# pandoc-rhai installs pandoc into the JupyterLab venv; symlink it onto PATH
+# so nbconvert PDF export can find it at runtime.
+ln -sf /opt/jupyterlab/bin/pandoc /opt/app-root/bin/pandoc
 pandoc --version
 
 # Register kernel from user venv — argv points to /opt/app-root/bin/python
