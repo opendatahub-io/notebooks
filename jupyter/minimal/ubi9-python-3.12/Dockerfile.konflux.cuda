@@ -131,6 +131,10 @@ install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
 # Apply JupyterLab addons to JupyterLab venv's static files
 JUPYTER_ADDONS_INDEX_FILE=/opt/jupyterlab/share/jupyter/lab/static/index.html \
   /opt/app-root/bin/utils/addons/apply.sh
+# Bridge venvs: let kernel Python see JupyterLab packages (read-only).
+# User pip installs still target /opt/app-root; conflicting versions win.
+echo "/opt/jupyterlab/lib/python3.12/site-packages" \
+    > /opt/app-root/lib/python3.12/site-packages/_jupyterlab_venv.pth
 # Fix permissions for both venvs
 /usr/local/bin/ensure-openshift-site-packages.sh
 /usr/local/bin/ensure-openshift-site-packages.sh /opt/jupyterlab/lib/python3.12/site-packages

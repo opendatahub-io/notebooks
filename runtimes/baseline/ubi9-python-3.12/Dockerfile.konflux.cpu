@@ -148,19 +148,25 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
 
-echo "Installing ipykernel into user venv (/opt/app-root)"
-UV_NO_CACHE=true UV_LINK_MODE=copy uv pip install \
-    --no-index --no-config --no-progress \
-    --compile-bytecode --index-strategy=unsafe-best-match \
-    --no-verify-hashes \
-    --find-links /cachi2/output/deps/pip \
-    ipykernel
+# ipykernel is gated to x86_64/aarch64 in requirements (no ppc64le/s390x wheels).
+# Only install it and the .pth bridge on supported architectures.
+if [[ "$(uname -m)" == "x86_64" || "$(uname -m)" == "aarch64" ]]; then
+    echo "Installing ipykernel into user venv (/opt/app-root)"
+    UV_NO_CACHE=true UV_LINK_MODE=copy uv pip install \
+        --no-index --no-config --no-progress \
+        --compile-bytecode --index-strategy=unsafe-best-match \
+        --no-verify-hashes \
+        --find-links /cachi2/output/deps/pip \
+        ipykernel
 
-# Bridge venvs: let user venv Python import execution deps from JupyterLab venv.
-# Runtime images are pipeline execution environments (no interactive user session);
-# the bootstrapper runs with the user venv's Python and needs papermill/nbconvert.
-echo "/opt/jupyterlab/lib/python3.12/site-packages" \
-    > /opt/app-root/lib/python3.12/site-packages/_jupyterlab_venv.pth
+    # Bridge venvs: let user venv Python import execution deps from JupyterLab venv.
+    # Runtime images are pipeline execution environments (no interactive user session);
+    # the bootstrapper runs with the user venv's Python and needs papermill/nbconvert.
+    echo "/opt/jupyterlab/lib/python3.12/site-packages" \
+        > /opt/app-root/lib/python3.12/site-packages/_jupyterlab_venv.pth
+else
+    echo "Skipping ipykernel on $(uname -m) — no wheels available for this architecture."
+fi
 
 /usr/local/bin/ensure-openshift-site-packages.sh
 /usr/local/bin/ensure-openshift-site-packages.sh /opt/jupyterlab/lib/python3.12/site-packages
