@@ -287,6 +287,29 @@ class ImageDeployment:
 
 
 class PodUtils:
+    @staticmethod
+    def log_readiness_diagnostics(
+        client: DynamicClient,
+        namespace_name: str,
+        label_selector: str,
+    ) -> None:
+        """Log the pod and event state when readiness polling times out."""
+        core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=client.client)
+
+        try:
+            pods = core_v1_api.list_namespaced_pod(namespace=namespace_name, label_selector=label_selector)
+            for pod in pods.items:
+                LOGGER.error("Pod diagnostics for %s/%s: %s", namespace_name, pod.metadata.name, pod.to_dict())
+        except Exception:
+            LOGGER.exception("Failed to collect pod diagnostics for Namespace %s", namespace_name)
+
+        try:
+            events = core_v1_api.list_namespaced_event(namespace=namespace_name)
+            for event in events.items:
+                LOGGER.error("Kubernetes event for Namespace %s: %s", namespace_name, event.to_dict())
+        except Exception:
+            LOGGER.exception("Failed to collect Kubernetes events for Namespace %s", namespace_name)
+
     # consider using timeout_sampler
     @staticmethod
     def wait_for_pods_ready(
@@ -344,6 +367,7 @@ class PodUtils:
             poll_interval=TestFrameConstants.GLOBAL_POLL_INTERVAL_MEDIUM,
             timeout=timeout,
             ready=ready,
+            on_timeout=lambda: PodUtils.log_readiness_diagnostics(client, namespace_name, label_selector),
         )
 
 
