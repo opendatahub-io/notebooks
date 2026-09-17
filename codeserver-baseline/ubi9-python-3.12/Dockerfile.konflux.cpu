@@ -146,10 +146,6 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# PQC (OCP 5.0): the rhel9/python-312 base does not enable post-quantum
-# crypto by default (only RHEL 10 does); set the system policy explicitly.
-RUN update-crypto-policies --set DEFAULT:PQ
-
 # [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
 RUN dnf module enable nodejs:22 -y
 
@@ -269,7 +265,7 @@ ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
 # [HERMETIC] Install nginx/httpd from prefetched RPMs.
 # NOTE: httpd is prefetched from CentOS Stream repos (not UBI) via the
 # exclude=httpd* rule in ubi.repo, aligning with the ODH c9s base image.
-# RHOAI builds use prefetch-input/rhds (RHEL httpd) instead of this ODH lockfile.
+# httpd is prefetched from CentOS Stream repos via prefetch-input/odh.
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd)
