@@ -81,7 +81,7 @@ def main():
             EOF
 
         """)),
-        "Install micropipenv and uv to deploy packages from requirements.txt": '''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "pip>=25.1" "micropipenv[toml]==1.9.0" "uv==0.9.6"''',
+        "Install micropipenv and uv to deploy packages from requirements.txt": '''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "pip>=26.1.2" "micropipenv[toml]==1.9.0" "uv==0.9.6"''',
         "Install the oc client": textwrap.dedent(r"""
             RUN /bin/bash <<'EOF'
             set -Eeuxo pipefail
