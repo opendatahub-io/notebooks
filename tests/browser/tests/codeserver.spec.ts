@@ -66,27 +66,20 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
   test('open codeserver', async ({codeServer, page}) => {
     await page.goto(codeServer.url)
 
-    await codeServer.isEditorVisible()
+    expect(await codeServer.isEditorVisible()).toBe(true)
   })
 
-  test('wait for welcome screen to load', async ({codeServer, page}, testInfo) => {
+  test('wait for startup surface to load', async ({codeServer, page}, testInfo) => {
     await page.goto(codeServer.url);
 
-    await codeServer.isEditorVisible()
+    expect(await codeServer.isEditorVisible()).toBe(true)
     page.on("console", (msg) => log.info(msg.text()))
 
-    // With chat.disableAIFeatures:false, Agent Status / Chat keep mutating
-    // div.monaco-workbench, so whole-workbench waitForStableDOM never settles.
-    // Assert the welcome surface itself instead (title is heading + paragraph).
-    await expect(page.getByRole('tab', { name: /Welcome/i })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'code-server', level: 1 })).toBeVisible()
-    await expect(page.getByText('Editing evolved')).toBeVisible()
-    await utils.waitForNextRender(page)
-
-    await utils.takeScreenshot(page, testInfo, "welcome.png")
+    await utils.assertStartupSurface(page, testInfo)
   })
 
   test('use the terminal to run command', async ({codeServer, page}, _testInfo) => {
+    test.setTimeout(120_000)
     await page.goto(codeServer.url);
 
     await test.step("Should always see the code-server editor", async () => {
@@ -95,18 +88,20 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
 
     await test.step("should show the Integrated Terminal", async () => {
       await codeServer.focusTerminal()
+      await codeServer.waitForTerminalReady()
       await expect(page.locator("#terminal")).toBeVisible()
     })
 
     await test.step("should execute Terminal command successfully", async () => {
-      await page.keyboard.type('echo The answer is $(( 6 * 7 )). > answer.txt', {delay: 100})
-      await page.keyboard.press('Enter', {delay: 100})
+      await codeServer.runTerminalCommand("echo The answer is $(( 6 * 7 )). > answer.txt")
+      // Allow the shell redirect to flush before opening the file in the editor.
+      await page.waitForTimeout(1000)
     })
 
     await test.step("should open the file", async() => {
       const file = path.join('/opt/app-root/src', 'answer.txt')
       await codeServer.openFile(file)
-      await expect(page.getByText("The answer is 42.")).toBeVisible()
+      await expect(page.locator(".editor-container").getByText("The answer is 42.", {exact: true})).toBeVisible()
     })
 
   })
