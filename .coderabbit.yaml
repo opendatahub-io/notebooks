@@ -69,3 +69,27 @@ reviews:
             "Update BuildConfigs", "Sync PipelineRuns", "Merge pull request",
             or PRs authored by bot accounts.
           On failure, show the expected prefix and a one-line fix hint.
+  path_instructions:
+    - path: "codeserver/ubi9-python-3.12/prefetch-input/code-server"
+      instructions: >
+        This is a git submodule reference (code-server). Changes to this path
+        alter the pinned submodule commit. Flag the change prominently when its
+        intent is unclear. An intentional update should include
+        [submodule-update] in the commit message; otherwise suggest checking
+        the submodule worktree and restoring its expected revision before
+        staging.
+    - path: "codeserver-baseline/ubi9-python-3.12/prefetch-input/code-server"
+      instructions: >
+        This is a git submodule reference (code-server baseline). Changes to
+        this path alter the pinned submodule commit. Flag the change prominently
+        when its intent is unclear. An intentional update should include
+        [submodule-update] in the commit message; otherwise suggest checking
+        the submodule worktree and restoring its expected revision before
+        staging.
+    - path: "prefetch-input/mongocli"
+      instructions: >
+        This is a git submodule reference (mongocli). Changes to this path alter
+        the pinned submodule commit. Flag the change prominently when its intent
+        is unclear. An intentional update should include [submodule-update] in
+        the commit message; otherwise suggest checking the submodule worktree
+        and restoring its expected revision before staging.

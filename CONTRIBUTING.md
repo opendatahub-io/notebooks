@@ -96,6 +96,23 @@ A bot will comment with instructions for re-creating the PR from a same-repo bra
     ```
 - If you like, you can install prek to run automatically using `uvx prek install -f`, as per its [install instructions](https://prek.j178.dev/quickstart)
 
+`uvx prek install -f` installs both the normal pre-commit hook and the
+commit-message hook used to guard submodule references. Contributors who
+already installed the hooks should run the command again after pulling this
+change. The guard checks staged submodule pointers during local commits and
+checks every commit in a pull request in CI. An intentional pointer update
+should include `[submodule-update]` anywhere in its commit message; matching is
+case-insensitive. `ALLOW_SUBMODULE_CHANGE=1` is a local-only escape hatch for a
+single commit and has no effect in CI.
+
+Switching branches can leave a submodule worktree at a revision from the old
+branch. That working-tree state is separate from a staged or committed pointer:
+the guard only blocks the latter. To inspect an accidental staged pointer,
+unstage it with `git restore --staged -- <submodule-path>` and synchronize the
+worktree with `git submodule update --init --recursive`. Review the resulting
+status before staging anything again; avoid resetting or deleting work you have
+not verified.
+
 ### CI configuration for a new notebook
 
 Each notebook image is built as an independent Konflux component with its own Tekton
