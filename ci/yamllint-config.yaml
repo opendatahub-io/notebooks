@@ -2,6 +2,14 @@
 
 extends: default
 
+ignore: |
+  # Synced from konflux-central; never modify in this repo directly.
+  .tekton/
+  # Machine-generated RPM lockfiles (non-configurable indentation).
+  **/rpms.lock.yaml
+  # Python virtualenv (gitignored; absent in CI lint job).
+  .venv/
+
 rules:
   line-length: disable
   new-line-at-end-of-file:
