@@ -12,14 +12,3 @@ allowBuilds:
   cpu-features: false
   protobufjs: false
   ssh2: false
-
-# WARNING: Overrides REPLACE the version range declared by transitive deps (not additive).
-# The upper bound (<8) must be manually derived from consumers' ranges. See docs/cves/nodejs.md.
-# https://pnpm.io/settings#overrides
-# Review periodically: the floor may go stale as new CVEs are disclosed.
-overrides:
-  # CVE-2026-41242 + CVE-2026-44288 through -44294 (fixed in 7.5.6)
-  protobufjs: ">=7.5.6 <8"
-  "@grpc/grpc-js": ">=1.14.4 <2"
-  undici: ">=7.28.0 <8"
-  uuid: ">=11.1.1 <12"
