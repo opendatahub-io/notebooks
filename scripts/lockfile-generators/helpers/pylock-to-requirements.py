@@ -69,6 +69,7 @@ _MAX_EL9_GLIBC = (2, 34)
 
 SDIST_HASHES_EL9_FALLBACK = "el9-fallback"
 SDIST_HASHES_PREFER = "prefer"
+SDIST_HASHES_ALL = "all"
 
 
 def strip_format_json_param(index_url: str) -> str:
@@ -144,7 +145,7 @@ def collect_index_hashes(pkg: dict, *, sdist_hashes: str = SDIST_HASHES_EL9_FALL
         "tornado",
         "traitlets",
     }
-    include_sdist = (
+    include_sdist = sdist_hashes == SDIST_HASHES_ALL or (
         sdist_hashes in (SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER)
         and (not has_el9_wheel or pkg.get("name") in baseline_sdist_packages)
     )
@@ -178,7 +179,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--sdist-hashes",
-        choices=(SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER),
+        choices=(SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER, SDIST_HASHES_ALL),
         default=SDIST_HASHES_EL9_FALLBACK,
         help="When to emit sdist hashes (default: el9-fallback). prefer is an alias.",
     )
