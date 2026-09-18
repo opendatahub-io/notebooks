@@ -156,7 +156,7 @@ COPY ${BASELINE_SOURCE_CODE}/build-requirements.txt ./build-requirements.txt
 # build isolation. Pinned entries resolve cross-package spec conflicts:
 # flit-core<4 (several backends cap it) and maturin<2.
 RUN python3 -m pip install --no-index \
-    --find-links /cachi2/output/deps/pip --no-binary :all: \
+    --find-links /cachi2/output/deps/pip \
     -r ./build-requirements.txt
 
 # Build-time importability for the no-isolation wheel step:
@@ -183,10 +183,10 @@ SIX=$(sed -n 's/^six==\([^ ;]*\).*/\1/p' ./requirements.txt)
 # python-dateutil builds in isolation: its setuptools_scm<8.0 pin is unsatisfiable
 # against the toolchain setuptools-scm
 python3 -m pip install --no-deps --no-index \
-    --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
+    --find-links /cachi2/output/deps/pip --no-build-isolation \
     python-dateutil==${DATEUTIL}
 python3 -m pip install --no-deps --no-index \
-    --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
+    --find-links /cachi2/output/deps/pip --no-build-isolation \
     jupyterlab==${JUPYTERLAB} \
     jupyter-client==${JCLIENT} jupyter-core==${JCORE} \
     traitlets==${TRAITLETS} pyzmq==${PYZMQ} tornado==${TORNADO} \
@@ -194,7 +194,7 @@ python3 -m pip install --no-deps --no-index \
 EOF
 
 
-# [SDIST] Compile every pinned package from its sdist (--no-binary :all:)
+# [SDIST] Compile every pinned package from its prefetched distribution
 # in one pip invocation, against the toolchain installed above.
 # (pip wheel is used so every package is built from its sdist.)
 RUN /bin/bash <<'EOF'
@@ -231,11 +231,11 @@ else
   SOURCE_SPECS="$SOURCE_SPECS $(sed -n 's/^ast-serialize==\([^ ;]*\).*/ast-serialize==\1/p' ./requirements.txt)"
 fi
 python3 -m pip wheel --no-deps --no-index \
-    --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
+    --find-links /cachi2/output/deps/pip --no-build-isolation \
     -w /opt/app-root/src/wheels $SOURCE_SPECS
 while IFS= read -r spec; do
   python3 -m pip wheel --no-deps --no-index \
-      --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
+      --find-links /cachi2/output/deps/pip --no-build-isolation \
       -w /opt/app-root/src/wheels "$spec"
 done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
 # the RHOAI exception above, installed from its prebuilt wheel
