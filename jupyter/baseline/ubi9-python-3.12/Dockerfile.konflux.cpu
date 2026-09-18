@@ -222,7 +222,7 @@ mkdir -p /opt/app-root/src/wheels
 sed '/--hash/d' ./requirements.txt \
     | tr -d '\\' | sed 's/[[:space:]]*$//' \
     | grep '^[A-Za-z0-9_.-]*==' \
-    | sed 's/;.*$//' > /tmp/requirements-sdist.txt
+    > /tmp/requirements-sdist.txt
 # python-dateutil pins setuptools_scm<8.0, which conflicts with the
 # toolchain's newer setuptools-scm; build just that one in isolation
 # ast-serialize needs rustc >= 1.95, unavailable on RHEL 9.8 (RHOAI); carve it
