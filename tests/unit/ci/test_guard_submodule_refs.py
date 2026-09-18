@@ -170,16 +170,35 @@ def test_root_commit_is_included(git_repo: Path) -> None:
 def test_merge_commit_diff_includes_gitlink(git_repo: Path) -> None:
     _git(git_repo, "checkout", "-b", "submodule")
     _stage_gitlink(git_repo, PATH_A, SHA_2)
-    side = _commit(git_repo, "Side pointer")
+    _commit(git_repo, "Side pointer")
     _git(git_repo, "checkout", "main")
+    _stage_gitlink(git_repo, PATH_A, SHA_3)
+    _commit(git_repo, "Base pointer")
     (git_repo / "ordinary.txt").write_text("main")
     _git(git_repo, "add", "ordinary.txt")
     _commit(git_repo, "Main change")
-    _git(git_repo, "merge", "--no-ff", "-m", "Merge branch", "submodule")
+    merge_base = _git(git_repo, "rev-parse", "HEAD").stdout.strip()
+    _git(git_repo, "merge", "--no-commit", "--no-ff", "submodule", check=False)
+    _stage_gitlink(git_repo, PATH_A, SHA_1)
+    _commit(git_repo, "Resolve pointer")
     merge = _git(git_repo, "rev-parse", "HEAD").stdout.strip()
-    assert side in _git(git_repo, "rev-list", "--parents", "-1", merge).stdout
+    assert merge_base in _git(git_repo, "rev-list", "--parents", "-1", merge).stdout
     assert PATH_A in guard._commit_changed_files(merge)
-    assert guard.check_ci(side, [PATH_A]) == 1
+    assert guard.check_ci(merge_base, [PATH_A]) == 1
+
+
+def test_merge_inheriting_base_change_is_not_reported(git_repo: Path) -> None:
+    base_before_bump = _git(git_repo, "rev-parse", "HEAD").stdout.strip()
+    _stage_gitlink(git_repo, PATH_A, SHA_2)
+    base_bump = _commit(git_repo, "Base pointer [submodule-update]")
+
+    _git(git_repo, "checkout", "-b", "pr", base_before_bump)
+    (git_repo / "ordinary.txt").write_text("side")
+    _git(git_repo, "add", "ordinary.txt")
+    _commit(git_repo, "Side change")
+    _git(git_repo, "merge", "--no-ff", "-m", "Merge base", base_bump)
+
+    assert guard.check_ci(base_bump, [PATH_A]) == 0
 
 
 def test_missing_or_empty_gitmodules_is_valid(git_repo: Path) -> None:

@@ -59,8 +59,8 @@ repos:
       # Guard against accidental submodule ref bumps (commit-msg stage)
       - id: guard-submodule-refs
         name: guard-submodule-refs
-        language: script
-        entry: ci/hooks/guard_submodule_refs.py
+        language: python
+        entry: python ci/hooks/guard_submodule_refs.py
         stages: [commit-msg]
         always_run: true
       # https://github.com/microsoft/pyright/issues/3612

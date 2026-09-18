@@ -120,7 +120,7 @@ def _commit_changed_files(sha: str) -> list[str]:
         [
             "git",
             "diff-tree",
-            "-m",
+            "-c",
             "--root",
             "--no-commit-id",
             "-r",
