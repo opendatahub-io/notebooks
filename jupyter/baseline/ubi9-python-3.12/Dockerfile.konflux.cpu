@@ -221,10 +221,6 @@ if [[ "$(uname -m)" != "s390x" && "$(uname -m)" != "ppc64le" ]]; then
     chmod g+w /opt/jupyterlab/etc/jupyter/labconfig
     JUPYTER_ADDONS_INDEX_FILE=/opt/jupyterlab/share/jupyter/lab/static/index.html \
       /opt/app-root/bin/utils/addons/apply.sh
-    # Bridge venvs: let kernel Python see JupyterLab packages (read-only).
-    # User pip installs still target /opt/app-root; conflicting versions win.
-    echo "/opt/jupyterlab/lib/python3.12/site-packages" \
-        > /opt/app-root/lib/python3.12/site-packages/_jupyterlab_venv.pth
     /usr/local/bin/ensure-openshift-site-packages.sh /opt/jupyterlab/lib/python3.12/site-packages
 else
     # ppc64le/s390x: no JupyterLab, no dual venv — install base packages into user venv
