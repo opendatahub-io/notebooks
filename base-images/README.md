@@ -32,9 +32,8 @@ profile, and RHEL 10 will enable PQ by default. ODH workbench/runtime images
 inherit the policy from these bases.
 
 The same policy line is required in any image Dockerfile whose base does not
-already ship PQC: AIPCC bases have carried it since `3.6.0-ea.2`, while the
-RHOAI baseline images set it explicitly on top of
-`registry.redhat.io/rhel9/python-312` (not PQC by default on EL9). The coverage
+already ship PQC (for example AIPCC bases before `3.6.0-ea.2`). ODH baseline
+workbench/runtime images inherit PQC from these bases via `cpu.conf`. Coverage
 is enforced by `test_dockerfiles_pqc_crypto_policy_coverage` in
 [`tests/test_main.py`](../tests/test_main.py).
 

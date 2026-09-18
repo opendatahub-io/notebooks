@@ -163,7 +163,7 @@ class TestBuildMatrixOutput:
         targets_with_platform = [("jupyter-minimal-ubi9-python-3.12", "linux/amd64")]
         output = gm.build_matrix_output(targets_with_platform)
 
-        assert len(output) == 2
+        assert len(output) == 4
 
         matrix_line = output[0]
         assert matrix_line.startswith("matrix=")
@@ -175,6 +175,9 @@ class TestBuildMatrixOutput:
         assert entry["platform"] == "linux/amd64"
         assert entry["subscription"] is False
 
+        rhoai_matrix = json.loads(output[1].removeprefix("matrix_rhoai="))
+        assert rhoai_matrix["include"] == matrix["include"]
+
     def test_rhel_target_sets_subscription_true(self) -> None:
         targets_with_platform = [("runtime-rhel9-python-3.12", "linux/amd64")]
         output = gm.build_matrix_output(targets_with_platform)
@@ -184,16 +187,29 @@ class TestBuildMatrixOutput:
     def test_has_jobs_true_with_targets(self) -> None:
         targets_with_platform = [("target-a", "linux/amd64")]
         output = gm.build_matrix_output(targets_with_platform)
-        has_jobs_line = output[1]
-        assert has_jobs_line == "has_jobs=true"
+        assert output[2] == "has_jobs=true"
+        assert output[3] == "has_rhoai_jobs=true"
 
     def test_has_jobs_false_when_empty(self) -> None:
         output = gm.build_matrix_output([])
-        has_jobs_line = output[1]
-        assert has_jobs_line == "has_jobs=false"
+        assert output[2] == "has_jobs=false"
+        assert output[3] == "has_rhoai_jobs=false"
 
         matrix = json.loads(output[0].removeprefix("matrix="))
         assert matrix["include"] == []
+
+    def test_baseline_targets_excluded_from_rhoai_matrix(self) -> None:
+        targets_with_platform = [
+            ("jupyter-baseline-ubi9-python-3.12", "linux/amd64"),
+            ("jupyter-minimal-ubi9-python-3.12", "linux/amd64"),
+        ]
+        output = gm.build_matrix_output(targets_with_platform)
+        matrix = json.loads(output[0].removeprefix("matrix="))
+        rhoai_matrix = json.loads(output[1].removeprefix("matrix_rhoai="))
+        assert len(matrix["include"]) == 2
+        assert len(rhoai_matrix["include"]) == 1
+        assert rhoai_matrix["include"][0]["target"] == "jupyter-minimal-ubi9-python-3.12"
+        assert output[3] == "has_rhoai_jobs=true"
 
     def test_multiple_targets_and_platforms(self) -> None:
         targets_with_platform = [
@@ -259,7 +275,7 @@ class TestEndToEndMatrixGeneration:
         assert ("runtime-minimal-ubi9-python-3.12", "linux/amd64") in target_platform_pairs
         assert ("runtime-minimal-ubi9-python-3.12", "linux/s390x") in target_platform_pairs
 
-        assert output[1] == "has_jobs=true"
+        assert output[2] == "has_jobs=true"
 
     def test_full_pipeline_with_rhel_exclude(self, tmp_path: Path) -> None:
         makefile_output = "all-images: jupyter-minimal-ubi9-python-3.12 runtime-rhel9-python-3.12\n"

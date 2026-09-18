@@ -17,8 +17,9 @@ uv sync --locked
 make runtime-baseline-ubi9-python-3.12
 ```
 
-For ODH local builds, `build-args/cpu.conf` supplies the baseline ODH settings.
-The downstream RHOAI variant continues to use `build-args/konflux.cpu.conf`.
+Baseline images are **ODH-only**: `build-args/cpu.conf` uses
+`quay.io/opendatahub/odh-base-image-cpu-py312-c9s`, which inherits the
+post-quantum crypto policy from `base-images/`.
 
 ## Python lockfile flow
 

@@ -13,8 +13,7 @@
 # The shared Dockerfile always runs `dnf install ... httpd`. ODH prefetches
 # httpd from CentOS Stream (listed in the Web servers section below); the
 # 2026-09 base refresh removed httpd from odh-base-image-cpu-py312-c9s, so it
-# can no longer come from the base image. RHOAI prefetches RHEL httpd
-# (prefetch-input/rhds) instead.
+# can no longer come from the base image.
 
 contentOrigin:
   repofiles:
