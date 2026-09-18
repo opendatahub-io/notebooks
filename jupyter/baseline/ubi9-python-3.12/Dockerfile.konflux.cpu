@@ -150,30 +150,14 @@ ENV PYZMQ_NO_BUNDLE=1
 COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY ${BASELINE_SOURCE_CODE}/build-requirements.txt ./build-requirements.txt
 
-# uv (the lock's own pinned version), as a wheel from the lock's own index
-# (PyPI for ODH, AIPCC for RHOAI) - compiling it from the rust sdist takes
-# ~17 min. uv drives the bootstrap below: parallel sdist builds and a
-# persistent wheel cache shared by every RUN in this stage.
-RUN /bin/bash <<'EOF'
-set -Eeuo pipefail
-UV_VERSION=$(sed -n 's/^uv==\([^ ;]*\).*/\1/p' ./requirements.txt)
-python3 -m pip install --no-cache-dir --no-index \
-    --find-links /cachi2/output/deps/pip \
-    uv==${UV_VERSION}
-EOF
-
 # [SDIST] Build-system toolchain, compiled once from sdists and reused
 # by every package below via --no-build-isolation (ninja/cmake from dnf).
 # Self-referential backends (hatchling, cffi, ...) bootstrap through
 # build isolation. Pinned entries resolve cross-package spec conflicts:
 # flit-core<4 (several backends cap it) and maturin<2.
-RUN /bin/bash <<'EOF'
-set -Eeuo pipefail
-PYBIN=$(command -v python3)
-uv pip install --system --python $PYBIN --no-index \
+RUN python3 -m pip install --no-cache-dir --no-index \
     --find-links /cachi2/output/deps/pip --no-binary :all: \
     -r ./build-requirements.txt
-EOF
 
 # Build-time importability for the no-isolation wheel step:
 # ipykernel build hook imports its own source, which imports
@@ -212,7 +196,7 @@ EOF
 
 # [SDIST] Compile every pinned package from its sdist (--no-binary :all:)
 # in one pip invocation, against the toolchain installed above.
-# (pip wheel, not uv: uv has no `uv pip wheel`.)
+# (pip wheel is used so every package is built from its sdist.)
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
 export PIP_CACHE_DIR=/tmp/pip-cache
@@ -338,27 +322,15 @@ COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.tx
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
-# Install uv (build tool) before the main package install.
-# UV_VERSION is derived from this image's requirements.cpu.txt by
-# scripts/dockerfile_fragments.py.
-#
 # Runs as USER 1001:0: files under /opt/app-root must stay 1001:0-owned,
 # because ensure-openshift-site-packages.sh (USER 1001:0) cannot chmod
 # root-owned files (EPERM).
 USER 1001:0
 
-### BEGIN UV version
-ARG UV_VERSION=0.12.10
-
-### END UV version
-RUN python3 -m pip install --no-cache-dir --no-index \
-    --find-links /cachi2/output/deps/pip \
-    "uv==${UV_VERSION}"
-
 # [SDIST] Install all Python packages from the wheels compiled in the
 # python-builder stage. The wheel directory is mounted read-only from that
 # stage; the wheels were normalized to 0644 there so USER 1001 can read them
-# directly (uv opens find-links wheels read-only), so no copy is needed and
+# directly, so no copy is needed and
 # the wheels never become image content.
 # Locally built wheels do not match the --hash pins in requirements.txt
 # (those pin the official PyPI artifacts), so install from a hash-free
@@ -371,11 +343,9 @@ umask 0002
 sed '/--hash/d' ./requirements.txt | tr -d '\\' > ./requirements-nohash.txt
 
 echo "Installing software and packages"
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
-    --strict --no-deps --no-config --no-progress \
-    --compile-bytecode --index-strategy=unsafe-best-match \
+python3 -m pip install --no-index --no-deps --no-cache-dir \
     --find-links /wheels \
-    --requirements=./requirements-nohash.txt
+    -r ./requirements-nohash.txt
 
 # JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist; no
 # PyPI wheels for argon2-cffi-bindings and other native deps). Skip Jupyter

@@ -34,7 +34,8 @@ variant continues to use `build-args/konflux.cpu.conf`.
 - `requirements.cpu.txt` is generated from that `pylock.toml` (pip/Cachi2 format; default `el9-fallback` omits sdist hashes when EL9 wheels exist)
 - `make refresh-lock-files` and `create-requirements-lockfile.sh` detect this
   layout automatically
-- Dockerfiles install with `uv pip install --no-index --find-links /cachi2/output/deps/pip`
+- Dockerfiles install with offline `pip` from `/cachi2/output/deps/pip` and the
+  source-built wheel directory.
 
 Regenerate after Python dependency changes:
 
