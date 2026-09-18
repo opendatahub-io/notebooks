@@ -84,10 +84,10 @@ USER 1001
 ####################
 # python-builder   #
 ####################
-# [SDIST] Compile the pinned Python packages from source distributions
-# into /opt/app-root/src/wheels. The jupyter-baseline stage installs those wheels with
-# --no-index, so the shipped Python packages never come from precompiled
-# PyPI wheels.
+# [SDIST] Install the pinned Python packages from prefetched distributions
+# into a standalone runtime prefix. The jupyter-baseline stage copies that
+# prefix into the final image, so the shipped Python packages never come from
+# the network.
 #
 # One documented exception: ast-serialize vendors ruff rust crates that require
 # rustc >= 1.95; RHEL 9.8 EUS (RHOAI) ships rust 1.92, so for that flavor the
@@ -98,6 +98,10 @@ FROM cpu-base AS python-builder
 ARG BASELINE_SOURCE_CODE=jupyter/baseline/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 ARG PRODUCT
+
+# The base image disables uv's cache for ordinary runtime installs. Keep it
+# enabled here so built wheels and build metadata can be reused in this stage.
+ENV UV_NO_CACHE=false
 
 USER 0
 
@@ -155,7 +159,7 @@ COPY ${BASELINE_SOURCE_CODE}/build-requirements.txt ./build-requirements.txt
 # Self-referential backends (hatchling, cffi, ...) bootstrap through
 # build isolation. Pinned entries resolve cross-package spec conflicts:
 # flit-core<4 (several backends cap it) and maturin<2.
-RUN python3 -m pip install --no-index \
+RUN uv pip install --python python3 --no-index \
     --find-links /cachi2/output/deps/pip \
     -r ./build-requirements.txt
 
@@ -180,12 +184,12 @@ TORNADO=$(sed -n 's/^tornado==\([^ ;]*\).*/\1/p' ./requirements.txt)
 PLATFORMDIRS=$(sed -n 's/^platformdirs==\([^ ;]*\).*/\1/p' ./requirements.txt)
 DATEUTIL=$(sed -n 's/^python-dateutil==\([^ ;]*\).*/\1/p' ./requirements.txt)
 SIX=$(sed -n 's/^six==\([^ ;]*\).*/\1/p' ./requirements.txt)
-# python-dateutil builds in isolation: its setuptools_scm<8.0 pin is unsatisfiable
-# against the toolchain setuptools-scm
-python3 -m pip install --no-deps --no-index \
+# python-dateutil's setuptools_scm<8.0 pin conflicts with the newer toolchain
+# setuptools-scm, so it is bootstrapped into the build environment first.
+uv pip install --python python3 --no-deps --no-index \
     --find-links /cachi2/output/deps/pip --no-build-isolation \
     python-dateutil==${DATEUTIL}
-python3 -m pip install --no-deps --no-index \
+uv pip install --python python3 --no-deps --no-index \
     --find-links /cachi2/output/deps/pip --no-build-isolation \
     jupyterlab==${JUPYTERLAB} \
     jupyter-client==${JCLIENT} jupyter-core==${JCORE} \
@@ -194,13 +198,13 @@ python3 -m pip install --no-deps --no-index \
 EOF
 
 
-# [SDIST] Compile every pinned package from its prefetched distribution
-# in one pip invocation, against the toolchain installed above.
-# (pip wheel is used so every package is built from its sdist.)
+# [SDIST] Install every pinned package from its prefetched distribution into
+# a standalone runtime prefix. uv builds source distributions as needed and
+# installs the resulting files directly, avoiding an intermediate wheelhouse.
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
-#export PIP_CACHE_DIR=/tmp/pip-cache
-mkdir -p /opt/app-root/src/wheels
+rm -rf /opt/runtime
+mkdir -p /opt/runtime
 # strip --hash pins, line continuations and environment markers from
 # the pip-compiled lock so every entry is a plain name==version spec
 sed '/--hash/d' ./requirements.txt \
@@ -216,38 +220,15 @@ if [ "$PRODUCT" = "rhoai" ]; then
   grep '^ast-serialize==' /tmp/requirements-sdist.txt > /tmp/requirements-exception.txt
   grep -v '^ast-serialize==' /tmp/requirements-sdist.txt > /tmp/requirements-sdist.txt
 fi
-grep -v '^python-dateutil==' /tmp/requirements-sdist.txt > /tmp/requirements-shared.txt
-python3 -m pip wheel --no-deps --no-index \
+uv pip install --python python3 --target /opt/runtime --no-deps --no-index \
     --find-links /cachi2/output/deps/pip --no-build-isolation \
-    -w /opt/app-root/src/wheels -r /tmp/requirements-shared.txt
-
-# Keep the documented Jupyter source-build set on sdists while allowing the
-# rest of the dependency graph to use its prefetched EL9-compatible wheels.
-SOURCE_SPECS=$(grep -E '^(aiohappyeyeballs|jupyter-client|jupyter-core|jupyterlab|platformdirs|pyzmq|six|tornado|traitlets)==' ./requirements.txt \
-    | sed '/^python-dateutil==/d; s/;.*$//')
-if [ "$PRODUCT" = "rhoai" ]; then
-  SOURCE_SPECS=$(printf '%s\n' "$SOURCE_SPECS" | grep -v '^ast-serialize==' || true)
-else
-  SOURCE_SPECS="$SOURCE_SPECS $(sed -n 's/^ast-serialize==\([^ ;]*\).*/ast-serialize==\1/p' ./requirements.txt)"
-fi
-python3 -m pip wheel --no-deps --no-index \
-    --find-links /cachi2/output/deps/pip --no-build-isolation \
-    -w /opt/app-root/src/wheels $SOURCE_SPECS
-while IFS= read -r spec; do
-  python3 -m pip wheel --no-deps --no-index \
-      --find-links /cachi2/output/deps/pip --no-build-isolation \
-      -w /opt/app-root/src/wheels "$spec"
-done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
+    -r /tmp/requirements-sdist.txt
 # the RHOAI exception above, installed from its prebuilt wheel
 if [ -s /tmp/requirements-exception.txt ]; then
-  python3 -m pip wheel --no-deps --no-index \
+  uv pip install --python python3 --target /opt/runtime --no-deps --no-index \
       --find-links /cachi2/output/deps/pip --no-build-isolation \
-      -w /opt/app-root/src/wheels -r /tmp/requirements-exception.txt
+      -r /tmp/requirements-exception.txt
 fi
-# Build backends create some wheels 0600 and pip moves them to the
-# wheel dir as-is; normalize so the read-only from-mount consumer
-# (USER 1001) can read every wheel.
-chmod 644 /opt/app-root/src/wheels/*.whl
 EOF
 
 ####################
@@ -327,25 +308,19 @@ COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-package
 # root-owned files (EPERM).
 USER 1001:0
 
-# [SDIST] Install all Python packages from the wheels compiled in the
-# python-builder stage. The wheel directory is mounted read-only from that
-# stage; the wheels were normalized to 0644 there so USER 1001 can read them
-# directly, so no copy is needed and
-# the wheels never become image content.
-# Locally built wheels do not match the --hash pins in requirements.txt
-# (those pin the official PyPI artifacts), so install from a hash-free
-# requirements file.
-RUN --mount=from=python-builder,source=/opt/app-root/src/wheels,target=/wheels \
-    /bin/bash <<'EOF'
+# [SDIST] Copy the uv-installed runtime prefix from the python-builder stage.
+# The prefix contains site-packages, console scripts, and package data.
+COPY --from=python-builder --chown=1001:0 /opt/runtime/ /opt/runtime/
+
+ENV PATH=/opt/runtime/bin:${PATH} \
+    PYTHONPATH=/opt/runtime \
+    JUPYTER_PATH=/opt/runtime/share/jupyter
+
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-umask 0002
-
-sed '/--hash/d' ./requirements.txt | tr -d '\\' > ./requirements-nohash.txt
-
-echo "Installing software and packages"
-python3 -m pip install --no-index --no-deps --no-cache-dir \
-    --find-links /wheels \
-    -r ./requirements-nohash.txt
+mkdir -p /opt/app-root/share
+rm -rf /opt/app-root/share/jupyter
+ln -sfn /opt/runtime/share/jupyter /opt/app-root/share/jupyter
 
 # JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist; no
 # PyPI wheels for argon2-cffi-bindings and other native deps). Skip Jupyter
@@ -365,7 +340,7 @@ if [[ "$(uname -m)" != "s390x" && "$(uname -m)" != "ppc64le" ]]; then
 else
     echo "JupyterLab stack is not installed on $(uname -m); skipping Jupyter post-install."
 fi
-/usr/local/bin/ensure-openshift-site-packages.sh
+/usr/local/bin/ensure-openshift-site-packages.sh /opt/runtime
 EOF
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
