@@ -133,6 +133,7 @@ def collect_index_hashes(pkg: dict, *, sdist_hashes: str = SDIST_HASHES_EL9_FALL
     # The baseline image explicitly builds this Jupyter tree from source in
     # its sdist bootstrap step; keep those archives available to Hermeto.
     baseline_sdist_packages = {
+        "aiohappyeyeballs",
         "jupyter-client",
         "jupyter-core",
         "jupyterlab",

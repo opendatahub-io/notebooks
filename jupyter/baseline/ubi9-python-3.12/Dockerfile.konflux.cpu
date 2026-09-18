@@ -199,7 +199,7 @@ SIX=$(sed -n 's/^six==\([^ ;]*\).*/\1/p' ./requirements.txt)
 # python-dateutil builds in isolation: its setuptools_scm<8.0 pin is unsatisfiable
 # against the toolchain setuptools-scm
 python3 -m pip install --no-deps --no-index \
-    --find-links /cachi2/output/deps/pip --no-binary :all: \
+    --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
     python-dateutil==${DATEUTIL}
 python3 -m pip install --no-deps --no-index \
     --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
@@ -234,11 +234,24 @@ if [ "$PRODUCT" = "rhoai" ]; then
 fi
 grep -v '^python-dateutil==' /tmp/requirements-sdist.txt > /tmp/requirements-shared.txt
 python3 -m pip wheel --no-deps --no-index \
-    --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
+    --find-links /cachi2/output/deps/pip --no-build-isolation \
     -w /opt/app-root/src/wheels -r /tmp/requirements-shared.txt
+
+# Keep the documented Jupyter source-build set on sdists while allowing the
+# rest of the dependency graph to use its prefetched EL9-compatible wheels.
+SOURCE_SPECS=$(grep -E '^(aiohappyeyeballs|jupyter-client|jupyter-core|jupyterlab|platformdirs|pyzmq|six|tornado|traitlets)==' ./requirements.txt \
+    | sed '/^python-dateutil==/d; s/;.*$//')
+if [ "$PRODUCT" = "rhoai" ]; then
+  SOURCE_SPECS=$(printf '%s\n' "$SOURCE_SPECS" | grep -v '^ast-serialize==' || true)
+else
+  SOURCE_SPECS="$SOURCE_SPECS $(sed -n 's/^ast-serialize==\([^ ;]*\).*/ast-serialize==\1/p' ./requirements.txt)"
+fi
+python3 -m pip wheel --no-deps --no-index \
+    --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
+    -w /opt/app-root/src/wheels $SOURCE_SPECS
 while IFS= read -r spec; do
   python3 -m pip wheel --no-deps --no-index \
-      --find-links /cachi2/output/deps/pip --no-binary :all: \
+      --find-links /cachi2/output/deps/pip --no-build-isolation --no-binary :all: \
       -w /opt/app-root/src/wheels "$spec"
 done < <(grep '^python-dateutil==' /tmp/requirements-sdist.txt)
 # the RHOAI exception above, installed from its prebuilt wheel
