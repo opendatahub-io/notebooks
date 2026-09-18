@@ -155,7 +155,7 @@ COPY ${BASELINE_SOURCE_CODE}/build-requirements.txt ./build-requirements.txt
 # Self-referential backends (hatchling, cffi, ...) bootstrap through
 # build isolation. Pinned entries resolve cross-package spec conflicts:
 # flit-core<4 (several backends cap it) and maturin<2.
-RUN python3 -m pip install --no-cache-dir --no-index \
+RUN python3 -m pip install --no-index \
     --find-links /cachi2/output/deps/pip --no-binary :all: \
     -r ./build-requirements.txt
 
@@ -199,7 +199,7 @@ EOF
 # (pip wheel is used so every package is built from its sdist.)
 RUN /bin/bash <<'EOF'
 set -Eeuo pipefail
-export PIP_CACHE_DIR=/tmp/pip-cache
+#export PIP_CACHE_DIR=/tmp/pip-cache
 mkdir -p /opt/app-root/src/wheels
 # strip --hash pins, line continuations and environment markers from
 # the pip-compiled lock so every entry is a plain name==version spec
