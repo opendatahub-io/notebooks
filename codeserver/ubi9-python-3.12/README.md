@@ -193,8 +193,9 @@ The CI workflow (`.github/workflows/build-notebooks-TEMPLATE.yaml`) handles
 hermetic builds automatically for codeserver targets:
 
 1. A **"Prefetch hermetic build dependencies"** step runs before the build.
-   It derives the component directory from the make target name, installs
-   `pyyaml` and `uv`, and executes `prefetch-all.sh`.
+   It resolves `COMPONENT_DIR` and `DOCKERFILE` via
+   `get_build_directory` and `get_build_dockerfile`, installs `pyyaml` and
+   `uv`, and executes `prefetch-all.sh`.
 2. The **"Build"** step runs `make codeserver-ubi9-python-3.12` as usual.
    The Makefile auto-detects the `cachi2/output/` directory created in step 1
    and injects the volume mount.
