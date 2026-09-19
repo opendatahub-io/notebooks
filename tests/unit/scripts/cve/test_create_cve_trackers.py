@@ -204,11 +204,8 @@ def _capturing_client(return_key: str = "RHAIENG-9999") -> tuple[JiraClient, dic
     return cast("JiraClient", FakeClient()), captured
 
 
-def test_create_tracker_issue_api_payload(monkeypatch: MonkeyPatch) -> None:
+def test_create_tracker_issue_api_payload() -> None:
     client, captured = _capturing_client(return_key="RHAIENG-9999")
-
-    monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
-    monkeypatch.delenv("JIRA_RUNNER_ACCOUNT_ID", raising=False)
 
     info = cct.CVEInfo(
         cve_id="CVE-2026-8643",
@@ -247,11 +244,8 @@ Fix should be applied to: [https://github.com/red-hat-data-services/notebooks](h
     )
 
 
-def test_create_tracker_issue_no_version_omits_target_version(monkeypatch: MonkeyPatch) -> None:
+def test_create_tracker_issue_no_version_omits_target_version() -> None:
     client, captured = _capturing_client(return_key="RHAIENG-8888")
-
-    monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
-    monkeypatch.delenv("JIRA_RUNNER_ACCOUNT_ID", raising=False)
 
     info = cct.CVEInfo(
         cve_id="CVE-2026-9999",
