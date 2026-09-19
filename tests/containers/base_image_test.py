@@ -117,7 +117,7 @@ class TestBaseImage:
                 assert data["count_scanned"] > 0
                 for dlib, deps in data["unsatisfied"]:
                     # here goes the allowlist
-                    if re.search(r"^/lib64/python3.\d+/site-packages/hawkey/test/_hawkey_test.so", dlib) is not None:
+                    if re.search(r"^/(?:usr/)?lib64/python3.\d+/site-packages/hawkey/test/_hawkey_test.so", dlib) is not None:
                         continue  # this is some kind of self test or what
                     if re.search(r"^/lib64/systemd/libsystemd-core-\d+.so", dlib) is not None:
                         continue  # this is expected and we don't use systemd anyway
