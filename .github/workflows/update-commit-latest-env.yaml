@@ -80,6 +80,7 @@ jobs:
         uses: ./.github/actions/setup-uv
 
       - name: Configure Quay.io pull auth for RHOAI namespace
+        # Keep the credentials at job scope: step-level env is unavailable while this if is evaluated.
         if: env.RHOAI_QUAY_BOT_USERNAME != ''
         run: |
           printf '%s' "${RHOAI_QUAY_BOT_PASSWORD}" | skopeo login --username "${RHOAI_QUAY_BOT_USERNAME}" --password-stdin quay.io
