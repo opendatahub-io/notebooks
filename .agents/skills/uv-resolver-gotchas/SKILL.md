@@ -7,6 +7,9 @@ paths:
   - "**/requirements*.txt"
   - "**/pylocks_generator.py"
   - "**/cve-constraints.txt"
+  - "dependencies/constraints.txt"
+  - "dependencies/overrides.txt"
+  - "tests/test_main.py"
 ---
 
 # uv Resolver and Lock File Gotchas
@@ -46,7 +49,7 @@ Worktree names like `notebooks-fix-manifests` collide. Use underscores
 
 ## Constraint placement
 
-- `dependencies/constraints.txt` -- CVE-driven **minimum** version floors, applied globally
+- `dependencies/constraints.txt` -- **minimum** version floors (CVE-motivated and general), applied globally
 - `dependencies/overrides.txt` -- forced package versions (overrides inter-package dependencies), applied globally
 - `dependencies/odh-notebooks-meta-*-deps/pyproject.toml` -- scoped constraints for a dependency group (preferred for non-CVE caps like `setuptools<81`)
 - `override-dependencies` in image `pyproject.toml` -- last resort for unresolvable transitive conflicts
