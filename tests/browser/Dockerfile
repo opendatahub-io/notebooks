@@ -12,7 +12,7 @@ FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble
 ARG PLAYWRIGHT_VERSION
 LABEL org.opendatahub.playwright.version="${PLAYWRIGHT_VERSION}"
 
-RUN npm install -g pnpm@11.1.2
+RUN npm install -g pnpm@11.9.0
 
 WORKDIR /home/pwuser/tests/browser
 USER pwuser
