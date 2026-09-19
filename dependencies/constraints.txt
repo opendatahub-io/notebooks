@@ -23,3 +23,6 @@ mlflow>=3.10.0
 setuptools>=83.0.0
 
 # --- General floors ---
+
+# RHAIENG-7578: CUDA 12.9 RH index has no PyMongo >=4.18 arm64 wheel yet.
+pymongo<4.18
