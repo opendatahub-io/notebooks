@@ -48,9 +48,13 @@ class TestBaseImage:
 
                 dirs = ["/bin", "/lib", "/lib64", "/opt/app-root"]
                 for path in dirs:
+                    # EL9 uses usr-merge, so /lib and /lib64 may be symlinks.
+                    # Resolve the directory itself, while still avoiding symlinked
+                    # files below it during the scan.
+                    scan_path = os.path.realpath(path)
                     count_scanned = 0
                     unsatisfied_deps: list[tuple[str, str]] = []
-                    for dlib in glob.glob(os.path.join(path, "**"), recursive=True):
+                    for dlib in glob.glob(os.path.join(scan_path, "**"), recursive=True):
                         # we will visit all files eventually, no need to bother with symlinks
                         s = os.stat(dlib, follow_symlinks=False)
                         isdirectory = stat.S_ISDIR(s.st_mode)
