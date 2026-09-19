@@ -49,7 +49,7 @@ COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
-    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+    bash /utils/dnf-helper.sh install perl-interpreter mesa-libGL skopeo compat-openssl11 openshift-clients
 
 
 USER 1001

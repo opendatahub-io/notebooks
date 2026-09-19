@@ -57,7 +57,7 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 # compat-openssl11 provides libcrypto.so.1.1 required by FIPS-compliance scanning.
 # hadolint ignore=DL3041
 RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
-    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+    bash /utils/dnf-helper.sh install perl-interpreter mesa-libGL skopeo compat-openssl11 openshift-clients
 
 # Other apps and tools installed as default user
 USER 1001
