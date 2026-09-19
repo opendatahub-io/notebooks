@@ -57,6 +57,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
       - name: Extract default test image from playwright.config.ts
         id: get-image
         run: |
@@ -123,7 +126,7 @@ jobs:
         run: |
           set -Eeuxo pipefail
           IMAGE="localhost/workbench-images-tests:ci"
-          PLAYWRIGHT_VERSION=$(python3 scripts/get_playwright_version.py tests/browser/package.json5)
+          PLAYWRIGHT_VERSION=$(uv run python scripts/get_playwright_version.py tests/browser/package.json5)
           podman build \
             --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
             -t "${IMAGE}" \
