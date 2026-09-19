@@ -78,7 +78,7 @@ runs:
       shell: bash
       run: |
         set -Eeuxo pipefail
-        PKG_VERSION=$(python3 scripts/get_playwright_version.py "${WORKING_DIRECTORY}/package.json5")
+        PKG_VERSION=$(uv run python scripts/get_playwright_version.py "${WORKING_DIRECTORY}/package.json5")
         IMG_VERSION=$(podman inspect --format '{{ index .Config.Labels "org.opendatahub.playwright.version" }}' "${PLAYWRIGHT_IMAGE}")
         if [[ -z "${IMG_VERSION}" || "${IMG_VERSION}" == "<no value>" ]]; then
           echo "::error::playwright-image is missing label org.opendatahub.playwright.version; rebuild with --build-arg PLAYWRIGHT_VERSION=${PKG_VERSION}"
