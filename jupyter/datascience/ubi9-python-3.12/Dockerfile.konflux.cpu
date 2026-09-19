@@ -55,7 +55,7 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 # hadolint ignore=DL3041
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-BASE_PKGS=(perl mesa-libGL skopeo compat-openssl11 openshift-clients)
+BASE_PKGS=(perl-interpreter mesa-libGL skopeo compat-openssl11 openshift-clients)
 dnf install -y "${BASE_PKGS[@]}"
 dnf clean all
 rm -rf /var/cache/yum
