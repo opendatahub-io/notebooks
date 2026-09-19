@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
-# Import the module under test (avoids `sys.path` mutation at cost of verbosity)
+# Import the module under test
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _UTILS_PATH = _REPO_ROOT / "jupyter/datascience/ubi9-python-3.12/utils"
 _MODULE_PATH = _UTILS_PATH / "configure_kale_from_elyra.py"
@@ -48,264 +50,302 @@ def mock_kale_module(monkeypatch: pytest.MonkeyPatch):
     mock_kale_config = MagicMock()
     mock_kale_config.kfp_server_config = mock_kfp_server_config
 
-    # Install mocks in sys.modules (auto-restored by monkeypatch)
-    monkeypatch.setitem(sys.modules, "kale", MagicMock())
-    monkeypatch.setitem(sys.modules, "kale.config", mock_kale_config)
+    # Install mocks in sys.modules
+    sys.modules["kale"] = MagicMock()
+    sys.modules["kale.config"] = mock_kale_config
 
     # Suppress print output
     monkeypatch.setattr("builtins.print", lambda *args, **kwargs: None)
 
     yield saved
 
+    # Cleanup
+    if "kale" in sys.modules:
+        del sys.modules["kale"]
+    if "kale.config" in sys.modules:
+        del sys.modules["kale.config"]
+
+
+def assert_config_matches(actual: dict | None, expected: dict | None, test_name: str) -> None:
+    """
+    Custom assertion that prints formatted JSON diff on failure.
+
+    Args:
+        actual: The actual Kale config produced
+        expected: The expected Kale config
+        test_name: Name of the test for error messages
+    """
+    if actual != expected:
+        actual_json = json.dumps(actual, indent=2, sort_keys=True) if actual else "None"
+        expected_json = json.dumps(expected, indent=2, sort_keys=True) if expected else "None"
+
+        error_msg = (
+            f"\n{'=' * 80}\n"
+            f"Test: {test_name}\n"
+            f"{'=' * 80}\n\n"
+            f"EXPECTED OUTPUT:\n"
+            f"{expected_json}\n\n"
+            f"ACTUAL OUTPUT:\n"
+            f"{actual_json}\n"
+            f"{'=' * 80}\n"
+        )
+        pytest.fail(error_msg)
+
 
 # =============================================================================
-# Auth Type Tests
+# Auth Type Tests (Parametrized)
 # =============================================================================
 
-
-def test_kubernetes_service_account_token_auth(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    mock_kale_module,
-) -> None:
-    """Test KUBERNETES_SERVICE_ACCOUNT_TOKEN auth type transformation."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
+AUTH_TEST_CASES = [
+    {
+        "test_name": "kubernetes_service_account_token_auth",
+        "description": "KUBERNETES_SERVICE_ACCOUNT_TOKEN auth type transformation",
+        "elyra_input": {
             "api_endpoint": "http://ml-pipeline:8080",
             "user_namespace": "test-namespace",
             "auth_type": "KUBERNETES_SERVICE_ACCOUNT_TOKEN",
         },
-    )
-
-    monkeypatch.setattr("os.path.exists", lambda path: True)
-
-    result = kale_config.configure_kale_from_elyra(str(elyra_config))
-
-    assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["host"] == "http://ml-pipeline:8080"
-    assert mock_kale_module["config"]["namespace"] == "test-namespace"
-    assert mock_kale_module["config"]["auth_type"] == "kubernetes_service_account_token"
-    assert mock_kale_module["config"]["auth_config"]["token_path"] == (
-        "/var/run/secrets/kubernetes.io/serviceaccount/token"
-    )
-    assert mock_kale_module["config"]["ssl_ca_cert"] == (
-        "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    )
-
-
-def test_no_authentication_auth_type(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    mock_kale_module,
-) -> None:
-    """Test NO_AUTHENTICATION auth type transformation."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
+        "expected_output": {
+            "host": "http://ml-pipeline:8080",
+            "namespace": "test-namespace",
+            "auth_type": "kubernetes_service_account_token",
+            "auth_config": {"token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"},
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        },
+        "expected_success": True,
+        "mock_paths_exist": True,
+    },
+    {
+        "test_name": "no_authentication_auth_type",
+        "description": "NO_AUTHENTICATION auth type transformation",
+        "elyra_input": {
             "api_endpoint": "http://ml-pipeline:8080",
             "user_namespace": "test-namespace",
             "auth_type": "NO_AUTHENTICATION",
         },
-    )
-
-    monkeypatch.setattr("os.path.exists", lambda path: True)
-
-    result = kale_config.configure_kale_from_elyra(str(elyra_config))
-
-    assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["host"] == "http://ml-pipeline:8080"
-    assert mock_kale_module["config"]["namespace"] == "test-namespace"
-    assert mock_kale_module["config"]["auth_type"] is None
-    assert mock_kale_module["config"]["auth_config"] == {}
-
-
-def test_existing_bearer_token_with_password(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    mock_kale_module,
-) -> None:
-    """Test EXISTING_BEARER_TOKEN auth type with api_password."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
+        "expected_output": {
+            "host": "http://ml-pipeline:8080",
+            "namespace": "test-namespace",
+            "auth_type": None,
+            "auth_config": {},
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        },
+        "expected_success": True,
+        "mock_paths_exist": True,
+    },
+    {
+        "test_name": "existing_bearer_token_with_password",
+        "description": "EXISTING_BEARER_TOKEN auth type with api_password",
+        "elyra_input": {
             "api_endpoint": "http://ml-pipeline:8080",
             "user_namespace": "test-namespace",
             "auth_type": "EXISTING_BEARER_TOKEN",
             "api_password": "secret-token",
         },
-    )
-
-    monkeypatch.setattr("os.path.exists", lambda path: True)
-
-    result = kale_config.configure_kale_from_elyra(str(elyra_config))
-
-    assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["auth_type"] == "existing_bearer_token"
-    assert mock_kale_module["config"]["auth_config"]["env_var"] == "KF_PIPELINES_TOKEN"
-    # Verify the actual token value is NOT stored in the config
-    config_str = json.dumps(mock_kale_module["config"])
-    assert "secret-token" not in config_str, "Sensitive token should not be stored in config"
-
-
-def test_existing_bearer_token_without_password(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    mock_kale_module,
-) -> None:
-    """Test EXISTING_BEARER_TOKEN auth type without api_password."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
+        "expected_output": {
+            "host": "http://ml-pipeline:8080",
+            "namespace": "test-namespace",
+            "auth_type": "existing_bearer_token",
+            "auth_config": {"env_var": "KF_PIPELINES_TOKEN"},
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        },
+        "expected_success": True,
+        "mock_paths_exist": True,
+        "verify_env_var": ("KF_PIPELINES_TOKEN", "secret-token"),
+        "verify_token_not_in_config": "secret-token",
+    },
+    {
+        "test_name": "existing_bearer_token_without_password",
+        "description": "EXISTING_BEARER_TOKEN auth type without api_password",
+        "elyra_input": {
             "api_endpoint": "http://ml-pipeline:8080",
             "user_namespace": "test-namespace",
             "auth_type": "EXISTING_BEARER_TOKEN",
         },
-    )
+        "expected_output": {
+            "host": "http://ml-pipeline:8080",
+            "namespace": "test-namespace",
+            "auth_type": "existing_bearer_token",
+            "auth_config": {},
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        },
+        "expected_success": True,
+        "mock_paths_exist": True,
+    },
+    {
+        "test_name": "missing_auth_type_defaults_to_kubernetes_sa_token",
+        "description": "Missing auth_type defaults to KUBERNETES_SERVICE_ACCOUNT_TOKEN",
+        "elyra_input": {
+            "api_endpoint": "http://ml-pipeline:8080",
+            "user_namespace": "test-namespace",
+        },
+        "expected_output": {
+            "host": "http://ml-pipeline:8080",
+            "namespace": "test-namespace",
+            "auth_type": "kubernetes_service_account_token",
+            "auth_config": {"token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"},
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        },
+        "expected_success": True,
+        "mock_paths_exist": True,
+    },
+    {
+        "test_name": "unknown_auth_type",
+        "description": "Unknown/unsupported auth type results in no auth_type/auth_config",
+        "elyra_input": {
+            "api_endpoint": "http://ml-pipeline:8080",
+            "user_namespace": "test-namespace",
+            "auth_type": "CUSTOM_UNKNOWN_AUTH",
+        },
+        "expected_output": {
+            "host": "http://ml-pipeline:8080",
+            "namespace": "test-namespace",
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        },
+        "expected_success": True,
+        "mock_paths_exist": True,
+    },
+]
 
-    monkeypatch.setattr("os.path.exists", lambda path: True)
 
-    result = kale_config.configure_kale_from_elyra(str(elyra_config))
-
-    assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["auth_type"] == "existing_bearer_token"
-    assert mock_kale_module["config"]["auth_config"] == {}
-
-
-def test_dex_static_passwords_with_credentials(
+@pytest.mark.parametrize("test_case", AUTH_TEST_CASES, ids=lambda tc: tc["test_name"])
+def test_auth_transformation(
+    test_case: dict[str, Any],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     mock_kale_module,
 ) -> None:
-    """Test DEX_STATIC_PASSWORDS authentication is rejected."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
+    """Parametrized test for authentication type transformations."""
+    # Print test case for visibility
+    print(f"\n{'=' * 80}")
+    print(f"Test: {test_case['test_name']}")
+    print(f"Description: {test_case['description']}")
+    print("\nInput Elyra Config:")
+    print(json.dumps(test_case["elyra_input"], indent=2))
+    print("\nExpected Kale Config:")
+    print(json.dumps(test_case["expected_output"], indent=2))
+    print(f"{'=' * 80}\n")
+
+    # Write Elyra config file
+    elyra_config = write_elyra_config(tmp_path, test_case["elyra_input"])
+
+    # Mock file existence if specified
+    if test_case.get("mock_paths_exist"):
+        monkeypatch.setattr("os.path.exists", lambda path: True)
+
+    # Run the function
+    result = kale_config.configure_kale_from_elyra(str(elyra_config))
+
+    # Verify return value
+    assert result == test_case["expected_success"], f"Expected success={test_case['expected_success']}, got {result}"
+
+    # Verify config output
+    assert_config_matches(
+        mock_kale_module["config"],
+        test_case.get("expected_output"),
+        test_case["test_name"],
+    )
+
+    # Additional verifications
+    if "verify_env_var" in test_case:
+        env_var, expected_value = test_case["verify_env_var"]
+        assert os.environ.get(env_var) == expected_value, (
+            f"Expected env var {env_var}={expected_value}, got {os.environ.get(env_var)}"
+        )
+
+    if "verify_token_not_in_config" in test_case:
+        token = test_case["verify_token_not_in_config"]
+        config_str = json.dumps(mock_kale_module["config"])
+        assert token not in config_str, f"Sensitive token '{token}' should not be stored in config"
+
+
+# =============================================================================
+# DEX Auth Tests (Not Supported)
+# =============================================================================
+
+DEX_TEST_CASES = [
+    {
+        "test_name": "dex_static_passwords_with_credentials",
+        "description": "DEX_STATIC_PASSWORDS auth type is not supported",
+        "elyra_input": {
             "api_endpoint": "http://ml-pipeline:8080",
             "user_namespace": "test-namespace",
             "auth_type": "DEX_STATIC_PASSWORDS",
             "api_username": "admin",
             "api_password": "password123",
         },
-    )
-
-    monkeypatch.setattr("os.path.exists", lambda path: True)
-
-    result = kale_config.configure_kale_from_elyra(str(elyra_config))
-
-    assert result is False
-    assert mock_kale_module["config"] is None
-
-
-@pytest.mark.parametrize("dex_type", ["DEX_LDAP", "DEX_LEGACY"])
-def test_dex_ldap_and_legacy_auth_types(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    mock_kale_module,
-    dex_type: str,
-) -> None:
-    """Test DEX_LDAP and DEX_LEGACY authentication is rejected."""
-    test_dir = tmp_path / dex_type.lower()
-    test_dir.mkdir()
-
-    elyra_config = write_elyra_config(
-        test_dir,
-        {
+        "expected_output": None,
+        "expected_success": False,
+    },
+    {
+        "test_name": "dex_ldap_not_supported",
+        "description": "DEX_LDAP auth type is not supported",
+        "elyra_input": {
             "api_endpoint": "http://ml-pipeline:8080",
             "user_namespace": "test-namespace",
-            "auth_type": dex_type,
+            "auth_type": "DEX_LDAP",
             "api_username": "user",
             "api_password": "pass",
         },
-    )
-
-    monkeypatch.setattr("os.path.exists", lambda path: True)
-
-    result = kale_config.configure_kale_from_elyra(str(elyra_config))
-
-    assert result is False
-    assert mock_kale_module["config"] is None
-
-
-def test_dex_without_credentials(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    mock_kale_module,
-) -> None:
-    """Test DEX authentication without credentials is rejected."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
+        "expected_output": None,
+        "expected_success": False,
+    },
+    {
+        "test_name": "dex_legacy_not_supported",
+        "description": "DEX_LEGACY auth type is not supported",
+        "elyra_input": {
+            "api_endpoint": "http://ml-pipeline:8080",
+            "user_namespace": "test-namespace",
+            "auth_type": "DEX_LEGACY",
+            "api_username": "user",
+            "api_password": "pass",
+        },
+        "expected_output": None,
+        "expected_success": False,
+    },
+    {
+        "test_name": "dex_without_credentials",
+        "description": "DEX auth type without credentials is not supported",
+        "elyra_input": {
             "api_endpoint": "http://ml-pipeline:8080",
             "user_namespace": "test-namespace",
             "auth_type": "DEX_STATIC_PASSWORDS",
         },
-    )
-
-    monkeypatch.setattr("os.path.exists", lambda path: True)
-
-    result = kale_config.configure_kale_from_elyra(str(elyra_config))
-
-    assert result is False
-    assert mock_kale_module["config"] is None
+        "expected_output": None,
+        "expected_success": False,
+    },
+]
 
 
-def test_missing_auth_type_defaults_to_kubernetes_sa_token(
+@pytest.mark.parametrize("test_case", DEX_TEST_CASES, ids=lambda tc: tc["test_name"])
+def test_dex_auth_not_supported(
+    test_case: dict[str, Any],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     mock_kale_module,
 ) -> None:
-    """Test missing auth_type defaults to KUBERNETES_SERVICE_ACCOUNT_TOKEN."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "http://ml-pipeline:8080",
-            "user_namespace": "test-namespace",
-        },
-    )
+    """Parametrized test for DEX authentication (not supported)."""
+    # Print test case for visibility
+    print(f"\n{'=' * 80}")
+    print(f"Test: {test_case['test_name']}")
+    print(f"Description: {test_case['description']}")
+    print("\nInput Elyra Config:")
+    print(json.dumps(test_case["elyra_input"], indent=2))
+    print("\nExpected: Returns False, no config saved")
+    print(f"{'=' * 80}\n")
 
+    # Write Elyra config file
+    elyra_config = write_elyra_config(tmp_path, test_case["elyra_input"])
+
+    # Mock file existence
     monkeypatch.setattr("os.path.exists", lambda path: True)
 
+    # Run the function
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
-    assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["auth_type"] == "kubernetes_service_account_token"
-    assert mock_kale_module["config"]["auth_config"]["token_path"] == (
-        "/var/run/secrets/kubernetes.io/serviceaccount/token"
-    )
-
-
-def test_unknown_auth_type(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    mock_kale_module,
-) -> None:
-    """Test unknown/unsupported auth type results in no auth_type/auth_config."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "http://ml-pipeline:8080",
-            "user_namespace": "test-namespace",
-            "auth_type": "CUSTOM_UNKNOWN_AUTH",
-        },
-    )
-
-    monkeypatch.setattr("os.path.exists", lambda path: True)
-
-    result = kale_config.configure_kale_from_elyra(str(elyra_config))
-
-    assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["host"] == "http://ml-pipeline:8080"
-    assert mock_kale_module["config"]["namespace"] == "test-namespace"
-    # Unknown auth types are not handled, so auth_type and auth_config are not set
-    assert "auth_type" not in mock_kale_module["config"]
-    assert "auth_config" not in mock_kale_module["config"]
+    # DEX auth should fail
+    assert result is False, f"{test_case['test_name']}: DEX auth should not be supported"
+    assert mock_kale_module["config"] is None, "No config should be saved for DEX auth"
 
 
 # =============================================================================
@@ -319,22 +359,25 @@ def test_namespace_mapping(
     mock_kale_module,
 ) -> None:
     """Test user_namespace field mapping to namespace."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "http://ml-pipeline:8080",
-            "user_namespace": "my-custom-namespace",
-            "auth_type": "NO_AUTHENTICATION",
-        },
-    )
+    elyra_input = {
+        "api_endpoint": "http://ml-pipeline:8080",
+        "user_namespace": "my-custom-namespace",
+        "auth_type": "NO_AUTHENTICATION",
+    }
+    expected_output = {
+        "host": "http://ml-pipeline:8080",
+        "namespace": "my-custom-namespace",
+        "auth_type": None,
+        "auth_config": {},
+    }
 
+    elyra_config = write_elyra_config(tmp_path, elyra_input)
     monkeypatch.setattr("os.path.exists", lambda path: False)
 
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["namespace"] == "my-custom-namespace"
+    assert_config_matches(mock_kale_module["config"], expected_output, "namespace_mapping")
 
 
 def test_namespace_optional(
@@ -343,21 +386,23 @@ def test_namespace_optional(
     mock_kale_module,
 ) -> None:
     """Test namespace field is optional."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "http://ml-pipeline:8080",
-            "auth_type": "NO_AUTHENTICATION",
-        },
-    )
+    elyra_input = {
+        "api_endpoint": "http://ml-pipeline:8080",
+        "auth_type": "NO_AUTHENTICATION",
+    }
+    expected_output = {
+        "host": "http://ml-pipeline:8080",
+        "auth_type": None,
+        "auth_config": {},
+    }
 
+    elyra_config = write_elyra_config(tmp_path, elyra_input)
     monkeypatch.setattr("os.path.exists", lambda path: False)
 
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     assert result is True
-    assert mock_kale_module["config"] is not None
-    assert "namespace" not in mock_kale_module["config"]
+    assert_config_matches(mock_kale_module["config"], expected_output, "namespace_optional")
 
 
 def test_ssl_cert_from_environment_variable(
@@ -366,17 +411,20 @@ def test_ssl_cert_from_environment_variable(
     mock_kale_module,
 ) -> None:
     """Test SSL certificate path from KF_PIPELINES_SSL_SA_CERTS env var."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "http://ml-pipeline:8080",
-            "auth_type": "NO_AUTHENTICATION",
-        },
-    )
-
     # Create a mock cert file
     cert_file = tmp_path / "ca.crt"
     cert_file.write_text("FAKE CERT", encoding="utf-8")
+
+    elyra_input = {
+        "api_endpoint": "http://ml-pipeline:8080",
+        "auth_type": "NO_AUTHENTICATION",
+    }
+    expected_output = {
+        "host": "http://ml-pipeline:8080",
+        "auth_type": None,
+        "auth_config": {},
+        "ssl_ca_cert": str(cert_file),
+    }
 
     def mock_exists(path):
         return path == str(cert_file)
@@ -384,11 +432,15 @@ def test_ssl_cert_from_environment_variable(
     monkeypatch.setenv("KF_PIPELINES_SSL_SA_CERTS", str(cert_file))
     monkeypatch.setattr("os.path.exists", mock_exists)
 
+    elyra_config = write_elyra_config(tmp_path, elyra_input)
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["ssl_ca_cert"] == str(cert_file)
+    assert_config_matches(
+        mock_kale_module["config"],
+        expected_output,
+        "ssl_cert_from_environment_variable",
+    )
 
 
 def test_ssl_cert_default_path(
@@ -397,27 +449,27 @@ def test_ssl_cert_default_path(
     mock_kale_module,
 ) -> None:
     """Test SSL certificate uses default path when env var not set."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "http://ml-pipeline:8080",
-            "auth_type": "NO_AUTHENTICATION",
-        },
-    )
+    elyra_input = {
+        "api_endpoint": "http://ml-pipeline:8080",
+        "auth_type": "NO_AUTHENTICATION",
+    }
+    expected_output = {
+        "host": "http://ml-pipeline:8080",
+        "auth_type": None,
+        "auth_config": {},
+        "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+    }
 
     def mock_exists(path):
         return path == "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 
     monkeypatch.setattr("os.path.exists", mock_exists)
 
+    elyra_config = write_elyra_config(tmp_path, elyra_input)
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     assert result is True
-    assert mock_kale_module["config"] is not None
-    assert (
-        mock_kale_module["config"]["ssl_ca_cert"]
-        == "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    )
+    assert_config_matches(mock_kale_module["config"], expected_output, "ssl_cert_default_path")
 
 
 def test_ssl_cert_omitted_when_file_missing(
@@ -426,21 +478,27 @@ def test_ssl_cert_omitted_when_file_missing(
     mock_kale_module,
 ) -> None:
     """Test SSL certificate is omitted when cert file doesn't exist."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "http://ml-pipeline:8080",
-            "auth_type": "NO_AUTHENTICATION",
-        },
-    )
+    elyra_input = {
+        "api_endpoint": "http://ml-pipeline:8080",
+        "auth_type": "NO_AUTHENTICATION",
+    }
+    expected_output = {
+        "host": "http://ml-pipeline:8080",
+        "auth_type": None,
+        "auth_config": {},
+    }
 
     monkeypatch.setattr("os.path.exists", lambda path: False)
 
+    elyra_config = write_elyra_config(tmp_path, elyra_input)
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     assert result is True
-    assert mock_kale_module["config"] is not None
-    assert "ssl_ca_cert" not in mock_kale_module["config"]
+    assert_config_matches(
+        mock_kale_module["config"],
+        expected_output,
+        "ssl_cert_omitted_when_file_missing",
+    )
 
 
 # =============================================================================
@@ -453,14 +511,12 @@ def test_missing_api_endpoint(
     mock_kale_module,
 ) -> None:
     """Test missing api_endpoint (required field) returns False."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "user_namespace": "test-namespace",
-            "auth_type": "NO_AUTHENTICATION",
-        },
-    )
+    elyra_input = {
+        "user_namespace": "test-namespace",
+        "auth_type": "NO_AUTHENTICATION",
+    }
 
+    elyra_config = write_elyra_config(tmp_path, elyra_input)
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     assert result is False
@@ -472,15 +528,13 @@ def test_empty_api_endpoint(
     mock_kale_module,
 ) -> None:
     """Test empty api_endpoint returns False."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "",
-            "user_namespace": "test-namespace",
-            "auth_type": "NO_AUTHENTICATION",
-        },
-    )
+    elyra_input = {
+        "api_endpoint": "",
+        "user_namespace": "test-namespace",
+        "auth_type": "NO_AUTHENTICATION",
+    }
 
+    elyra_config = write_elyra_config(tmp_path, elyra_input)
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     assert result is False
@@ -515,18 +569,23 @@ def test_successful_return_value(
     mock_kale_module,
 ) -> None:
     """Test function returns True on successful config save."""
-    elyra_config = write_elyra_config(
-        tmp_path,
-        {
-            "api_endpoint": "http://ml-pipeline:8080",
-            "user_namespace": "test-namespace",
-            "auth_type": "KUBERNETES_SERVICE_ACCOUNT_TOKEN",
-        },
-    )
+    elyra_input = {
+        "api_endpoint": "http://ml-pipeline:8080",
+        "user_namespace": "test-namespace",
+        "auth_type": "KUBERNETES_SERVICE_ACCOUNT_TOKEN",
+    }
+    expected_output = {
+        "host": "http://ml-pipeline:8080",
+        "namespace": "test-namespace",
+        "auth_type": "kubernetes_service_account_token",
+        "auth_config": {"token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"},
+        "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+    }
 
+    elyra_config = write_elyra_config(tmp_path, elyra_input)
     monkeypatch.setattr("os.path.exists", lambda path: True)
 
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     assert result is True
-    assert mock_kale_module["config"] is not None
+    assert_config_matches(mock_kale_module["config"], expected_output, "successful_return_value")
