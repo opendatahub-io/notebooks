@@ -905,7 +905,7 @@ def _validate_code_server_via_sbom(
     python_version = _extract_python_version(tag.image_ref)
     try:
         sbom_packages = _packages_from_sbom(tag.image_ref, source_hint=source_hint, python_version=python_version)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
         with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fetch"):
             pytest.fail(f"Failed to fetch SBOM for code-server validation of {tag.image_ref}: {exc}")
         return
@@ -931,6 +931,14 @@ def test_old_tag_annotations_match_quay(
 
     for t in all_tags:
         _LOG.info(f"Fetching Quay packages for {t.is_name} tag {t.tag_name}: {t.image_ref}")
+        # Clair cannot resolve code-server (npm package with 0.0.0 dev version),
+        # so validate it separately via SBOM fallback instead of silently dropping it.
+        code_server_software = [sw for sw in t.software if sw["name"] == "code-server"]
+        if code_server_software:
+            _validate_code_server_via_sbom(
+                subtests, t, code_server_software, has_cosign=shutil.which("cosign") is not None
+            )
+
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
@@ -951,15 +959,8 @@ def test_old_tag_annotations_match_quay(
             continue
 
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, t.python_deps, actual_packages)
-        # Clair cannot resolve code-server (npm package with 0.0.0 dev version),
-        # so validate it separately via SBOM fallback instead of silently dropping it.
         clair_software = [sw for sw in t.software if sw["name"] != "code-server"]
-        code_server_software = [sw for sw in t.software if sw["name"] == "code-server"]
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, clair_software, actual_packages, is_software=True)
-        if code_server_software:
-            _validate_code_server_via_sbom(
-                subtests, t, code_server_software, has_cosign=shutil.which("cosign") is not None
-            )
 
     if skipped_scans:
         summary = ", ".join(skipped_scans)
