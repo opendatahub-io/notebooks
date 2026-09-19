@@ -1,0 +1,111 @@
+# Agent notes for `.tekton/`
+
+Pipelines-as-Code (PaC) reads this directory from the PR head on every
+triggering event. Files here are *templates*, and the PipelineRuns they
+become are real K8s objects — most of the failure modes below were found by
+live iteration (see ADR 0018, `docs/architecture/decisions/`).
+
+## K8s naming: RFC 1123 only
+
+Every K8s **object name** must be a lowercase RFC 1123 subdomain:
+
+```text
+[a-z0-9]([-a-z0-9.]*[a-z0-9])?   # lowercase alphanumerics, '-', '.';
+                                  # must start and end alphanumeric
+```
+
+**No underscores, no uppercase.** This applies to:
+
+- PipelineRun `metadata.name` (and its `generateName`) — the API server
+  rejects the whole object otherwise.
+- Pipeline/Task names, task names inside a `pipelineSpec`, step names,
+  param/result names.
+
+Practical consequence: the `x86_64` arch token **cannot** appear in a
+PipelineRun name or a filename that mirrors it — spell it `amd64`
+(the K8s node-label form). Underscores are fine where the value is a plain
+string, not a K8s object name:
+
+| OK with `_` | Not OK with `_` |
+|---|---|
+| `build-platforms` value (`linux/x86_64`) | PipelineRun `metadata.name` |
+| image tag (`on-pr-<sha>-x86_64`) | Pipeline/Task/step/param names |
+| `on-comment` trigger text | — |
+
+## PaC template gotchas
+
+- **`{{…}}` anywhere in the file is PaC template syntax.** Templating is a
+  regex replacement (`{{([^}]{2,})}}` in PaC's `keys.ParamsRe`); unknown
+  keys are left as-is, so a stray `{{…}}` does not break rendering — it
+  silently becomes literal text in the PipelineRun. Don't use `{{…}}` in
+  shell scripts or YAML values.
+- PaC only reads this directory (hardcoded `tektonDir = ".tekton"` in the
+  PaC source); subdirectories work, symlinks don't. Only `.yaml`/`.yml`
+  files are processed.
+- **Validation failures are easy to miss.** If a file fails PaC's schema
+  check, PaC posts a PR comment from the `red-hat-konflux` bot and skips
+  the file — no check run, no PipelineRun. If one of your PipelineRuns
+  is missing from the PR checks, look for that comment first.
+
+## Tekton spec gotchas
+
+- `StepSpec.script` is a **string** (join lines with newlines; a YAML
+  array fails validation).
+- `taskRunSpecs` may only reference tasks that exist in the pipeline —
+  for conditional/arch-specific task graphs, emit them conditionally.
+- **A task that references a `when`-skipped task's result is itself
+  skipped** (Tekton `MissingResultsSkip`) — e.g. a test task using
+  `$(tasks.build-image-index.results.IMAGE_URL)` while the build tasks are
+  `when`-gated. Pass such values via pipeline params (e.g. the
+  deterministic `output-image` tag) instead. A `when`-skipped parent does
+  *not* skip its `runAfter` dependents.
+
+## Cluster access (Konflux tenant)
+
+- **Always pass an explicit `oc --context` and `-n`.** The kubeconfig is
+  shared by multiple tools/sessions and the current context resets between
+  sessions, so a bare `oc get ...` silently targets the wrong cluster or
+  nothing. Context shape:
+  `open-data-hub-tenant/api-stone-prd-rh01-<...>:6443/<user>` (login and
+  setup in `docs/konflux.md`).
+- Tenant RBAC is read-mostly for us: list `pipelinerun`/`taskrun`, but no
+  creating PipelineRuns directly, no `get` on serviceaccounts/SCCs/events,
+  no server-side dry-run. Verify your PipelineRuns via `oc get pipelinerun`
+  or the PR checks.
+- Completed PipelineRuns (and their TaskRuns) are garbage-collected quickly —
+  read `oc get pipelinerun ... -o json` (status.pipelineTaskRuns) while the
+  run is still around. For archived runs, fetch logs via **kubearchive**
+  (see the internal guide linked from `docs/konflux.md`):
+
+  ```bash
+  export KA_HOST="https://kubearchive-api-server-product-kubearchive.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com"
+  export TOKEN=$(oc --context <tenant-context> whoami -t)
+  # 1. find the taskrun (PLR status.childReferences), 2. get its .status.podName,
+  # 3. fetch the step log:
+  curl -s -H "Authorization: Bearer $TOKEN" \
+    "$KA_HOST/api/v1/namespaces/open-data-hub-tenant/pods/<pod-name>/log?container=step-<step>"
+  ```
+- **The tenant SCCs block every in-pod container runtime** (verified live:
+  `privileged: true` rejected by every usable SCC; rootless voided by
+  `NoNewPrivs: 1` — the setuid/filecap prerequisite on `newuidmap` can't
+  take effect; per-step `capabilities.add: [SYS_ADMIN]` rejected with
+  "capability may not be added" even though the same mechanism admits
+  `SETFCAP` for the build task). Never add
+  `securityContext.privileged: true`. The test stage must run out-of-pod —
+  options map (mapt kind-on-AWS is the platform-endorsed path) in the ADR
+  (`docs/architecture/decisions/0018-*.md`, Investigation section).
+- The tenant has a **memory-request ResourceQuota** (`konflux`, 1Ti); under
+  fleet load pods can fail at 0s with `ExceededResourceQuota`. It is
+  transient — re-triggering usually recovers it.
+
+## Generated files
+
+`.tekton/konflux/*.yaml` is generated by `ci/konflux/generate_pipelineruns.py`
+— do not edit by hand; edit the generator and regenerate. See
+`ci/konflux/README.md`.
+
+After regenerating, the generator's embedded unit tests assert the scripts
+are self-sufficient (every `$VAR` is env'd or assigned), and all step
+scripts must pass `shellcheck -s bash` (run over the extracted `taskSpec`
+step scripts) — that plus `uv run pytest ci/konflux/` is the local bar
+before pushing.
