@@ -478,7 +478,7 @@ jobs:
         run: |
           set -Eeuxo pipefail
           IMAGE="localhost/workbench-images-tests:ci"
-          PLAYWRIGHT_VERSION=$(python3 scripts/get_playwright_version.py tests/browser/package.json5)
+          PLAYWRIGHT_VERSION=$(uv run python scripts/get_playwright_version.py tests/browser/package.json5)
           podman build \
             --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
             -t "${IMAGE}" \
