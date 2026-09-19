@@ -741,46 +741,46 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                     odh-workbench-jupyter-minimal-cuda-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                             expected_name="rhoai/odh-workbench-jupyter-minimal-cuda-py312-rhel9"
-                            expected_img_size=3423
+                            expected_img_size=3612
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9"
-                            expected_img_size=6757
+                            expected_img_size=6235
                         fi
                         ;;
                     odh-workbench-jupyter-minimal-rocm-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                             expected_name="rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9"
-                            expected_img_size=5001
+                            expected_img_size=8809
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9"
-                            expected_img_size=5295
+                            expected_img_size=9046
                         fi
                         ;;
                     odh-workbench-jupyter-datascience-cpu-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                             expected_name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9"
-                            expected_img_size=1838
+                            expected_img_size=1617
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9"
-                            expected_img_size=1592
+                            expected_img_size=1698
                         fi
                         ;;
                     odh-workbench-jupyter-pytorch-cuda-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                             expected_name="rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9"
-                            expected_img_size=7450
+                            expected_img_size=6115
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-pytorch-cuda-py312-ubi9"
-                            expected_img_size=11590
+                            expected_img_size=8741
                         fi
                         ;;
                     odh-workbench-jupyter-pytorch-rocm-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                             expected_name="rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9"
-                            expected_img_size=6689
+                            expected_img_size=10330
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-pytorch-rocm-py312-ubi9"
-                            expected_img_size=6519
+                            expected_img_size=10568
                         fi
                         ;;
                     odh-workbench-jupyter-tensorflow-cuda-py312-ubi9)
@@ -789,22 +789,22 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                             expected_img_size=6267
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-tensorflow-cuda-py312-ubi9"
-                            expected_img_size=10581
+                            expected_img_size=9654
                         fi
                         ;;
                     odh-workbench-jupyter-tensorflow-rocm-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                             expected_name="rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9"
-                            expected_img_size=6235
+                            expected_img_size=9906
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9"
-                            expected_img_size=6367
+                            expected_img_size=10144
                         fi
                         ;;
                     odh-workbench-jupyter-trustyai-cpu-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                             expected_name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9"
-                            expected_img_size=2467
+                            expected_img_size=2223
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9"
                             expected_img_size=2312
@@ -816,7 +816,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                             expected_img_size=1330
                         else
                             expected_name="opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9"
-                            expected_img_size=1366
+                            expected_img_size=1512
                         fi
                         ;;
                     odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9)
@@ -825,7 +825,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                             expected_img_size=6165
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9"
-                            expected_img_size=11565
+                            expected_img_size=8813
                         fi
                         ;;
                     *)
@@ -1146,13 +1146,6 @@ process_file() {
         if check_image "${IMAGE_VARIABLE}" "${IMAGE_URL}"; then
             :
         else
-            local check_image_ret_code=$?
-            if test "${check_image_ret_code}" -eq 2; then
-                echo "WARNING: Image '${IMAGE_VARIABLE}' size increased"
-                echo "------------------------"
-                continue
-            fi
-
             echo "ERROR: Image definition for '${IMAGE_VARIABLE}' isn't okay!"
             echo "------------------------"
             local_ret_code=1
