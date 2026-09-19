@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import sys
@@ -14,10 +15,12 @@ import pytest
 # Import the module under test
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _UTILS_PATH = _REPO_ROOT / "jupyter/datascience/ubi9-python-3.12/utils"
-if str(_UTILS_PATH) not in sys.path:
-    sys.path.insert(0, str(_UTILS_PATH))
-
-import configure_kale_from_elyra as kale_config  # ruff: ignore[module-import-not-at-top-of-file]  # pyright: ignore[reportMissingImports]
+_MODULE_PATH = _UTILS_PATH / "configure_kale_from_elyra.py"
+_SPEC = importlib.util.spec_from_file_location("configure_kale_from_elyra", _MODULE_PATH)
+assert _SPEC is not None
+assert _SPEC.loader is not None
+kale_config = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(kale_config)
 
 
 def write_elyra_config(tmp_path: Path, metadata: dict) -> Path:
