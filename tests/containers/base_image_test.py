@@ -114,7 +114,8 @@ class TestBaseImage:
                 if not line.startswith("OUTPUT> "):
                     continue
                 data = json.loads(line[len("OUTPUT> ") :])
-                assert data["count_scanned"] > 0
+                # 64-bit systems have libraries in /lib64, so /lib may be empty.
+                assert data["count_scanned"] > 0 or data["dir"] == "/lib"
                 for dlib, deps in data["unsatisfied"]:
                     # here goes the allowlist
                     if re.search(r"^/(?:usr/)?lib64/python3.\d+/site-packages/hawkey/test/_hawkey_test.so", dlib) is not None:
