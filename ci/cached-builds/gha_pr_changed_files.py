@@ -240,6 +240,9 @@ class TestSelf(unittest.TestCase):
         directory = get_build_directory("rocm-jupyter-pytorch-ubi9-python-3.12")
         assert directory == "jupyter/rocm/pytorch/ubi9-python-3.12"
 
+        directory = get_build_directory("codeserver-baseline-ubi9-python-3.12")
+        assert directory == "codeserver-baseline/ubi9-python-3.12"
+
     def test_get_build_dockerfile(self):
         dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.12")
         assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm"
