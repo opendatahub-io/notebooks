@@ -48,9 +48,13 @@ class TestBaseImage:
 
                 dirs = ["/bin", "/lib", "/lib64", "/opt/app-root"]
                 for path in dirs:
+                    # EL9 uses usr-merge, so /lib and /lib64 may be symlinks.
+                    # Resolve the directory itself, while still avoiding symlinked
+                    # files below it during the scan.
+                    scan_path = os.path.realpath(path)
                     count_scanned = 0
                     unsatisfied_deps: list[tuple[str, str]] = []
-                    for dlib in glob.glob(os.path.join(path, "**"), recursive=True):
+                    for dlib in glob.glob(os.path.join(scan_path, "**"), recursive=True):
                         # we will visit all files eventually, no need to bother with symlinks
                         s = os.stat(dlib, follow_symlinks=False)
                         isdirectory = stat.S_ISDIR(s.st_mode)
@@ -113,7 +117,7 @@ class TestBaseImage:
                 assert data["count_scanned"] > 0
                 for dlib, deps in data["unsatisfied"]:
                     # here goes the allowlist
-                    if re.search(r"^/lib64/python3.\d+/site-packages/hawkey/test/_hawkey_test.so", dlib) is not None:
+                    if re.search(r"^/(?:usr/)?lib64/python3.\d+/site-packages/hawkey/test/_hawkey_test.so", dlib) is not None:
                         continue  # this is some kind of self test or what
                     if re.search(r"^/lib64/systemd/libsystemd-core-\d+.so", dlib) is not None:
                         continue  # this is expected and we don't use systemd anyway
