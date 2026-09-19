@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 
 import pytest
@@ -73,6 +74,52 @@ def test_validate_scenario_titles_empty_without_prefix_rule_fails() -> None:
     errors = dry_run.validate_scenario_titles(scenario, [], records=records)
     assert len(errors) == 1, f"Expected exactly one validation error, got: {errors}"
     assert "missing the PR-title prefix packageRule" in errors[0], f"Unexpected error: {errors[0]}"
+
+
+def _combined_config_record(rule: dict) -> str:
+    return json.dumps({"msg": "Combined config", "config": {"packageRules": [rule]}})
+
+
+def _separate_minor_patch_rule(**overrides: object) -> dict:
+    rule = {
+        "description": dry_run.SEPARATE_MINOR_PATCH_RULE_DESCRIPTION,
+        "matchManagers": ["custom.regex"],
+        "matchPackageNames": dry_run.SEPARATE_MINOR_PATCH_MATCH_PACKAGE_NAMES,
+        "separateMinorPatch": True,
+    }
+    rule.update(overrides)
+    return rule
+
+
+def test_validate_separate_minor_patch_rule_passes() -> None:
+    records = dry_run.parse_json_log_lines(_combined_config_record(_separate_minor_patch_rule()))
+    errors = dry_run.validate_separate_minor_patch_rule(records)
+    assert errors == [], f"Expected valid separateMinorPatch rule to pass, got: {errors}"
+
+
+def test_validate_separate_minor_patch_rule_missing() -> None:
+    records = dry_run.parse_json_log_lines('{"msg":"Combined config","config":{"packageRules":[]}}')
+    errors = dry_run.validate_separate_minor_patch_rule(records)
+    assert len(errors) == 1, f"Expected exactly one validation error, got: {errors}"
+    assert "missing the separateMinorPatch packageRule" in errors[0], f"Unexpected error: {errors[0]}"
+
+
+def test_validate_separate_minor_patch_rule_disabled() -> None:
+    records = dry_run.parse_json_log_lines(
+        _combined_config_record(_separate_minor_patch_rule(separateMinorPatch=False))
+    )
+    errors = dry_run.validate_separate_minor_patch_rule(records)
+    assert len(errors) == 1, f"Expected exactly one validation error, got: {errors}"
+    assert "must set separateMinorPatch: true" in errors[0], f"Unexpected error: {errors[0]}"
+
+
+def test_validate_separate_minor_patch_rule_missing_package_names() -> None:
+    rule = _separate_minor_patch_rule()
+    del rule["matchPackageNames"]
+    records = dry_run.parse_json_log_lines(_combined_config_record(rule))
+    errors = dry_run.validate_separate_minor_patch_rule(records)
+    assert len(errors) == 1, f"Expected exactly one validation error, got: {errors}"
+    assert "matchPackageNames must be" in errors[0], f"Unexpected error: {errors[0]}"
 
 
 def test_fatal_config_warnings_ignores_known_cosmetic() -> None:
