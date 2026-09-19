@@ -39,8 +39,11 @@ export KF_PIPELINES_SSL_SA_CERTS="${KF_PIPELINES_SSL_SA_CERTS:-/var/run/secrets/
 # Disable security context enforcement (leave RUN_AS_USER and RUN_AS_GROUP undefined)
 export KALE_SECURITY_CONTEXT_ENABLED=false
 
-# Set default image
-export KALE_DEFAULT_BASE_IMAGE=ubi9/python-312
+# Set default image — fully-qualified so disconnected clusters resolve it via
+# ImageContentSourcePolicy / ImageDigestMirrorSet instead of falling back to
+# registry.access.redhat.com (which is blocked in air-gapped environments).
+# Operators or users can override by pre-setting KALE_DEFAULT_BASE_IMAGE on the pod.
+export KALE_DEFAULT_BASE_IMAGE=${KALE_DEFAULT_BASE_IMAGE:-registry.redhat.io/ubi9/python-312}
 
 # Set the default pipeline output directory to _kale/ (instead of the default .kale/)
 # Written as a JupyterLab user-settings file so the extension picks it up on startup.
