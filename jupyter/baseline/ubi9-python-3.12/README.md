@@ -7,6 +7,8 @@ Hermetic baseline Jupyter workbench image with Python 3.12 on UBI 9.
 - RPMs and Python packages are installed from Cachi2 prefetch inputs.
 - Installs Python packages from `requirements.${PYLOCK_FLAVOR}.txt` with
   `--no-index --find-links /cachi2/output/deps/pip`.
+- Prefetches the separate `build-requirements.txt` toolchain used to compile
+  sdists, so the image build does not contact PyPI.
 - Keeps JupyterLab feature set (Elyra, Kale, PDF export) with a lean Python footprint.
 - **Multi-arch**: Konflux builds all four Linux arches; JupyterLab/Elyra/Kale Python deps
   install on **x86_64 + aarch64 only** (PyPI wheel gap on ppc64le/s390x), using explicit
@@ -32,7 +34,8 @@ inherits the post-quantum crypto policy from `base-images/`.
 - `requirements.cpu.txt` is generated from that `pylock.toml` (pip/Cachi2 format; default `el9-fallback` omits sdist hashes when EL9 wheels exist)
 - `make refresh-lock-files` and `create-requirements-lockfile.sh` detect this
   layout automatically
-- Dockerfiles install with `uv pip install --no-index --find-links /cachi2/output/deps/pip`
+- Dockerfiles install with offline `pip` from `/cachi2/output/deps/pip` and the
+  source-built wheel directory.
 
 Regenerate after Python dependency changes:
 

@@ -69,6 +69,7 @@ _MAX_EL9_GLIBC = (2, 34)
 
 SDIST_HASHES_EL9_FALLBACK = "el9-fallback"
 SDIST_HASHES_PREFER = "prefer"
+SDIST_HASHES_ALL = "all"
 
 
 def strip_format_json_param(index_url: str) -> str:
@@ -126,7 +127,28 @@ def collect_index_hashes(pkg: dict, *, sdist_hashes: str = SDIST_HASHES_EL9_FALL
         if wheel_is_el9_compatible(whl.get("url", "")):
             has_el9_wheel = True
 
-    include_sdist = sdist_hashes in (SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER) and not has_el9_wheel
+    # The baseline Konflux image deliberately compiles python-dateutil from
+    # source. Keep its sdist hash in the generated requirements even though a
+    # compatible pure-Python wheel exists; otherwise Hermeto cannot prefetch
+    # the artifact required by Dockerfile.konflux.cpu's --no-binary build.
+    # The baseline image explicitly builds this Jupyter tree from source in
+    # its sdist bootstrap step; keep those archives available to Hermeto.
+    baseline_sdist_packages = {
+        "aiohappyeyeballs",
+        "jupyter-client",
+        "jupyter-core",
+        "jupyterlab",
+        "platformdirs",
+        "pyzmq",
+        "python-dateutil",
+        "six",
+        "tornado",
+        "traitlets",
+    }
+    include_sdist = sdist_hashes == SDIST_HASHES_ALL or (
+        sdist_hashes in (SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER)
+        and (not has_el9_wheel or pkg.get("name") in baseline_sdist_packages)
+    )
     if include_sdist:
         sdist = pkg.get("sdist")
         if isinstance(sdist, dict):
@@ -157,7 +179,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--sdist-hashes",
-        choices=(SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER),
+        choices=(SDIST_HASHES_EL9_FALLBACK, SDIST_HASHES_PREFER, SDIST_HASHES_ALL),
         default=SDIST_HASHES_EL9_FALLBACK,
         help="When to emit sdist hashes (default: el9-fallback). prefer is an alias.",
     )
