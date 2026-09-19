@@ -1173,10 +1173,10 @@ def test_imagestream_imported_from_provenance(subtests: pytest.Subtests, base_di
 
                 imported_basename = imported_from.split("/")[-1]
                 from_name = tag["from"]["name"]
-                clean_from_name = from_name.removesuffix("_PLACEHOLDER")
                 normalized_imported_basename = imported_basename.replace("-rhel9", "-ubi9")
+                m_from = _PLACEHOLDER_RE.match(from_name)
 
-                assert clean_from_name.startswith(normalized_imported_basename), (
+                assert m_from and m_from.group(1) == normalized_imported_basename, (
                     f"{is_file.name} tag {tag_name}: openshift.io/imported-from basename {imported_basename!r} "
                     f"(normalized: {normalized_imported_basename!r}) does not match from.name {from_name!r}"
                 )
