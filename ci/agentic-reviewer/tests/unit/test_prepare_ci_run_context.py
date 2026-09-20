@@ -27,6 +27,12 @@ def test_strip_gh_log_prefix_strips_osc_sequences() -> None:
     assert prepare.strip_gh_log_prefix(line) == "LOG MESSAGELINK"
 
 
+def test_strip_gh_log_prefix_strips_unterminated_osc_sequence() -> None:
+    line = "job\tUNKNOWN STEP\t2026-06-05T17:33:52.4163444Z before\x1b]0;Title"
+
+    assert prepare.strip_gh_log_prefix(line) == "before"
+
+
 def test_failed_step_name_prefers_failed_step() -> None:
     job = {
         "steps": [

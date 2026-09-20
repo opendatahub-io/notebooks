@@ -10,8 +10,8 @@ from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 
-from odh_ci_agent.ansi import ANSI_ESCAPE_RE
 from odh_ci_agent.agent_context import filter_changed_files
+from odh_ci_agent.ansi import ANSI_ESCAPE_RE
 from odh_ci_agent.ci_summary import (
     build_clusters,
     int_value,
