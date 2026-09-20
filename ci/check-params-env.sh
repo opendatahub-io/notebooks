@@ -1143,9 +1143,19 @@ process_file() {
             continue
         fi
 
-        if check_image "${IMAGE_VARIABLE}" "${IMAGE_URL}"; then
-            :
+        local check_image_output
+        if check_image_output="$(check_image "${IMAGE_VARIABLE}" "${IMAGE_URL}")"; then
+            echo "${check_image_output}"
         else
+            local check_image_ret_code=$?
+            echo "${check_image_output}"
+            if test "${check_image_ret_code}" -eq 2; then
+                echo "ERROR: Image '${IMAGE_VARIABLE}' size changed beyond threshold; see the size details above"
+                echo "------------------------"
+                local_ret_code=1
+                continue
+            fi
+
             echo "ERROR: Image definition for '${IMAGE_VARIABLE}' isn't okay!"
             echo "------------------------"
             local_ret_code=1
