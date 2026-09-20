@@ -864,6 +864,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         return 1
     fi
 
+    # Keep the size details available to the caller so a failure reported there
+    # remains actionable even when the detailed check output is easy to miss.
+    IMAGE_EXPECTED_SIZE="${expected_img_size}"
+    IMAGE_ACTUAL_SIZE="${actual_img_size}"
+
     # 1. Percentual size change
     percent_change=$((100 * actual_img_size / expected_img_size - 100))
     abs_percent_change=${percent_change#-}
@@ -1148,7 +1153,7 @@ process_file() {
         else
             local check_image_ret_code=$?
             if test "${check_image_ret_code}" -eq 2; then
-                echo "ERROR: Image '${IMAGE_VARIABLE}' size changed beyond threshold"
+                echo "ERROR: Image '${IMAGE_VARIABLE}' size changed beyond threshold (expected: ${IMAGE_EXPECTED_SIZE} MB; actual: ${IMAGE_ACTUAL_SIZE} MB; percentual threshold: ${SIZE_PERCENTUAL_TRESHOLD}%; absolute threshold: ${SIZE_ABSOLUTE_TRESHOLD} MB)"
                 echo "------------------------"
                 local_ret_code=1
                 continue
