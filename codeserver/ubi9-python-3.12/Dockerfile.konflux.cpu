@@ -60,11 +60,14 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 RUN dnf module enable nodejs:22 -y
 
 # libxkbfile-devel = util-macros + libxkbfile (Previously built from source)
-RUN dnf install -y \
-        nodejs nodejs-devel npm \
-        jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
-        krb5-devel libX11-devel libxkbfile-devel && \
-    dnf clean all
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y \
+    nodejs nodejs-devel npm \
+    jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
+    krb5-devel libX11-devel libxkbfile-devel
+dnf clean all
+EOF
 
 # [HERMETIC] Git metadata needed by code-server's build scripts (version detection, submodules).
 COPY .git /root/.git
@@ -101,36 +104,51 @@ RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 #   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
 # so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
-RUN cd ${CODESERVER_SOURCE_CODE} && \
-    source ./patches/setup-offline-binaries.sh && \
-    cd ${CODESERVER_SOURCE_PREFETCH} && \
-    CI=1 npm ci --offline && \
-    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}"
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+cd ${CODESERVER_SOURCE_CODE}
+source ./patches/setup-offline-binaries.sh
+cd ${CODESERVER_SOURCE_PREFETCH}
+CI=1 npm ci --offline
+"${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}"
+EOF
 
 # [HERMETIC] Step 2: Build code-server TypeScript
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run build
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+source ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh
+cd ${CODESERVER_SOURCE_PREFETCH}
+npm run build
+EOF
 
 # [HERMETIC] Step 3: Build VS Code (the embedded editor)
 # Raise soft nofile before esbuild transpile (~6k sources); build-vscode.sh also caps concurrency.
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    (ulimit -n 65536 2>/dev/null || ulimit -n 16384 2>/dev/null || true) && \
-    VERSION=${CODESERVER_VERSION/v/} npm run build:vscode && \
-    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}"
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+source ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh
+cd ${CODESERVER_SOURCE_PREFETCH}
+(ulimit -n 65536 2>/dev/null || ulimit -n 16384 2>/dev/null || true)
+VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
+"${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}"
+EOF
 
 # [HERMETIC] Step 4: Create release bundle.
 # Upstream 4.122+ dropped release:standalone; KEEP_MODULES=1 npm run release now produces
 # the platform tree (modules + bundled node + bin/code-server) under ./release.
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release && \
-    "${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}/release" && \
-    if [ "${STRIP_COPILOT_PROPRIETARY}" = "true" ]; then \
-      chmod +x ${CODESERVER_SOURCE_CODE}/patches/strip-copilot-proprietary.sh && \
-      ${CODESERVER_SOURCE_CODE}/patches/strip-copilot-proprietary.sh ${CODESERVER_SOURCE_PREFETCH}/release; \
-    else \
-      echo "STRIP_COPILOT_PROPRIETARY=${STRIP_COPILOT_PROPRIETARY}: keeping proprietary Copilot artifacts in release tree"; \
-    fi
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+source ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh
+export KEEP_MODULES=1
+cd ${CODESERVER_SOURCE_PREFETCH}
+npm run release
+"${CODESERVER_SOURCE_CODE}/patches/replace-aipcc-ripgrep.sh" "${CODESERVER_SOURCE_PREFETCH}/release"
+if [ "${STRIP_COPILOT_PROPRIETARY}" = "true" ]; then
+    chmod +x ${CODESERVER_SOURCE_CODE}/patches/strip-copilot-proprietary.sh
+    ${CODESERVER_SOURCE_CODE}/patches/strip-copilot-proprietary.sh ${CODESERVER_SOURCE_PREFETCH}/release
+else
+    echo "STRIP_COPILOT_PROPRIETARY=${STRIP_COPILOT_PROPRIETARY}: keeping proprietary Copilot artifacts in release tree"
+fi
+EOF
 
 # Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
 RUN echo "done" > /tmp/control
@@ -240,8 +258,12 @@ COPY --from=rpm-base /tmp/control /dev/null
 COPY --from=rpm-base /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release/. /usr/lib/code-server/
 # RHOAIENG-88676 / RHAIENG-6849: drop static apply-seccomp (FIPS ErrNotDynLinked).
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/patches/strip-apply-seccomp.sh /tmp/strip-apply-seccomp.sh
-RUN bash /tmp/strip-apply-seccomp.sh /usr/lib/code-server && \
-    rm -f /tmp/strip-apply-seccomp.sh
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+bash /tmp/strip-apply-seccomp.sh /usr/lib/code-server
+rm -f /tmp/strip-apply-seccomp.sh
+EOF
+
 # Wrapper script (from code-server ci/build) that execs /usr/lib/code-server/bin/code-server
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ci/build/code-server-nfpm.sh /usr/bin/code-server
 RUN chmod 755 /usr/bin/code-server
