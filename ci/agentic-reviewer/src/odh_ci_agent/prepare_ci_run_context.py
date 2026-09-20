@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 
 from odh_ci_agent.agent_context import filter_changed_files
+from odh_ci_agent.ansi import ANSI_ESCAPE_RE
 from odh_ci_agent.ci_summary import (
     build_clusters,
     int_value,
@@ -39,7 +40,6 @@ MAX_PATCH_LINES = 40
 
 GITHUB_ERROR_RE = re.compile(r"##\[error\]")
 LOG_TIMESTAMP_RE = re.compile(r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s?(?P<message>.*)$")
-ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def output_path(env_name: str, default_name: str) -> str:
