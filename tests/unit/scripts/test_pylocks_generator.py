@@ -380,6 +380,36 @@ def test_run_lock_logs_index_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert any("Lock INDEX_URL: https://example.invalid/simple/?format=json" in line for line in log._lines)
 
 
+def test_run_public_index_lock_handles_timeout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    pyproject_path = project_dir / "pyproject.toml"
+    original_pyproject = '[project]\nname = "test"\nversion = "0.1.0"\n'
+    pyproject_path.write_text(original_pyproject, encoding="utf-8")
+    (project_dir / "pylock.toml").write_text("partial pylock\n", encoding="utf-8")
+    (project_dir / "uv.lock").write_text("partial uv lock\n", encoding="utf-8")
+
+    def fake_run(cmd, **kwargs):
+        raise pg.subprocess.TimeoutExpired(cmd=cmd, timeout=600)
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    success = pg.run_public_index_lock(
+        project_dir,
+        ["--default-index=https://example.invalid/simple/?format=json"],
+        "3.12",
+        False,
+        False,
+        "2026-01-01T00:00:00Z",
+        pg.LogBuffer(),
+    )
+
+    assert success is False
+    assert pyproject_path.read_text(encoding="utf-8") == original_pyproject
+    assert not (project_dir / "pylock.toml").exists()
+    assert not (project_dir / "uv.lock").exists()
+
+
 class TestIsTransientLockError:
     """`_is_transient_lock_error()` - transient-vs-deterministic classification."""
 
