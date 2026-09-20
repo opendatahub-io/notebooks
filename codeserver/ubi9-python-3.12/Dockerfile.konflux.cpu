@@ -105,6 +105,7 @@ RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
 # so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
 RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
 cd ${CODESERVER_SOURCE_CODE}
 source ./patches/setup-offline-binaries.sh
 cd ${CODESERVER_SOURCE_PREFETCH}
@@ -114,6 +115,7 @@ EOF
 
 # [HERMETIC] Step 2: Build code-server TypeScript
 RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
 source ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh
 cd ${CODESERVER_SOURCE_PREFETCH}
 npm run build
@@ -122,6 +124,7 @@ EOF
 # [HERMETIC] Step 3: Build VS Code (the embedded editor)
 # Raise soft nofile before esbuild transpile (~6k sources); build-vscode.sh also caps concurrency.
 RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
 source ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh
 cd ${CODESERVER_SOURCE_PREFETCH}
 (ulimit -n 65536 2>/dev/null || ulimit -n 16384 2>/dev/null || true)
@@ -133,6 +136,7 @@ EOF
 # Upstream 4.122+ dropped release:standalone; KEEP_MODULES=1 npm run release now produces
 # the platform tree (modules + bundled node + bin/code-server) under ./release.
 RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
 source ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh
 export KEEP_MODULES=1
 cd ${CODESERVER_SOURCE_PREFETCH}
@@ -255,6 +259,7 @@ COPY --from=rpm-base /root/codeserver/ubi9-python-3.12/prefetch-input/code-serve
 # RHOAIENG-88676 / RHAIENG-6849: drop static apply-seccomp (FIPS ErrNotDynLinked).
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/patches/strip-apply-seccomp.sh /tmp/strip-apply-seccomp.sh
 RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
 bash /tmp/strip-apply-seccomp.sh /usr/lib/code-server
 rm -f /tmp/strip-apply-seccomp.sh
 EOF
