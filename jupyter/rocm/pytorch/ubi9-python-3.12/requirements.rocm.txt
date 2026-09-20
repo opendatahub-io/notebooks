@@ -1,4 +1,4 @@
---index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.6-EA2/rocm7.14-ubi9-test/simple/
+--index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.6/rocm7.14-ubi9-test/simple/
 absl-py==2.5.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:58bec42398dfeada73f9ec633871c7b2214c8c4a8c0336009d4bf5549bca4494
 aiohappyeyeballs==2.7.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -72,7 +72,7 @@ click-option-group==0.5.7 ; python_full_version == '3.12.*' and implementation_n
 cloudpickle==3.1.2 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:8ca7ce3c39b51c0ed1c1602f2da024399966d43991d3b14832d965620d7fab6e
 codeflare-sdk==0.39.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
-    --hash=sha256:15fcd577827dc13573141e3824d129a6b1ad2512cc8a1f98e9ec2091a55fd872
+    --hash=sha256:75ce1ba83b733befe1b5ba28e969f47048ab4cdeceb385535526f269f86384a2
 colorama==0.4.6 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:431af1edd0cf23781977189835f7f88503716b6f31bcbd605294950a263d1a70
 colorful==0.5.8 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
@@ -294,7 +294,7 @@ mistune==3.3.4 ; python_full_version == '3.12.*' and implementation_name == 'cpy
 ml-dtypes==0.6.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:b0867ec7a88d57e91e3f2a5f86e4c319d22381ab0e825021c75bbc4eb4c263bd
 mlflow==3.16.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:0accb3f01381e998cce65d217da399584f90c88a449e5c1cfe33c508c5a4569d
+    --hash=sha256:7914cc4e75933ef820d7af7a9d605a67765806a21bf62700a660390a000fa296
 mlflow-skinny==3.16.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:2218ed494f17a8ec75248f7a8cb94204efbb6a51c9fb1c55a4cd95541fc44060
 mlflow-tracing==3.16.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -345,7 +345,7 @@ odh-kale==2.2.0 ; python_full_version == '3.12.*' and implementation_name == 'cp
     --hash=sha256:b81fe384fd3cd12112b5ac319da4689b65ca9c26c805a809d79778a54e742e2e
 onnx==1.22.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:930f864313343cbce034a47191717372a57e8da6de5e3a5b17baf05927676a79 \
-    --hash=sha256:abe39f080a34928b83dc5250c499bd955363143b27a07b19e4a2bc2b989a5fcb
+    --hash=sha256:79006feef23cc78b5918a0661a17b15ebf067f24b7b2f4599dcc789b24eb277e
 onnx-ir==1.0.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:106e447f86a21ef993e72ef649f3ee9f18f911c9e1b0d98f47e983d973edf6cf
 onnxconverter-common==1.16.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -545,7 +545,7 @@ tensorboard==2.20.0 ; python_full_version == '3.12.*' and implementation_name ==
     --hash=sha256:52136181d519e2ccd2317ef1ceec5c646bcf820f54f75bcb5c95a20c2aed8286
 tensorboard-data-server==0.7.2 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:6dfda069b1c3ba62131eb2f0e38f9c5c875653f437604e0a4864643a5e89af6b \
-    --hash=sha256:8f857355a4dc9167dbde18cbef707ccc8c5b5bd375585eeb98ba2b19800731b1 \
+    --hash=sha256:482e673a7699aeb49a41fd8a50fed14c2d126ebc0f36aa638395818f12623f94 \
     --hash=sha256:7e0610d205889588983836ec05dc098e80f97b7e7bbff7e994ebb78f578d0ddb
 termcolor==3.3.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:dffa682bab5105d4e0ab474440c14d49abf1ec3b7f7d9f08025052add89d195c
@@ -562,9 +562,9 @@ tomlkit==0.15.1 ; python_full_version == '3.12.*' and implementation_name == 'cp
 toolz==1.1.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:31e87f366f6aa621db2f64b19f4da23d3f3fe93eaf5c883b45bae84a5bdf2203
 torch==2.12.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:eef81648820f8ecdf78c0cfb01d8248010006d46f1b99d17192dd2a316af156d
+    --hash=sha256:ff71ac29f4d949625747aa0e15a7c6e44b860af58585bb913d294076dbe15d1e
 torchvision==0.27.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:74290c2114e0205ce2e398ca3296fc8e17aff7472d2a7b02e617fe4318acc877
+    --hash=sha256:92e36aed6056a83d2c85752ab1f563092af6d94c60a068d3c8b7dccd13e3b02f
 tornado==6.5.8 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:7640a618891771afceb24880c07b6b543246232a13b74ab3ff051f2739eb4717
 tqdm==4.70.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \

@@ -1,4 +1,4 @@
---index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.6-EA2/cpu-ubi9-test/simple/
+--index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.6/cpu-ubi9-test/simple/
 aiohappyeyeballs==2.7.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:c1207ce1e31a8cb2fe0a3dc94cecd44dd3ba65e16a5cb7bc79f62d6b8074bc78
 aiohttp==3.14.3 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -83,7 +83,7 @@ click-option-group==0.5.7 ; python_full_version == '3.12.*' and implementation_n
 cloudpickle==3.1.2 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:a796d78b6c6ee2fec31ec4a44e74a44565cd914b373f28c382d5de60f6da232f
 codeflare-sdk==0.39.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
-    --hash=sha256:7dc261361db40386c5f3f362488ffcb009afbd8e90727b7b5075e5e98d807290
+    --hash=sha256:85f5358eb18dba802391623fa564e5c180cc92865d392bbfac3efa9190da39ca
 colorama==0.4.6 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:eb587ddf5f53afd4b94a583c31c8d0d334d81d3dbb754b41a28a5739d9d54553
 colorful==0.5.8 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
@@ -336,7 +336,7 @@ ml-dtypes==0.6.0 ; python_full_version == '3.12.*' and implementation_name == 'c
     --hash=sha256:05856bbec973cb151b3ccb400432f60417dc44a6041e73e255802c83319e475c \
     --hash=sha256:b7896bed9fbfcffb16a74201844fa73aa4a187d1f3b2ad9308849f21e7d0d038
 mlflow==3.16.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:9d33168311ef19ddcd2268151a6c43f6e83dd01dae879b5d4e84b162452114f8
+    --hash=sha256:3d763727579522dc5df7ffcd63b7bbf559e665056c7da36a779ed0c124f738a7
 mlflow-skinny==3.16.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:992900c2e8f3ac9145ca73b3e5120581dbb7b135aef00044be683e8d32644916
 mlflow-tracing==3.16.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -401,9 +401,10 @@ onnx==1.22.0 ; python_full_version == '3.12.*' and implementation_name == 'cpyth
     --hash=sha256:83c41cd31dd61a3ae8987ad153a036dc6b603ac4aab22233dae7fee2c276a26a \
     --hash=sha256:b1f113cbd48d4dccf9ce4602159c30e49dddedc6e065bb2196b39579d0dabb84 \
     --hash=sha256:8596c3de659c119517838495319e40737e9ddbe4a41fd1b7869576815d742e0c \
-    --hash=sha256:2a84153bac2da5588250fdd7e2531a06332b9334ce74d6115991e8cf40afd901 \
-    --hash=sha256:dca3d5a29a98bf679d813ef655a89954740a3b946e53adbb96397e04f33cfdd1 \
-    --hash=sha256:4884567e78ea42063ee97ce5798a41817b5ff1c5bacc7d130fc50b3435ea7024
+    --hash=sha256:8e43a4d7ca3672e38d1ea08bd2491b5c4ebda35c64856c34a7591595337fd1a8 \
+    --hash=sha256:9c922aed1922ebbe8d7e267e238f4e7c84a210ee163ca706a1ce9689e8ebc684 \
+    --hash=sha256:f8e1ed57b906c3194266cc2f05ef5e218e8749c7aa04bcb1fc83a10425c57a43 \
+    --hash=sha256:5767995779ddf0c01c39b274d3736559bb34d5bb255edd3863f50aa6738f834a
 onnxconverter-common==1.16.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:bc9345f3f7037a0291b55178e75da3baf62fb3a7406f0a67af7cdb172601a81b
 opencensus==0.11.4 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
