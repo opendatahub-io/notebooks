@@ -54,4 +54,4 @@ if ! grep -q 'absolute_redirect off' /etc/nginx/nginx.conf; then
     rm -f "$tmp"
 fi
 
-nginx -g 'daemon off;'
+exec nginx -g 'daemon off;'
