@@ -114,6 +114,10 @@ def _normalize_pip_name(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+class _Amd64ResolutionError(RuntimeError):
+    """Raised when a multi-arch image has no amd64 manifest."""
+
+
 def _strip_tag_if_digest(image_ref: str) -> str:
     """Strip :tag from repo:tag@sha256:digest — skopeo doesn't accept that format."""
     if "@" in image_ref:
@@ -166,7 +170,7 @@ def _resolve_amd64(image_ref: str) -> str:
             None,
         )
         if amd64 is None:
-            raise RuntimeError(f"No amd64 manifest in {image_ref}")
+            raise _Amd64ResolutionError(f"No amd64 manifest in {image_ref}")
         base = image_ref.rsplit("@", 1)[0]
         return f"{base}@{amd64}"
     return image_ref
@@ -912,7 +916,12 @@ def _validate_code_server_via_sbom(
     python_version = _extract_python_version(tag.image_ref)
     try:
         sbom_packages = _packages_from_sbom(tag.image_ref, source_hint=source_hint, python_version=python_version)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+    except (
+        _Amd64ResolutionError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        json.JSONDecodeError,
+    ) as exc:
         with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fetch"):
             pytest.fail(f"Failed to fetch SBOM for code-server validation of {tag.image_ref}: {exc}")
         return
