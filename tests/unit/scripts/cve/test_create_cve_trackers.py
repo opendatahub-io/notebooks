@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING, Any, cast
 from inline_snapshot import snapshot
 
 from scripts.cve import create_cve_trackers as cct
+from scripts.cve.create_cve_trackers import CveTrackerConfig
 
 if TYPE_CHECKING:
-    from pytest import MonkeyPatch, Subtests
+    from pytest import Subtests
 
     from scripts.cve.jira_client import JiraClient
 
@@ -128,11 +129,24 @@ def test_get_blocking_issues() -> None:
     assert cct.get_blocking_issues(issue) == ["RHAIENG-5306"]
 
 
-def test_parse_extra_contributor_ids(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.setenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", " id-one , id-two ")
-    assert cct.parse_extra_contributor_ids() == {"id-one", "id-two"}
-    monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
+def test_parse_extra_contributor_ids() -> None:
+    config = CveTrackerConfig(extra_contributor_ids=frozenset({"id-one", "id-two"}))
+    assert cct.parse_extra_contributor_ids(config) == {"id-one", "id-two"}
     assert cct.parse_extra_contributor_ids() == set()
+
+
+def test_tracker_config_from_env_reads_explicit_mapping() -> None:
+    config = CveTrackerConfig.from_env(
+        {
+            "JIRA_RHAIENG_TEAM_OPTION_ID": " team-id ",
+            "JIRA_RHAIENG_EXTRA_CONTRIBUTORS": " id-one, id-two, id-one ",
+            "JIRA_RUNNER_ACCOUNT_ID": " runner-id ",
+        }
+    )
+
+    assert config.team_option_id == "team-id"
+    assert config.extra_contributor_ids == frozenset({"id-one", "id-two"})
+    assert config.runner_account_id == "runner-id"
 
 
 def test_find_orphan_cves_groups_embargo_and_contributors() -> None:
@@ -204,11 +218,8 @@ def _capturing_client(return_key: str = "RHAIENG-9999") -> tuple[JiraClient, dic
     return cast("JiraClient", FakeClient()), captured
 
 
-def test_create_tracker_issue_api_payload(monkeypatch: MonkeyPatch) -> None:
+def test_create_tracker_issue_api_payload() -> None:
     client, captured = _capturing_client(return_key="RHAIENG-9999")
-
-    monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
-    monkeypatch.delenv("JIRA_RUNNER_ACCOUNT_ID", raising=False)
 
     info = cct.CVEInfo(
         cve_id="CVE-2026-8643",
@@ -247,11 +258,8 @@ Fix should be applied to: [https://github.com/red-hat-data-services/notebooks](h
     )
 
 
-def test_create_tracker_issue_no_version_omits_target_version(monkeypatch: MonkeyPatch) -> None:
+def test_create_tracker_issue_no_version_omits_target_version() -> None:
     client, captured = _capturing_client(return_key="RHAIENG-8888")
-
-    monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
-    monkeypatch.delenv("JIRA_RUNNER_ACCOUNT_ID", raising=False)
 
     info = cct.CVEInfo(
         cve_id="CVE-2026-9999",

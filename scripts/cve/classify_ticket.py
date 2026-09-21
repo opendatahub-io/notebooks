@@ -14,12 +14,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from scripts.cve.jira_auth import JiraAuthError, JiraConnectionConfig
 from scripts.cve.jira_client import JiraClient
 
 GO_MODULE_RE = re.compile(
@@ -344,7 +346,7 @@ def classify_ticket(issue: dict[str, Any]) -> Classification:
     )
 
 
-def _issue_from_args(args: argparse.Namespace) -> dict[str, Any]:
+def _issue_from_args(args: argparse.Namespace, config: JiraConnectionConfig | None = None) -> dict[str, Any]:
     if args.issue_json:
         with open(args.issue_json, encoding="utf-8") as handle:
             return json.load(handle)
@@ -361,7 +363,9 @@ def _issue_from_args(args: argparse.Namespace) -> dict[str, Any]:
         with open(fixture_path, encoding="utf-8") as handle:
             return json.load(handle)
 
-    client = JiraClient.from_env()
+    if config is None:
+        config = JiraConnectionConfig.from_env(os.environ)
+    client = JiraClient.from_config(config)
     return client.get_issue(
         args.issue_key,
         "summary,description,labels,issuetype,issuelinks,project",
@@ -390,7 +394,11 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    issue = _issue_from_args(args)
+    try:
+        issue = _issue_from_args(args)
+    except JiraAuthError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     result = classify_ticket(issue)
     payload = result.to_dict()
     payload["dry_run"] = bool(args.dry_run)

@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from scripts.cve.classify_ticket import classify_ticket, main
+from scripts.cve.jira_auth import JiraAuthError, JiraConnectionConfig
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "classify"
 
@@ -114,3 +115,24 @@ def test_main_loads_fixture(capsys: pytest.CaptureFixture[str]) -> None:
 def test_main_rejects_fixture_path_outside_dir() -> None:
     with pytest.raises(SystemExit):
         main(["../RHAIENG-6341", "--fixture-dir", str(FIXTURE_DIR)])
+
+
+def test_main_offline_fixture_does_not_build_jira_config(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_config(_environ: object) -> JiraConnectionConfig:
+        raise AssertionError("offline fixture should not build Jira configuration")
+
+    monkeypatch.setattr(JiraConnectionConfig, "from_env", fail_config)
+
+    assert main(["RHAIENG-6341", "--fixture-dir", str(FIXTURE_DIR)]) == 0
+
+
+def test_main_reports_auth_error_for_remote_issue(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fail_config(_environ: object) -> JiraConnectionConfig:
+        raise JiraAuthError("invalid Jira configuration")
+
+    monkeypatch.setattr(JiraConnectionConfig, "from_env", fail_config)
+
+    assert main(["RHAIENG-1", "--fixture-dir", str(tmp_path)]) == 1
+    assert "invalid Jira configuration" in capsys.readouterr().err

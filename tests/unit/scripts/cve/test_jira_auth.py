@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import sys
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
 
 from scripts.cve.jira_auth import (
+    JiraAuthConfig,
     JiraAuthError,
+    JiraConnectionConfig,
     _basic_auth_header,  # ruff: ignore[import-private-name]
+    _cli,  # ruff: ignore[import-private-name]
     _not_expired,  # ruff: ignore[import-private-name]
     _parse_expires_at,  # ruff: ignore[import-private-name]
     _pkce_pair,  # ruff: ignore[import-private-name]
@@ -113,57 +117,73 @@ def test_not_expired_just_outside_buffer() -> None:
 # ── get_auth_headers (env-var paths only, no OAuth flow) ──────────────
 
 
-def test_get_auth_headers_basic_auth_from_env(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.setenv("JIRA_EMAIL", "user@redhat.com")
-    monkeypatch.setenv("JIRA_API_TOKEN", "my-api-token")
-    monkeypatch.delenv("JIRA_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
-
-    headers = get_auth_headers("https://redhat.atlassian.net")
+def test_get_auth_headers_basic_auth() -> None:
+    config = JiraAuthConfig(email="user@redhat.com", api_token="my-api-token")  # ruff: ignore[hardcoded-password-func-arg]
+    assert "my-api-token" not in repr(config)
+    headers = get_auth_headers(config, "https://redhat.atlassian.net")
     assert "Authorization" in headers
     assert headers["Authorization"].startswith("Basic ")
     decoded = base64.b64decode(headers["Authorization"].split(" ", 1)[1]).decode("utf-8")
     assert decoded == "user@redhat.com:my-api-token"
 
 
-def test_get_auth_headers_bearer_from_env(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_EMAIL", raising=False)
-    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
-    monkeypatch.setenv("JIRA_TOKEN", "legacy-bearer-token")
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
+def test_get_auth_headers_bearer(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
 
-    headers = get_auth_headers("https://issues.redhat.com")
+    config = JiraAuthConfig(legacy_token="legacy-bearer-token")  # ruff: ignore[hardcoded-password-func-arg]
+    headers = get_auth_headers(config, "https://issues.redhat.com")
     assert headers == {"Authorization": "Bearer legacy-bearer-token"}
 
 
-def test_get_auth_headers_raises_when_only_email(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.setenv("JIRA_EMAIL", "user@redhat.com")
-    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
-
+def test_get_auth_headers_raises_when_only_email() -> None:
     with pytest.raises(JiraAuthError, match=r"JIRA_EMAIL.*JIRA_API_TOKEN"):
-        get_auth_headers("https://redhat.atlassian.net")
+        JiraAuthConfig(email="user@redhat.com")
 
 
 def test_get_auth_headers_raises_when_only_token(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_EMAIL", raising=False)
-    monkeypatch.setenv("JIRA_API_TOKEN", "my-api-token")
-    monkeypatch.delenv("JIRA_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
     monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
 
     with pytest.raises(JiraAuthError, match="JIRA_EMAIL"):
-        get_auth_headers("https://redhat.atlassian.net")
+        JiraAuthConfig(api_token="my-api-token")  # ruff: ignore[hardcoded-password-func-arg]
 
 
 def test_get_auth_headers_raises_when_no_creds(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_EMAIL", raising=False)
-    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_TOKEN", raising=False)
-    monkeypatch.delenv("JIRA_OAUTH_CLIENT_SECRET", raising=False)
     monkeypatch.setattr("scripts.cve.jira_auth._load_api_token", lambda: None)
 
     with pytest.raises(JiraAuthError, match="No Jira authentication credentials found"):
-        get_auth_headers("https://redhat.atlassian.net")
+        get_auth_headers(JiraAuthConfig(), "https://redhat.atlassian.net")
+
+
+def test_jira_config_from_env_reads_explicit_mapping() -> None:
+    config = JiraConnectionConfig.from_env(
+        {
+            "JIRA_URL": " https://jira.example.com ",
+            "JIRA_EMAIL": " user@example.com ",
+            "JIRA_API_TOKEN": " api-token ",
+        }
+    )
+
+    assert config.url == "https://jira.example.com"
+    assert config.auth.email == "user@example.com"
+    assert config.auth.api_token == "api-token"  # ruff: ignore[hardcoded-password-string]
+
+
+def test_jira_config_from_env_uses_defaults() -> None:
+    config = JiraConnectionConfig.from_env({})
+
+    assert config.url == "https://redhat.atlassian.net"
+    assert config.auth.email == ""
+
+
+def test_cli_status_reports_auth_error(monkeypatch: MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    def fail_config(_environ: object) -> JiraConnectionConfig:
+        raise JiraAuthError("invalid Jira configuration")
+
+    monkeypatch.setattr(JiraConnectionConfig, "from_env", fail_config)
+    monkeypatch.setattr(sys, "argv", ["jira_auth", "status"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        _cli()
+
+    assert exc_info.value.code == 1
+    assert "invalid Jira configuration" in capsys.readouterr().err

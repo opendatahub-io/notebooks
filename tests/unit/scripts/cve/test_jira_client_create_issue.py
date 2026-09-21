@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from scripts.cve.jira_auth import JiraAuthConfig, JiraConnectionConfig
 from scripts.cve.jira_client import JiraClient
 
 # ── Constructor ────────────────────────────────────────────────────────
@@ -22,6 +23,18 @@ def test_jira_client_trailing_slash_stripped() -> None:
 def test_jira_client_no_auth_headers() -> None:
     client = JiraClient("https://jira.example.com")
     assert "Authorization" not in client.headers
+
+
+def test_jira_client_from_config() -> None:
+    config = JiraConnectionConfig(
+        url="https://jira.example.com/",
+        auth=JiraAuthConfig(email="user@example.com", api_token="api-token"),  # ruff: ignore[hardcoded-password-func-arg]
+    )
+
+    client = JiraClient.from_config(config)
+
+    assert client.base_url == "https://jira.example.com"
+    assert client.headers["Authorization"].startswith("Basic ")
 
 
 # ── create_issue extra_fields ──────────────────────────────────────────

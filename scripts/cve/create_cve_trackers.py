@@ -38,10 +38,10 @@ import re
 import sys
 import urllib.parse
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from scripts.cve import extract_cve_id
-from scripts.cve.jira_auth import JiraAuthError
+from scripts.cve.jira_auth import JiraAuthError, JiraConnectionConfig
 from scripts.cve.jira_client import JIRA_DEFAULT_URL, JiraClient
 
 # Jira "Team" on RHAIENG (verified via RHAIENG-3752 changelog).
@@ -62,19 +62,42 @@ SEARCH_FIELDS = (
     f"key,summary,status,labels,security,issuelinks,{RHAIENG_TEAM_CUSTOM_FIELD},{RHAIENG_CONTRIBUTORS_FIELD}"
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+
+@dataclass(frozen=True)
+class CveTrackerConfig:
+    """Tracker-specific settings, separate from Jira connection settings."""
+
+    team_option_id: str = ""
+    extra_contributor_ids: frozenset[str] = frozenset()
+    runner_account_id: str = ""
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str]) -> CveTrackerConfig:
+        extra = frozenset(
+            value.strip() for value in environ.get("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", "").split(",") if value.strip()
+        )
+        return cls(
+            team_option_id=environ.get("JIRA_RHAIENG_TEAM_OPTION_ID", "").strip(),
+            extra_contributor_ids=extra,
+            runner_account_id=environ.get("JIRA_RUNNER_ACCOUNT_ID", "").strip(),
+        )
+
 
 def build_tracker_labels(cve_id: str) -> list[str]:
     """Labels for new CVE trackers: keep literal ``CVE`` first (team Jira hygiene)."""
     return ["CVE", cve_id, "security"]
 
 
-def build_tracker_team_extra_fields() -> dict[str, str]:
+def build_tracker_team_extra_fields(config: CveTrackerConfig | None = None) -> dict[str, str]:
     """REST ``fields`` fragment for Team = AAIET Notebooks.
 
     Jira expects a **plain Team ID string** on create/update, not ``{\"id\": ...}``.
     See https://developer.atlassian.com/platform/teams/components/team-field-in-jira-rest-api/
     """
-    option_id = os.environ.get("JIRA_RHAIENG_TEAM_OPTION_ID", RHAIENG_TEAM_OPTION_ID_DEFAULT).strip()
+    option_id = (config.team_option_id if config else "").strip() or RHAIENG_TEAM_OPTION_ID_DEFAULT
     return {RHAIENG_TEAM_CUSTOM_FIELD: option_id}
 
 
@@ -154,17 +177,14 @@ def contributors_field_value(account_ids: set[str]) -> list[dict[str, str]]:
     return [{"accountId": aid} for aid in sorted(account_ids)]
 
 
-def parse_extra_contributor_ids() -> set[str]:
+def parse_extra_contributor_ids(config: CveTrackerConfig | None = None) -> set[str]:
     """Optional extra Contributors from ``JIRA_RHAIENG_EXTRA_CONTRIBUTORS`` (comma-separated accountIds)."""
-    raw = os.environ.get("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", "").strip()
-    if not raw:
-        return set()
-    return {part.strip() for part in raw.split(",") if part.strip()}
+    return set(config.extra_contributor_ids) if config else set()
 
 
-def get_runner_account_id(client: JiraClient) -> str | None:
+def get_runner_account_id(client: JiraClient, config: CveTrackerConfig | None = None) -> str | None:
     """Account id for the authenticated user (or ``JIRA_RUNNER_ACCOUNT_ID`` override)."""
-    explicit = os.environ.get("JIRA_RUNNER_ACCOUNT_ID", "").strip()
+    explicit = (config.runner_account_id if config else "").strip()
     if explicit:
         return explicit
     try:
@@ -391,11 +411,13 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> OrphanCVEsR
     return OrphanCVEsResult(orphans=orphans, issues=issues)
 
 
-def resolve_tracker_contributors(client: JiraClient, cve_info: CVEInfo) -> set[str]:
+def resolve_tracker_contributors(
+    client: JiraClient, cve_info: CVEInfo, config: CveTrackerConfig | None = None
+) -> set[str]:
     """Union of child Contributors, extras, and the script runner."""
     contributor_ids = set(cve_info.contributor_account_ids)
-    contributor_ids |= parse_extra_contributor_ids()
-    runner_id = get_runner_account_id(client)
+    contributor_ids |= parse_extra_contributor_ids(config)
+    runner_id = get_runner_account_id(client, config)
     if runner_id:
         contributor_ids.add(runner_id)
     return contributor_ids
@@ -413,16 +435,17 @@ def create_tracker_issue(
     cve_info: CVEInfo,
     jira_url: str = JIRA_DEFAULT_URL,
     dry_run: bool = False,
+    config: CveTrackerConfig | None = None,
 ) -> str | None:
     """Create a tracker issue for a CVE."""
     summary = build_tracker_summary(cve_info)
     description = build_description(cve_info, base_url=jira_url)
 
     labels = build_tracker_labels(cve_info.cve_id)
-    team_extra = build_tracker_team_extra_fields()
+    team_extra = build_tracker_team_extra_fields(config)
     security_level = EMBARGOED_SECURITY_LEVEL if cve_info.is_embargoed else DEFAULT_SECURITY_LEVEL
 
-    contributor_ids = resolve_tracker_contributors(client, cve_info)
+    contributor_ids = resolve_tracker_contributors(client, cve_info, config)
     extra_fields: dict[str, Any] = dict(team_extra)
     if cve_info.version:
         extra_fields[RHAIENG_TARGET_VERSION_FIELD] = [{"name": cve_info.version}]
@@ -486,9 +509,11 @@ def link_issues(client: JiraClient, tracker_key: str, child_keys: list[str], dry
     return linked
 
 
-def update_rhoaieng_teams(client: JiraClient, issues: list[dict], dry_run: bool = False) -> None:
+def update_rhoaieng_teams(
+    client: JiraClient, issues: list[dict], dry_run: bool = False, config: CveTrackerConfig | None = None
+) -> None:
     """Ensure all fetched RHOAIENG issues have the correct Team assigned."""
-    team_extra = build_tracker_team_extra_fields()
+    team_extra = build_tracker_team_extra_fields(config)
     expected_team_id = team_extra[RHAIENG_TEAM_CUSTOM_FIELD]
 
     updated_count = 0
@@ -567,12 +592,14 @@ def main():
     args = parse_args()
 
     try:
-        client = JiraClient.from_env()
+        connection_config = JiraConnectionConfig.from_env(os.environ)
+        tracker_config = CveTrackerConfig.from_env(os.environ)
+        client = JiraClient.from_config(connection_config)
     except JiraAuthError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    jira_url = os.environ.get("JIRA_URL", JIRA_DEFAULT_URL)
+    jira_url = connection_config.url
     print(f"Connecting to {client.base_url}...")
 
     # Find orphan CVEs
@@ -583,7 +610,7 @@ def main():
     print("\n" + "=" * 80)
     print("CHECKING RHOAIENG TEAM ASSIGNMENTS")
     print("=" * 80)
-    update_rhoaieng_teams(client, all_issues, dry_run=args.dry_run)
+    update_rhoaieng_teams(client, all_issues, dry_run=args.dry_run, config=tracker_config)
 
     if not orphans:
         print("\nNo orphan CVEs found - all CVEs have parent trackers!")
@@ -625,7 +652,7 @@ def main():
     linked = 0
 
     for (_cve_id, _version), info in sorted(orphans.items()):
-        tracker_key = create_tracker_issue(client, info, jira_url=jira_url, dry_run=args.dry_run)
+        tracker_key = create_tracker_issue(client, info, jira_url=jira_url, dry_run=args.dry_run, config=tracker_config)
 
         if not args.no_link:
             child_keys = [issue["key"] for issue in info.issues]

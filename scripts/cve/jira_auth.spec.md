@@ -26,7 +26,7 @@ API v3 (`/rest/api/3/`).
   REST API version in the URL path.
 - Store API tokens and OAuth tokens securely using the OS keychain.
 - Provide a single, well-tested entry point (`get_auth_headers`) consumed by
-  all CVE scripts, and a `JiraClient.from_env()` factory that encapsulates
+  all CVE scripts, and a `JiraClient.from_config()` factory that encapsulates
   auth and base-URL resolution.
 
 ---
@@ -198,7 +198,15 @@ headless CI containers, SSH sessions without a desktop keyring service):
 ```python
 # scripts/cve/jira_auth.py
 
-def get_auth_headers(jira_url: str) -> dict[str, str]:
+@dataclass(frozen=True)
+class JiraConnectionConfig:
+    url: str
+    auth: JiraAuthConfig
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str]) -> JiraConnectionConfig: ...
+
+def get_auth_headers(auth_config: JiraAuthConfig, jira_url: str) -> dict[str, str]:
     """Return HTTP headers sufficient to authenticate against jira_url.
 
     Auth method priority:
@@ -226,6 +234,19 @@ class JiraAuthError(RuntimeError):
 ```
 
 ```python
+# scripts/cve/create_cve_trackers.py
+
+@dataclass(frozen=True)
+class CveTrackerConfig:
+    team_option_id: str
+    extra_contributor_ids: frozenset[str]
+    runner_account_id: str
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str]) -> CveTrackerConfig: ...
+```
+
+```python
 # scripts/cve/jira_client.py
 
 class JiraClient:
@@ -233,8 +254,8 @@ class JiraClient:
         """Direct constructor — testable, no env var dependencies."""
 
     @classmethod
-    def from_env(cls) -> JiraClient:
-        """Factory: reads env vars, resolves auth + base URL.
+    def from_config(cls, config: JiraConnectionConfig) -> JiraClient:
+        """Factory: resolves auth + base URL from explicit connection configuration.
 
         For OAuth: resolves Cloud ID → uses api.atlassian.com gateway.
         For API token / Bearer: uses JIRA_URL directly.
@@ -243,12 +264,12 @@ class JiraClient:
 
 ---
 
-## JiraClient.from_env() Logic
+## JiraClient.from_config() Logic
 
 ```text
-1. jira_url = JIRA_URL env var (default: https://redhat.atlassian.net)
-2. auth_headers = get_auth_headers(jira_url)
-3. If auth is Bearer AND JIRA_TOKEN is not set (i.e. OAuth):
+1. jira_url = config.url (default: https://redhat.atlassian.net)
+2. auth_headers = get_auth_headers(config.auth, jira_url)
+3. If auth is Bearer AND config.auth.legacy_token is not set (i.e. OAuth):
    a. Check cached api_base_url → use if available
    b. Else call resolve_cloud_base_url() → get gateway URL
 4. Else: base_url = jira_url

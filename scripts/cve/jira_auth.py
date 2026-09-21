@@ -34,13 +34,62 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import keyring
 import keyring.errors
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+JIRA_DEFAULT_URL = "https://redhat.atlassian.net"
+
+
+@dataclass(frozen=True)
+class JiraAuthConfig:
+    """Credentials and OAuth settings used by Jira authentication."""
+
+    email: str = ""
+    api_token: str = field(default="", repr=False)
+    legacy_token: str = field(default="", repr=False)
+    oauth_client_id: str = ""
+    oauth_client_secret: str = field(default="", repr=False)
+
+    def __post_init__(self) -> None:
+        if bool(self.email) != bool(self.api_token):
+            raise JiraAuthError("Set both JIRA_EMAIL and JIRA_API_TOKEN together, or unset both to use keyring/OAuth.")
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str]) -> JiraAuthConfig:
+        """Build authentication settings from an explicitly supplied environment."""
+        return cls(
+            email=environ.get("JIRA_EMAIL", "").strip(),
+            api_token=environ.get("JIRA_API_TOKEN", "").strip(),
+            legacy_token=environ.get("JIRA_TOKEN", "").strip(),
+            oauth_client_id=environ.get("JIRA_OAUTH_CLIENT_ID", "").strip(),
+            oauth_client_secret=environ.get("JIRA_OAUTH_CLIENT_SECRET", "").strip(),
+        )
+
+
+@dataclass(frozen=True)
+class JiraConnectionConfig:
+    """Jira URL and authentication settings used by a client."""
+
+    url: str = JIRA_DEFAULT_URL
+    auth: JiraAuthConfig = field(default_factory=JiraAuthConfig)
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str]) -> JiraConnectionConfig:
+        """Build Jira settings from an explicitly supplied environment."""
+        return cls(
+            url=environ.get("JIRA_URL", JIRA_DEFAULT_URL).strip() or JIRA_DEFAULT_URL,
+            auth=JiraAuthConfig.from_env(environ),
+        )
+
 
 _KEYRING_SERVICE = "jira-cve-scripts"
 _OAUTH_TIMEOUT_S = 120
@@ -66,7 +115,7 @@ class JiraAuthError(RuntimeError):
 # ---------------------------------------------------------------------------
 
 
-def get_auth_headers(jira_url: str) -> dict[str, str]:
+def get_auth_headers(auth_config: JiraAuthConfig, jira_url: str) -> dict[str, str]:
     """Return HTTP headers sufficient to authenticate against *jira_url*.
 
     Auth method priority:
@@ -76,10 +125,10 @@ def get_auth_headers(jira_url: str) -> dict[str, str]:
       3.  JIRA_OAUTH_CLIENT_SECRET             -> OAuth 2.0 flow (PKCE)
       4.  None set                             -> raises JiraAuthError
     """
-    email = os.environ.get("JIRA_EMAIL", "").strip()
-    api_token = os.environ.get("JIRA_API_TOKEN", "").strip()
-    legacy_token = os.environ.get("JIRA_TOKEN", "").strip()
-    client_secret = os.environ.get("JIRA_OAUTH_CLIENT_SECRET", "").strip()
+    email = auth_config.email
+    api_token = auth_config.api_token
+    legacy_token = auth_config.legacy_token
+    client_secret = auth_config.oauth_client_secret
 
     # --- Method 1a: API token from env vars ---
     if email or api_token:
@@ -105,7 +154,7 @@ def get_auth_headers(jira_url: str) -> dict[str, str]:
 
     # --- Method 3: OAuth 2.0 browser redirect with PKCE ---
     if client_secret:
-        client_id = os.environ.get("JIRA_OAUTH_CLIENT_ID", _DEFAULT_CLIENT_ID).strip()
+        client_id = auth_config.oauth_client_id or _DEFAULT_CLIENT_ID
         access_token = _get_oauth_token(client_id, client_secret, jira_url)
         return {"Authorization": f"Bearer {access_token}"}
 
@@ -563,16 +612,21 @@ def _cli() -> None:
         clear_api_token()
 
     elif args.command == "status":
-        jira_url = os.environ.get("JIRA_URL", "https://redhat.atlassian.net")
+        try:
+            config = JiraConnectionConfig.from_env(os.environ)
+        except JiraAuthError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            raise SystemExit(1) from exc
+        jira_url = config.url
         print(f"JIRA_URL: {jira_url}")
 
-        if os.environ.get("JIRA_EMAIL") and os.environ.get("JIRA_API_TOKEN"):
+        if config.auth.email and config.auth.api_token:
             print("Auth: API token (from env vars JIRA_EMAIL + JIRA_API_TOKEN)")
         elif stored := _load_api_token():
             print(f"Auth: API token (from keychain, email={stored['email']})")
-        elif os.environ.get("JIRA_TOKEN"):
+        elif config.auth.legacy_token:
             print("Auth: Legacy Bearer token (from env var JIRA_TOKEN)")
-        elif os.environ.get("JIRA_OAUTH_CLIENT_SECRET"):
+        elif config.auth.oauth_client_secret:
             print("Auth: OAuth 2.0 browser flow")
         else:
             print("Auth: NOT CONFIGURED — run: python -m scripts.cve.jira_auth store-token")

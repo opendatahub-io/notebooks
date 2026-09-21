@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from scripts.cve import create_cve_trackers as cct
-
-if TYPE_CHECKING:
-    from pytest import MonkeyPatch
+from scripts.cve.create_cve_trackers import CveTrackerConfig
 
 
 def test_build_tracker_labels() -> None:
@@ -18,13 +14,12 @@ def test_build_tracker_labels() -> None:
     ]
 
 
-def test_build_tracker_team_extra_fields_default(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.delenv("JIRA_RHAIENG_TEAM_OPTION_ID", raising=False)
+def test_build_tracker_team_extra_fields_default() -> None:
     fields = cct.build_tracker_team_extra_fields()
     assert fields == {cct.RHAIENG_TEAM_CUSTOM_FIELD: cct.RHAIENG_TEAM_OPTION_ID_DEFAULT}
 
 
-def test_build_tracker_team_extra_fields_env_override(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.setenv("JIRA_RHAIENG_TEAM_OPTION_ID", "override-option-id")
-    fields = cct.build_tracker_team_extra_fields()
+def test_build_tracker_team_extra_fields_override() -> None:
+    config = CveTrackerConfig(team_option_id="override-option-id")
+    fields = cct.build_tracker_team_extra_fields(config)
     assert fields[cct.RHAIENG_TEAM_CUSTOM_FIELD] == "override-option-id"
