@@ -113,6 +113,14 @@ worktree with `git submodule update --init --recursive`. Review the resulting
 status before staging anything again; avoid resetting or deleting work you have
 not verified.
 
+#### Running local Trivy security scans
+
+To run a local Trivy filesystem vulnerability scan using the repository's `trivy.yaml` configuration:
+
+```bash
+make trivy-scan
+```
+
 ### CI configuration for a new notebook
 
 Each notebook image is built as an independent Konflux component with its own Tekton
