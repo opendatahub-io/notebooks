@@ -11,7 +11,10 @@ import time
 from os import PathLike
 from typing import TYPE_CHECKING
 
+import docker.client
+import docker.errors
 import podman
+import pytest
 import testcontainers.core.container
 
 import tests.containers.pydantic_schemas
@@ -19,7 +22,6 @@ import tests.containers.pydantic_schemas
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
 
-    import docker.client
     from docker.models.containers import Container
 
 
@@ -77,6 +79,24 @@ class NotebookContainer:
     def __init__(self, container: testcontainers.core.container.DockerContainer) -> None:
         self.testcontainer = container
 
+    def require_running(self, *, context: str = "after start") -> None:
+        wrapped = self.testcontainer.get_wrapped_container()
+        if wrapped is None:
+            pytest.fail(f"Container not started ({context})")
+        wrapped.reload()
+        if wrapped.status == "running":
+            return
+        pytest.fail(format_container_diagnostics(self.testcontainer, context=context))
+
+    def exec(self, command: str | list[str]):
+        try:
+            return self.testcontainer.exec(command)
+        except docker.errors.APIError as exc:
+            if _is_dead_container_exec_error(exc):
+                context = f"exec({command!r})"
+                pytest.fail(format_container_diagnostics(self.testcontainer, context=context))
+            raise
+
     def stop(self, timeout: int = 10):
         """Stop container with customizable timeout.
 
@@ -95,6 +115,58 @@ class NotebookContainer:
         return container.attrs["State"]["ExitCode"]
 
 
+_DEAD_CONTAINER_EXEC_PHRASES = (
+    "container state improper",
+    "is not running",
+    "container must be running",
+)
+
+
+def _container_logs_tail(container: Container, *, limit: int = 8000) -> str:
+    try:
+        logs = container.logs(stdout=True, stderr=True, tail=100)
+        if isinstance(logs, bytes):
+            text = logs.decode(errors="replace")
+        else:
+            text = b"".join(logs).decode(errors="replace")
+    except Exception as exc:
+        return f"<failed to read logs: {exc}>"
+    if len(text) > limit:
+        return f"...(truncated)...\n{text[-limit:]}"
+    return text
+
+
+def format_container_diagnostics(
+    container: testcontainers.core.container.DockerContainer,
+    *,
+    context: str,
+) -> str:
+    wrapped = container.get_wrapped_container()
+    if wrapped is None:
+        return f"Container not started ({context})"
+    wrapped.reload()
+    state = wrapped.attrs.get("State", {})
+    return "\n".join(
+        [
+            f"Container not running ({context})",
+            f"  status: {wrapped.status!r}",
+            f"  exit_code: {state.get('ExitCode')!r}",
+            f"  error: {state.get('Error')!r}",
+            f"  oom_killed: {state.get('OOMKilled')!r}",
+            "--- container logs (tail) ---",
+            _container_logs_tail(wrapped),
+        ]
+    )
+
+
+def _is_dead_container_exec_error(exc: BaseException) -> bool:
+    message = str(exc).lower()
+    if isinstance(exc, docker.errors.APIError):
+        explanation = getattr(exc, "explanation", "") or ""
+        message = f"{message} {explanation}".lower()
+    return any(phrase in message for phrase in _DEAD_CONTAINER_EXEC_PHRASES)
+
+
 @contextlib.contextmanager
 def running_container(
     image: str,
@@ -103,8 +175,11 @@ def running_container(
     group_add: list[int] | None = None,
     env: dict[str, str] | None = None,
     **kwargs,
-) -> Generator[testcontainers.core.container.DockerContainer]:
+) -> Generator[NotebookContainer]:
     """Start a container with 'sleep infinity' and stop it on exit.
+
+    Yields a :class:`NotebookContainer` wrapper so callers get startup observability
+    (``require_running``) and dead-container diagnostics on ``exec``.
 
     GID 0 is always added (OpenShift runs with root supplemental group for /opt/app-root access).
     """
@@ -114,16 +189,18 @@ def running_container(
         for key, value in env.items():
             container.with_env(key, value)
     container.with_command("/bin/sh -c 'sleep infinity'")
+    notebook = NotebookContainer(container)
     try:
         container.start()
-        yield container
+        notebook.require_running(context="after start")
+        yield notebook
     finally:
         with BestEffortCleanup():
-            NotebookContainer(container).stop(timeout=0)
+            notebook.stop(timeout=0)
 
 
 def container_cp(
-    container: Container | testcontainers.core.container.DockerContainer,
+    container: Container | NotebookContainer | testcontainers.core.container.DockerContainer,
     src: str | PathLike,
     dst: str,
     user: int | None = None,
@@ -132,10 +209,12 @@ def container_cp(
     """
     Copies a file or directory into a container.
 
-    Accepts either a docker-py ``Container`` or a testcontainers ``DockerContainer``
-    (the latter is unwrapped — ``DockerContainer`` has no ``put_archive``).
+    Accepts a docker-py ``Container``, a :class:`NotebookContainer`, or a testcontainers
+    ``DockerContainer`` (the latter two are unwrapped — neither has ``put_archive``).
     From https://stackoverflow.com/questions/46390309/how-to-copy-a-file-from-host-to-container-using-docker-py-docker-sdk
     """
+    if isinstance(container, NotebookContainer):
+        container = container.testcontainer
     if isinstance(container, testcontainers.core.container.DockerContainer):
         container = container.get_wrapped_container()
 
