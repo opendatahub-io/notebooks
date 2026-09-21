@@ -120,16 +120,28 @@ jobs:
       - name: Fetch downgrade check base ref
         if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
         run: |
-          NULL_SHA="0000000000000000000000000000000000000000"
-          BASE_SHA="${PULL_REQUEST_BASE_SHA:-$PUSH_BEFORE_SHA}"
-          for REF in "$BASE_SHA" \
-            4d4841f0c888fdb417fc0320675a2535d54abbd7 \
-            2c36c11a801ba632e8dc49eb843bd70e7ea6a3d7; do
-            if [ -n "$REF" ] && [ "$REF" != "$NULL_SHA" ] \
-               && ! git cat-file -e "${REF}^{commit}" 2>/dev/null; then
-              git fetch --depth=1 origin "$REF"
-            fi
-          done
+          import os
+          import subprocess
+
+          null_sha = "0000000000000000000000000000000000000000"
+          base_sha = os.environ.get("PULL_REQUEST_BASE_SHA") or os.environ.get("PUSH_BEFORE_SHA")
+          refs = (
+              base_sha,
+              "4d4841f0c888fdb417fc0320675a2535d54abbd7",
+              "2c36c11a801ba632e8dc49eb843bd70e7ea6a3d7",
+          )
+          for ref in refs:
+              if not ref or ref == null_sha:
+                  continue
+              present = subprocess.run(
+                  ["git", "cat-file", "-e", f"{ref}^{{commit}}"],
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+                  check=False,
+              ).returncode == 0
+              if not present:
+                  subprocess.run(["git", "fetch", "--depth=1", "origin", ref], check=True)
+        shell: python
         env:
           PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE_SHA: ${{ github.event.before }}
