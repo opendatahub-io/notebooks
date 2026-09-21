@@ -227,6 +227,13 @@ def _packages_from_sbom(image_ref: str, *, source_hint: str = "", python_version
             # keep whichever entry isn't 0.0.0 (dev placeholder).
             if key not in packages or packages[key] == "0.0.0":
                 packages[key] = version
+            # code-server is built from a patched VS Code tree. Syft therefore
+            # records its packages (for example vscode-reh) rather than an npm
+            # package named code-server; the source PURL retains the release
+            # version in the patch directory.
+            match = re.search(r"/patches/code-server-v(\d+\.\d+(?:\.\d+)?)", purl)
+            if match:
+                packages["npm:code-server"] = match.group(1)
 
     packages.update(_resolve_pypi_duplicates(pypi_entries, source_hint, python_version))
     _enrich_rocm_version_from_image_config(image_ref, packages)
