@@ -111,28 +111,44 @@ jobs:
         id: install-deps
         run: uv sync --locked
 
-      # Deepen the shallow clone with the commits needed by the tests. The downgrade test
-      # compares against the PR base sha (or previous branch tip on push). The changed-files
-      # unit test also compares two historical fixture commits. Guard the event baseline
-      # against the all-zeros github.event.before on the first push of a new branch (GitHub
-      # refuses to fetch it: "upload-pack: not our ref"). If the baseline is unavailable, the
-      # downgrade test falls back to origin/main or skips with its existing message.
+      # Deepen the shallow clone with the commit used by the downgrade test. If the baseline is
+      # unavailable, the test falls back to origin/main or skips with its existing message.
       - name: Fetch downgrade check base ref
         if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
+        # language=python
         run: |
           import os
           import subprocess
 
+          # Guard the event baseline against the all-zeros github.event.before
+          # on the first push of a new branch (GitHub refuses to fetch it: "upload-pack: not our ref").
           null_sha = "0000000000000000000000000000000000000000"
           base_sha = os.environ.get("PULL_REQUEST_BASE_SHA") or os.environ.get("PUSH_BEFORE_SHA")
-          refs = (
-              base_sha,
+          if base_sha and base_sha != null_sha:
+              present = subprocess.run(
+                  ["git", "cat-file", "-e", f"{base_sha}^{{commit}}"],
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+                  check=False,
+              ).returncode == 0
+              if not present:
+                  subprocess.run(["git", "fetch", "--depth=1", "origin", base_sha], check=True)
+        shell: python
+        env:
+          PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+
+      # The changed-files unit test compares these historical commits with a three-dot diff.
+      - name: Fetch changed-files test fixture refs
+        if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
+        # language=python
+        run: |
+          import subprocess
+
+          for ref in (
               "4d4841f0c888fdb417fc0320675a2535d54abbd7",
               "2c36c11a801ba632e8dc49eb843bd70e7ea6a3d7",
-          )
-          for ref in refs:
-              if not ref or ref == null_sha:
-                  continue
+          ):
               present = subprocess.run(
                   ["git", "cat-file", "-e", f"{ref}^{{commit}}"],
                   stdout=subprocess.DEVNULL,
@@ -140,11 +156,8 @@ jobs:
                   check=False,
               ).returncode == 0
               if not present:
-                  subprocess.run(["git", "fetch", "--depth=1", "origin", ref], check=True)
+                  subprocess.run(["git", "fetch", "origin", ref], check=True)
         shell: python
-        env:
-          PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PUSH_BEFORE_SHA: ${{ github.event.before }}
 
       - name: Static tests (pytest + Dockerfile alignment)
         id: static-tests
