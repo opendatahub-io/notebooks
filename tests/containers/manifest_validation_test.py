@@ -114,6 +114,10 @@ def _normalize_pip_name(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+class _Amd64ResolutionError(RuntimeError):
+    """Raised when a multi-arch image has no amd64 manifest."""
+
+
 def _strip_tag_if_digest(image_ref: str) -> str:
     """Strip :tag from repo:tag@sha256:digest — skopeo doesn't accept that format."""
     if "@" in image_ref:
@@ -166,7 +170,7 @@ def _resolve_amd64(image_ref: str) -> str:
             None,
         )
         if amd64 is None:
-            raise RuntimeError(f"No amd64 manifest in {image_ref}")
+            raise _Amd64ResolutionError(f"No amd64 manifest in {image_ref}")
         base = image_ref.rsplit("@", 1)[0]
         return f"{base}@{amd64}"
     return image_ref
@@ -227,6 +231,13 @@ def _packages_from_sbom(image_ref: str, *, source_hint: str = "", python_version
             # keep whichever entry isn't 0.0.0 (dev placeholder).
             if key not in packages or packages[key] == "0.0.0":
                 packages[key] = version
+            # code-server is built from a patched VS Code tree. Syft therefore
+            # records its packages (for example vscode-reh) rather than an npm
+            # package named code-server; the source PURL retains the release
+            # version in the patch directory.
+            match = re.search(r"/patches/code-server-v(\d+\.\d+(?:\.\d+)?)", purl)
+            if match:
+                packages["npm:code-server"] = match.group(1)
 
     packages.update(_resolve_pypi_duplicates(pypi_entries, source_hint, python_version))
     _enrich_rocm_version_from_image_config(image_ref, packages)
@@ -876,6 +887,48 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     return packages
 
 
+def _validate_code_server_via_sbom(
+    subtests: pytest_subtests.SubTests,
+    tag: _TagInfo,
+    code_server_deps: list[dict[str, str]],
+    *,
+    has_cosign: bool,
+) -> None:
+    """Validate code-server software items using SBOM data instead of Clair.
+
+    Clair cannot resolve npm packages that use ``0.0.0`` dev-style versions,
+    so code-server is skipped in the Clair path.  This function fetches the
+    SBOM (via cosign) and validates code-server annotations against it,
+    ensuring manifest drift is still caught.
+    """
+    if not has_cosign:
+        with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fallback"):
+            pytest.fail("cosign is required for code-server validation but not found on PATH")
+        return
+
+    # Pre-Konflux images have no SBOM attached.
+    if "quay.io/modh/" in tag.image_ref:
+        with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fallback"):
+            pytest.skip(f"Pre-Konflux image (no SBOM) for code-server check: {tag.image_ref}")
+        return
+
+    source_hint = _imagestream_to_source_hint(tag.is_name)
+    python_version = _extract_python_version(tag.image_ref)
+    try:
+        sbom_packages = _packages_from_sbom(tag.image_ref, source_hint=source_hint, python_version=python_version)
+    except (
+        _Amd64ResolutionError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        json.JSONDecodeError,
+    ) as exc:
+        with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fetch"):
+            pytest.fail(f"Failed to fetch SBOM for code-server validation of {tag.image_ref}: {exc}")
+        return
+
+    _compare_manifest_vs_actual(subtests, tag.is_name, tag.tag_name, code_server_deps, sbom_packages, is_software=True)
+
+
 @pytest.mark.manifest_validation
 @pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
 def test_old_tag_annotations_match_quay(
@@ -894,6 +947,14 @@ def test_old_tag_annotations_match_quay(
 
     for t in all_tags:
         _LOG.info(f"Fetching Quay packages for {t.is_name} tag {t.tag_name}: {t.image_ref}")
+        # Clair cannot resolve code-server (npm package with 0.0.0 dev version),
+        # so validate it separately via SBOM fallback instead of silently dropping it.
+        code_server_software = [sw for sw in t.software if sw["name"] == "code-server"]
+        if code_server_software:
+            _validate_code_server_via_sbom(
+                subtests, t, code_server_software, has_cosign=shutil.which("cosign") is not None
+            )
+
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
@@ -914,9 +975,8 @@ def test_old_tag_annotations_match_quay(
             continue
 
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, t.python_deps, actual_packages)
-        # Clair cannot resolve code-server (npm package with 0.0.0 dev version).
-        quay_software = [sw for sw in t.software if sw["name"] != "code-server"]
-        _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, quay_software, actual_packages, is_software=True)
+        clair_software = [sw for sw in t.software if sw["name"] != "code-server"]
+        _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, clair_software, actual_packages, is_software=True)
 
     if skipped_scans:
         summary = ", ".join(skipped_scans)

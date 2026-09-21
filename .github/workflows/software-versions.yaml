@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/apt-install
         with:
-          packages: skopeo
+          packages: cosign skopeo
           update: 'false'
 
       - name: Setup uv and Python
