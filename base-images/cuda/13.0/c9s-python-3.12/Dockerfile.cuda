@@ -9,7 +9,7 @@ COPY base-images/utils/fix-permissions /mnt/usr/bin/
 ####################
 # CUDA packages, repos, env vars, and toolkit are provided by the midstream image.
 # Source: https://github.com/opendatahub-io/base-containers (cuda/13.0/)
-FROM quay.io/opendatahub/odh-midstream-cuda-base-13-0:1.20260917.0 AS base
+FROM quay.io/opendatahub/odh-midstream-cuda-base-13-0:1.20260917.0@sha256:f107b8da95025df08eadbb12ad1249ee2ede0926a80cdda5c2af6f3d2e0522aa AS base
 
 USER 0
 ARG TARGETARCH
