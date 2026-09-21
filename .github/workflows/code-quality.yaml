@@ -111,20 +111,25 @@ jobs:
         id: install-deps
         run: uv sync --locked
 
-      # Deepen the shallow clone with the single commit tests/test_pylock_downgrade.py
-      # compares against (PR base sha, or previous branch tip on push). Guarded against the
-      # all-zeros github.event.before on the first push of a new branch (github refuses to
-      # fetch it: "upload-pack: not our ref"). If the baseline is unavailable, the test falls
-      # back to origin/main or skips with its existing message (see _resolve_base_ref()).
+      # Deepen the shallow clone with the commits needed by the tests. The downgrade test
+      # compares against the PR base sha (or previous branch tip on push). The changed-files
+      # unit test also compares two historical fixture commits. Guard the event baseline
+      # against the all-zeros github.event.before on the first push of a new branch (GitHub
+      # refuses to fetch it: "upload-pack: not our ref"). If the baseline is unavailable, the
+      # downgrade test falls back to origin/main or skips with its existing message.
       - name: Fetch downgrade check base ref
         if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
         run: |
           NULL_SHA="0000000000000000000000000000000000000000"
           BASE_SHA="${PULL_REQUEST_BASE_SHA:-$PUSH_BEFORE_SHA}"
-          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != "$NULL_SHA" ] \
-             && ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            git fetch --depth=1 origin "$BASE_SHA"
-          fi
+          for REF in "$BASE_SHA" \
+            4d4841f0c888fdb417fc0320675a2535d54abbd7 \
+            2c36c11a801ba632e8dc49eb843bd70e7ea6a3d7; do
+            if [ -n "$REF" ] && [ "$REF" != "$NULL_SHA" ] \
+               && ! git cat-file -e "${REF}^{commit}" 2>/dev/null; then
+              git fetch --depth=1 origin "$REF"
+            fi
+          done
         env:
           PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE_SHA: ${{ github.event.before }}
