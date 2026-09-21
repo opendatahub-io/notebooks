@@ -29,12 +29,13 @@ Requires:
 """
 
 import argparse
+import os
 import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from scripts.cve import extract_cve_id
-from scripts.cve.jira_auth import JiraAuthError
+from scripts.cve.jira_auth import JiraAuthError, JiraConnectionConfig
 from scripts.cve.jira_client import JiraClient
 
 
@@ -307,7 +308,8 @@ def main():
         args.summary = True
 
     try:
-        client = JiraClient.from_env()
+        config = JiraConnectionConfig.from_env(os.environ)
+        client = JiraClient.from_config(config)
     except JiraAuthError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)

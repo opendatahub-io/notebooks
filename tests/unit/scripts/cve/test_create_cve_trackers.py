@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING, Any, cast
 from inline_snapshot import snapshot
 
 from scripts.cve import create_cve_trackers as cct
+from scripts.cve.create_cve_trackers import CveTrackerConfig
 
 if TYPE_CHECKING:
-    from pytest import MonkeyPatch, Subtests
+    from pytest import Subtests
 
     from scripts.cve.jira_client import JiraClient
 
@@ -128,11 +129,24 @@ def test_get_blocking_issues() -> None:
     assert cct.get_blocking_issues(issue) == ["RHAIENG-5306"]
 
 
-def test_parse_extra_contributor_ids(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.setenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", " id-one , id-two ")
-    assert cct.parse_extra_contributor_ids() == {"id-one", "id-two"}
-    monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
+def test_parse_extra_contributor_ids() -> None:
+    config = CveTrackerConfig(extra_contributor_ids=frozenset({"id-one", "id-two"}))
+    assert cct.parse_extra_contributor_ids(config) == {"id-one", "id-two"}
     assert cct.parse_extra_contributor_ids() == set()
+
+
+def test_tracker_config_from_env_reads_explicit_mapping() -> None:
+    config = CveTrackerConfig.from_env(
+        {
+            "JIRA_RHAIENG_TEAM_OPTION_ID": " team-id ",
+            "JIRA_RHAIENG_EXTRA_CONTRIBUTORS": " id-one, id-two, id-one ",
+            "JIRA_RUNNER_ACCOUNT_ID": " runner-id ",
+        }
+    )
+
+    assert config.team_option_id == "team-id"
+    assert config.extra_contributor_ids == frozenset({"id-one", "id-two"})
+    assert config.runner_account_id == "runner-id"
 
 
 def test_find_orphan_cves_groups_embargo_and_contributors() -> None:

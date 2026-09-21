@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-import os
 import urllib.parse
 from typing import Any
 
 from scripts.cve import create_ssl_context
 from scripts.cve.jira_auth import (
+    JiraConnectionConfig,
     get_auth_headers,
     get_cached_api_base_url,
     resolve_cloud_base_url,
@@ -24,9 +24,8 @@ except ImportError:
     HAS_REQUESTS = False
 
 
+JIRA_DEFAULT_URL = JiraConnectionConfig().url
 _SSL_CONTEXT = create_ssl_context() if not HAS_REQUESTS else None
-
-JIRA_DEFAULT_URL = "https://redhat.atlassian.net"
 
 # Keys set explicitly by create_issue(); extra_fields may not override these.
 _CREATE_ISSUE_PROTECTED_FIELD_KEYS = frozenset(
@@ -57,22 +56,22 @@ class JiraClient:
             self.headers.update(auth_headers)
 
     @classmethod
-    def from_env(cls) -> JiraClient:
-        """Factory that reads env vars, resolves auth and base URL.
+    def from_config(cls, config: JiraConnectionConfig) -> JiraClient:
+        """Factory that resolves authentication and base URL from *config*.
 
         For OAuth tokens the Jira REST API must be accessed through the
         Atlassian API gateway (``api.atlassian.com/ex/jira/{cloudId}``).
         For API-token (Basic) or legacy Bearer auth the configured
         ``JIRA_URL`` is used directly.
         """
-        jira_url = os.environ.get("JIRA_URL", JIRA_DEFAULT_URL)
-        auth_headers = get_auth_headers(jira_url)
+        jira_url = config.url
+        auth_headers = get_auth_headers(config.auth, jira_url)
 
         base_url = jira_url
         auth_value = auth_headers.get("Authorization", "")
 
         # OAuth tokens go through the API gateway — resolve cloud ID
-        if auth_value.startswith("Bearer ") and not os.environ.get("JIRA_TOKEN", "").strip():
+        if auth_value.startswith("Bearer ") and not config.auth.legacy_token:
             cached_base = get_cached_api_base_url(jira_url)
             if cached_base:
                 base_url = cached_base
