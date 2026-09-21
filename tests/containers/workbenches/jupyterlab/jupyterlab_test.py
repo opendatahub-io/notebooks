@@ -124,9 +124,7 @@ class TestJupyterLabImage:
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir = pathlib.Path(tmpdir)
                 (tmpdir / test_file_name).write_text(test_file_content)
-                docker_utils.container_cp(
-                    container.get_wrapped_container(), src=str(tmpdir / test_file_name), dst=self.APP_ROOT_HOME
-                )
+                container.cp(tmpdir / test_file_name, dst=self.APP_ROOT_HOME)
             exit_code, convert_output = container.exec(["jupyter", "nbconvert", test_file_name, "--to", "pdf"])
             assert "PDF successfully created" in convert_output.decode()
             assert 0 == exit_code

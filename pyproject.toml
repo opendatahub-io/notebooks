@@ -164,6 +164,11 @@ exclude = [ ]
 target-version = "py314"
 line-length = 120
 
+# the sidecar exec agent runs on the IMAGE's python (3.12), not the suite's 3.14:
+# keep this file py312-clean (no PEP 758 bare multi-except, which format rewrites at py314)
+[tool.ruff.per-file-target-version]
+"tests/containers/sidecar_agent.py" = "py312"
+
 # https://docs.astral.sh/ruff/rules
 [tool.ruff.lint]
 preview = true
