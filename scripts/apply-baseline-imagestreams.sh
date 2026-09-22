@@ -81,11 +81,13 @@ resolve_kustomize() {
 }
 
 kustomize_build() {
-  # Overlay references manifests/odh/base/ files; allow parent-directory loads.
-  if [[ "${KUSTOMIZE[0]}" == "kustomize" ]]; then
-    kustomize build --load-restrictor LoadRestrictionsNone "$@"
+  # Overlay references manifests/odh/base/; kustomize forbids parent loads unless
+  # LoadRestrictionsNone is set. `oc apply -k` cannot pass that flag — use this
+  # script or `kustomize build --load-restrictor ... | oc apply`.
+  if [[ "${KUSTOMIZE[1]:-}" == "build" ]]; then
+    "${KUSTOMIZE[0]}" build --load-restrictor LoadRestrictionsNone "$@"
   else
-    "${KUSTOMIZE[@]}" "$@"
+    "${KUSTOMIZE[@]}" --load-restrictor LoadRestrictionsNone "$@"
   fi
 }
 

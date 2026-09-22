@@ -2,8 +2,9 @@
 # RHOAI additional overlay: ODH baseline ImageStreams (jupyter, code-server, runtime).
 #
 # Baseline images ship in manifests/odh/base/ but are excluded from rhoai/base/.
-# ImageStream YAMLs are reused from the ODH tree; quay.io refs come from ODH
-# params-latest.env because baseline images publish under quay.io/opendatahub.
+# ImageStream YAMLs and quay.io refs come from manifests/odh/base/ (single
+# source of truth). Build with --load-restrictor LoadRestrictionsNone because
+# those files sit outside this overlay directory.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

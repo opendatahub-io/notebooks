@@ -12,23 +12,38 @@ create these ImageStreams. The operator does not discover subdirectories automat
 ImageStream YAMLs are reused from `manifests/odh/base/`; `quay.io/opendatahub/...`
 refs resolve from the ODH `params-latest.env`.
 
-| ImageStream | Quay image |
-|-------------|------------|
-| `jupyter-baseline-notebook` | `odh-workbench-jupyter-baseline-cpu-py312-c9s` |
+Kustomize will not load those ODH files unless you pass
+`--load-restrictor LoadRestrictionsNone`. `oc apply -k` cannot set that flag;
+use the helper script (or pipe `kustomize build` into `oc apply`).
+
+
+| ImageStream                     | Quay image                                        |
+| ------------------------------- | ------------------------------------------------- |
+| `jupyter-baseline-notebook`     | `odh-workbench-jupyter-baseline-cpu-py312-c9s`    |
 | `code-server-baseline-notebook` | `odh-workbench-codeserver-baseline-cpu-py312-c9s` |
-| `runtime-baseline` | `odh-pipeline-runtime-baseline-cpu-py312-c9s` |
+| `runtime-baseline`              | `odh-pipeline-runtime-baseline-cpu-py312-c9s`     |
+
+
+
 
 ## Preview
 
 ```bash
-kustomize build --load-restrictor LoadRestrictionsNone \
-  manifests/rhoai/overlays/additional/baseline
+# confirm the right cluster
+oc whoami
+oc project -q
+
+# optional: inspect rendered YAML first
+./scripts/apply-baseline-imagestreams.sh preview
 ```
 
 ## Apply on a cluster
 
+Run from the repository root, logged in as a cluster admin. The applications
+namespace defaults to `redhat-ods-applications`.
+
 ```bash
-# Enable baseline images in the applications namespace
+# Enable baseline images (sets namespace, applies, restarts rhods-dashboard)
 ./scripts/apply-baseline-imagestreams.sh apply
 
 # Remove all resources created by the enable command
