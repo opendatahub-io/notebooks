@@ -1,0 +1,116 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/red-hat-data-services/notebooks?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/on-cel-expression: |
+      event == "pull_request"
+      && target_branch == "rhoai-3.3"
+      && ".tekton/fips-scan-test.yaml".pathChanged()
+    pipelinesascode.tekton.dev/on-event: "[pull_request]"
+  labels:
+    appstudio.openshift.io/application: automation
+    appstudio.openshift.io/component: pull-request-pipelines-notebooks
+    pipelines.appstudio.openshift.io/type: build
+  name: fips-scan-test-on-pull-request
+  namespace: rhoai-tenant
+spec:
+  params:
+  - name: image-url
+    value: quay.io/rhoai/pull-request-pipelines:notebooks-be39ae3ccb48502be9415f7e65c3ac31c9aff0f8
+  - name: image-digest
+    value: sha256:79fe667883e14f6aa50c93defb0d276248a3f3aaf683b6e73e62486c0968a9ba
+  - name: build-platforms
+    value:
+    - linux/x86_64
+    - linux-m2xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
+  pipelineSpec:
+    params:
+    - name: image-url
+      type: string
+    - name: image-digest
+      type: string
+    - name: build-platforms
+      type: array
+    workspaces:
+    - name: git-auth
+    tasks:
+    - name: fips-check
+      matrix:
+        params:
+        - name: image-platform
+          value:
+          - $(params.build-platforms)
+      params:
+      - name: image-url
+        value: $(params.image-url)
+      - name: image-digest
+        value: $(params.image-digest)
+      taskSpec:
+        params:
+        - name: image-platform
+          type: string
+        - name: image-url
+          type: string
+        - name: image-digest
+          type: string
+        steps:
+        - name: prepare-image-list
+          image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
+          env:
+          - name: IMAGE_PLATFORM
+            value: $(params.image-platform)
+          - name: IMAGE_URL
+            value: $(params.image-url)
+          - name: IMAGE_DIGEST
+            value: $(params.image-digest)
+          script: |
+            ARCH="${IMAGE_PLATFORM#*/}"
+            if [ "${ARCH}" = "x86_64" ]; then ARCH="amd64"; fi
+            case "${ARCH}" in
+              amd64|ppc64le|arm64|s390x) ;;
+              *) ARCH="amd64" ;;
+            esac
+            IMAGE_WITHOUT_TAG=$(echo "${IMAGE_URL}" | sed 's/\(.*\):.*/\1/')
+            PLATFORM_DIGEST=$(skopeo inspect --raw "docker://${IMAGE_WITHOUT_TAG}@${IMAGE_DIGEST}" | jq -r ".manifests[] | select(.platform.architecture == \"${ARCH}\") | .digest")
+            if [ -z "${PLATFORM_DIGEST}" ]; then
+              echo "Could not find digest for architecture ${ARCH} in ${IMAGE_URL}@${IMAGE_DIGEST}"
+              exit 1
+            fi
+            printf '%s' "${IMAGE_WITHOUT_TAG}@${PLATFORM_DIGEST}" > /tekton/home/unique_related_images.txt
+        - name: run-fips-check
+          ref:
+            resolver: git
+            params:
+            - name: url
+              value: https://github.com/konflux-ci/build-definitions.git
+            - name: revision
+              value: a941bd626d49a8ab25a3a155e04a60fd15c69963
+            - name: pathInRepo
+              value: stepactions/fips-operator-check-step-action/0.1/fips-operator-check-step-action.yaml
+        - name: evaluate-result
+          image: quay.io/rhoai-konflux/alpine:latest
+          env:
+          - name: TEST_OUTPUT
+            value: $(steps.run-fips-check.results.TEST_OUTPUT)
+          script: |
+            echo "${TEST_OUTPUT}"
+  taskRunSpecs:
+  - pipelineTaskName: fips-check
+    computeResources:
+      requests:
+        cpu: 4300m
+        memory: 4Gi
+      limits:
+        memory: 4Gi
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-pull-request-pipelines
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
