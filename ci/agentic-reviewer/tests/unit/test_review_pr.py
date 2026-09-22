@@ -27,6 +27,22 @@ def test_load_inputs_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     assert inputs.defense_in_depth_exclude_header is True
 
 
+def test_build_config_uses_default_model_when_environment_is_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    monkeypatch.setenv("AGY_TRAJECTORY_DIR", "agy-trajectory/pr-review")
+    inputs = review_pr.ReviewInputs(
+        github_token=EXAMPLE_VALUE,
+        repository="owner/repo",
+        pull_request_number=99,
+        additional_context="",
+        model=None,
+    )
+
+    config, _client = review_pr.build_config(inputs)
+
+    assert config.model == "gemini-3.5-flash-lite"
+
+
 def test_required_env_exits_for_missing_value(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MISSING_VALUE", raising=False)
 

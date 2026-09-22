@@ -78,6 +78,7 @@ def test_build_config_enables_read_only_source_tools(monkeypatch) -> None:
     monkeypatch.setenv("AGY_TRAJECTORY_DIR", "/workspace/notebooks/agy-trajectory")
     monkeypatch.delenv("SOURCE_WORKSPACE", raising=False)
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     context = {
         "failed_jobs": [{"log_excerpt": "grounded excerpt", "log_tail": ""}],
         "github_repository": "owner/repo",
@@ -88,6 +89,7 @@ def test_build_config_enables_read_only_source_tools(monkeypatch) -> None:
 
     assert config.workspaces == ["/workspace/notebooks/unsafe-pr-source"]
     assert config.capabilities is not None
+    assert config.model == "gemini-3.5-flash-lite"
     assert config.mcp_servers == []
     assert config.tools == []
 

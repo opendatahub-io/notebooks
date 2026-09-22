@@ -22,7 +22,7 @@ from odh_ci_agent.ci_summary import (
     render_final_success_comment,
     render_progress_comment,
 )
-from odh_ci_agent.env import bool_env, required_env
+from odh_ci_agent.env import bool_env, gemini_model, required_env
 from odh_ci_agent.github_actions_tools import actions_tool_policies, make_github_actions_tools
 from odh_ci_agent.github_api import read_github_token, split_repository
 from odh_ci_agent.mcp_github import GITHUB_ACTIONS_READ_TOOLS
@@ -78,7 +78,7 @@ def build_config(context: Mapping[str, object]) -> LocalAgentConfig:
         policies.extend(actions_tool_policies())
 
     return LocalAgentConfig(
-        model=os.environ.get("GEMINI_MODEL"),
+        model=gemini_model(),
         workspaces=[source_workspace],
         capabilities=CapabilitiesConfig(enable_subagents=False, enabled_tools=SOURCE_READ_BUILTINS),
         policies=policies,
