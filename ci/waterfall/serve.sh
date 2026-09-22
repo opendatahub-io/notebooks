@@ -65,7 +65,7 @@ main() {
   echo "Serving waterfall at http://localhost:${PORT}/"
   echo "  matrix:    http://localhost:${PORT}/"
   echo "  timeline:  http://localhost:${PORT}/waterfall.html"
-  exec python3 -m http.server "$PORT"
+  exec python3 -m http.server --bind 127.0.0.1 "$PORT"
 }
 
 main "$@"
