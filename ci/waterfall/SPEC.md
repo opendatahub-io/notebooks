@@ -2,7 +2,7 @@
 
 **Status:** prototype (local-only)
 **Location:** `ci/waterfall/`
-**Last updated:** 2026-07-28
+**Last updated:** 2026-09-22
 
 Design inspiration: [Buildbot Waterfall View](https://docs.buildbot.net/latest/manual/configuration/www/ui/waterfall_view.html).
 
@@ -187,7 +187,7 @@ TaskRun lookups are **not** run for full timeline history (API cost); classified
 | `application` | string | Label `appstudio.openshift.io/application` |
 | `sha` | string | Label `pipelinesascode.tekton.dev/sha` |
 | `branch` | string | Annotation `build.appstudio.redhat.com/target_branch` |
-| `event_type` | string | e.g. `push`, `pull_request`, `test-comment` |
+| `event_type` | string | Pipelines-as-Code event type, e.g. `push`, `incoming`, `pull_request`, `test-comment` |
 | `status` | string | Condition `Succeeded.status` (`True` / `False` / `Unknown`) |
 | `reason` | string | Condition `Succeeded.reason` (e.g. `Running`, `Succeeded`) |
 | `failure_class` | string | `ok` \| `running` \| `build_failed` \| `check_failed` \| `failed` \| `unknown` — from TaskRuns when classified |
@@ -338,7 +338,7 @@ Timeline details:
 
 - **Cluster:** `odh` | `rhds` (one cluster at a time)
 - **Branch / release:** `main`, `rhoai-3.6-ea.1`, `PR@main`, etc.
-- **Event:** push only | all | PR only
+- **Event:** push + incoming | all | PR only
 
 ---
 
