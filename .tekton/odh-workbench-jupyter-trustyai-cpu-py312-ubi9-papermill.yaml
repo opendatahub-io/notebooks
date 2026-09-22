@@ -113,7 +113,7 @@ spec:
                 WORK="/opt/app-root/src"
                 mkdir -p "${WORK}"
                 TESTDIR_REL="jupyter/trustyai/ubi9-python-3.12/test"
-                MANIFEST_REL="manifests/base/jupyter-trustyai-notebook-imagestream.yaml"
+                MANIFEST_REL="manifests/odh/base/jupyter-trustyai-notebook-imagestream.yaml"
 
                 # 1. Fetch the repo at the revision that produced the image
                 #    (the test notebook + CSVs + imagestream manifest all live here).
