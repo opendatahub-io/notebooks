@@ -5,10 +5,8 @@
 This script generates Python dependency lock files (pylock.toml) for multiple
 directories using either internal Red Hat wheel indexes or the public PyPI index.
 
-Public-index images (``*-baseline`` and other root ``pylock.toml`` layouts) use
-``uv lock`` + ``uv export --format pylock.toml`` so ``[tool.uv] required-environments``
-and dependency environment markers are honored. RH-index images continue to use
-``uv pip compile --universal``.
+Public-index and RH-index images use ``uv pip compile --universal`` with different
+index configuration and output paths.
 
 Features:
   - Supports multiple Python project directories, detected by pyproject.toml.
@@ -1045,7 +1043,7 @@ class TransientLockError(Exception):
         self.stderr = stderr
 
 
-def run_public_index_lock(
+def _run_public_index_lock_uv_lock(
     project_dir: Path,
     index_flags: list[str],
     python_version: str,
@@ -1136,6 +1134,76 @@ def run_public_index_lock(
         pyproject_path.write_text(original_pyproject, encoding="utf-8")
         uv_lock_path.unlink(missing_ok=True)
 
+    log.ok("pylock.toml (public index) generated successfully.")
+    return True
+
+
+def run_public_index_lock(
+    project_dir: Path,
+    index_flags: list[str],
+    python_version: str,
+    upgrade: bool,
+    ci_check: bool,
+    live_timestamp: str,
+    log: LogBuffer,
+    extra_constraints: Path | None = None,
+) -> bool:
+    """Lock a public-index project with universal ``uv pip compile``."""
+    pylock_path = project_dir / "pylock.toml"
+    exclude_newer = resolve_exclude_newer(pylock_path, ci_check=ci_check, live_timestamp=live_timestamp)
+    cmd: list[str] = [
+        str(UV),
+        "pip",
+        "compile",
+        "pyproject.toml",
+        "--output-file",
+        "pylock.toml",
+        "--format",
+        "pylock.toml",
+        "--generate-hashes",
+        "--emit-index-url",
+        f"--python-version={python_version}",
+        "--universal",
+        "--no-annotate",
+        "--quiet",
+    ]
+    for pkg in NO_EMIT_PACKAGES:
+        cmd.extend(["--no-emit-package", pkg])
+    if upgrade:
+        cmd.append("--upgrade")
+    cmd.extend(
+        [
+            "--constraints",
+            os.path.relpath(CONSTRAINTS_FILE, project_dir),
+            "--override",
+            os.path.relpath(OVERRIDES_FILE, project_dir),
+            f"--exclude-newer={exclude_newer}",
+        ]
+    )
+    if extra_constraints is not None:
+        cmd.extend(["--constraints", os.path.relpath(extra_constraints, project_dir)])
+    cmd.extend(index_flags)
+    extra_idx = lock_extra_index_flags_from_env()
+    if extra_idx:
+        cmd.extend(extra_idx)
+        log.print("  📎 Extra lock indexes from UV_LOCK_EXTRA_INDEX_URL / PIP_LOCK_EXTRA_INDEX_URL")
+    default_index = next(
+        (flag.removeprefix("--default-index=") for flag in index_flags if flag.startswith("--default-index=")),
+        None,
+    )
+    if default_index is not None:
+        log.print(f"  🌐 Lock INDEX_URL: {default_index}")
+    log.print(f"  🐍 Lock Python: {python_version} (--python-version={python_version})")
+    cmd.append(f"--custom-compile-command={compile_command_for_lock_header(cmd)}")
+    try:
+        result = _run_subprocess(cmd, cwd=project_dir, log=log, quiet=True)
+    except TimeoutError:
+        log.warning(f"Timed out generating pylock.toml (public index) in {project_dir}")
+        pylock_path.unlink(missing_ok=True)
+        return False
+    if result.returncode != 0:
+        pylock_path.unlink(missing_ok=True)
+        return False
     log.ok("pylock.toml (public index) generated successfully.")
     return True
 
