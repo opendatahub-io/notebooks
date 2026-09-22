@@ -150,10 +150,11 @@ spec:
                     json.dump(expected, fh, indent=2)
                 PY
 
-                # 3. Install papermill. --user: the step runs as the image's
-                #    non-root USER (1001); a user-site install is always
-                #    writable and on sys.path (the env is not PEP-668 managed).
-                python3 -m pip install --user papermill
+                # 3. Install papermill into the image's venv. No --user: the env
+                #    is a virtualenv, where user-site installs are disabled. The
+                #    venv lives under /opt/app-root (owned by USER 1001), so the
+                #    non-root step can write to it -- parity with the GHA leg.
+                python3 -m pip install papermill
 
                 # 4. Run the notebook. CWD = the test dir so the notebook finds
                 #    expected_versions.json and the income-*.csv fixtures.
