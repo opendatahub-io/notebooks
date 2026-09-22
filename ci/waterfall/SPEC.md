@@ -201,7 +201,7 @@ TaskRun lookups are **not** run for full timeline history (API cost); classified
 
 `ui_url` pattern:
 
-```
+```text
 {ui_base}/ns/{namespace}/applications/{application}/components/{component}/activity/pipelineruns
 ```
 
@@ -259,7 +259,7 @@ Collector regex gate: `odh-workbench-`, `odh-wb-`, or `odh-pipeline-runtime-` in
 ### 6.1 Matrix layout
 
 - **Rows:** unique `version` labels from entries
-  - Live/archived: `branch`, or `PR@{branch}` for `event_type === pull_request'`, or `live` if no branch
+  - Live/archived: `branch`, or `PR@{branch}` for `event_type === 'pull_request'`, or `live` if no branch
 - **Columns:** unique short component names, ordered by `COMPONENT_ORDER`
 - **Cells:** one entry per `(version, short)` after source-priority merge in the UI
 
@@ -301,7 +301,7 @@ RHDS components often carry a version suffix matching the application:
 - Application `rhoai-v3-3` → component `odh-workbench-jupyter-minimal-cuda-py312-v3-3`
 - Application `rhoai-v3-6-ea-1` → component `…-v3-6-ea-1`
 
-UI appends `-{versionSuffix}` when `instance === stone-prod-p02'` and component does not already end with the suffix.
+UI appends `-{versionSuffix}` when `instance === 'stone-prod-p02'` and component does not already end with the suffix.
 
 ### 6.6 Stats bar
 
@@ -387,7 +387,7 @@ See also: [guide/docs/notebooks/konflux/internal-systems-access.md](../../guide/
 | **KA per-component history** | Each component query returns up to 100 archived runs (newest first); sufficient for latest-status matrix |
 | **RHDS app filter** | Only five supported streams (2.25, 3.3–3.5, 3.6-ea.1); no ancient 2.x |
 | **ODH branch filter** | Only `main` and `PR@main`; not `stable` / `candidate` |
-| **PR rows** | Included; labeled `PR@{branch}` when `event_type === pull_request'` |
+| **PR rows** | Included; labeled `PR@{branch}` when `event_type === 'pull_request'` |
 | **Multi-arch granularity** | Cell is overall PipelineRun success; per-arch TaskRun status not shown |
 | **Prometheus path dormant** | UI still contains Prometheus + stale logic; collector emits empty array |
 | **Subtitle drift** | Page subtitle still mentions Prometheus; collector does not use it |
