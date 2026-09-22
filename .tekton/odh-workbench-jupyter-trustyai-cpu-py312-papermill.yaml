@@ -1,0 +1,172 @@
+# yamllint disable-file
+# Hand-managed Konflux integration test for the TrustyAI workbench image.
+#
+# This is the "papermill part" of the per-arch Konflux integration testing
+# design (see docs/konflux-integration.md and the opendatahub-io/notebooks
+# per-architecture Pipelines-as-Code work). It runs the TrustyAI image's own
+# test_notebook.ipynb with papermill, cluster-free and runtime-free:
+#
+#   - NO ephemeral cluster, NO container runtime, NO sidecar, NO agent, NO pytest.
+#   - The test step's own container image IS the image under test. The image
+#     ships python3, pip, git and the full TrustyAI environment, so the step
+#     just installs papermill and executes the notebook in place.
+#
+# The image under test is $(params.output-image) -- the single source of truth:
+#   - manual trigger (default)      -> the latest stable TrustyAI image
+#   - chain with a build            -> set output-image to the image a build
+#     produced (e.g. the on-pr tag) and trigger against it
+#
+# The notebook is executed with papermill exactly as the GHA
+# `make test-jupyter-trustyai-...` leg does (scripts/test_jupyter_with_papermill.sh):
+# expected_versions.json is generated from the imagestream manifest annotations
+# and the run is a failure if the notebook's stderr file contains "FAILED".
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: 'https://github.com/red-hat-data-services/notebooks?rev={{revision}}'
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: 'true'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    # Manual trigger: /test-trustyai-papermill (tests the default image below).
+    pipelinesascode.tekton.dev/on-comment: '^/test-trustyai-papermill'
+    # Also run on PRs that touch the TrustyAI build or this test, so it stays
+    # "chained with build": point output-image at the build's image to test it.
+    pipelinesascode.tekton.dev/on-cel-expression: |-
+      event == "pull_request" && target_branch == "rhoai-3.3"
+      && ( "jupyter/trustyai/ubi9-python-3.12/**".pathChanged()
+           || ".tekton/odh-workbench-jupyter-trustyai-cpu-py312-papermill.yaml".pathChanged() )
+  labels:
+    appstudio.openshift.io/application: rhoai-v3-3
+    appstudio.openshift.io/component: odh-workbench-jupyter-trustyai-cpu-py312-papermill
+    pipelines.appstudio.openshift.io/type: test
+  name: odh-workbench-jupyter-trustyai-cpu-py312-papermill-on-pull-request
+  namespace: rhoai-tenant
+spec:
+  params:
+    - name: event-type
+      value: '{{event_type}}'
+    - name: git-url
+      value: '{{source_url}}'
+    - name: revision
+      value: '{{revision}}'
+    # Image under test. Default = latest stable TrustyAI image (manual trigger).
+    # To test a specific build, set this to the image that build produced.
+    - name: output-image
+      value: 'quay.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9:rhoai-3.3'
+  pipelineSpec:
+    params:
+      - name: event-type
+        type: string
+        default: pull_request
+      - name: git-url
+        type: string
+        description: 'Source repository (red-hat-data-services/notebooks).'
+      - name: revision
+        type: string
+        description: 'Commit to fetch the test notebook + imagestream manifest from.'
+      - name: output-image
+        type: string
+        description: >-
+          The image under test, run as the test step's own container image.
+          Default: latest stable. Set to a build's image to chain the test with
+          that build. Must be pullable (the step's image pull doubles as the
+          "wait for the image" gate).
+    tasks:
+      - name: test-papermill
+        taskSpec:
+          params:
+            - name: git-url
+            - name: revision
+            - name: output-image
+          step:
+            - name: papermill
+              # The SUT is the step's own image: python3/pip/git + the full
+              # TrustyAI environment are already present.
+              image: $(params.output-image)
+              env:
+                - name: GIT_URL
+                  value: $(params.git-url)
+                - name: REVISION
+                  value: $(params.revision)
+              script: |
+                #!/bin/bash
+                # Execute the TrustyAI test_notebook.ipynb with papermill,
+                # cluster-free and runtime-free (parity with
+                # scripts/test_jupyter_with_papermill.sh).
+                set -euxo pipefail
+
+                WORK="/opt/app-root/src"
+                mkdir -p "${WORK}"
+                TESTDIR_REL="jupyter/trustyai/ubi9-python-3.12/test"
+                MANIFEST_REL="manifests/base/jupyter-trustyai-notebook-imagestream.yaml"
+
+                # 1. Fetch the repo at the revision that produced the image
+                #    (the test notebook + CSVs + imagestream manifest all live here).
+                REPO="${WORK}/repo"
+                rm -rf "${REPO}"
+                git init -q "${REPO}"
+                git -C "${REPO}" remote add origin "${GIT_URL}"
+                if ! git -C "${REPO}" fetch -q --depth 1 origin "${REVISION}" 2>/dev/null; then
+                  # Revision not fetchable (e.g. a manual trigger on a branch
+                  # head); fall back to the default branch head.
+                  git -C "${REPO}" fetch -q --depth 1 origin
+                fi
+                git -C "${REPO}" checkout -q FETCH_HEAD
+                TESTDIR="${REPO}/${TESTDIR_REL}"
+
+                # 2. Build expected_versions.json from the imagestream manifest
+                #    annotations (the "source of truth" for package versions),
+                #    mirroring the GHA script's yq expression.
+                python3 - "${REPO}/${MANIFEST_REL}" "${TESTDIR}/expected_versions.json" <<'PY'
+                import json, sys
+                import yaml
+
+                with open(sys.argv[1]) as fh:
+                    manifest = yaml.safe_load(fh)
+                ann = manifest["spec"]["tags"][0]["annotations"]
+                deps = (
+                    json.loads(ann["opendatahub.io/notebook-software"])
+                    + json.loads(ann["opendatahub.io/notebook-python-dependencies"])
+                )
+                expected = {d["name"]: d["version"] for d in deps}
+                expected.setdefault("nbdime", "4.0")
+                expected.setdefault("nbgitpuller", "1.2")
+                with open(sys.argv[2], "w") as fh:
+                    json.dump(expected, fh, indent=2)
+                PY
+
+                # 3. Install papermill. --user: the step runs as the image's
+                #    non-root USER (1001); a user-site install is always
+                #    writable and on sys.path (the env is not PEP-668 managed).
+                python3 -m pip install --user papermill
+
+                # 4. Run the notebook. CWD = the test dir so the notebook finds
+                #    expected_versions.json and the income-*.csv fixtures.
+                cd "${TESTDIR}"
+                IPY_KERNEL_LOG_LEVEL=DEBUG python3 -m papermill \
+                  test_notebook.ipynb output.ipynb \
+                  --kernel python3 --log-level DEBUG --stderr-file error.txt
+
+                # 5. Papermill may not create --stderr-file when nothing is
+                #    written to stderr; materialise it, then fail on "FAILED".
+                [ -f error.txt ] || : > error.txt
+                if grep -q FAILED error.txt; then
+                  echo "ERROR: TrustyAI papermill notebook reported a test failure:"
+                  cat error.txt
+                  exit 1
+                fi
+                echo "OK: TrustyAI papermill notebook passed for $(params.output-image)"
+              resources:
+                requests:
+                  cpu: '2'
+                  memory: 4Gi
+                  ephemeral-storage: 20Gi
+                limits:
+                  cpu: '4'
+                  memory: 8Gi
+                  ephemeral-storage: 20Gi
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-pull-request-pipelines
