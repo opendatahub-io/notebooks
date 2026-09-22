@@ -45,6 +45,7 @@ A change is **not done** until the docs below reflect it.
 | [PERFORMANCE.md](PERFORMANCE.md) | Collection timing and load observations (point in time) |
 | [AGENTS.md](AGENTS.md) | Agent rules; keep all `*.md` here in sync with code |
 | [README.md](README.md) | Quick start for humans (keep current) |
+| [.gitignore](.gitignore) | Local artifact ignore rules |
 | [collect.py](collect.py) | `oc` + KubeArchive collector → `data.json` |
 | [serve.sh](serve.sh) | `oc login --web` (if needed) → `collect.py` → `http.server` |
 | [index.html](index.html) | Latest-status matrix UI |

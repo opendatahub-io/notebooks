@@ -357,7 +357,14 @@ def ensure_taskrun_indexes(
 ) -> dict:
     """Fetch TaskRuns once per PipelineRun; cache under key ``tridx|<name>``."""
     cache = load_stage_cache(cache_path)
-    missing = [row for row in rows if f"tridx|{row['name']}" not in cache]
+    missing = [
+        row
+        for row in rows
+        if (
+            f"tridx|{row['name']}" not in cache
+            or cache[f"tridx|{row['name']}"].get("records") is None
+        )
+    ]
     if not missing:
         return cache
 
@@ -385,6 +392,10 @@ def ensure_taskrun_indexes(
         done = 0
         for future in as_completed(futures):
             name, records = future.result()
+            if records is None:
+                cache.pop(f"tridx|{name}", None)
+                done += 1
+                continue
             cache[f"tridx|{name}"] = {
                 "records": records,
                 "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

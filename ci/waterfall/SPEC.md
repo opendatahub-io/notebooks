@@ -1,8 +1,8 @@
 # Notebooks Workbench Build Waterfall — As-Implemented Spec
 
-**Status:** prototype (local-only)  
-**Location:** `ci/waterfall/`  
-**Last updated:** 2026-07-28  
+**Status:** prototype (local-only)
+**Location:** `ci/waterfall/`
+**Last updated:** 2026-07-28
 
 Design inspiration: [Buildbot Waterfall View](https://docs.buildbot.net/latest/manual/configuration/www/ui/waterfall_view.html).
 
@@ -328,7 +328,7 @@ Buildbot-style **summary header** (sticky above timeline):
 
 Timeline details:
 
-- **Bars:** positioned by `start` / `completion` on a **piecewise time scale**; solid segment at the **bottom** of each slot = duration; lighter fill extends **upward** to the next newer build (or timeline top)
+- **Bars:** positioned by `start` / `completion` on a **piecewise time scale**; solid segment at the **bottom** of each slot = duration; lighter fill extends **upward** to the next newer build (or timeline top). For `reason: Running` records without a completion timestamp, live runs extend to the current time; archived and source-less runs use a 45-minute fallback.
 - **Idle gaps:** global gaps with no builds in any column longer than **12h** compress to a fixed `—//—` break band; active periods keep ~8 min/px
 - **Colors:** success / failed / running / unknown (same semantics as matrix); slot uses ~18% opacity tint, bar is solid
 - **SHA waves:** optional dashed horizontal bands when ≥2 components share the same commit SHA
@@ -374,7 +374,7 @@ Re-run `collect.py` and hard-refresh the browser to update.
 | Prometheus | **Not used** |
 | Vault / GitLab tokens | **Not used** by this prototype |
 
-See also: [guide/docs/notebooks/konflux/internal-systems-access.md](../../../guide/docs/notebooks/konflux/internal-systems-access.md), [guide/docs/notebooks/konflux/kubearchive.md](../../../guide/docs/notebooks/konflux/kubearchive.md).
+See also: [guide/docs/notebooks/konflux/internal-systems-access.md](../../guide/docs/notebooks/konflux/internal-systems-access.md), [guide/docs/notebooks/konflux/kubearchive.md](../../guide/docs/notebooks/konflux/kubearchive.md).
 
 ---
 
@@ -402,10 +402,10 @@ See also: [guide/docs/notebooks/konflux/internal-systems-access.md](../../../gui
 | Doc | Topic |
 |-----|-------|
 | [README.md](README.md) | Quick start |
-| [guide/docs/notebooks/konflux/kubearchive.md](../../../guide/docs/notebooks/konflux/kubearchive.md) | KubeArchive queries, build-wave labels |
-| [guide/docs/notebooks/konflux/rhoai-monitoring-o11y.md](../../../guide/docs/notebooks/konflux/rhoai-monitoring-o11y.md) | Disabled Prometheus exporter (why we avoid it) |
-| [guide/docs/notebooks/konflux/tektonresults.md](../../../guide/docs/notebooks/konflux/tektonresults.md) | Results API saturation incident |
-| `.cursor/plans/konflux_build_waterfall_*.plan.md` | Original design / future phases |
+| [guide/docs/notebooks/konflux/kubearchive.md](../../guide/docs/notebooks/konflux/kubearchive.md) | KubeArchive queries, build-wave labels |
+| [guide/docs/notebooks/konflux/rhoai-monitoring-o11y.md](../../guide/docs/notebooks/konflux/rhoai-monitoring-o11y.md) | Disabled Prometheus exporter (why we avoid it) |
+| [guide/docs/notebooks/konflux/tektonresults.md](../../guide/docs/notebooks/konflux/tektonresults.md) | Results API saturation incident |
+| `../../.cursor/plans/konflux_build_waterfall_*.plan.md` | Original design / future phases |
 
 ---
 

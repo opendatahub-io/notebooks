@@ -388,6 +388,7 @@ const BREAK_HEIGHT_PX = 32;
 const HEADER_H = 112;
 const SUMMARY_ROW_H = 44;
 const SUMMARY_H = SUMMARY_ROW_H * 2;
+const INCOMPLETE_RUN_FALLBACK_MS = 45 * 60 * 1000;
 
 function shortComponent(full) {
   if (/workbenches-operator|workbenches-controller/.test(full)) return null;
@@ -424,9 +425,12 @@ function runStartMs(run) {
 function runEndMs(run) {
   const end = parseTs(run.completion);
   if (end) return end;
-  if (run.reason === 'Running') return Date.now();
+  // KubeArchive can retain stale in-progress records without a completion time.
+  // Only a live run should extend to the current time; bound archived records
+  // to the same fallback duration used for other incomplete entries.
+  if (run.reason === 'Running' && run.source === 'live') return Date.now();
   const start = runStartMs(run);
-  return start + 45 * 60 * 1000;
+  return start + INCOMPLETE_RUN_FALLBACK_MS;
 }
 
 function formatTick(ms) {
@@ -473,8 +477,12 @@ function lastBuildText(run) {
   return 'unknown';
 }
 
+function isInFlight(run) {
+  return run.reason === 'Running' && run.source !== 'archived';
+}
+
 function summaryForColumn(colRuns) {
-  const current = colRuns.find(r => r.reason === 'Running') || null;
+  const current = colRuns.find(isInFlight) || null;
   const lastBuild = colRuns.find(r => r.reason !== 'Running') || null;
   return { current, lastBuild };
 }
