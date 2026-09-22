@@ -24,7 +24,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    build.appstudio.openshift.io/repo: 'https://github.com/red-hat-data-services/notebooks?rev={{revision}}'
+    build.appstudio.openshift.io/repo: 'https://github.com/opendatahub-io/notebooks?rev={{revision}}'
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
@@ -34,16 +34,18 @@ metadata:
     pipelinesascode.tekton.dev/on-comment: '^/test-trustyai-papermill'
     # Also run on PRs that touch the TrustyAI build or this test, so it stays
     # "chained with build": point output-image at the build's image to test it.
-    pipelinesascode.tekton.dev/on-cel-expression: |-
-      event == "pull_request" && target_branch == "rhoai-3.3"
+    pipelinesascode.tekton.dev/on-cel-expression: >-
+      event == "pull_request" && target_branch == "main"
       && ( "jupyter/trustyai/ubi9-python-3.12/**".pathChanged()
-           || ".tekton/odh-workbench-jupyter-trustyai-cpu-py312-papermill.yaml".pathChanged() )
+           || ".tekton/odh-workbench-jupyter-trustyai-cpu-py312-ubi9-papermill.yaml".pathChanged()
+           )
+      && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
-    appstudio.openshift.io/application: rhoai-v3-3
-    appstudio.openshift.io/component: odh-workbench-jupyter-trustyai-cpu-py312-papermill
+    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/component: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-papermill
     pipelines.appstudio.openshift.io/type: test
-  name: odh-workbench-jupyter-trustyai-cpu-py312-papermill-on-pull-request
-  namespace: rhoai-tenant
+  name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-papermill-on-pull-request
+  namespace: open-data-hub-tenant
 spec:
   params:
     - name: event-type
@@ -55,7 +57,7 @@ spec:
     # Image under test. Default = latest stable TrustyAI image (manual trigger).
     # To test a specific build, set this to the image that build produced.
     - name: output-image
-      value: 'quay.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9:rhoai-3.3'
+      value: 'quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-stable'
   pipelineSpec:
     params:
       - name: event-type
@@ -63,7 +65,7 @@ spec:
         default: pull_request
       - name: git-url
         type: string
-        description: 'Source repository (red-hat-data-services/notebooks).'
+        description: 'Source repository (opendatahub-io/notebooks).'
       - name: revision
         type: string
         description: 'Commit to fetch the test notebook + imagestream manifest from.'
@@ -169,4 +171,4 @@ spec:
                   memory: 8Gi
                   ephemeral-storage: 20Gi
   taskRunTemplate:
-    serviceAccountName: build-pipeline-pull-request-pipelines
+    serviceAccountName: build-pipeline-odh-workbench-jupyter-trustyai-cpu-py312-ubi9

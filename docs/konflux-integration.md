@@ -216,7 +216,12 @@ test step's container image *is* the image under test; the image already ships
 `python3`, `pip`, `git` and the full TrustyAI environment, so the step just
 installs papermill and executes the notebook in place.
 
-**PipelineRun:** `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-papermill.yaml`
+The PipelineRun below targets the **ODH (opendatahub-io)** Konflux tenant —
+namespace `open-data-hub-tenant`, application `opendatahub-release`, branch
+`main`, image `quay.io/opendatahub/...`. The RHOAI downstream mirrors it in
+`rhoai-tenant` (application `rhoai-v3-3`, branch `rhoai-3.3`, `quay.io/rhoai/...`).
+
+**PipelineRun:** `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-ubi9-papermill.yaml`
 (hand-managed, `pipelines.appstudio.openshift.io/type: test`). It is parity with
 the GHA papermill leg (`make test-jupyter-trustyai-...` →
 `scripts/test_jupyter_with_papermill.sh`): `expected_versions.json` is generated
@@ -230,20 +235,20 @@ notebook's `--stderr-file` contains `FAILED`.
 
 | Mode | Trigger | `output-image` |
 |---|---|---|
-| Manual (default) | `/test-trustyai-papermill` | `quay.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9:rhoai-3.3` (latest stable) |
+| Manual (default) | `/test-trustyai-papermill` | `quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-stable` (latest stable) |
 | Chained with a build | PR / manual | the image a build produced (e.g. a PR's `on-pr-<revision>` build) |
 
 Because the step's image *is* `$(params.output-image)`, Tekton's image pull
 doubles as the "wait for the image" gate: the test can only run once the image
 is pullable. To test a specific build, point `output-image` at that build's
 image — no build stage is re-run here (the existing
-`odh-workbench-jupyter-trustyai-cpu-py312-pull-request` build pipeline already
+`odh-workbench-jupyter-trustyai-cpu-py312-ubi9-pull-request` build pipeline already
 produces PR images).
 
 ### Triggers
 
 - `on-comment ^/test-trustyai-papermill` — manual (tests the default/latest image).
-- `on-cel-expression` — on `rhoai-3.3` PRs touching `jupyter/trustyai/ubi9-python-3.12/**`
+- `on-cel-expression` — on `main` PRs touching `jupyter/trustyai/ubi9-python-3.12/**`
   or the PipelineRun; point `output-image` at the build's image to test that build.
 
 ### Reproducing locally
@@ -252,7 +257,7 @@ The step's script is a plain shell script, so it can be run against any pullable
 TrustyAI image:
 
 ```sh
-IMAGE="quay.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9:rhoai-3.3"
+IMAGE="quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-stable"
 podman run --rm -u 1001 -w /opt/app-root/src "$IMAGE" bash -c '
   set -euxo pipefail
   WORK=/opt/app-root/src; TESTDIR_REL=jupyter/trustyai/ubi9-python-3.12/test
@@ -266,5 +271,5 @@ podman run --rm -u 1001 -w /opt/app-root/src "$IMAGE" bash -c '
 ### Related
 
 - GHA papermill leg: `scripts/test_jupyter_with_papermill.sh`.
-- Build pipelines for this image: `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-pull-request.yaml`, `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-v3-3-push.yaml`.
+- Build pipelines for this image: `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-ubi9-pull-request.yaml`, `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-ubi9-push.yaml`.
 - ODH-io upstream per-architecture integration-testing design: `opendatahub-io/notebooks` (the `test-papermill` leg).
