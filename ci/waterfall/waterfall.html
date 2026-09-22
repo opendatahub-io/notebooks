@@ -329,7 +329,7 @@ a.wf-summary-cell:hover { outline: 1px solid #fff; }
     </label>
     <label>Event:
       <select id="filter-event">
-        <option value="push">push only</option>
+        <option value="push">push + incoming</option>
         <option value="all">all events</option>
         <option value="pull_request">PR only</option>
       </select>
@@ -401,6 +401,12 @@ function shortComponent(full) {
 function versionRow(run) {
   if (!run.branch) return 'live';
   return run.event_type === 'pull_request' ? `PR@${run.branch}` : run.branch;
+}
+
+function isPushEvent(run) {
+  // Older archived PipelineRuns may retain Pipelines-as-Code's internal
+  // event label even though they were triggered by a push.
+  return run.event_type === 'push' || run.event_type === 'incoming';
 }
 
 function statusClass(run) {
@@ -541,7 +547,7 @@ function collectRuns(data, cluster, branchRow, eventFilter) {
   const runs = [];
   for (const run of history) {
     if (versionRow(run) !== branchRow) continue;
-    if (eventFilter === 'push' && run.event_type !== 'push') continue;
+    if (eventFilter === 'push' && !isPushEvent(run)) continue;
     if (eventFilter === 'pull_request' && run.event_type !== 'pull_request') continue;
     const short = shortComponent(run.component);
     if (!short) continue;
