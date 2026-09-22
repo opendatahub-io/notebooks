@@ -64,6 +64,8 @@ TRACKED_RHDS_APPLICATIONS = [
     "rhoai-v3-4",
     "rhoai-v3-5",
     "rhoai-v3-6-ea-1",
+    "rhoai-v3-6-ea-2",
+    "rhoai-v3-6",
 ]
 
 TRACKED_RHDS_BRANCHES = frozenset({
@@ -72,6 +74,8 @@ TRACKED_RHDS_BRANCHES = frozenset({
     "rhoai-3.4",
     "rhoai-3.5",
     "rhoai-3.6-ea.1",
+    "rhoai-3.6-ea.2",
+    "rhoai-3.6",
 })
 
 # ODH midstream: opendatahub-io/notebooks main pushes + PRs targeting main.

@@ -39,7 +39,7 @@ KubeArchive uses **component label selectors** (not application-wide lists) so w
 | Cluster | KubeArchive applications | Branches kept |
 |---------|--------------------------|---------------|
 | ODH | `opendatahub-builds` | `main`, `PR@main` |
-| RHDS | `rhoai-v2-25`, `rhoai-v3-3`, `rhoai-v3-4`, `rhoai-v3-5`, `rhoai-v3-6-ea-1` | matching `rhoai-2.25` … `rhoai-3.6-ea.1` |
+| RHDS | `rhoai-v2-25`, `rhoai-v3-3`, `rhoai-v3-4`, `rhoai-v3-5`, `rhoai-v3-6-ea-1`, `rhoai-v3-6-ea-2`, `rhoai-v3-6` | matching `rhoai-2.25` … `rhoai-3.6-ea.1`, `rhoai-3.6-ea.2`, `rhoai-3.6` |
 
 Ancient RHDS apps (`rhoai-v2-13`, etc.) are not queried.
 
