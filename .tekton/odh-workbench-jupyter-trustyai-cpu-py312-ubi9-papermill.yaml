@@ -83,7 +83,7 @@ spec:
             - name: git-url
             - name: revision
             - name: output-image
-          step:
+          steps:
             - name: papermill
               # The SUT is the step's own image: python3/pip/git + the full
               # TrustyAI environment are already present.
