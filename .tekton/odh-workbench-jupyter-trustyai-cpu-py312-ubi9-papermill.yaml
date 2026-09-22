@@ -78,11 +78,21 @@ spec:
           "wait for the image" gate).
     tasks:
       - name: test-papermill
+        params:
+          - name: git-url
+            value: $(params.git-url)
+          - name: revision
+            value: $(params.revision)
+          - name: output-image
+            value: $(params.output-image)
         taskSpec:
           params:
             - name: git-url
+              type: string
             - name: revision
+              type: string
             - name: output-image
+              type: string
           steps:
             - name: papermill
               # The SUT is the step's own image: python3/pip/git + the full
