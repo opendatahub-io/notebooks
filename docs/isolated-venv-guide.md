@@ -33,9 +33,9 @@ would be the supported user-facing workflow.
 
 > [!IMPORTANT]
 > This is a proposed target architecture, not a claim about every currently
-> published workbench image. Existing images may still use a single Python
-> environment. Validate the image variant before relying on the paths and
-> kernel layout described here.
+> published workbench image. Currently published images use a single Python
+> environment. The `/opt/jupyterlab` and `/opt/app-root` split is the proposed
+> change described by this guide.
 
 > [!NOTE]
 > The proposed dual-venv runtime implementation uses a `.pth` bridge from
