@@ -80,9 +80,9 @@ Typical call volume per `collect.py` run:
 | Cluster | Live `oc` | KubeArchive component queries | ~Total calls |
 |---------|-----------|-------------------------------|--------------|
 | ODH | 1 | 18 (`*-ubi9`) | 19 |
-| RHDS | 1 | 95 (19 stems × 5 streams; llmcompressor + truncated `odh-wb-` on RHDS) | 96 |
+| RHDS | 1 | 133 (19 components × 7 streams; llmcompressor + truncated `odh-wb-` on RHDS) | 134 |
 
-**~115 API calls total**, up to 8 parallel KA workers. Runtime ~2–8 minutes (KubeArchive latency dominates). See [PERFORMANCE.md](PERFORMANCE.md) for point-in-time measurements.
+**~153 API calls total**, up to 8 parallel KA workers. Runtime ~2–8 minutes (KubeArchive latency dominates). See [PERFORMANCE.md](PERFORMANCE.md) for point-in-time measurements.
 
 ### 4.2 Tracked release streams
 
@@ -95,6 +95,8 @@ Typical call volume per `collect.py` run:
 | `rhoai-v3-4` | `rhoai-3.4` |
 | `rhoai-v3-5` | `rhoai-3.5` |
 | `rhoai-v3-6-ea-1` | `rhoai-3.6-ea.1` |
+| `rhoai-v3-6-ea-2` | `rhoai-3.6-ea.2` |
+| `rhoai-v3-6` | `rhoai-3.6` |
 
 Ancient streams (`rhoai-v2-13`, `rhoai-v3-2`, `rhoai-v3-5-ea-2`, …) are **not** queried.
 
@@ -300,6 +302,8 @@ RHDS components often carry a version suffix matching the application:
 
 - Application `rhoai-v3-3` → component `odh-workbench-jupyter-minimal-cuda-py312-v3-3`
 - Application `rhoai-v3-6-ea-1` → component `…-v3-6-ea-1`
+- Application `rhoai-v3-6-ea-2` → component `…-v3-6-ea-2`
+- Application `rhoai-v3-6` → component `…-v3-6`
 
 UI appends `-{versionSuffix}` when `instance === 'stone-prod-p02'` and component does not already end with the suffix.
 
@@ -385,7 +389,7 @@ See also: [guide/docs/notebooks/konflux/internal-systems-access.md](../../guide/
 | **No historical SHA waves** | One cell = latest known run per branch×component; not a time-series waterfall |
 | **GC gap** | Runs absent from both live cluster and KubeArchive window show as `—` |
 | **KA per-component history** | Each component query returns up to 100 archived runs (newest first); sufficient for latest-status matrix |
-| **RHDS app filter** | Only five supported streams (2.25, 3.3–3.5, 3.6-ea.1); no ancient 2.x |
+| **RHDS app filter** | Only supported streams (2.25, 3.3–3.5, 3.6-ea.1, 3.6-ea.2, 3.6); no ancient 2.x |
 | **ODH branch filter** | Only `main` and `PR@main`; not `stable` / `candidate` |
 | **PR rows** | Included; labeled `PR@{branch}` when `event_type === 'pull_request'` |
 | **Multi-arch granularity** | Cell is overall PipelineRun success; per-arch TaskRun status not shown |
