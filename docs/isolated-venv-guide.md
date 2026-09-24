@@ -1,39 +1,97 @@
 # Creating Isolated Virtual Environments in OOTB Notebook Images
 
-This guide shows how to create and use a **customer-managed Python virtual
-environment** inside an out-of-the-box (OOTB) Red Hat OpenShift AI workbench
-image, install packages from PyPI, and avoid common pitfalls around binary
-compatibility.
+This guide explains the Python environments in an out-of-the-box (OOTB) Red
+Hat OpenShift AI workbench image and shows how to create an optional
+**customer-managed Python virtual environment**. It covers installing user
+packages from PyPI while preserving the image's JupyterLab installation and
+avoiding common binary-compatibility pitfalls.
+
+## Image Architecture
+
+On images using the dual-venv architecture:
+
+- `/opt/jupyterlab` is the internal JupyterLab environment. It contains
+  JupyterLab, its extensions, and their dependencies. Users must not install
+  packages into this environment.
+- `/opt/app-root` is the user-facing environment and the default notebook
+  kernel environment. It contains the image-provided `ipykernel`, and user
+  package installs into it are supported.
+- `/opt/app-root/bin/jupyter` launches JupyterLab through the internal
+  environment, while kernels execute with the user-facing environment.
+- `JUPYTER_PATH=/opt/app-root/share/jupyter` allows JupyterLab to discover
+  kernels registered in the user-facing environment.
+
+The image-provided default kernel is registered at
+`/opt/app-root/share/jupyter/kernels/python3/kernel.json` and runs with
+`/opt/app-root/bin/python`. Customer kernels registered with `--user` are
+additional kernels and should point to their own customer-managed venv.
+
+The customer-managed venv described below is optional. Use it when you want a
+reproducible, separately managed environment under the persistent home volume;
+otherwise, installing a package into the active `/opt/app-root` environment
+is the supported user-facing workflow.
+
+> [!NOTE]
+> Runtime images currently use a `.pth` bridge from `/opt/app-root` to
+> `/opt/jupyterlab` so the pipeline bootstrapper can import execution
+> dependencies while `/opt/app-root` is incomplete. This is a workaround, not
+> the desired isolation model. The correct long-term fix is to make the
+> user-facing `/opt/app-root` environment complete for its workload rather
+> than exposing the internal JupyterLab environment through `sys.path`.
+
+> [!NOTE]
+> The dual-venv layout applies to the image variants and architectures that
+> include JupyterLab. Baseline images on `ppc64le` and `s390x` retain their
+> existing single-environment layout, so `/opt/app-root` contains the full
+> image stack there.
 
 ## Why a Separate Virtual Environment?
 
-Every OOTB workbench image ships with a pre-built virtual environment at
-`/opt/app-root`. That environment is curated by Red Hat: its packages come
-from the AIPCC (AI Platform Content Collection) index and are compiled
-against the specific system libraries, accelerator SDK, and Python version
-bundled in the image.
+Every OOTB workbench image ships with an image-managed user-facing Python
+environment at `/opt/app-root`. On dual-venv images, the JupyterLab stack is
+separate and lives at `/opt/jupyterlab`. Image-provided packages are curated
+by Red Hat and compiled against the specific system libraries, accelerator SDK,
+and Python version bundled in the image.
 
-When you need packages that are **not** in the OOTB environment, or need
-**different versions** of packages that are, a separate virtual environment
-keeps your additions isolated from the pre-built stack. This avoids
-overwriting validated packages and makes your custom environment easy to
-recreate.
+Installing packages into `/opt/app-root` is supported for user workloads. When
+you need stronger isolation, different package versions, or a reproducible
+environment, a separate venv keeps those additions independent from the
+default user environment and makes them easier to recreate.
 
 ## Quick Reference
 
-| Item | OOTB environment | Customer-managed venv |
-|------|------------------|-----------------------|
-| Location | `/opt/app-root` | `~/envs/my-venv` (your choice) |
-| Package source | AIPCC index (baked into image) | PyPI or your own index |
-| System library linkage | Matched to image RPMs | Must match at runtime |
-| Support | Fully supported by Red Hat | Customer responsibility |
-| Recreatable across restarts? | Yes (image rebuild) | Only if you script it |
+| Item | JupyterLab environment | User-facing environment | Customer-managed venv |
+|------|------------------------|-------------------------|-----------------------|
+| Location | `/opt/jupyterlab` | `/opt/app-root` | `~/envs/my-venv` (your choice) |
+| Purpose | JupyterLab and its dependencies | Default kernel and user installs | Optional isolated workload |
+| Package source | Image-managed AIPCC packages | Image baseline plus supported user installs | PyPI or your own index |
+| Support | Red Hat-managed | User-facing and supported | Customer responsibility |
+| Recreatable across restarts? | Image rebuild | Image rebuild | Only if you script it |
 
 ## Prerequisites
 
 - An OOTB workbench running on OpenShift AI (Jupyter or Code-Server).
 - A persistent volume mounted at the default home directory (`/opt/app-root/src`).
   OpenShift AI workbenches configure this automatically.
+
+## Supported Default Workflow
+
+`/opt/app-root` is the user-facing environment. If no customer-managed venv is
+activated, `python` and `pip` target `/opt/app-root`, and installing a package
+there is supported:
+
+```bash
+env -u PIP_EXTRA_INDEX_URL \
+  python -m pip install --index-url https://pypi.org/simple <package-name>
+```
+
+This does not install anything into `/opt/jupyterlab`; JupyterLab continues to
+use its internal environment while notebook kernels use `/opt/app-root`.
+
+> [!IMPORTANT]
+> Use a customer-managed venv when you need a reproducible environment or
+> want to avoid changing the default `/opt/app-root` kernel environment. Never
+> install user packages directly into `/opt/jupyterlab`.
 
 ## Step-by-Step: Create and Activate an Isolated venv
 
@@ -46,18 +104,19 @@ integrated terminal.
 
 Create a new venv in your home directory. The `--system-site-packages` flag
 is **intentionally omitted** so the new environment starts clean and does not
-inherit packages from the OOTB `/opt/app-root` environment.
+inherit packages from the user-facing `/opt/app-root` environment.
 
 ```bash
 unset PYTHONPATH
 python3 -m venv ~/envs/my-venv
 ```
 
-> **Why not `--system-site-packages`?** Including it would make every AIPCC
-> package visible inside your venv. If you then install a PyPI version of the
-> same package, the two builds can conflict at the shared-library level (see
-> [Anti-Patterns](#anti-patterns-do-not-do-this) below). A clean venv avoids
-> this class of problems entirely.
+> [!NOTE]
+> **Why not `--system-site-packages`?** It would expose the packages installed
+> in the user-facing `/opt/app-root` environment inside this venv. On runtime
+> images, that can also expose the temporary `.pth` bridge to JupyterLab
+> packages. A clean venv avoids coupling the customer environment to either
+> image-managed environment.
 
 ### 3. Activate the Environment
 
@@ -135,14 +194,16 @@ Refresh the JupyterLab launcher to see the new kernel.
 deactivate
 ```
 
-This returns you to the OOTB `/opt/app-root` environment.
+This returns you to the user-facing `/opt/app-root` environment. JupyterLab
+continues to run from its separate `/opt/jupyterlab` environment.
 
 ## Understanding Package Indexes
 
 ### AIPCC Index (Red Hat)
 
-The OOTB environment uses a **Red Hat-managed Python package index** provided
-by the AIPCC pipeline. Packages on this index are:
+Image-managed packages in the OOTB environments use a **Red Hat-managed
+Python package index** provided by the AIPCC pipeline. Packages on this index
+are:
 
 - Compiled against the specific system libraries (glibc, OpenBLAS, HDF5, etc.)
   installed in the image via RPM.
@@ -151,8 +212,9 @@ by the AIPCC pipeline. Packages on this index are:
 - Tested as a coherent set for the RHOAI release.
 
 The index URL is baked into the image's `pip.conf` and `uv.toml` at
-`/opt/app-root/`. You do not need to (and should not) configure it manually
-for the OOTB environment.
+`/opt/app-root/`. The image uses it for image-managed packages. User installs
+into `/opt/app-root` are supported, but this guide selects PyPI explicitly for
+the examples below so the source is unambiguous.
 
 ### PyPI (Community)
 
@@ -165,7 +227,7 @@ versions that the OOTB image provides.
 
 | Scenario | Recommended index |
 |----------|-------------------|
-| Working inside the OOTB `/opt/app-root` environment | AIPCC (already configured) |
+| Working inside the user-facing `/opt/app-root` environment | PyPI explicitly for customer packages; the image baseline remains AIPCC-managed |
 | Working inside your own venv (this guide) | PyPI (default) |
 | Need a package that exists on AIPCC but not PyPI | See [Using the AIPCC Index in Your venv](#using-the-aipcc-index-in-your-venv-advanced) |
 
@@ -245,8 +307,10 @@ base image versions.
 
 ### What Red Hat Supports
 
-- The **OOTB virtual environment** at `/opt/app-root` and all packages
-  installed in it from the AIPCC index.
+- The **user-facing environment** at `/opt/app-root`, including the image
+  baseline, default kernel, and its integration with JupyterLab.
+- The internal JupyterLab environment at `/opt/jupyterlab` and its
+  image-provided packages.
 - The **base operating system**, system libraries, and accelerator SDK
   (CUDA/ROCm) bundled in the image.
 - The **workbench platform integration**: Jupyter/Code-Server startup, OAuth
@@ -365,21 +429,21 @@ pip install --index-url <AIPCC-URL> numpy
 pip install --index-url https://pypi.org/simple scipy  # may bundle incompatible OpenBLAS
 ```
 
-**Safe alternative:** Use one index per environment. The OOTB environment
-uses AIPCC exclusively. Your customer venv should use PyPI exclusively (the
-default). Only deviate from this if you have validated the specific
-combination.
+**Safe alternative:** Use one index per customer environment. Use the
+user-facing `/opt/app-root` environment for supported user installs, or use a
+customer venv with the explicit PyPI commands in this guide. Only combine
+indexes in one environment after validating the specific combination.
 
-### 2. Do Not Install into the OOTB Environment
+### 2. Do Not Modify the Internal JupyterLab Environment
 
 ```bash
-# BAD: This modifies the Red Hat-supported environment
-pip install --target /opt/app-root/lib/python3.12/site-packages some-package
+# BAD: This modifies the image-managed JupyterLab environment
+pip install --target /opt/jupyterlab/lib/python3.12/site-packages some-package
 ```
 
-Installing packages directly into `/opt/app-root` is unsupported and can
-break workbench functionality (JupyterLab, Elyra, notebook kernel).
-Always use a separate venv.
+Installing packages directly into `/opt/jupyterlab` is unsupported. Install
+user packages into the user-facing `/opt/app-root` environment, or use a
+customer-managed venv when you need stronger isolation and reproducibility.
 
 ### 3. Do Not Use `--system-site-packages` with Mixed Indexes
 
@@ -390,8 +454,8 @@ unset PYTHONPATH
 python3 -m venv --system-site-packages ~/envs/mixed-env
 ```
 
-If you need visibility into AIPCC packages, use the OOTB environment
-directly. If you need PyPI packages, use a clean isolated venv.
+If you need the image-provided baseline, use `/opt/app-root` directly. If you
+need PyPI packages isolated from that baseline, use a clean customer venv.
 
 ### 4. Do Not Install CUDA-Variant Packages on a CPU Image (or Vice Versa)
 
@@ -472,10 +536,11 @@ deactivate
 
 ### "Permission denied" when Creating a venv
 
-The workbench runs as a non-root user (UID 1001). Create your venv under the
-home directory (`~/envs/`) which is on the persistent volume and writable.
-Do not attempt to create environments under `/opt/app-root` or other
-system paths.
+The workbench runs as a non-root user (UID 1001). Create customer-managed
+venvs under the home directory (`~/envs/`), which is on the persistent volume
+and writable. Do not create a nested venv under `/opt/app-root` or
+`/opt/jupyterlab`; use `/opt/app-root` directly for the supported default user
+workflow.
 
 ### Import Errors After Image Upgrade
 
