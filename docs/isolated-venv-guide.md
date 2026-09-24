@@ -577,7 +577,12 @@ After running `ipykernel install --user`, refresh the browser page. If the
 kernel still does not appear, verify the kernel spec was created:
 
 ```bash
-jupyter kernelspec list
+if [ -x /opt/jupyterlab/bin/jupyter ]; then
+  /opt/jupyterlab/bin/jupyter kernelspec list
+else
+  # Current single-environment images
+  jupyter kernelspec list
+fi
 ```
 
 Look for your kernel name in the output.
