@@ -49,6 +49,7 @@ is **intentionally omitted** so the new environment starts clean and does not
 inherit packages from the OOTB `/opt/app-root` environment.
 
 ```bash
+unset PYTHONPATH
 python3 -m venv ~/envs/my-venv
 ```
 
@@ -80,23 +81,25 @@ Expected output:
 ```
 
 ```bash
-pip config get global.index-url 2>/dev/null || echo "(no custom index configured)"
+pip config debug
+env | grep '^PIP_' || true
 ```
 
-Expected output:
-
-```text
-(no custom index configured)
-```
-
-This confirms pip is **not** pointed at the AIPCC index. Packages will
-resolve from `https://pypi.org/simple/` by default.
+`PIP_CONFIG_FILE`, `PIP_INDEX_URL`, and `PIP_EXTRA_INDEX_URL` may be inherited
+from the workbench image. Do not rely on `pip config get` alone to determine
+which index will be used. The commands below pass the PyPI index explicitly
+and remove any extra index for each installation.
 
 ### 5. Install Packages from PyPI
 
 ```bash
-pip install pandas scikit-learn matplotlib
+env -u PIP_EXTRA_INDEX_URL \
+  python -m pip install --index-url https://pypi.org/simple pandas scikit-learn matplotlib
 ```
+
+The command-line `--index-url` takes precedence over inherited pip
+configuration. Keeping `PIP_EXTRA_INDEX_URL` unset prevents dependency
+resolution from silently combining PyPI with another index.
 
 ### 6. Register a Jupyter Kernel (Optional)
 
@@ -104,9 +107,25 @@ To use your venv from a JupyterLab notebook cell instead of only from the
 terminal:
 
 ```bash
-pip install ipykernel
+env -u PIP_EXTRA_INDEX_URL \
+  python -m pip install --index-url https://pypi.org/simple ipykernel
 python -m ipykernel install --user --name my-venv --display-name "Python (my-venv)"
 ```
+
+Because the workbench may export `PYTHONPATH`, edit the generated
+`kernel.json` so the kernel removes it before starting. Find the file with
+`jupyter kernelspec list`; its `argv` must begin like this:
+
+```json
+"argv": [
+  "env", "-u", "PYTHONPATH",
+  "/opt/app-root/src/envs/my-venv/bin/python",
+  "-m", "ipykernel_launcher", "-f", "{connection_file}"
+]
+```
+
+Apply the same `argv` change to every customer kernel registered below,
+preserving that environment's existing Python path.
 
 Refresh the JupyterLab launcher to see the new kernel.
 
@@ -280,7 +299,8 @@ To install a single package from the AIPCC index into your venv:
 
 ```bash
 source ~/envs/my-venv/bin/activate
-pip install --index-url "$(grep index-url /opt/app-root/pip.conf | awk '{print $3}')" <package-name>
+env -u PIP_EXTRA_INDEX_URL \
+  python -m pip install --index-url "$(grep index-url /opt/app-root/pip.conf | awk '{print $3}')" <package-name>
 ```
 
 > **Warning:** This is an advanced technique. The AIPCC index URL is specific
@@ -312,9 +332,12 @@ deactivate
 
 ```bash
 rm -rf ~/envs/my-venv
+unset PYTHONPATH
 python3 -m venv ~/envs/my-venv
 source ~/envs/my-venv/bin/activate
-pip install -r ~/envs/my-venv-requirements.txt
+env -u PIP_EXTRA_INDEX_URL \
+  python -m pip install --index-url https://pypi.org/simple \
+  -r ~/envs/my-venv-requirements.txt
 ```
 
 ## Anti-Patterns (Do Not Do This)
@@ -339,7 +362,7 @@ can cause:
 # and then scipy from PyPI (compiled against bundled OpenBLAS) in the
 # same environment risks ABI conflicts.
 pip install --index-url <AIPCC-URL> numpy
-pip install scipy  # from PyPI -- may bundle incompatible OpenBLAS
+pip install --index-url https://pypi.org/simple scipy  # may bundle incompatible OpenBLAS
 ```
 
 **Safe alternative:** Use one index per environment. The OOTB environment
@@ -363,6 +386,7 @@ Always use a separate venv.
 ```bash
 # BAD: Creates a venv that sees AIPCC packages AND lets you install PyPI
 # packages on top -- the mixing problem from anti-pattern 1.
+unset PYTHONPATH
 python3 -m venv --system-site-packages ~/envs/mixed-env
 ```
 
@@ -387,14 +411,18 @@ as a Jupyter kernel, and prepares it for reproducibility.
 
 ```bash
 # Create and activate
+unset PYTHONPATH
 python3 -m venv ~/envs/data-analysis
 source ~/envs/data-analysis/bin/activate
 
 # Install packages from PyPI
-pip install pandas matplotlib seaborn scikit-learn jupyterlab-widgets ipykernel
+env -u PIP_EXTRA_INDEX_URL \
+  python -m pip install --index-url https://pypi.org/simple \
+  pandas matplotlib seaborn scikit-learn jupyterlab-widgets ipykernel
 
 # Register as a Jupyter kernel
 python -m ipykernel install --user --name data-analysis --display-name "Python (Data Analysis)"
+# Edit the generated kernel.json: prepend "env", "-u", "PYTHONPATH" to argv.
 
 # Save requirements for reproducibility
 pip freeze > ~/envs/data-analysis-requirements.txt
@@ -414,9 +442,12 @@ index URL must match the image's CUDA version.
 
 ```bash
 # Check the image's CUDA version first
-nvcc --version 2>/dev/null | grep "release" || echo "Check /usr/local/cuda/version.txt"
+nvcc --version 2>/dev/null || \
+  cat /usr/local/cuda/version.txt 2>/dev/null || \
+  echo "CUDA not found"
 
 # Create and activate
+unset PYTHONPATH
 python3 -m venv ~/envs/pytorch-custom
 source ~/envs/pytorch-custom/bin/activate
 
@@ -428,8 +459,10 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}, Device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"N/A\"}')"
 
 # Register kernel and save requirements
-pip install ipykernel
+env -u PIP_EXTRA_INDEX_URL \
+  python -m pip install --index-url https://pypi.org/simple ipykernel
 python -m ipykernel install --user --name pytorch-custom --display-name "Python (PyTorch Custom)"
+# Edit the generated kernel.json: prepend "env", "-u", "PYTHONPATH" to argv.
 pip freeze > ~/envs/pytorch-custom-requirements.txt
 
 deactivate
