@@ -236,7 +236,7 @@ notebook's `--stderr-file` contains `FAILED`.
 | Mode | Trigger | `output-image` |
 |---|---|---|
 | Manual (default) | `/test-trustyai-papermill` | `quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-stable` (latest stable) |
-| Chained with a build | PR / manual | the image a build produced (e.g. a PR's `on-pr-<revision>` build) |
+| Chained with a build | PR / manual / scenario | the image a build produced (e.g. `on-pr-<sha>`); the step clones at `<sha>` |
 
 Because the step's image *is* `$(params.output-image)`, Tekton's image pull
 doubles as the "wait for the image" gate: the test can only run once the image
@@ -244,6 +244,18 @@ is pullable. To test a specific build, point `output-image` at that build's
 image — no build stage is re-run here (the existing
 `odh-workbench-jupyter-trustyai-cpu-py312-ubi9-pull-request` build pipeline already
 produces PR images).
+
+### Git ref resolution
+
+The ODH konflux **post-build scenario** instantiates this PipelineRun as-is and
+does **not** substitute PaC `{{...}}` template vars (only PR/push triggers do), so
+the test can't rely on `{{source_url}}`/`{{revision}}`. Instead, the step derives
+the git ref **from the SUT image tag**: the ODH trustyai build tags images
+`on-pr-<source-commit-sha>`, so the step extracts `<sha>` from an `on-pr-<sha>`
+tag and clones at that commit (falling back to `main` for tags like
+`odh-stable`). `git-url` is the fixed ODH repo
+(`https://github.com/opendatahub-io/notebooks`). No `generate-snapshot`, no image
+labels, no PaC vars.
 
 ### Triggers
 
@@ -261,7 +273,7 @@ IMAGE="quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-sta
 podman run --rm -u 1001 -w /opt/app-root/src "$IMAGE" bash -c '
   set -euxo pipefail
   WORK=/opt/app-root/src; TESTDIR_REL=jupyter/trustyai/ubi9-python-3.12/test
-  REPO=$WORK/repo; git init -q "$REPO"; git -C "$REPO" remote add origin https://github.com/red-hat-data-services/notebooks.git
+  REPO=$WORK/repo; git init -q "$REPO"; git -C "$REPO" remote add origin https://github.com/opendatahub-io/notebooks
   git -C "$REPO" fetch -q --depth 1 origin <REVISION> || git -C "$REPO" fetch -q --depth 1 origin
   git -C "$REPO" checkout -q FETCH_HEAD
   # (then the expected_versions.json + papermill steps, see the PipelineRun)

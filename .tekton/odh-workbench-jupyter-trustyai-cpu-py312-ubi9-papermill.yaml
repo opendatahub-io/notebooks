@@ -12,9 +12,13 @@
 #     just installs papermill and executes the notebook in place.
 #
 # The image under test is $(params.output-image) -- the single source of truth:
-#   - manual trigger (default)      -> the latest stable TrustyAI image
+#   - manual trigger (default)      -> the latest stable TrustyAI image (odh-stable)
 #   - chain with a build            -> set output-image to the image a build
-#     produced (e.g. the on-pr tag) and trigger against it
+#     produced (e.g. the on-pr-<sha> tag) and trigger against it
+#
+# The step's git ref is derived from that image tag: the ODH trustyai build
+# tags images on-pr-<source-commit-sha>, so on-pr-<sha> -> clone at <sha>
+# (else fall back to main). No PaC {{...}} vars or image labels are needed.
 #
 # The notebook is executed with papermill exactly as the GHA
 # `make test-jupyter-trustyai-...` leg does (scripts/test_jupyter_with_papermill.sh):
@@ -50,12 +54,9 @@ spec:
   params:
     - name: event-type
       value: '{{event_type}}'
-    - name: git-url
-      value: '{{source_url}}'
-    - name: revision
-      value: '{{revision}}'
-    # Image under test. Default = latest stable TrustyAI image (manual trigger).
-    # To test a specific build, set this to the image that build produced.
+    # Image under test. Default = latest stable (manual trigger). To test a
+    # specific build, set this to that build's image (on-pr-<sha>); the step
+    # derives the git ref from the tag.
     - name: output-image
       value: 'quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-stable'
   pipelineSpec:
@@ -63,34 +64,21 @@ spec:
       - name: event-type
         type: string
         default: pull_request
-      - name: git-url
-        type: string
-        description: 'Source repository (opendatahub-io/notebooks).'
-      - name: revision
-        type: string
-        description: 'Commit to fetch the test notebook + imagestream manifest from.'
       - name: output-image
         type: string
         description: >-
           The image under test, run as the test step's own container image.
-          Default: latest stable. Set to a build's image to chain the test with
-          that build. Must be pullable (the step's image pull doubles as the
-          "wait for the image" gate).
+          Default: latest stable (odh-stable). Set to a build's image
+          (on-pr-<sha>) to chain the test with that build. Must be pullable
+          (the step's image pull doubles as the "wait for the image" gate);
+          the step derives the git ref from the image tag.
     tasks:
       - name: test-papermill
         params:
-          - name: git-url
-            value: $(params.git-url)
-          - name: revision
-            value: $(params.revision)
           - name: output-image
             value: $(params.output-image)
         taskSpec:
           params:
-            - name: git-url
-              type: string
-            - name: revision
-              type: string
             - name: output-image
               type: string
           steps:
@@ -99,10 +87,8 @@ spec:
               # TrustyAI environment are already present.
               image: $(params.output-image)
               env:
-                - name: GIT_URL
-                  value: $(params.git-url)
-                - name: REVISION
-                  value: $(params.revision)
+                - name: OUTPUT_IMAGE
+                  value: $(params.output-image)
               script: |
                 #!/bin/bash
                 # Execute the TrustyAI test_notebook.ipynb with papermill,
@@ -114,6 +100,17 @@ spec:
                 mkdir -p "${WORK}"
                 TESTDIR_REL="jupyter/trustyai/ubi9-python-3.12/test"
                 MANIFEST_REL="manifests/odh/base/jupyter-trustyai-notebook-imagestream.yaml"
+                GIT_URL="https://github.com/opendatahub-io/notebooks"
+                # Derive the git ref from the SUT image tag. The ODH trustyai
+                # build tags images on-pr-<source-commit-sha>; fall back to
+                # main when the tag doesn't encode a commit (e.g. odh-stable).
+                IMG_TAG="${OUTPUT_IMAGE##*:}"
+                if [[ "${IMG_TAG}" =~ ^on-pr-([0-9a-f]{40})$ ]]; then
+                  REVISION="${BASH_REMATCH[1]}"
+                else
+                  REVISION="main"
+                fi
+                echo "SUT image tag: ${IMG_TAG} -> cloning at revision ${REVISION}"
 
                 # 1. Fetch the repo at the revision that produced the image
                 #    (the test notebook + CSVs + imagestream manifest all live here).
