@@ -80,9 +80,9 @@ Typical call volume per `collect.py` run:
 | Cluster | Live `oc` | KubeArchive component queries | ~Total calls |
 |---------|-----------|-------------------------------|--------------|
 | ODH | 1 | 18 (`*-ubi9`) | 19 |
-| RHDS | 1 | 95 (19 stems × 5 streams; llmcompressor + truncated `odh-wb-` on RHDS) | 96 |
+| RHDS | 1 | 133 (19 components × 7 streams; llmcompressor + truncated `odh-wb-` on RHDS) | 134 |
 
-**~115 API calls total**, up to 8 parallel KA workers. Runtime ~2–8 minutes (KubeArchive latency dominates). See [PERFORMANCE.md](PERFORMANCE.md) for point-in-time measurements.
+**~153 API calls total**, up to 8 parallel KA workers. Runtime ~2–8 minutes (KubeArchive latency dominates). See [PERFORMANCE.md](PERFORMANCE.md) for point-in-time measurements.
 
 ### 4.2 Tracked release streams
 

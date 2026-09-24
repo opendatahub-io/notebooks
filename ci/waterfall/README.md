@@ -30,7 +30,7 @@ open http://localhost:8888/waterfall.html
 | Call | Per cluster | Purpose |
 |------|-------------|---------|
 | `oc get pipelinerun -l type=build` | 1 | Live / in-flight builds |
-| `kubectl ka get pipelinerun -l component=…,type=build` | 18 (ODH) or 95 (RHDS) | Archived builds per workbench/runtime component |
+| `kubectl ka get pipelinerun -l component=…,type=build` | 18 (ODH) or 133 (RHDS) | Archived builds per workbench/runtime component |
 
 KubeArchive uses **component label selectors** (not application-wide lists) so workbench history is not buried behind operator/FBC runs in the 100-result cap.
 
