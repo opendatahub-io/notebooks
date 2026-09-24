@@ -24,8 +24,10 @@ The proposed dual-venv architecture is:
 
 The image-provided default kernel would be registered at
 `/opt/app-root/share/jupyter/kernels/python3/kernel.json` and run with
-`/opt/app-root/bin/python`. Customer kernels registered with `--user` would be
-additional kernels and should point to their own customer-managed venv.
+`/opt/app-root/bin/python`. Customer kernels would be additional kernels and
+should point to their own customer-managed venv. They should be registered
+under `/opt/app-root/share/jupyter`, the kernelspec location exposed to the
+proposed JupyterLab environment.
 
 The customer-managed venv described below is optional. Use it when you want a
 reproducible, separately managed environment under the persistent home volume;
@@ -180,8 +182,13 @@ terminal:
 ```bash
 env -u PIP_EXTRA_INDEX_URL \
   python -m pip install --index-url https://pypi.org/simple ipykernel
-python -m ipykernel install --user --name my-venv --display-name "Python (my-venv)"
+python -m ipykernel install --prefix /opt/app-root --name my-venv \
+  --display-name "Python (my-venv)"
 ```
+
+Do not use `--user` here. It installs the kernelspec under the home-directory
+Jupyter data path, which is not the explicit kernelspec path used by the
+proposed dual-venv startup configuration.
 
 Because the workbench may export `PYTHONPATH`, edit the generated
 `kernel.json` so the kernel removes it before starting. Find the file with
@@ -503,7 +510,8 @@ env -u PIP_EXTRA_INDEX_URL \
   pandas matplotlib seaborn scikit-learn jupyterlab-widgets ipykernel
 
 # Register as a Jupyter kernel
-python -m ipykernel install --user --name data-analysis --display-name "Python (Data Analysis)"
+python -m ipykernel install --prefix /opt/app-root --name data-analysis \
+  --display-name "Python (Data Analysis)"
 # Edit the generated kernel.json: prepend "env", "-u", "PYTHONPATH" to argv.
 
 # Save requirements for reproducibility
@@ -548,7 +556,8 @@ python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}, De
 # Register kernel and save requirements
 env -u PIP_EXTRA_INDEX_URL \
   python -m pip install --index-url https://pypi.org/simple ipykernel
-python -m ipykernel install --user --name pytorch-custom --display-name "Python (PyTorch Custom)"
+python -m ipykernel install --prefix /opt/app-root --name pytorch-custom \
+  --display-name "Python (PyTorch Custom)"
 # Edit the generated kernel.json: prepend "env", "-u", "PYTHONPATH" to argv.
 pip freeze > ~/envs/pytorch-custom-requirements.txt
 
@@ -573,8 +582,8 @@ your venv from your saved `requirements.txt`.
 
 ### Kernel Not Appearing in JupyterLab
 
-After running `ipykernel install --user`, refresh the browser page. If the
-kernel still does not appear, verify the kernel spec was created:
+After running `ipykernel install --prefix /opt/app-root`, refresh the browser
+page. If the kernel still does not appear, verify the kernel spec was created:
 
 ```bash
 if [ -x /opt/jupyterlab/bin/jupyter ]; then
