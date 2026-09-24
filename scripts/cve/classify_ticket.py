@@ -159,11 +159,11 @@ def classify_ticket_role(issue: dict[str, Any]) -> str:
 
     if project == "RHOAIENG":
         if issue_type == "Vulnerability":
-            return "rhoaieng_child"
+            return "rhoaieng_source"
         if any(label.startswith("pscomponent:") for label in labels):
-            return "rhoaieng_child"
+            return "rhoaieng_source"
         if "rhoai/" in summary.lower() or "odh-wb-" in summary.lower():
-            return "rhoaieng_child"
+            return "rhoaieng_source"
 
     if project == "RHAIENG" and "CVE" in labels:
         if _has_blocked_children(description, issue_links):
@@ -180,6 +180,16 @@ def _extract_python_package(summary: str) -> str | None:
     )
     if match:
         return match.group(1).lower()
+
+    image_match = re.search(r"rhoai/[^:]+:\s*(.+)$", summary, re.IGNORECASE)
+    tail = image_match.group(1).strip() if image_match else summary
+    before_match = re.match(r"([A-Za-z][\w.-]*)\s+before\s+", tail)
+    if before_match:
+        return before_match.group(1).lower()
+    colon_match = re.match(r"([A-Za-z][\w.-]*)\s*:", tail)
+    if colon_match:
+        return colon_match.group(1).lower()
+
     return None
 
 
@@ -264,11 +274,30 @@ def classify_action(
     *,
     issue_key: str,
 ) -> tuple[str, str | None, str]:
-    if ticket_role == "rhoaieng_child":
+    if ticket_role in {"rhoaieng_source", "rhoaieng_child"}:
+        if package_type == "python":
+            return (
+                "autofix",
+                None,
+                "Python RHOAIENG CVE — fix via constraints.txt for CVE+release group.",
+            )
+        if package_type == "rpm":
+            return (
+                "rpm_check",
+                None,
+                "RPM RHOAIENG CVE — check RHSA/VEX before any PR.",
+            )
+        if package_type in {"go", "java", "npm"}:
+            reasons = {
+                "go": "Go module CVE — not fixable via pip constraints.",
+                "java": "Java/Maven CVE — not fixable via pip constraints.",
+                "npm": "npm/codeserver CVE — outside Python pip autofix scope.",
+            }
+            return ("skip", "not_fixable", reasons[package_type])
         return (
-            "skip",
-            "not_fixable",
-            "Per-image RHOAIENG tracker — fix via the RHAIENG parent for this release.",
+            "needs_info",
+            "needs_info",
+            "Could not determine RHOAIENG package ecosystem.",
         )
 
     if ticket_role != "rhaieng_parent":
