@@ -32,12 +32,14 @@ otherwise, installing a package into the active `/opt/app-root` environment
 is the supported user-facing workflow.
 
 > [!NOTE]
-> Runtime images currently use a `.pth` bridge from `/opt/app-root` to
-> `/opt/jupyterlab` so the pipeline bootstrapper can import execution
-> dependencies while `/opt/app-root` is incomplete. This is a workaround, not
-> the desired isolation model. The correct long-term fix is to make the
-> user-facing `/opt/app-root` environment complete for its workload rather
-> than exposing the internal JupyterLab environment through `sys.path`.
+> The dual-venv runtime implementation uses a `.pth` bridge from
+> `/opt/app-root` to `/opt/jupyterlab` so the pipeline bootstrapper can import
+> execution dependencies while `/opt/app-root` is incomplete. This is a
+> workaround, not the desired isolation model. The correct long-term fix is to
+> make the user-facing `/opt/app-root` environment complete for its workload
+> rather than exposing the internal JupyterLab environment through `sys.path`.
+> The available RHOAI 3.6 EA1 runtime tags did not contain this PR-specific
+> bridge, so the bridge itself could not be runtime-tested on this host.
 
 > [!NOTE]
 > The dual-venv layout applies to the image variants and architectures that
