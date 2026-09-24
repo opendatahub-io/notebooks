@@ -240,10 +240,12 @@ CPU-only images (`jupyter-minimal-cpu`, `jupyter-datascience-cpu`,
 CPU-only wheels (the common case for NumPy, Pandas, scikit-learn, etc.)
 generally work without issues in a customer-managed venv.
 
-**[NEEDS VALIDATION]** Pure-Python packages and packages shipping manylinux
-wheels for x86_64 should install and run correctly. Packages that compile
-native extensions at install time require the development headers already
-present in the image (gcc, gcc-c++, and common libraries are pre-installed).
+On the x86_64 RHOAI 3.6 EA1 CPU image, the guide's clean venv successfully
+installed and imported pandas, scikit-learn, matplotlib, and ipykernel from
+PyPI. Pure-Python packages and packages shipping manylinux wheels for x86_64
+therefore work as documented on that image. Packages that compile native
+extensions at install time still require the development headers present in
+the particular image.
 
 ### CUDA Images
 
@@ -270,9 +272,11 @@ To check the CUDA version inside a running workbench:
 nvcc --version 2>/dev/null || cat /usr/local/cuda/version.txt 2>/dev/null || echo "CUDA not found"
 ```
 
-**[NEEDS VALIDATION]** The exact CUDA toolkit path and version detection
-method may vary between AIPCC base image versions. Confirm with
-`ls /usr/local/cuda*/` inside the running image.
+The CUDA 13.0 image validated above reports its version through `nvcc`.
+`/usr/local/cuda/version.txt` was not present in that image, so the fallback
+prints `CUDA not found` when `nvcc` is hidden. Other AIPCC base-image versions
+may provide a version file at a different path; inspect `/usr/local/cuda*/`
+before relying on the fallback for a new image variant.
 
 ### ROCm Images
 
@@ -289,8 +293,9 @@ AMD's ROCm SDK. The same version-matching considerations apply:
 cat /opt/rocm/.info/version 2>/dev/null || echo "ROCm version file not found"
 ```
 
-**[NEEDS VALIDATION]** ROCm version detection path may differ between AIPCC
-base image versions.
+The available ROCm image reports version `7.1.1` from
+`/opt/rocm/.info/version`. Other AIPCC base-image versions may use a different
+version path, so verify the file when introducing a new ROCm variant.
 
 3. **HIP compiler compatibility.** Packages that compile HIP kernels at
    install time need the ROCm development tools in the image.
@@ -346,8 +351,9 @@ customer-managed venv. This can be useful when the package is available on
 AIPCC but not on PyPI, or when you want binaries compiled against the exact
 system libraries in the image.
 
-**[NEEDS VALIDATION]** The AIPCC index is accessible at the URL stored in the
-image's pip.conf. To retrieve it:
+The AIPCC index URL in the validated CPU image's `pip.conf` returned HTTP 200
+and is accessible from the image. The URL is release- and accelerator-specific;
+retrieve it rather than copying a value between image variants:
 
 ```bash
 grep index-url /opt/app-root/pip.conf
@@ -500,9 +506,14 @@ After running this, restart the JupyterLab launcher and select the
 
 ## Complete Example: PyTorch from PyPI on a CUDA Image
 
-**[NEEDS VALIDATION]** This example installs PyTorch from PyPI's CUDA-specific
-index into a clean venv on a CUDA 13.0 image. The CUDA version in the pip
-index URL must match the image's CUDA version.
+The CUDA 13.0 image resolved `torch`, `torchvision`, and `torchaudio` from
+PyTorch's `cu130` index in a clean venv. The CUDA version in the pip index URL
+must match the image's CUDA version.
+
+> [!WARNING]
+> The validation host has no NVIDIA GPU, so `torch.cuda.is_available()` could
+> not be validated there. Run the final GPU-access check on a workbench with a
+> supported NVIDIA device.
 
 ```bash
 # Check the image's CUDA version first
