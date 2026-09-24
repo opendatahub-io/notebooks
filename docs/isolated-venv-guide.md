@@ -16,8 +16,9 @@ The proposed dual-venv architecture is:
 - `/opt/app-root` would be the user-facing environment and the default
   notebook kernel environment. It would contain the image-provided
   `ipykernel`, and user package installs would be supported there.
-- `/opt/app-root/bin/jupyter` would launch JupyterLab through the internal
-  environment, while kernels would execute with the user-facing environment.
+- Startup scripts and Jupyter server commands would invoke
+  `/opt/jupyterlab/bin/jupyter` directly, while kernels would execute with the
+  user-facing environment's Python.
 - `JUPYTER_PATH=/opt/app-root/share/jupyter` would allow JupyterLab to discover
   kernels registered in the user-facing environment.
 
@@ -35,7 +36,9 @@ would be the supported user-facing workflow.
 > This is a proposed target architecture, not a claim about every currently
 > published workbench image. Currently published images use a single Python
 > environment. The `/opt/jupyterlab` and `/opt/app-root` split is the proposed
-> change described by this guide.
+> change described by this guide. Implementing it requires updating the
+> startup scripts and related commands to use `/opt/jupyterlab` explicitly;
+> it should not depend on an `/opt/app-root/bin/jupyter` symlink.
 
 > [!NOTE]
 > The proposed dual-venv runtime implementation uses a `.pth` bridge from
