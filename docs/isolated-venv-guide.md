@@ -6,33 +6,39 @@ Hat OpenShift AI workbench image and shows how to create an optional
 packages from PyPI while preserving the image's JupyterLab installation and
 avoiding common binary-compatibility pitfalls.
 
-## Image Architecture
+## Proposed Image Architecture
 
-On images using the dual-venv architecture:
+The proposed dual-venv architecture is:
 
-- `/opt/jupyterlab` is the internal JupyterLab environment. It contains
-  JupyterLab, its extensions, and their dependencies. Users must not install
-  packages into this environment.
-- `/opt/app-root` is the user-facing environment and the default notebook
-  kernel environment. It contains the image-provided `ipykernel`, and user
-  package installs into it are supported.
-- `/opt/app-root/bin/jupyter` launches JupyterLab through the internal
-  environment, while kernels execute with the user-facing environment.
-- `JUPYTER_PATH=/opt/app-root/share/jupyter` allows JupyterLab to discover
+- `/opt/jupyterlab` would be the internal JupyterLab environment. It would
+  contain JupyterLab, its extensions, and their dependencies. Users would not
+  install packages into this environment.
+- `/opt/app-root` would be the user-facing environment and the default
+  notebook kernel environment. It would contain the image-provided
+  `ipykernel`, and user package installs would be supported there.
+- `/opt/app-root/bin/jupyter` would launch JupyterLab through the internal
+  environment, while kernels would execute with the user-facing environment.
+- `JUPYTER_PATH=/opt/app-root/share/jupyter` would allow JupyterLab to discover
   kernels registered in the user-facing environment.
 
-The image-provided default kernel is registered at
-`/opt/app-root/share/jupyter/kernels/python3/kernel.json` and runs with
-`/opt/app-root/bin/python`. Customer kernels registered with `--user` are
+The image-provided default kernel would be registered at
+`/opt/app-root/share/jupyter/kernels/python3/kernel.json` and run with
+`/opt/app-root/bin/python`. Customer kernels registered with `--user` would be
 additional kernels and should point to their own customer-managed venv.
 
 The customer-managed venv described below is optional. Use it when you want a
 reproducible, separately managed environment under the persistent home volume;
 otherwise, installing a package into the active `/opt/app-root` environment
-is the supported user-facing workflow.
+would be the supported user-facing workflow.
+
+> [!IMPORTANT]
+> This is a proposed target architecture, not a claim about every currently
+> published workbench image. Existing images may still use a single Python
+> environment. Validate the image variant before relying on the paths and
+> kernel layout described here.
 
 > [!NOTE]
-> The dual-venv runtime implementation uses a `.pth` bridge from
+> The proposed dual-venv runtime implementation uses a `.pth` bridge from
 > `/opt/app-root` to `/opt/jupyterlab` so the pipeline bootstrapper can import
 > execution dependencies while `/opt/app-root` is incomplete. This is a
 > workaround, not the desired isolation model. The correct long-term fix is to
@@ -42,21 +48,22 @@ is the supported user-facing workflow.
 > bridge, so the bridge itself could not be runtime-tested on this host.
 
 > [!NOTE]
-> The dual-venv layout applies to the image variants and architectures that
-> include JupyterLab. Baseline images on `ppc64le` and `s390x` retain their
+> The proposed dual-venv layout applies to the image variants and
+> architectures that include JupyterLab. Baseline images on `ppc64le` and `s390x` retain their
 > existing single-environment layout, so `/opt/app-root` contains the full
 > image stack there.
 
 ## Why a Separate Virtual Environment?
 
-Every OOTB workbench image ships with an image-managed user-facing Python
-environment at `/opt/app-root`. On dual-venv images, the JupyterLab stack is
-separate and lives at `/opt/jupyterlab`. Image-provided packages are curated
-by Red Hat and compiled against the specific system libraries, accelerator SDK,
-and Python version bundled in the image.
+The proposed workbench layout provides an image-managed user-facing Python
+environment at `/opt/app-root`. In the proposed dual-venv layout, the JupyterLab
+stack would be separate and live at `/opt/jupyterlab`. Image-provided packages
+would be curated by Red Hat and compiled against the specific system libraries,
+accelerator SDK, and Python version bundled in the image.
 
-Installing packages into `/opt/app-root` is supported for user workloads. When
-you need stronger isolation, different package versions, or a reproducible
+Installing packages into the proposed `/opt/app-root` environment would be
+supported for user workloads. When you need stronger isolation, different
+package versions, or a reproducible
 environment, a separate venv keeps those additions independent from the
 default user environment and makes them easier to recreate.
 
@@ -76,19 +83,19 @@ default user environment and makes them easier to recreate.
 - A persistent volume mounted at the default home directory (`/opt/app-root/src`).
   OpenShift AI workbenches configure this automatically.
 
-## Supported Default Workflow
+## Proposed Supported Default Workflow
 
-`/opt/app-root` is the user-facing environment. If no customer-managed venv is
-activated, `python` and `pip` target `/opt/app-root`, and installing a package
-there is supported:
+In the proposed layout, `/opt/app-root` is the user-facing environment. If no
+customer-managed venv is activated, `python` and `pip` target `/opt/app-root`,
+and installing a package there is supported:
 
 ```bash
 env -u PIP_EXTRA_INDEX_URL \
   python -m pip install --index-url https://pypi.org/simple <package-name>
 ```
 
-This does not install anything into `/opt/jupyterlab`; JupyterLab continues to
-use its internal environment while notebook kernels use `/opt/app-root`.
+This would not install anything into `/opt/jupyterlab`; JupyterLab would use
+its internal environment while notebook kernels would use `/opt/app-root`.
 
 > [!IMPORTANT]
 > Use a customer-managed venv when you need a reproducible environment or
