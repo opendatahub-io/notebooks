@@ -1,0 +1,18 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: ${RECIPE_NAME}
+  namespace: redhat-ods-applications
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-name: "${RECIPE_NAME}"
+    opendatahub.io/notebook-image-desc: "Customer-built ${ACCEL_KEY} ${STACK} universal workbench"
+spec:
+  tags:
+    - name: latest
+      annotations:
+        openshift.io/imported-from: "${IMAGE_REF}"
+      from:
+        kind: DockerImage
+        name: ${IMAGE_REF}

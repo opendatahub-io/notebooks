@@ -1,0 +1,23 @@
+[collection]
+id = "trustyai"
+name = "TrustyAI"
+description = "TrustyAI explainability and related ML packages (RHAIENG-7241 §3)."
+index_hint = "aipcc"
+recommended_accelerator = "cpu"
+source_of_truth = "jupyter/trustyai/ubi9-python-3.12/pyproject.toml"
+# Do not install into the same site-packages as pytorch / llmcompressor.
+conflicts_with = ["pytorch", "llmcompressor"]
+packages = [
+    "trustyai",
+    "transformers",
+    "datasets",
+    "accelerate",
+    "torch",
+    "skl2onnx",
+]
+# ABI ceiling for this collection (example ranges — maintain against source_of_truth).
+# Latest *within* the range is still resolved at build time.
+constraints = [
+    "numpy>=1.26,<2.1",
+    "pandas>=2.0,<3",
+]
