@@ -49,7 +49,7 @@ inputs:
     description: 'Whether to upload the Playwright JUnit XML report as an uncompressed artifact'
     required: false
     default: 'true'
-  artifact-name:
+  report-artifact-name:
     description: 'Name for the uploaded HTML report artifact (required if upload-report is true)'
     required: false
     default: 'playwright-report'
@@ -146,9 +146,9 @@ runs:
         if [[ -n "${JUNIT_ARTIFACT_FILE}" ]]; then
           artifact_file="${JUNIT_ARTIFACT_FILE}"
         else
-          artifact_file="${ARTIFACT_NAME/_playwright-report/_playwright-junit.xml}"
-          if [[ "${artifact_file}" == "${ARTIFACT_NAME}" ]]; then
-            artifact_file="${ARTIFACT_NAME}-junit.xml"
+          artifact_file="${REPORT_ARTIFACT_NAME/_playwright-report/_playwright-junit.xml}"
+          if [[ "${artifact_file}" == "${REPORT_ARTIFACT_NAME}" ]]; then
+            artifact_file="${REPORT_ARTIFACT_NAME}-junit.xml"
           fi
         fi
         dest="${RUNNER_TEMP}/playwright-reports/${artifact_file}"
@@ -162,7 +162,7 @@ runs:
         fi
       env:
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
-        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        REPORT_ARTIFACT_NAME: ${{ inputs.report-artifact-name }}
         JUNIT_ARTIFACT_FILE: ${{ inputs.junit-artifact-file }}
 
     - name: Upload Playwright JUnit XML
@@ -178,7 +178,7 @@ runs:
       if: ${{ !cancelled() && inputs.upload-report == 'true' }}
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
-        name: ${{ inputs.artifact-name }}
+        name: ${{ inputs.report-artifact-name }}
         path: ${{ inputs.working-directory }}/playwright-report/
         retention-days: ${{ inputs.artifact-retention-days }}
 
