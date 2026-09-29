@@ -13,17 +13,31 @@ Customer-built **${ACCEL_KEY}** universal workbench for OpenShift AI / ODH.
 | Platform | `${PLATFORM}` |
 | Image | `${IMAGE_REF}` |
 
-One digest for **workbench** (default entrypoint) and **pipeline runtime** (`entrypoint.sh runtime`).
+**One digest** for interactive **Jupyter** and **Elyra pipeline runtime**
+([RHAIENG-7241](https://redhat.atlassian.net/browse/RHAIENG-7241) §1).
+
+| Mode | How it starts |
+|------|----------------|
+| Workbench | Default `ENTRYPOINT` → `start-notebook.sh` (JupyterLab) |
+| Runtime (cluster) | Elyra/KFP sets `command: [sh, -c]` (replaces ENTRYPOINT) and runs the bootstrapper |
+| Runtime (local probe) | `entrypoint.sh runtime …` or `WORKBENCH_MODE=runtime` |
+
+ImageStream labels advertise both `opendatahub.io/notebook-image` and
+`opendatahub.io/runtime-image` for the same tag.
 
 ## Layout
 
 ```text
 Containerfile
-pyproject.toml             # minimal + stack/collection packages (unpinned)
+pyproject.toml             # Jupyter + Elyra runtime deps (unpinned)
 requirements.txt
 build-args/${CONF_NAME}
 collections/               # curated use-case package sets (RHAIENG-7241 §3)
 bin/entrypoint.sh
+bin/validate-universal.sh
+bin/utils/bootstrapper.py
+bin/utils/requirements-elyra.txt   # blank (skip Elyra curl of full list)
+imagestream.yaml           # dual notebook + runtime labels
 ```
 
 Sibling of `src/`. Do not put generated images inside `src/`.
@@ -38,6 +52,7 @@ in the same `site-packages`** (numpy/pandas ABI). Use two images or an isolated 
 ```bash
 make collections                 # discover available collections in src/
 make validate RECIPE=${RECIPE_NAME}   # import-check after build
+make validate-universal RECIPE=${RECIPE_NAME}  # §1 dual-mode checks
 ```
 
 ## Prerequisites
@@ -57,16 +72,19 @@ From `custom-workbenches/`:
 
 ```bash
 make build RECIPE=${RECIPE_NAME} PUSH_IMAGES=no
+make validate-universal RECIPE=${RECIPE_NAME}
 make validate RECIPE=${RECIPE_NAME}
 make push RECIPE=${RECIPE_NAME}
 make build RECIPE=${RECIPE_NAME} PLATFORM=linux/arm64
 ```
 
-## Import
+## Import (same digest, two roles)
 
-1. Dashboard → **Settings → Workbench images → Import new image**
-2. Image location: `${IMAGE_REF}`
-3. Pipelines: same digest as Elyra runtime
+1. Dashboard → **Settings → Workbench images → Import** → `${IMAGE_REF}`
+2. Apply `imagestream.yaml` (or import again as a **pipeline runtime**) so Elyra
+   lists the **same digest** under runtime images
+3. Launch a workbench from that image; in Elyra, select the same image as the
+   node runtime and run a one-node pipeline
 
 ## Support boundary
 
@@ -75,4 +93,4 @@ Customer-built. Not a Red Hat OOTB workbench. You own CVEs, validation, and mirr
 ## Ticket
 
 [RHAIENG-7526](https://redhat.atlassian.net/browse/RHAIENG-7526) /
-[RHAIENG-7241](https://redhat.atlassian.net/browse/RHAIENG-7241) (§2 custom images, §3 collections)
+[RHAIENG-7241](https://redhat.atlassian.net/browse/RHAIENG-7241) (§1 universal image, §2 custom images, §3 collections)

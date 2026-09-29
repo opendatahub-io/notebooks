@@ -1,7 +1,8 @@
 # Custom workbenches (customer self-service)
 
 Spike deliverable for [RHAIENG-7526](https://redhat.atlassian.net/browse/RHAIENG-7526) /
-[RHAIENG-7241](https://redhat.atlassian.net/browse/RHAIENG-7241) (§2 custom images, §3 package collections).
+[RHAIENG-7241](https://redhat.atlassian.net/browse/RHAIENG-7241)
+(§1 universal Jupyter/runtime image, §2 custom images, §3 package collections).
 
 ## Layout
 
@@ -10,6 +11,7 @@ custom-workbenches/
 ├── Makefile
 ├── interactive-image-builder.sh
 ├── src/                         # template + collections + wizard helpers
+├── universal-minimal-cpu/       # §1 PoC (generated)
 ├── my-pytorch-cuda/             # generated (gitignored)
 ├── my-pytorch-rocm/
 ├── my-trustyai/
@@ -22,6 +24,70 @@ without pushing. All commands below run from this directory unless noted:
 ```bash
 cd custom-workbenches
 ```
+
+---
+
+## Item 1 — Universal Minimal CPU (workbench + Elyra runtime)
+
+Goal: **one image digest** that launches as an interactive Jupyter workbench and
+can run Elyra pipeline nodes — so a separate OOTB minimal runtime image is unnecessary.
+
+### How the two modes differ
+
+| | Workbench | Elyra runtime |
+|---|-----------|---------------|
+| Discovery | `opendatahub.io/notebook-image: "true"` | `opendatahub.io/runtime-image: "true"` |
+| Start | Image `ENTRYPOINT` → JupyterLab | Elyra/KFP sets `command: [sh, -c]` (**replaces** ENTRYPOINT) and runs `bootstrapper.py` |
+| Env | `NOTEBOOK_ARGS`, etc. | COS/DSPA secrets; `ELYRA_INSTALL_PACKAGES=false` |
+| Deps | JupyterLab stack | + papermill, minio, nbclient, … (pre-baked) |
+| Artifacts | `start-notebook.sh` | `/opt/app-root/bin/utils/bootstrapper.py` + blank `requirements-elyra.txt` |
+
+Production Elyra does **not** pass `runtime` as an arg; it overrides the container
+command. The local `entrypoint.sh runtime` helper only mimics dual-mode for smoke tests.
+
+Generated `imagestream.yaml` sets **both** labels on the same tag so Dashboard and
+the notebook controller can advertise one digest for both roles.
+
+### Demo (local)
+
+**Wizard choices:** CPU → **Minimal** → AIPCC or ODH base → AIPCC/PyPI index →
+platform → Quay org/repo → folder `universal-minimal-cpu`.
+
+```bash
+./interactive-image-builder.sh
+# → creates universal-minimal-cpu/
+
+make build RECIPE=universal-minimal-cpu PUSH_IMAGES=no
+make validate-universal RECIPE=universal-minimal-cpu
+```
+
+Workbench smoke (Jupyter on 8888; Ctrl+C to stop):
+
+```bash
+podman run --rm -p 8888:8888 quay.io/MY-ORG/universal-minimal-cpu:latest
+```
+
+Runtime smoke (simulates Elyra replacing ENTRYPOINT with `sh`):
+
+```bash
+podman run --rm --entrypoint sh quay.io/MY-ORG/universal-minimal-cpu:latest -c \
+  'command -v curl python3; python3 -c "import papermill,minio; print(\"runtime deps OK\")"'
+```
+
+### Demo (cluster)
+
+1. `make push RECIPE=universal-minimal-cpu`
+2. Import / apply `universal-minimal-cpu/imagestream.yaml` (dual labels)
+3. Create a workbench from that image
+4. In Elyra, select the **same image digest** as the pipeline node runtime
+5. Run a one-node notebook pipeline; confirm the bootstrapper runs and the node succeeds
+
+### Gap vs shipping OOTB
+
+This PoC uses the customer-builder path. Promoting the pattern into the OOTB
+`jupyter/minimal` image means folding runtime deps + bootstrapper into that
+Dockerfile and dual-labeling the Jupyter Minimal ImageStream (dropping a
+separate `runtime-minimal` digest).
 
 ---
 
@@ -46,7 +112,7 @@ podman run \
   -v "${PWD}/consumer:/etc/pki/consumer:Z" \
   --rm -t registry.access.redhat.com/ubi9/ubi \
   /usr/sbin/subscription-manager register \
-    --org=18631088 --activationkey=YOUR_ACTIVATION_KEY
+    --org=YOUR_ORG_ID --activationkey=YOUR_ACTIVATION_KEY
 ```
 
 Ask your team for the activation key, or create one at
@@ -81,6 +147,7 @@ cd custom-workbenches
 ```bash
 make build RECIPE=my-pytorch-cuda PUSH_IMAGES=no
 make validate RECIPE=my-pytorch-cuda
+make validate-universal RECIPE=my-pytorch-cuda
 make push RECIPE=my-pytorch-cuda
 ```
 
@@ -239,15 +306,14 @@ podman run --rm --entrypoint python \
 | List package collections | `make collections` |
 | Build without push | `make build RECIPE=<name> PUSH_IMAGES=no` |
 | Override arch | `make build RECIPE=<name> PLATFORM=linux/arm64` |
+| Dual-mode checks (§1) | `make validate-universal RECIPE=<name>` |
 | Import in OpenShift AI | Settings → Workbench images → Import → `quay.io/MY-ORG/<repo>:<tag>` |
 
-**Pipeline runtime:** same image digest; Elyra should invoke `entrypoint.sh runtime`
-(see `src/bin/entrypoint.sh`). Local check:
+**Pipeline runtime:** same image digest; on-cluster Elyra overrides `command` to
+`[sh, -c]` and uses `/opt/app-root/bin/utils/bootstrapper.py`. Local check:
 
 ```bash
-podman run --rm --entrypoint /opt/app-root/bin/entrypoint.sh \
-  quay.io/MY-ORG/my-pytorch-cuda:latest \
-  runtime --help || true
+make validate-universal RECIPE=<name>
 ```
 
 **Base images:** AIPCC repos do not publish `:latest`. Pins live in
@@ -280,17 +346,18 @@ Details: [src/collections/README.md](src/collections/README.md).
 
 ## Wizard choices
 
-1. Accelerator (CPU / CUDA 13 / 12.9 / ROCm)  
-2. Stack (Minimal / PyTorch / **TrustyAI** / **LLM Compressor**)  
-3. Base (CentOS Stream ODH vs AIPCC RHEL)  
-4. Index (PyPI vs AIPCC — defaults to AIPCC for collections)  
-5. Platform  
-6. Quay org → repo → tag → folder name  
+1. Accelerator (CPU / CUDA 13 / 12.9 / ROCm)
+2. Stack (Minimal / PyTorch / **TrustyAI** / **LLM Compressor**)
+3. Base (CentOS Stream ODH vs AIPCC RHEL)
+4. Index (PyPI vs AIPCC — defaults to AIPCC for collections)
+5. Platform
+6. Quay org → repo → tag → folder name
 
 ## Ticket checklist
 
 | Item | Covered by |
 |------|------------|
+| §1 Universal Jupyter Minimal (workbench + runtime) | Minimal stack + Elyra deps + dual ImageStream + `make validate-universal` |
 | §2 Custom CUDA/ROCm images | Wizard + `src/` + `make build/push` |
 | §3 TrustyAI collection | `src/collections/trustyai` |
 | §3 LLM Compressor collection | `src/collections/llmcompressor` |

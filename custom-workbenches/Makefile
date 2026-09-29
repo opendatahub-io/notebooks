@@ -33,21 +33,23 @@ else
 CONTAINER_BUILD_SECURITY_ARGS ?=
 endif
 
-.PHONY: help build push list collections validate
+.PHONY: help build push list collections validate validate-universal
 
 help:
-	@echo "Custom workbenches (RHAIENG-7526) + package collections (RHAIENG-7241 §3)"
+	@echo "Custom workbenches (RHAIENG-7526) + RHAIENG-7241 §1 universal / §3 collections"
 	@echo ""
 	@echo "  Workflow: entitlements (docs/subscribed-builds.md) → ./interactive-image-builder.sh → make build"
 	@echo ""
 	@echo "  make collections"
 	@echo "  make list"
-	@echo "  make build    RECIPE=<folder> [PLATFORM=…] [PUSH_IMAGES=no]"
-	@echo "  make push     RECIPE=<folder>"
-	@echo "  make validate RECIPE=<folder>   # run collection import checks in the image"
+	@echo "  make build              RECIPE=<folder> [PLATFORM=…] [PUSH_IMAGES=no]"
+	@echo "  make push               RECIPE=<folder>"
+	@echo "  make validate           RECIPE=<folder>   # collection import checks"
+	@echo "  make validate-universal RECIPE=<folder>   # §1 workbench + Elyra runtime checks"
 	@echo ""
 	@echo "Generate a sibling folder from src/:"
 	@echo "  ./interactive-image-builder.sh"
+	@echo "  # §1 PoC: CPU → Minimal → AIPCC/ODH base → folder e.g. universal-minimal-cpu"
 	@echo ""
 	@echo "AIPCC/RHEL: set up entitlement/ + consumer/ and mounts.conf before build"
 	@echo "(see README.md § Recommended workflow). Escape hatch:"
@@ -140,3 +142,13 @@ validate:
 		fi; \
 	done; \
 	exit $${status}
+
+# RHAIENG-7241 §1: same digest usable as Jupyter workbench and Elyra runtime.
+validate-universal:
+	$(call load_recipe_conf)
+	@echo "# Universal workbench/runtime checks for $(IMAGE_REF)"
+	@if ! $(CONTAINER_ENGINE) image inspect "$(IMAGE_REF)" >/dev/null 2>&1; then \
+		echo "Image not found locally. Run: make build RECIPE=$(RECIPE) PUSH_IMAGES=no"; \
+		exit 1; \
+	fi
+	CONTAINER_ENGINE=$(CONTAINER_ENGINE) bash "$(ROOT_DIR)src/bin/validate-universal.sh" "$(IMAGE_REF)"

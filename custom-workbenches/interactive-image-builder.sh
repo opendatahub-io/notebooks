@@ -52,7 +52,7 @@ main() {
 
   ask_menu stack_choice \
     "Which software stack / package collection?" \
-    "Minimal — Jupyter only" \
+    "Minimal — Jupyter + Elyra runtime (universal digest)" \
     "PyTorch — torch + torchvision" \
     "TrustyAI — curated collection (explainability)" \
     "LLM Compressor — curated collection (model compression)"
@@ -198,9 +198,10 @@ main() {
   ui "  ${out_dir}"
   ui ""
   ui "Build / push / validate (from custom-workbenches/):"
-  ui "  make build    RECIPE=${image_name} PUSH_IMAGES=no"
-  ui "  make validate RECIPE=${image_name}"
-  ui "  make push     RECIPE=${image_name}"
+  ui "  make build               RECIPE=${image_name} PUSH_IMAGES=no"
+  ui "  make validate-universal  RECIPE=${image_name}   # §1 workbench + runtime"
+  ui "  make validate            RECIPE=${image_name}   # collection imports"
+  ui "  make push                RECIPE=${image_name}"
   if [[ "${base_kind}" == "aipcc" ]]; then
     ui ""
     ui "AIPCC: entitlements must be set up before make build (README § Recommended workflow)."

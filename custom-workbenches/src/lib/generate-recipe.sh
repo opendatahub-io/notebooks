@@ -179,6 +179,9 @@ generate_recipe() {
   [[ -f "${template_conf}" ]] || die "Missing template conf: ${template_conf}"
   [[ -f "${SRC_DIR}/Containerfile" ]] || die "Missing ${SRC_DIR}/Containerfile"
 
+[[ "${image_name}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] \
+  || die "Invalid folder name: ${image_name}"
+
   output_dir="${WIZARD_ROOT}/${image_name}"
 
   rm -rf "${output_dir}"
@@ -190,6 +193,8 @@ generate_recipe() {
   cp "${SRC_DIR}/repos/openshift-clients.repo" "${output_dir}/repos/openshift-clients.repo"
   cp "${SRC_DIR}/bin/entrypoint.sh" "${output_dir}/bin/entrypoint.sh"
   chmod 0755 "${output_dir}/bin/entrypoint.sh"
+  cp "${SRC_DIR}/bin/validate-universal.sh" "${output_dir}/bin/validate-universal.sh"
+  chmod 0755 "${output_dir}/bin/validate-universal.sh"
   cp "${SRC_DIR}/collections/README.md" "${output_dir}/collections/README.md"
 
   cp "${REPO_ROOT}/jupyter/minimal/ubi9-python-3.12/start-notebook.sh" "${output_dir}/bin/start-notebook.sh"
@@ -198,6 +203,9 @@ generate_recipe() {
   cp "${REPO_ROOT}/jupyter/datascience/ubi9-python-3.12/setup-elyra.sh" "${output_dir}/bin/utils/"
   chmod 0755 "${output_dir}/bin/utils/setup-elyra.sh"
   cp "${REPO_ROOT}/prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py" "${output_dir}/bin/utils/"
+  # Blank requirements-elyra.txt: escape Elyra's curl of the full upstream list
+  # (same pattern as runtimes/*/utils/requirements-elyra.txt).
+  cp "${SRC_DIR}/bin/utils/requirements-elyra.txt" "${output_dir}/bin/utils/requirements-elyra.txt"
   cp "${REPO_ROOT}/base-images/utils/ensure-openshift-site-packages.sh" "${output_dir}/bin/"
   chmod 0755 "${output_dir}/bin/ensure-openshift-site-packages.sh"
 

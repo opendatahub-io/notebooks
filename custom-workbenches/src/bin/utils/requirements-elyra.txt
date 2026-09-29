@@ -1,0 +1,6 @@
+# Intentionally blank (same escape hatch as runtimes/*/utils/requirements-elyra.txt).
+#
+# Elyra's KFP processor looks for this file at /opt/app-root/bin/utils/ before
+# curling the full upstream requirements-elyra.txt. Shipping an empty file here,
+# with Elyra deps already installed in the image and ELYRA_INSTALL_PACKAGES=false,
+# avoids a network fetch and a slow pip install on every pipeline node.

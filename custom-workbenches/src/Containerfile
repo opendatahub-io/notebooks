@@ -8,10 +8,11 @@ ARG INDEX_URL=https://pypi.org/simple/
 ARG LABEL_COMPONENT=custom-workbench
 ARG RELEASE=custom
 
-LABEL summary="Customer-built universal GPU workbench for OpenShift AI" \
-      description="Self-built image; not a Red Hat OOTB workbench. Workbench and pipeline runtime share this digest." \
-      io.openshift.tags="rhods,custom-workbench,accelerator" \
+LABEL summary="Customer-built universal workbench for OpenShift AI" \
+      description="Self-built image; not a Red Hat OOTB workbench. One digest for Jupyter workbench and Elyra pipeline runtime." \
+      io.openshift.tags="rhods,custom-workbench,universal,elyra-runtime" \
       opendatahub.io/notebook-image="true" \
+      opendatahub.io/runtime-image="true" \
       name="${LABEL_COMPONENT}" \
       version="${RELEASE}"
 

@@ -2,17 +2,42 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   name: ${RECIPE_NAME}
-  namespace: redhat-ods-applications
   labels:
+    # Same digest advertised as both workbench and Elyra runtime (RHAIENG-7241 §1).
     opendatahub.io/notebook-image: "true"
+    opendatahub.io/runtime-image: "true"
   annotations:
     opendatahub.io/notebook-image-name: "${RECIPE_NAME}"
-    opendatahub.io/notebook-image-desc: "Customer-built ${ACCEL_KEY} ${STACK} universal workbench"
+    opendatahub.io/notebook-image-desc: "Customer-built ${ACCEL_KEY} ${STACK} universal workbench + Elyra runtime"
+    opendatahub.io/runtime-image-name: "Runtime | ${RECIPE_NAME}"
+    opendatahub.io/runtime-image-desc: "Same digest as the ${RECIPE_NAME} workbench; use as Elyra pipeline runtime"
+    opendatahub.io/runtime-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/custom-workbenches"
 spec:
   tags:
     - name: latest
       annotations:
         openshift.io/imported-from: "${IMAGE_REF}"
+        # language=json
+        opendatahub.io/runtime-image-metadata: |
+          [
+            {
+              "display_name": "Runtime | ${RECIPE_NAME}",
+              "metadata": {
+                "tags": [
+                  "${STACK}",
+                  "universal"
+                ],
+                "display_name": "Runtime | ${RECIPE_NAME}",
+                "pull_policy": "IfNotPresent"
+              },
+              "schema_name": "runtime-image"
+            }
+          ]
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.12"}
+          ]
       from:
         kind: DockerImage
         name: ${IMAGE_REF}

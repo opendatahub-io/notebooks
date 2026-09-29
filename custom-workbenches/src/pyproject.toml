@@ -2,11 +2,16 @@
 name = "custom-workbench"
 version = "0.1.0"
 requires-python = "==3.12.*"
-description = "Customer-built GPU workbench — packages resolve to latest at image build time"
+description = "Universal workbench + Elyra runtime (one digest) — packages resolve at image build time"
 
-# Unpinned on purpose (RHAIENG-7526 PoC): pip/uv fetches the newest compatible
-# release from INDEX_URL. Pin here only if a package breaks the build.
+# Unpinned on purpose (RHAIENG-7526 / RHAIENG-7241 PoC): pip/uv fetches the newest
+# compatible release from INDEX_URL. Pin here only if a package breaks the build.
+#
+# JupyterLab block  → interactive workbench
+# Elyra runtime block → papermill/minio/etc. so the same digest can execute
+#                       pipeline nodes without a separate runtime image
 dependencies = [
+    # --- Interactive Jupyter workbench ---
     "jupyterlab",
     "jupyter-server",
     "jupyter-server-proxy",
@@ -16,4 +21,23 @@ dependencies = [
     "nbgitpuller",
     "ipywidgets",
     "notebook",
+    # --- Elyra / KFP pipeline runtime (odh-notebooks-meta-runtime-elyra-deps) ---
+    "ipykernel",
+    "ipython",
+    "ipython-genutils",
+    "jinja2",
+    "jupyter-client",
+    "jupyter-core",
+    "markupsafe",
+    "minio",
+    "nbclient",
+    "nbconvert",
+    "nbformat",
+    "papermill",
+    "pyzmq",
+    "prompt-toolkit",
+    "requests",
+    "tornado",
+    "traitlets",
+    "urllib3",
 ]
