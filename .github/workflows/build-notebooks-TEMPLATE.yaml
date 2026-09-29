@@ -470,11 +470,11 @@ jobs:
       # https://playwright.dev/docs/ci
       # https://playwright.dev/docs/docker
       # opendatahub-io/notebooks#3965: podman storage is configured to have sufficient disk space
-      # Build the same image as .github/workflows/build-browser-tests.yaml so codeserver
+      # Build the same image as .github/workflows/build-browser-tests.yaml so browser
       # Playwright runs use baked-in deps (pnpm + Playwright) from tests/browser/Dockerfile.
       - name: Build browser tests image
         id: browser-tests-image
-        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && (contains(inputs.target, 'codeserver') || (contains(inputs.target, 'jupyter') && !contains(inputs.target, 'runtime'))) && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
           IMAGE="localhost/workbench-images-tests:ci"
@@ -486,7 +486,7 @@ jobs:
             tests/browser
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
-      - name: Run Playwright tests
+      - name: Run Code-Server Playwright tests
         if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
         uses: ./.github/actions/playwright-test
         with:
@@ -497,6 +497,18 @@ jobs:
           artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
           junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-junit.xml"
           grep-pattern: ${{ contains(inputs.target, 'che-code') && '@checode' || '@codeserver' }}
+
+      - name: Run JupyterLab Playwright tests
+        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && contains(inputs.target, 'jupyter') && !contains(inputs.target, 'runtime') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
+          playwright-image: ${{ steps.browser-tests-image.outputs.image }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
+          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_jupyterlab-playwright-report"
+          junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_jupyterlab-playwright-junit.xml"
+          grep-pattern: '@jupyter'
 
       # endregion
 

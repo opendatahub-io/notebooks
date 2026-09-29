@@ -45,7 +45,8 @@ export default defineConfig<ConfigFixtures>({
     ignoreHTTPSErrors: true,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
+    video: 'retain-on-failure',
 
     // https://github.com/microsoft/playwright/issues/14854#issuecomment-1666185768
     screenshot: "only-on-failure",

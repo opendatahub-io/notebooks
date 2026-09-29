@@ -33,14 +33,24 @@ class LabSession {
     await this.ui.menu.save.click({ timeout: 15_000 });
   }
 
+  async saveAsMenu(): Promise<void> {
+    await this.dismissOfflineServiceError();
+    await this.ui.menu.file.click();
+    await this.ui.menu.saveAs.click({ timeout: 15_000 });
+  }
+
   async save(action: () => Promise<void>): Promise<void> {
-    const [response] = await Promise.all([
-      this.page.waitForResponse(
-        (response) => response.request().method() === 'PUT' && /\/api\/contents\//.test(response.url()),
-        { timeout: 15_000 },
-      ),
-      action(),
-    ]);
+    const responsePromise = this.page.waitForResponse(
+      (response) => response.request().method() === 'PUT' && /\/api\/contents\//.test(response.url()),
+      { timeout: 30_000 },
+    );
+    try {
+      await action();
+    } catch (error) {
+      await responsePromise.catch(() => undefined);
+      throw error;
+    }
+    const response = await responsePromise;
     expect(response.ok()).toBe(true);
   }
 
@@ -61,10 +71,13 @@ export class JupyterLab {
     this.files = new FileBrowser(session);
   }
 
-  static async open(page: Page, testInfo: TestInfo): Promise<JupyterLab> {
+  static async open(page: Page, testInfo: TestInfo, baseURL?: string): Promise<JupyterLab> {
     const session = new LabSession(page, testInfo);
     const workspace = `offline-${randomUUID()}`;
-    await page.goto(`./lab/workspaces/${workspace}?reset`);
+    const workspaceURL = baseURL
+      ? `${baseURL}lab/workspaces/${workspace}?reset`
+      : `./lab/workspaces/${workspace}?reset`;
+    await page.goto(workspaceURL);
     await expect(session.ui.shell).toBeVisible({ timeout: 120_000 });
     await expect(session.ui.sidebar).toBeVisible();
     await session.dismissOfflineServiceError();
@@ -188,14 +201,13 @@ export class DraftNotebook extends Notebook {
 
   async saveAs(name: string): Promise<SavedNotebook> {
     const { dialogs } = this.session.ui;
-    await this.session.save(async () => {
-      await this.session.saveMenu();
-      await expect(dialogs.saveAs).toBeVisible();
-      await dialogs.input(dialogs.saveAs).fill(name);
-      await dialogs.save(dialogs.saveAs).click();
-    });
+    await this.session.saveAsMenu();
+    await expect(dialogs.saveAs).toBeVisible();
+    await dialogs.input(dialogs.saveAs).fill(name);
+    await this.session.save(() => dialogs.save(dialogs.saveAs).click());
     if (await dialogs.untitled.isVisible()) {
-      await dialogs.discard(dialogs.untitled).click();
+      await dialogs.discard(dialogs.untitled).click({ force: true });
+      await expect(dialogs.untitled).toBeHidden({ timeout: 15_000 });
     }
     const saved = new SavedNotebook(this.session, name);
     await expect(saved.panel).toBeVisible();
@@ -238,6 +250,13 @@ export class SavedNotebook extends Notebook {
 export class Terminal {
   constructor(private readonly session: LabSession) {}
 
+  /**
+   * JupyterLab renders xterm output through a canvas-backed surface, so its
+   * ordinary DOM container does not expose command output reliably to Playwright.
+   * Workflows should write a unique completion marker to a file and assert it
+   * through the file browser. JupyterLab's terminal accessibility mode is an
+   * alternative when the terminal's rendered output itself is under test.
+   */
   async run(command: string): Promise<this> {
     await this.session.ui.terminal.click();
     await this.session.page.keyboard.type(command);
