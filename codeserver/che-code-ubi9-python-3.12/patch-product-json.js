@@ -14,10 +14,12 @@ d.nameLong = "VS Code - Open Source Workbench";
 d.serverApplicationName = "vscode-workbench";
 d.welcomePageTitle = "VS Code - Open Source";
 d.welcomePageSubtitle = "";
-// Build quality channel ("stable" or "insider"). Without this, VS Code treats
-// the build as Code-OSS and blocks --install-extension for extension-pack members
-// with "not allowed to be updated in the current product quality 'undefined'".
-// See: https://github.com/VSCodium/vscodium/wiki/Product.json
+// Che-Code ships with a null quality because it is based on Code-OSS. Mark the
+// wrapper as stable so extension-pack members of the main VSIXes can be
+// installed during the initial extension installation. They must not be
+// installed again individually afterward: VS Code marks those members as
+// built-in and rejects the update.
+// See: [https://github.com/VSCodium/vscodium/wiki/Product.json](https://github.com/VSCodium/vscodium/wiki/Product.json)
 d.quality = "stable";
 d.configurationDefaults = {
   "security.workspace.trust.enabled": false,
