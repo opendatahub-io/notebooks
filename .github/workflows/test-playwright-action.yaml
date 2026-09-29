@@ -63,13 +63,13 @@ jobs:
       - name: Extract default test image from playwright.config.ts
         id: get-image
         run: |
-          # Extract DEFAULT_TEST_IMAGE using grep (the config imports @playwright/test which isn't installed yet)
+          # Extract DEFAULT_CODESERVER_TEST_IMAGE using grep (the config imports @playwright/test which isn't installed yet)
           # Anchor to start of line to avoid matching comments
-          TEST_IMAGE=$(grep -oP '^export const DEFAULT_TEST_IMAGE\s*=\s*"\K[^"]+' tests/browser/playwright.config.ts)
+          TEST_IMAGE=$(grep -oP '^export const DEFAULT_CODESERVER_TEST_IMAGE\s*=\s*"\K[^"]+' tests/browser/playwright.config.ts)
 
           # Fail if extraction returned empty
           if [[ -z "$TEST_IMAGE" ]]; then
-            echo "::error::Failed to extract DEFAULT_TEST_IMAGE from playwright.config.ts"
+            echo "::error::Failed to extract DEFAULT_CODESERVER_TEST_IMAGE from playwright.config.ts"
             exit 1
           fi
 
@@ -143,4 +143,6 @@ jobs:
           upload-report: 'true'
           artifact-name: playwright-action-test-report
           junit-artifact-file: playwright-action-test-junit.xml
+          # This workflow pulls the default code-server target; keep Jupyter
+          # tests in the dedicated internal-network launcher.
           grep-pattern: '@codeserver'
