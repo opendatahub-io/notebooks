@@ -36,7 +36,17 @@ FAKE_VALUE="${OFFLINE_FAKE_VALUE:-offline-browser-fixture}"
 PLAYWRIGHT_ARGS=()
 PLAYWRIGHT_ARGS+=(--project=chromium --grep @jupyter)
 if [[ -n "${OFFLINE_PLAYWRIGHT_ARGS:-}" ]]; then
-  read -r -a PLAYWRIGHT_ARGS <<<"${OFFLINE_PLAYWRIGHT_ARGS}"
+  OFFLINE_EXTRA_ARGS=()
+  read -r -a OFFLINE_EXTRA_ARGS <<<"${OFFLINE_PLAYWRIGHT_ARGS}"
+  for arg in "${OFFLINE_EXTRA_ARGS[@]}"; do
+    case "${arg}" in
+      --project|--project=*|--grep|--grep=*)
+        echo "OFFLINE_PLAYWRIGHT_ARGS cannot override --project=chromium or --grep @jupyter: ${arg}" >&2
+        exit 2
+        ;;
+    esac
+  done
+  PLAYWRIGHT_ARGS+=("${OFFLINE_EXTRA_ARGS[@]}")
 fi
 BASE_PATH="${OFFLINE_BASE_PATH:-/notebook/offline/}"
 BASE_URL="http://workbench:8888${BASE_PATH}"
