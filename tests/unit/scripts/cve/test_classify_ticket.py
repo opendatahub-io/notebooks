@@ -22,6 +22,7 @@ def _load_fixture(key: str) -> dict:
         ("RHAIENG-6341", "python", "rhaieng_parent", "autofix", None, "pillow", "rhoai-3.4"),
         ("RHOAIENG-77242", "python", "rhoaieng_source", "autofix", None, "pillow", "rhoai-3.4"),
         ("RHOAIENG-91786", "python", "rhoaieng_source", "autofix", None, "gitpython", "rhoai-3.5"),
+        ("RHAI-3507", "python", "rhoaieng_source", "autofix", None, "gitpython", "rhoai-3.5"),
         ("RHAIENG-6695", "go", "rhaieng_parent", "skip", "not_fixable", "github.com/docker/docker", "rhoai-3.5"),
         ("RHAIENG-6699", "rpm", "rhaieng_parent", "rpm_check", None, "nginx", "rhoai-3.5"),
         (

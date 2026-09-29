@@ -40,3 +40,16 @@ def test_fix_cve_dry_run_offline_rhoaieng(capsys, monkeypatch, constraints, json
         assert "Dry-run only" in output
         if constraints:
             assert "already_fixed" in output
+
+
+def test_fix_cve_dry_run_offline_rhai(capsys, monkeypatch) -> None:
+    monkeypatch.setattr("scripts.cve.fix_cve.JiraClient", SimpleNamespace(from_env=lambda: None))
+    monkeypatch.setattr("scripts.cve.plan_fix.read_constraints_for_branch", lambda *a, **kw: "")
+    monkeypatch.setattr("scripts.cve.plan_fix.find_open_pr", lambda *a, **kw: None)
+    assert main(["RHAI-3507", "--dry-run", "--json", "--fixture-dir", str(FIXTURE_DIR)]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["cve_id"] == "CVE-2026-78676"
+    assert plan["rhai_count"] == 1
+    assert plan["rhoaieng_count"] == 0
+    assert plan["comment_keys"] == ["RHAI-3507"]
+    assert plan["constraint_line"] == "gitpython>=3.1.59"

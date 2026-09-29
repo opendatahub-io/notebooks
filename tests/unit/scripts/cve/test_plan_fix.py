@@ -37,3 +37,21 @@ def test_build_fix_plan_for_rhoaieng_gitpython() -> None:
     assert plan.floor_version == "3.1.59"
     assert plan.constraint_line == "gitpython>=3.1.59"
     assert plan.pr_branch == "fix/cve-CVE-2026-78676-rhoai-3.5"
+
+
+def test_build_fix_plan_comment_keys_include_rhai() -> None:
+    issue = _load_fixture("RHAI-3507")
+    group = CVEGroup(
+        cve_id="CVE-2026-78676",
+        branch="rhoai-3.5",
+        rhoaieng_keys=["RHOAIENG-91786"],
+        rhai_keys=["RHAI-3507"],
+        summaries={"RHAI-3507": issue["fields"]["summary"]},
+    )
+    plan = build_fix_plan(group, anchor_issue=issue, dry_run=True)
+    assert plan.classification.action == "autofix"
+    assert plan.package == "gitpython"
+    assert plan.comment_keys == ["RHAI-3507", "RHOAIENG-91786"]
+    payload = plan.to_dict()
+    assert payload["rhai_count"] == 1
+    assert payload["rhoaieng_count"] == 1
