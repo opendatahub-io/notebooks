@@ -108,6 +108,7 @@ runs:
         if [[ -n "${GREP_PATTERN}" ]]; then
           args+=(--grep "${GREP_PATTERN}")
         fi
+        target_arch=$(podman inspect --format '{{.Architecture}}' "${TEST_TARGET}")
         podman run \
           --rm \
           --ipc=host \
@@ -116,6 +117,7 @@ runs:
           --env "DEBUG=testcontainers:*" \
           --env "PODMAN_SOCK=/var/run/docker.sock" \
           --env "TEST_TARGET" \
+          --env "TEST_TARGET_ARCH=${target_arch}" \
           --volume "${PODMAN_SOCKET}":/var/run/docker.sock \
           --volume "${PWD}/results":/home/pwuser/tests/browser/results:Z \
           --volume "${PWD}/playwright-report":/home/pwuser/tests/browser/playwright-report:Z \
