@@ -224,6 +224,7 @@ export class SavedNotebook extends Notebook {
   }
 
   async rename(name: string): Promise<SavedNotebook> {
+    await this.session.dismissOfflineServiceError();
     await this.session.ui.tab(this.name).click();
     const { menu, dialogs } = this.session.ui;
     await menu.file.click();
