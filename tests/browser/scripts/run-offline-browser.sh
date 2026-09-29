@@ -49,6 +49,16 @@ if [[ -n "${OFFLINE_PLAYWRIGHT_ARGS:-}" ]]; then
   PLAYWRIGHT_ARGS+=("${OFFLINE_EXTRA_ARGS[@]}")
 fi
 BASE_PATH="${OFFLINE_BASE_PATH:-/notebook/offline/}"
+BASE_PATH="/${BASE_PATH#/}"
+while [[ "${BASE_PATH}" == //* ]]; do
+  BASE_PATH="${BASE_PATH#/}"
+done
+while [[ "${BASE_PATH}" != "/" && "${BASE_PATH}" == */ ]]; do
+  BASE_PATH="${BASE_PATH%/}"
+done
+if [[ "${BASE_PATH}" != "/" ]]; then
+  BASE_PATH="${BASE_PATH}/"
+fi
 BASE_URL="http://workbench:8888${BASE_PATH}"
 READINESS_URL="http://127.0.0.1:8888${BASE_PATH}"
 
