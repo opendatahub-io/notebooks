@@ -57,6 +57,7 @@ function createChain<T>(promise: PromiseLike<T>, invoke?: Invocation): Chain<T> 
       }
 
       const propertyPromise = promise.then((resolved): unknown => Reflect.get(Object(resolved), property) as unknown);
+      void propertyPromise.then(undefined, () => undefined);
       return createChain(propertyPromise, (args) => promise.then((resolved) => {
         const member: unknown = Reflect.get(Object(resolved), property) as unknown;
         if (typeof member !== 'function') {

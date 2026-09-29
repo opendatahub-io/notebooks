@@ -42,4 +42,24 @@ describe('page-object chains', () => {
     await expect(counter.optionalDetails).resolves.toBeUndefined();
     await expect(counter.nullableDetails).resolves.toBeNull();
   });
+
+  it('does not orphan a rejection during method lookup', async () => {
+    const rejection = new Error('open failed');
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+
+    try {
+      const result = chain(Promise.reject<Counter>(rejection)).add(1);
+      const resultReason = await result.then<unknown, unknown>(
+        () => undefined,
+        (reason: unknown) => reason,
+      );
+      expect(resultReason).toBe(rejection);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
 });
