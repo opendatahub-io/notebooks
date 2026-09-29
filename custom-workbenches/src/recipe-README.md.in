@@ -1,0 +1,78 @@
+# ${RECIPE_NAME}
+
+Customer-built **${ACCEL_KEY}** universal workbench for OpenShift AI / ODH.
+
+| Field | Value |
+|-------|--------|
+| Stack | ${STACK} |
+| Collections | ${COLLECTIONS} |
+| Constraints | `constraints.txt` (ABI ceiling; latest *within* range) |
+| Product base | ${PRODUCT} (${INDEX_KIND} index) |
+| Base image | `${BASE_IMAGE}` |
+| Python index | `${INDEX_URL}` |
+| Platform | `${PLATFORM}` |
+| Image | `${IMAGE_REF}` |
+
+One digest for **workbench** (default entrypoint) and **pipeline runtime** (`entrypoint.sh runtime`).
+
+## Layout
+
+```text
+Containerfile
+pyproject.toml             # minimal + stack/collection packages (unpinned)
+requirements.txt
+build-args/${CONF_NAME}
+collections/               # curated use-case package sets (RHAIENG-7241 §3)
+bin/entrypoint.sh
+```
+
+Sibling of `src/`. Do not put generated images inside `src/`.
+
+## Package collections
+
+If `collections/` contains TrustyAI or LLM Compressor metadata, those packages were
+merged into `pyproject.toml` / `requirements.txt` from the RH (or PyPI) index —
+not from a specialized OOTB image. **Do not mix TrustyAI with PyTorch/LLM Compressor
+in the same `site-packages`** (numpy/pandas ABI). Use two images or an isolated venv.
+
+```bash
+make collections                 # discover available collections in src/
+make validate RECIPE=${RECIPE_NAME}   # import-check after build
+```
+
+## Prerequisites
+
+1. **Entitlements (AIPCC/RHEL only)** — before `make build`, register once and mount
+   certs via podman `mounts.conf`. See
+   [custom-workbenches/README.md](../README.md) § Recommended workflow and
+   [docs/subscribed-builds.md](../../docs/subscribed-builds.md).
+2. `podman` (or Docker), network to the base registry and `${INDEX_URL}`
+3. Cluster: OpenShift AI / ODH, GPU Operator when using CUDA/ROCm, Quay pull secret
+
+ODH (CentOS Stream) bases do not need RHSM entitlements.
+
+## Build, push, validate
+
+From `custom-workbenches/`:
+
+```bash
+make build RECIPE=${RECIPE_NAME} PUSH_IMAGES=no
+make validate RECIPE=${RECIPE_NAME}
+make push RECIPE=${RECIPE_NAME}
+make build RECIPE=${RECIPE_NAME} PLATFORM=linux/arm64
+```
+
+## Import
+
+1. Dashboard → **Settings → Workbench images → Import new image**
+2. Image location: `${IMAGE_REF}`
+3. Pipelines: same digest as Elyra runtime
+
+## Support boundary
+
+Customer-built. Not a Red Hat OOTB workbench. You own CVEs, validation, and mirroring.
+
+## Ticket
+
+[RHAIENG-7526](https://redhat.atlassian.net/browse/RHAIENG-7526) /
+[RHAIENG-7241](https://redhat.atlassian.net/browse/RHAIENG-7241) (§2 custom images, §3 collections)

@@ -1,0 +1,101 @@
+# Universal customer GPU workbench (Jupyter + Elyra runtime via entrypoint args).
+# Build with: make -C custom-workbenches build RECIPE=<name>
+
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ARG INDEX_URL=https://pypi.org/simple/
+ARG LABEL_COMPONENT=custom-workbench
+ARG RELEASE=custom
+
+LABEL summary="Customer-built universal GPU workbench for OpenShift AI" \
+      description="Self-built image; not a Red Hat OOTB workbench. Workbench and pipeline runtime share this digest." \
+      io.openshift.tags="rhods,custom-workbench,accelerator" \
+      opendatahub.io/notebook-image="true" \
+      name="${LABEL_COMPONENT}" \
+      version="${RELEASE}"
+
+USER 0
+
+# AIPCC/RHEL: BaseOS/AppStream need entitlement certs (docs/subscribed-builds.md).
+# openshift-clients is not on BaseOS — enable the public OpenShift mirror (same as ODH).
+# Skip OS packages: --build-arg INSTALL_OS_PACKAGES=false
+ARG INSTALL_OS_PACKAGES=true
+COPY repos/openshift-clients.repo /etc/yum.repos.d/openshift-clients.repo
+RUN if [ "${INSTALL_OS_PACKAGES}" != "true" ]; then \
+      echo "INSTALL_OS_PACKAGES=${INSTALL_OS_PACKAGES}: skipping dnf install"; \
+    elif ! dnf install -y mesa-libGL skopeo compat-openssl11 openshift-clients perl libxcrypt-compat; then \
+      echo "" >&2; \
+      echo "dnf failed. Common causes:" >&2; \
+      echo "  - No RHSM entitlements mounted → docs/subscribed-builds.md / README § Recommended workflow" >&2; \
+      echo "  - Missing package (e.g. openshift-clients needs repos/openshift-clients.repo)" >&2; \
+      echo "Escape hatches: BUILD_ARGS='--build-arg INSTALL_OS_PACKAGES=false' or ODH (CentOS) base." >&2; \
+      exit 1; \
+    else \
+      dnf clean all && rm -rf /var/cache/yum; \
+    fi
+
+COPY bin/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
+RUN chmod 0755 /usr/local/bin/ensure-openshift-site-packages.sh
+
+# Unpinned dependency lists — resolve latest at build time from INDEX_URL.
+COPY pyproject.toml /tmp/pyproject.toml
+COPY requirements.txt /tmp/requirements.txt
+COPY constraints.txt /tmp/constraints.txt
+# Curated use-case collections (metadata + validate.py) for discovery in the image.
+COPY collections/ /opt/app-root/src/collections/
+
+USER 1001
+WORKDIR /opt/app-root/src
+
+# AIPCC/ODH bases ship a Python 3.12 venv at /opt/app-root (not system /usr python 3.9).
+ENV ELYRA_INSTALL_PACKAGES="false" \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    VIRTUAL_ENV=/opt/app-root \
+    PATH=/opt/app-root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ARG INDEX_URL
+ENV PIP_INDEX_URL=${INDEX_URL}
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+umask 0002
+# Never use --system: that targets /usr (Python 3.9 on EL9). Install into the image venv.
+PYTHON="${VIRTUAL_ENV}/bin/python"
+test -x "${PYTHON}"
+"${PYTHON}" -c 'import sys; assert sys.version_info[:2] >= (3, 10), sys.version'
+CONSTRAINTS=()
+if [[ -s /tmp/constraints.txt ]] && grep -qv '^[[:space:]]*#' /tmp/constraints.txt; then
+  CONSTRAINTS=(-c /tmp/constraints.txt)
+fi
+if command -v uv >/dev/null 2>&1; then
+  UV_NO_CACHE=true uv pip install --python "${PYTHON}" --index-url "${PIP_INDEX_URL}" \
+    -r /tmp/requirements.txt "${CONSTRAINTS[@]}"
+else
+  "${PYTHON}" -m pip install --no-cache-dir --index-url "${PIP_INDEX_URL}" \
+    -r /tmp/requirements.txt "${CONSTRAINTS[@]}"
+fi
+jupyter labextension disable "@jupyterlab/apputils-extension:announcements" || true
+EOF
+
+USER 0
+COPY bin/ /opt/app-root/bin/
+RUN chown -R 1001:0 /opt/app-root/bin \
+    && chmod 0755 /opt/app-root/bin/entrypoint.sh /opt/app-root/bin/start-notebook.sh \
+    && install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
+      /opt/app-root/etc/jupyter/jupyter_server_config.py \
+    && if [[ -f /opt/app-root/share/jupyter/kernels/python3/kernel.json ]]; then \
+      sed -i -e "s/Python.*/$(python3 --version | cut -d '.' -f-2)\",/" \
+        /opt/app-root/share/jupyter/kernels/python3/kernel.json; \
+    fi \
+    && if [[ -x /opt/app-root/bin/utils/addons/apply.sh ]]; then \
+      bash /opt/app-root/bin/utils/addons/apply.sh || true; \
+    fi \
+    && chmod -R g+w /opt/app-root/lib/python3.12/site-packages 2>/dev/null || true \
+    && /usr/local/bin/ensure-openshift-site-packages.sh
+
+USER 1001
+WORKDIR /opt/app-root/src
+
+EXPOSE 8888
+ENTRYPOINT ["/opt/app-root/bin/entrypoint.sh"]
