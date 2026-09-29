@@ -78,9 +78,9 @@ test.describe('JupyterLab offline features', { tag: ['@jupyter', '@offline', '@t
     const notebookName = `offline-lifecycle-renamed-${id}.ipynb`;
     const source = 'print(1 + 1)';
     const expectedOutput = '2';
-    const lab = await JupyterLab.open(page, testInfo, jupyterBaseURL);
-    const launcher = await lab.openLauncher();
-    const draft = await launcher.newNotebook();
+    const draft = await JupyterLab.open(page, testInfo, jupyterBaseURL)
+      .openLauncher()
+      .newNotebook();
     const cell = await draft.cells.first().run(source);
     await expect(cell.output).toHaveText(expectedOutput, { timeout: 30_000 });
 
