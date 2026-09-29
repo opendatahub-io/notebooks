@@ -8,6 +8,14 @@ Hermetic baseline Jupyter workbench image with Python 3.12 on UBI 9.
 - Installs Python packages from `requirements.${PYLOCK_FLAVOR}.txt` with
   `--no-index --find-links /cachi2/output/deps/pip`.
 - Keeps JupyterLab feature set (Elyra, Kale, PDF export) with a lean Python footprint.
+- Kale's JupyterLab frontend is disabled when no KFP host is configured, so workbenches
+  without pipelines do not show background connection errors. It is enabled at startup
+  when Elyra supplies an endpoint or a standalone Kale config supplies `host` (via
+  `~/.config/kale/kfp_server_config.json` or `KALE_CONFIG_PATH`). The startup script
+  records a fingerprint alongside the config when Elyra creates it, and disables Kale
+  if that same config remains after the runtime mount disappears. An independently
+  changed config can still enable Kale. Saved configs from before this fingerprint
+  existed cannot be reliably distinguished from standalone configuration.
 - **Multi-arch**: Konflux builds all four Linux arches; JupyterLab/Elyra/Kale Python deps
   install on **x86_64 + aarch64 only** (PyPI wheel gap on ppc64le/s390x), using explicit
   ``platform_machine == 'x86_64' or == 'aarch64'`` allowlist markers. Other arches receive

@@ -8,6 +8,7 @@ set -x
 
 # Read Elyra config and copy the relevant information to Kale config
 # Extract KFP configuration from Elyra runtime configs if available
+ELYRA_KALE_CONFIGURED=0
 if [ "$(ls -A /opt/app-root/runtimes/ 2>/dev/null)" ]; then
   # Use the default "Pipeline" runtime configuration created by the operator
   ELYRA_RUNTIME_CONFIG="/opt/app-root/runtimes/..data/Pipeline.json"
@@ -29,8 +30,52 @@ if [ "$(ls -A /opt/app-root/runtimes/ 2>/dev/null)" ]; then
     # Note: The Python script sets KF_PIPELINES_TOKEN directly in the environment
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     export ELYRA_RUNTIME_CONFIG
-    python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py"
+    if python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py"; then
+      ELYRA_KALE_CONFIGURED=1
+    fi
   fi
+fi
+
+# Kale's frontend pings KFP in the background. Only load it with an active
+# Elyra configuration or an independently configured Kale endpoint.
+if KALE_ELYRA_CONFIGURED="$ELYRA_KALE_CONFIGURED" python3 - <<'PY'
+import hashlib
+import json
+import os
+import sys
+
+path = os.environ.get('KALE_CONFIG_PATH') or os.path.join(os.path.expanduser('~'), '.config/kale/kfp_server_config.json')
+try:
+    with open(path, 'rb') as config_file:
+        contents = config_file.read()
+    config = json.loads(contents)
+except (OSError, ValueError, UnicodeDecodeError):
+    sys.exit(1)
+if not (isinstance(config, dict) and isinstance(config.get('host'), str) and config['host'].strip()):
+    sys.exit(1)
+
+marker_path = path + '.elyra-sha256'
+fingerprint = hashlib.sha256(contents).hexdigest()
+if os.environ['KALE_ELYRA_CONFIGURED'] == '1':
+    try:
+        with open(marker_path, 'w') as marker_file:
+            marker_file.write(fingerprint)
+    except OSError:
+        pass
+else:
+    try:
+        with open(marker_path) as marker_file:
+            if marker_file.read().strip() == fingerprint:
+                sys.exit(1)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        sys.exit(1)
+PY
+then
+  jupyter labextension enable --level=user jupyterlab-kubeflow-kale
+else
+  jupyter labextension disable --level=user jupyterlab-kubeflow-kale
 fi
 
 # Set environment variables for KFP authentication
