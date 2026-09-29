@@ -9,6 +9,20 @@ pnpm typecheck   # type errors (noUncheckedIndexedAccess is on)
 pnpm lint        # eslint with type-aware rules + playwright plugin
 ```
 
+## OpenAI Codex permissions
+
+When running browser tests from OpenAI Codex on macOS, a host Playwright launch may
+need an escalated execution context. The Codex command sandbox can block Chromium's
+Mach bootstrap service and produce `mach_port_rendezvous ... Permission denied`
+before any test code runs. Re-run the same command with host permissions when that
+error occurs.
+
+Podman commands that start a local workbench or publish a test port may also need
+host permissions. Keep the requested escalation limited to the specific Podman or
+Playwright command; do not work around the failure by changing the test or disabling
+browser sandboxing. Use the repository-pinned pnpm version from `pnpm-lock.yaml`
+when fetching dependencies before a local run.
+
 ## Conventions
 
 - `noUncheckedIndexedAccess` is on — `array[0]` returns `T | undefined`. Handle with `if`, `??`, `.at(0)`, or `const [first] = array`. Do not silence with `!` unless there is a comment explaining why.
