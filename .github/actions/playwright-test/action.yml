@@ -7,7 +7,7 @@ description: |
   - Runs Playwright tests inside the repo's tests/browser image
   - Uses Podman to run the test container with proper isolation
   - Supports testcontainers for container orchestration
-  - Uploads test reports and failure artifacts when requested by the caller
+  - Uploads the HTML report and its failure artifacts together when requested by the caller
 
   Requirements:
   - Podman must be installed and running
@@ -38,11 +38,7 @@ inputs:
     required: false
     default: 'tests/browser'
   upload-report:
-    description: 'Whether to upload the Playwright HTML report as an artifact'
-    required: false
-    default: 'false'
-  upload-results:
-    description: 'Whether to upload raw Playwright results (screenshots, videos, and traces) as an artifact'
+    description: 'Whether to upload the Playwright HTML report and raw failure artifacts as one artifact'
     required: false
     default: 'false'
   upload-junit:
@@ -61,10 +57,6 @@ inputs:
     description: 'Number of days to retain the HTML report artifact'
     required: false
     default: '30'
-  results-artifact-name:
-    description: 'Name for the uploaded raw Playwright results artifact'
-    required: false
-    default: 'playwright-results'
   junit-retention-days:
     description: 'Number of days to retain the JUnit XML artifact'
     required: false
@@ -179,14 +171,8 @@ runs:
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         name: ${{ inputs.report-artifact-name }}
-        path: ${{ inputs.working-directory }}/playwright-report/
-        retention-days: ${{ inputs.artifact-retention-days }}
-
-    - name: Upload Playwright results
-      if: ${{ !cancelled() && inputs.upload-results == 'true' }}
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-      with:
-        name: ${{ inputs.results-artifact-name }}
-        path: ${{ inputs.working-directory }}/results/playwright-output/
+        path: |
+          ${{ inputs.working-directory }}/playwright-report/
+          ${{ inputs.working-directory }}/results/playwright-output/
         retention-days: ${{ inputs.artifact-retention-days }}
         if-no-files-found: warn
