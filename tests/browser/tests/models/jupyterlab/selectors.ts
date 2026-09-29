@@ -3,6 +3,8 @@ import type { Locator, Page } from '@playwright/test';
 /** JupyterLab's DOM contract. Keep CSS and accessible-name knowledge here. */
 export function jupyterLabSelectors(page: Page) {
   const dialog = (text: RegExp) => page.getByRole('dialog').filter({ hasText: text }).last();
+  const menuItem = (label: RegExp) =>
+    page.getByRole('menuitem').filter({ has: page.locator('.lm-Menu-itemLabel').filter({ hasText: label }) });
   const git = page.locator('#GitSession-root, #jp-git-sessions').first();
   return {
     shell: page.locator('.jp-LabShell'),
@@ -33,10 +35,9 @@ export function jupyterLabSelectors(page: Page) {
     terminal: page.locator('.jp-Terminal').last(),
     menu: {
       file: page.getByRole('menuitem', { name: 'File', exact: true }),
-      save: page.getByRole('menuitem', { name: /^Save (Notebook|Text)(?: (?:⌘|Ctrl)\s*S)?$/ }).first(),
-      saveAs: page.getByRole('menuitem', { name: /^Save (Notebook|Text) As(?:…|\.\.\.)/ }).first(),
-      rename: page.locator('.lm-Menu-itemLabel').filter({ hasText: /^Rename/ }).first()
-        .locator('xpath=ancestor::*[@role="menuitem"][1]'),
+      save: menuItem(/^Save (?:Notebook|Text)$/),
+      saveAs: menuItem(/^Save (?:Notebook|Text) As(?:…|\.\.\.)$/),
+      rename: menuItem(/^Rename/).first(),
     },
     dialogs: {
       kale: dialog(/You can find more information under \/opt\/app-root\/src\/kale\.log/),
