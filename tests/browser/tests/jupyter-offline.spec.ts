@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { GenericContainer } from 'testcontainers';
 import { HttpWaitStrategy } from 'testcontainers/build/wait-strategies/http-wait-strategy.js';
+import { DEFAULT_JUPYTER_TEST_IMAGE } from '../playwright.config';
 import { JupyterLab } from './models/jupyterlab';
 import { setupTestcontainers } from './testcontainers';
 
@@ -23,10 +24,7 @@ const test = baseTest.extend<Record<never, never>, JupyterFixtures>({
       return;
     }
 
-    const image = process.env['TEST_TARGET'];
-    if (!image) {
-      throw new Error('JupyterLab tests require TEST_TARGET or OFFLINE_BASE_URL');
-    }
+    const image = process.env['TEST_TARGET'] ?? DEFAULT_JUPYTER_TEST_IMAGE;
 
     const container = await new GenericContainer(image)
       .withEnvironment({
@@ -103,10 +101,11 @@ test.describe('JupyterLab offline features', { tag: ['@jupyter', '@offline', '@t
       cells: [
         {
           cell_type: 'code',
+          id: `cell-${randomUUID()}`,
           execution_count: null,
           metadata: {},
           outputs: [],
-          source: ["print('offline upload output')\n"],
+          source: ["print(f'offline upload output: {6 * 7}')\n"],
         },
       ],
       metadata: {
@@ -119,16 +118,17 @@ test.describe('JupyterLab offline features', { tag: ['@jupyter', '@offline', '@t
 
     const notebook = await lab.files.uploadNotebook(uploadPath);
     const cell = await notebook.cells.first().run();
-    await expect(cell.output).toContainText('offline upload output', { timeout: 30_000 });
+    await expect(cell.output).toContainText('offline upload output: 42', { timeout: 30_000 });
   });
 
   test('runs a terminal command with the injected environment and verifies its file in the browser', async ({ page, jupyterBaseURL }, testInfo) => {
     const terminalFile = `offline-terminal-file-${randomUUID()}.txt`;
+    const completionMarker = `COMMAND_DONE=${randomUUID()}`;
     const lab = await JupyterLab.open(page, testInfo, jupyterBaseURL);
     const launcher = await lab.openLauncher();
     const terminal = await launcher.newTerminal();
     await terminal.run(
-      `printf 'OFFLINE_ENV=%s\\n' "$OFFLINE_FAKE_VALUE" > '${terminalFile}'; printf '%s\\n' '${TERMINAL_VALUE}' >> '${terminalFile}'`,
+      `printf 'OFFLINE_ENV=%s\\n' "$OFFLINE_FAKE_VALUE" > '${terminalFile}'; printf '%s\\n' '${TERMINAL_VALUE}' >> '${terminalFile}'; printf '%s\\n' '${completionMarker}' >> '${terminalFile}'`,
     );
 
     const files = await terminal.openFiles();
@@ -136,6 +136,7 @@ test.describe('JupyterLab offline features', { tag: ['@jupyter', '@offline', '@t
     const editor = await files.openText(terminalFile);
     await expect(editor.content).toContainText(`OFFLINE_ENV=${ENV_VALUE}`);
     await expect(editor.content).toContainText(TERMINAL_VALUE);
+    await expect(editor.content).toContainText(completionMarker);
   });
 
   test('uses the JupyterLab Git UI to stage, commit, and inspect a local repository change', async ({ page, jupyterBaseURL }, testInfo) => {

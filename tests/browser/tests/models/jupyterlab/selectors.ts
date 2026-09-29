@@ -33,7 +33,8 @@ export function jupyterLabSelectors(page: Page) {
     terminal: page.locator('.jp-Terminal').last(),
     menu: {
       file: page.getByRole('menuitem', { name: 'File', exact: true }),
-      save: page.getByRole('menuitem', { name: /^Save (Notebook|Text)(?: Ctrl\+S)?$/ }).first(),
+      save: page.getByRole('menuitem', { name: /^Save (Notebook|Text)(?: (?:⌘|Ctrl)\s*S)?$/ }).first(),
+      saveAs: page.getByRole('menuitem', { name: /^Save (Notebook|Text) As(?:…|\.\.\.)/ }).first(),
       rename: page.locator('.lm-Menu-itemLabel').filter({ hasText: /^Rename/ }).first()
         .locator('xpath=ancestor::*[@role="menuitem"][1]'),
     },
@@ -47,7 +48,7 @@ export function jupyterLabSelectors(page: Page) {
       close: (root: Locator) => root.getByRole('button', { name: /Close|OK/i }).last(),
       save: (root: Locator) => root.getByRole('button', { name: /Save|Rename and Save/i }).last(),
       renameFile: (root: Locator) => root.getByRole('button', { name: /Rename/i }).last(),
-      discard: (root: Locator) => root.getByRole('button', { name: 'Discard', exact: true }),
+      discard: (root: Locator) => root.getByRole('button', { name: /^Discard(?: changes to file)?$/ }),
       open: (root: Locator) => root.getByRole('button', { name: /Open/i }).last(),
     },
     git: {
