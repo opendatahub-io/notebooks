@@ -70,6 +70,17 @@ RHOAI stacks on RHEL 9.8 AIPCC bases (`ubi9-python-*` paths are EL9 naming only)
 See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 [CONTRIBUTING.md](CONTRIBUTING.md) for local-build gotchas.
 
+### Quay image repositories
+
+Published image names follow the product namespace: ODH images are in
+`quay.io/opendatahub`, and RHOAI images are in `quay.io/rhoai`. Current Konflux
+builds publish each image to its own repository, for example
+`quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9`.
+
+`quay.io/opendatahub/workbench-images` is a legacy aggregate repository containing
+outdated images from the former OpenShift CI build process. Do not use it for new
+defaults, tests, or documentation when a per-image Konflux repository exists.
+
 ## Common commands
 
 ```bash
