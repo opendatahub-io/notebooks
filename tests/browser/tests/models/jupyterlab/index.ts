@@ -224,6 +224,8 @@ export class SavedNotebook extends Notebook {
   }
 
   async rename(name: string): Promise<SavedNotebook> {
+    // Workaround for RHOAIENG-82538: Kale can asynchronously show a blocking
+    // error dialog while the notebook UI is being used.
     await this.session.dismissOfflineServiceError();
     await this.session.ui.tab(this.name).click();
     const { menu, dialogs } = this.session.ui;
