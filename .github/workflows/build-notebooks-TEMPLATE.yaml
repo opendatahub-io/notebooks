@@ -486,7 +486,7 @@ jobs:
             tests/browser
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
-      - name: Run Playwright tests
+      - name: Run Code-Server Playwright tests
         if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
         uses: ./.github/actions/playwright-test
         with:

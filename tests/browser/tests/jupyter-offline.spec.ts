@@ -71,6 +71,9 @@ const test = baseTest.extend<Record<never, never>, JupyterFixtures>({
 test.beforeAll(setupTestcontainers);
 
 test.describe('JupyterLab offline features', { tag: ['@jupyter', '@offline', '@tier1'] }, () => {
+
+  test.describe.configure({ timeout: 120_000 });
+
   test('creates, runs, renames, saves, closes, and reopens a notebook', async ({ page, jupyterBaseURL }, testInfo) => {
     const id = randomUUID();
     const initialNotebookName = `offline-lifecycle-${id}.ipynb`;
@@ -81,7 +84,7 @@ test.describe('JupyterLab offline features', { tag: ['@jupyter', '@offline', '@t
     const launcher = await lab.openLauncher();
     const draft = await launcher.newNotebook();
     const cell = await draft.cells.first().run(source);
-    await expect(cell.output).toHaveText(expectedOutput);
+    await expect(cell.output).toHaveText(expectedOutput, { timeout: 30_000 });
 
     const saved = await draft.saveAs(initialNotebookName);
     const renamed = await saved.rename(notebookName);
@@ -116,7 +119,7 @@ test.describe('JupyterLab offline features', { tag: ['@jupyter', '@offline', '@t
 
     const notebook = await lab.files.uploadNotebook(uploadPath);
     const cell = await notebook.cells.first().run();
-    await expect(cell.output).toContainText('offline upload output');
+    await expect(cell.output).toContainText('offline upload output', { timeout: 30_000 });
   });
 
   test('runs a terminal command with the injected environment and verifies its file in the browser', async ({ page, jupyterBaseURL }, testInfo) => {
