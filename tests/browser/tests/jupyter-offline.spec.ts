@@ -1,6 +1,7 @@
 import { expect, test as baseTest } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
+import * as process from 'node:process';
 import { GenericContainer } from 'testcontainers';
 import { HttpWaitStrategy } from 'testcontainers/build/wait-strategies/http-wait-strategy.js';
 import { DEFAULT_JUPYTER_TEST_IMAGE } from '../playwright.config';
@@ -11,6 +12,20 @@ const TERMINAL_VALUE = 'offline-terminal-file-content';
 const ENV_VALUE = process.env['OFFLINE_FAKE_VALUE'] ?? 'offline-browser-fixture';
 const GIT_REPOSITORY = 'offline-git-repo';
 const GIT_FILE = 'git-ui.txt';
+
+const archAliases: Readonly<Record<string, string>> = {
+  x64: 'amd64',
+  amd64: 'amd64',
+  arm64: 'arm64',
+  aarch64: 'arm64',
+  s390x: 's390x',
+  ppc64le: 'ppc64le',
+};
+const runnerArch = archAliases[process.arch] ?? process.arch;
+const targetArch = process.env['TEST_TARGET_ARCH'];
+// Emulated images need the same startup budget used by the container test suite.
+const jupyterFixtureTimeout =
+  targetArch === undefined || (archAliases[targetArch] ?? targetArch) === runnerArch ? 30_000 : 120_000;
 
 type JupyterFixtures = {
   jupyterBaseURL: string;
@@ -63,7 +78,7 @@ const test = baseTest.extend<Record<never, never>, JupyterFixtures>({
     } finally {
       await container.stop();
     }
-  }, { scope: 'worker' }],
+  }, { scope: 'worker', timeout: jupyterFixtureTimeout }],
 });
 
 test.beforeAll(setupTestcontainers);
