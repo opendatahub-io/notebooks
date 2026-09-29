@@ -280,12 +280,12 @@ Details: [src/collections/README.md](src/collections/README.md).
 
 ## Wizard choices
 
-1. Accelerator (CPU / CUDA 13 / 12.9 / ROCm)  
-2. Stack (Minimal / PyTorch / **TrustyAI** / **LLM Compressor**)  
-3. Base (CentOS Stream ODH vs AIPCC RHEL)  
-4. Index (PyPI vs AIPCC — defaults to AIPCC for collections)  
-5. Platform  
-6. Quay org → repo → tag → folder name  
+1. Accelerator (CPU / CUDA 13 / 12.9 / ROCm)
+2. Stack (Minimal / PyTorch / **TrustyAI** / **LLM Compressor**)
+3. Base (CentOS Stream ODH vs AIPCC RHEL)
+4. Index (PyPI vs AIPCC — defaults to AIPCC for collections)
+5. Platform
+6. Quay org → repo → tag → folder name
 
 ## Ticket checklist
 

@@ -172,10 +172,10 @@ runner_id=$("${ENGINE}" run --pull=never --detach \
   --env OFFLINE_BASE_URL="${BASE_URL}" \
   --env TEST_TARGET="${WORKBENCH_IMAGE}" \
   --env OFFLINE_FAKE_VALUE="${FAKE_VALUE}" \
-  --volume "${OFFLINE_SPEC_PATH}:/home/pwuser/tests/browser/tests/jupyter-offline.spec.ts:ro" \
-  --volume "${PLAYWRIGHT_CONFIG_PATH}:/home/pwuser/tests/browser/playwright.config.ts:ro" \
-  --volume "${OFFLINE_MODELS_PATH}:/home/pwuser/tests/browser/tests/models/jupyterlab:ro" \
-  --volume "${RESULTS_DIR}:/home/pwuser/tests/browser/results:rw" \
+  --volume "${OFFLINE_SPEC_PATH}:/home/pwuser/tests/browser/tests/jupyter-offline.spec.ts:ro,Z" \
+  --volume "${PLAYWRIGHT_CONFIG_PATH}:/home/pwuser/tests/browser/playwright.config.ts:ro,Z" \
+  --volume "${OFFLINE_MODELS_PATH}:/home/pwuser/tests/browser/tests/models/jupyterlab:ro,Z" \
+  --volume "${RESULTS_DIR}:/home/pwuser/tests/browser/results:rw,Z" \
   "${BROWSER_IMAGE}" \
   --config=playwright.config.ts \
   "${PLAYWRIGHT_ARGS[@]}")
