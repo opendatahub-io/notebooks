@@ -493,8 +493,9 @@ jobs:
           test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
           playwright-image: ${{ steps.browser-tests-image.outputs.image }}
           podman-socket: /var/run/podman/podman.sock
-          upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
-          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
+          upload-report: ${{ true }}
+          upload-junit: ${{ true }}
+          report-artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
           junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-junit.xml"
           grep-pattern: ${{ contains(inputs.target, 'che-code') && '@checode' || '@codeserver' }}
 
@@ -505,8 +506,9 @@ jobs:
           test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
           playwright-image: ${{ steps.browser-tests-image.outputs.image }}
           podman-socket: /var/run/podman/podman.sock
-          upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
-          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_jupyterlab-playwright-report"
+          upload-report: ${{ true }}
+          upload-junit: ${{ true }}
+          report-artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_jupyterlab-playwright-report"
           junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_jupyterlab-playwright-junit.xml"
           grep-pattern: '@jupyter'
 

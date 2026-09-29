@@ -167,6 +167,6 @@ jobs:
           playwright-image: ${{ steps.browser-tests-image.outputs.image }}
           podman-socket: /var/run/podman/podman.sock
           upload-report: 'true'
-          artifact-name: playwright-action-${{ matrix.target }}-test-report
+          report-artifact-name: playwright-action-${{ matrix.target }}-test-report
           junit-artifact-file: playwright-action-${{ matrix.target }}-test-junit.xml
           grep-pattern: ${{ matrix.grep-pattern }}
