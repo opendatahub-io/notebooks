@@ -495,6 +495,7 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: ${{ true }}
           upload-results: ${{ true }}
+          upload-junit: ${{ true }}
           artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
           results-artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-results"
           junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-junit.xml"
@@ -509,6 +510,7 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: ${{ true }}
           upload-results: ${{ true }}
+          upload-junit: ${{ true }}
           artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_jupyterlab-playwright-report"
           results-artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_jupyterlab-playwright-results"
           junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_jupyterlab-playwright-junit.xml"
