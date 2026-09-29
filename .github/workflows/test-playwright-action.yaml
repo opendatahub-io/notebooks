@@ -45,8 +45,18 @@ jobs:
         working-directory: tests/browser
 
   test-playwright:
-    name: Test Playwright Browser Tests
+    name: Test Playwright Browser Tests (${{ matrix.name }})
     runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Code-Server
+            target: codeserver
+            grep-pattern: '@codeserver'
+          - name: JupyterLab
+            target: jupyter
+            grep-pattern: '@jupyter'
     permissions:
       contents: read
       actions: read
@@ -63,13 +73,27 @@ jobs:
       - name: Extract default test image from playwright.config.ts
         id: get-image
         run: |
-          # Extract DEFAULT_CODESERVER_TEST_IMAGE using grep (the config imports @playwright/test which isn't installed yet)
+          case "${TARGET_KIND}" in
+            codeserver)
+              image_name=DEFAULT_CODESERVER_TEST_IMAGE
+              ;;
+            jupyter)
+              image_name=DEFAULT_JUPYTER_TEST_IMAGE
+              ;;
+            *)
+              echo "::error::Unsupported Playwright target: ${TARGET_KIND}"
+              exit 1
+              ;;
+          esac
+
+          # Extract the selected default image using grep (the config imports
+          # @playwright/test which isn't installed yet).
           # Anchor to start of line to avoid matching comments
-          TEST_IMAGE=$(grep -oP '^export const DEFAULT_CODESERVER_TEST_IMAGE\s*=\s*"\K[^"]+' tests/browser/playwright.config.ts)
+          TEST_IMAGE=$(grep -oP "^export const ${image_name}\\s*=\\s*\"\\K[^\"]+" tests/browser/playwright.config.ts)
 
           # Fail if extraction returned empty
           if [[ -z "$TEST_IMAGE" ]]; then
-            echo "::error::Failed to extract DEFAULT_CODESERVER_TEST_IMAGE from playwright.config.ts"
+            echo "::error::Failed to extract ${image_name} from playwright.config.ts"
             exit 1
           fi
 
@@ -80,7 +104,9 @@ jobs:
           fi
 
           echo "image=$TEST_IMAGE" >> "$GITHUB_OUTPUT"
-          echo "Using test image: $TEST_IMAGE"
+          echo "Using ${image_name}: $TEST_IMAGE"
+        env:
+          TARGET_KIND: ${{ matrix.target }}
 
       - name: Detect missing dependencies
         id: detect-packages
@@ -141,8 +167,6 @@ jobs:
           playwright-image: ${{ steps.browser-tests-image.outputs.image }}
           podman-socket: /var/run/podman/podman.sock
           upload-report: 'true'
-          artifact-name: playwright-action-test-report
-          junit-artifact-file: playwright-action-test-junit.xml
-          # This workflow pulls the default code-server target; keep Jupyter
-          # tests in the dedicated internal-network launcher.
-          grep-pattern: '@codeserver'
+          artifact-name: playwright-action-${{ matrix.target }}-test-report
+          junit-artifact-file: playwright-action-${{ matrix.target }}-test-junit.xml
+          grep-pattern: ${{ matrix.grep-pattern }}
