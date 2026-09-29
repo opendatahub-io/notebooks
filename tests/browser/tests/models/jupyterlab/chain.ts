@@ -16,8 +16,17 @@ export type ChainMethods<T> = {
     : never;
 };
 
+/** Non-function properties become deferred values that can be chained further. */
+export type ChainProperties<T> = {
+  [Key in keyof T as Key extends 'then'
+    ? never
+    : Extract<T[Key], ChainMethod> extends never
+      ? Key
+      : never]: Chain<Awaited<T[Key]>>;
+};
+
 /** A typed, awaitable view of a page object that forwards method calls in order. */
-export type Chain<T> = PromiseLike<T> & ChainMethods<T>;
+export type Chain<T> = PromiseLike<T> & ChainMethods<T> & ChainProperties<T>;
 
 /** Alias for callers that want to name the awaitable result explicitly. */
 export type Chainable<T> = Chain<T>;
@@ -28,23 +37,33 @@ export type Chainable<T> = Chain<T>;
  * resolved object as its receiver, preserving page-object `this` semantics.
  */
 export function chain<T>(value: PromiseLike<T>): Chain<T> {
-  const promise = Promise.resolve(value);
+  return createChain(Promise.resolve(value) as PromiseLike<T>);
+}
 
-  return new Proxy({} as Chain<T>, {
+type Invocation = (args: unknown[]) => PromiseLike<unknown>;
+
+function createChain<T>(promise: PromiseLike<T>, invoke?: Invocation): Chain<T> {
+  const callable = (...args: unknown[]) => {
+    if (!invoke) {
+      return Promise.reject(new TypeError('Cannot call a chained property value'));
+    }
+    return createChain(invoke(args));
+  };
+
+  return new Proxy(callable as unknown as Chain<T>, {
     get(_target, property: string | symbol): unknown {
       if (property === 'then') {
         return promise.then.bind(promise);
       }
 
-      return (...args: unknown[]) => chain(
-        promise.then((resolved) => {
-          const member: unknown = Reflect.get(resolved as object, property) as unknown;
-          if (typeof member !== 'function') {
-            throw new TypeError(`Cannot call ${String(property)} on the chained value`);
-          }
-          return Reflect.apply(member as (...callArgs: unknown[]) => unknown, resolved, args);
-        }),
-      );
+      const propertyPromise = promise.then((resolved): unknown => Reflect.get(Object(resolved), property) as unknown);
+      return createChain(propertyPromise, (args) => promise.then((resolved) => {
+        const member: unknown = Reflect.get(Object(resolved), property) as unknown;
+        if (typeof member !== 'function') {
+          throw new TypeError(`Cannot call ${String(property)} on the chained value`);
+        }
+        return Reflect.apply(member as (...callArgs: unknown[]) => unknown, resolved, args);
+      }));
     },
   });
 }

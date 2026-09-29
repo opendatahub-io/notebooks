@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { chain, chainable, type Chain } from '../tests/models/jupyterlab/chain';
 
 class Counter {
+  readonly details = { label: 'counter' };
+  readonly optionalDetails: { label: string } | undefined = undefined;
+  readonly nullableDetails: { label: string } | null = null;
+
   constructor(private value: number) {}
 
   add(amount: number): Promise<Counter> {
@@ -29,5 +33,13 @@ describe('page-object chains', () => {
     const result: Chain<number> = open(5).add(3).result();
 
     await expect(result).resolves.toBe(8);
+  });
+
+  it('defers nested properties and preserves optional values', async () => {
+    const counter = chain(Promise.resolve(new Counter(1)));
+
+    await expect(counter.details.label).resolves.toBe('counter');
+    await expect(counter.optionalDetails).resolves.toBeUndefined();
+    await expect(counter.nullableDetails).resolves.toBeNull();
   });
 });
