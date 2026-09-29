@@ -61,10 +61,13 @@ export class JupyterLab {
     this.files = new FileBrowser(session);
   }
 
-  static async open(page: Page, testInfo: TestInfo): Promise<JupyterLab> {
+  static async open(page: Page, testInfo: TestInfo, baseURL?: string): Promise<JupyterLab> {
     const session = new LabSession(page, testInfo);
     const workspace = `offline-${randomUUID()}`;
-    await page.goto(`./lab/workspaces/${workspace}?reset`);
+    const workspaceURL = baseURL
+      ? `${baseURL}lab/workspaces/${workspace}?reset`
+      : `./lab/workspaces/${workspace}?reset`;
+    await page.goto(workspaceURL);
     await expect(session.ui.shell).toBeVisible({ timeout: 120_000 });
     await expect(session.ui.sidebar).toBeVisible();
     await session.dismissOfflineServiceError();
