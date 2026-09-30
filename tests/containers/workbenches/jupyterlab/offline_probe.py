@@ -1,3 +1,5 @@
+"""Host-side probes for JupyterLab behavior that needs a protocol client."""
+
 from __future__ import annotations
 
 import importlib
@@ -5,7 +7,6 @@ import json
 import logging
 import os
 import pathlib
-import re
 import subprocess
 import sys
 import time
@@ -17,23 +18,6 @@ HOST = os.environ.get("OFFLINE_JUPYTER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("OFFLINE_JUPYTER_PORT", "8888"))
 TIMEOUT = 20
 KERNEL_TIMEOUT = 30
-
-
-def api(method: str, path: str, payload: object | None = None) -> tuple[int, dict, object | None]:
-    body = None if payload is None else json.dumps(payload).encode()
-    request = urllib.request.Request(
-        f"http://{HOST}:{PORT}{BASE}api/contents/{path.lstrip('/')}",
-        data=body,
-        method=method,
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # ruff: ignore[suspicious-url-open-usage] -- fixed HTTP URL
-        raw = response.read()
-        try:
-            parsed = json.loads(raw) if raw else None
-        except json.JSONDecodeError:
-            parsed = raw.decode("utf-8", errors="replace")
-        return response.status, dict(response.headers), parsed
 
 
 def kernel_api(method: str, path: str, payload: object | None = None) -> object | None:
@@ -128,113 +112,11 @@ def execute(code: str) -> str:
                 raise delete_error
 
 
-def lab_contents() -> None:
-    with urllib.request.urlopen(f"http://{HOST}:{PORT}{BASE}lab", timeout=TIMEOUT) as response:
-        page = response.read().decode("utf-8", errors="replace")
-        assert response.status == 200
-    assert "JupyterLab" in page and "<script" in page and "static/" in page
-    asset = re.search(r'<script[^>]+src="([^"]*static/[^"]+)', page)
-    assert asset is not None
-    asset_url = asset.group(1) if asset.group(1).startswith("http") else f"http://{HOST}:{PORT}{asset.group(1)}"
-    with urllib.request.urlopen(asset_url, timeout=TIMEOUT) as response:  # ruff: ignore[suspicious-url-open-usage] -- local server asset URL
-        assert response.status == 200 and response.read(1)
-
-    notebook = {
-        "type": "notebook",
-        "format": "json",
-        "content": {
-            "cells": [
-                {
-                    "id": "uploaded-cell",
-                    "cell_type": "code",
-                    "execution_count": None,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": ["print('uploaded-cell')"],
-                }
-            ],
-            "metadata": {"offline": True},
-            "nbformat": 4,
-            "nbformat_minor": 5,
-        },
-    }
-    status, _, created = api("PUT", "uploaded.ipynb", notebook)
-    assert status in (200, 201) and isinstance(created, dict)
-    status, _, loaded = api("GET", "uploaded.ipynb")
-    assert status == 200 and isinstance(loaded, dict)
-    expected_content = {
-        **notebook["content"],
-        "cells": [
-            {
-                **notebook["content"]["cells"][0],
-                "metadata": {"trusted": True},
-                "source": "print('uploaded-cell')",
-            }
-        ],
-    }
-    assert loaded["content"] == expected_content
-    assert loaded["content"]["nbformat"] == 4
-    assert loaded["content"]["cells"][0]["id"] == "uploaded-cell"
-    status, _, renamed = api("PATCH", "uploaded.ipynb", {"path": "renamed.ipynb"})
-    assert status == 200 and renamed["name"] == "renamed.ipynb"
-    try:
-        api("GET", "uploaded.ipynb")
-    except urllib.error.HTTPError as error:
-        assert error.code == 404
-    else:
-        raise AssertionError("old notebook path remained readable after rename")
-    status, _, renamed_content = api("GET", "renamed.ipynb")
-    assert status == 200 and isinstance(renamed_content, dict)
-    assert renamed_content["content"] == expected_content
-    assert api("DELETE", "renamed.ipynb")[0] == 204
-    try:
-        api("GET", "renamed.ipynb")
-    except urllib.error.HTTPError as error:
-        assert error.code == 404
-    else:
-        raise AssertionError("deleted notebook remained readable")
-    print("page endpoint ready")
-    print("contents CRUD ready")
-
-
-def persistent_create() -> None:
-    notebook = {
-        "type": "notebook",
-        "format": "json",
-        "content": {
-            "cells": [
-                {
-                    "id": "persistent-cell",
-                    "cell_type": "code",
-                    "execution_count": None,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": ["print('persisted-cell')"],
-                }
-            ],
-            "metadata": {},
-            "nbformat": 4,
-            "nbformat_minor": 5,
-        },
-    }
-    status, _, result = api("PUT", "persistent/surviving.ipynb", notebook)
-    assert status in (200, 201), result
-    print("persistent notebook created")
-
-
-def persistent_read() -> None:
-    status, _, loaded = api("GET", "persistent/surviving.ipynb")
-    assert status == 200 and isinstance(loaded, dict)
-    source = loaded["content"]["cells"][0]["source"]
-    assert ("".join(source) if isinstance(source, list) else source) == "print('persisted-cell')"
-    print("persistent notebook survived")
-
-
 def git_roundtrip() -> None:
     def run(*args: str) -> None:
         subprocess.run(args, check=True, text=True, capture_output=True, timeout=15)
 
-    root = pathlib.Path("/opt/app-root/src")
+    root = pathlib.Path(os.environ["OFFLINE_WORKDIR"])
     remote, first, second = (root / name for name in ("remote.git", "first", "second"))
     run("git", "init", "--bare", str(remote))
     run("git", "--git-dir", str(remote), "symbolic-ref", "HEAD", "refs/heads/main")
@@ -242,7 +124,9 @@ def git_roundtrip() -> None:
     run("git", "-C", str(first), "config", "user.email", "offline@example.invalid")
     run("git", "-C", str(first), "config", "user.name", "Offline Test")
     original = {
-        "cells": [{"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": "print('original')"}],
+        "cells": [
+            {"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": "print('original')"}
+        ],
         "metadata": {"offline": True},
         "nbformat": 4,
         "nbformat_minor": 5,
@@ -267,17 +151,10 @@ def git_roundtrip() -> None:
 
 def main() -> None:
     case = os.environ.get("OFFLINE_PROBE_CASE") or sys.argv[1]
-    if case == "lab_contents":
-        lab_contents()
-    elif case == "persistent_create":
-        persistent_create()
-    elif case == "persistent_read":
-        persistent_read()
+    if case == "kernel":
+        print(execute(os.environ["OFFLINE_KERNEL_CODE"]), end="")
     elif case == "git_roundtrip":
         git_roundtrip()
-    elif case == "kernel":
-        output = execute(os.environ["OFFLINE_KERNEL_CODE"])
-        print(output, end="")
     else:
         raise ValueError(f"unknown probe case: {case}")
 

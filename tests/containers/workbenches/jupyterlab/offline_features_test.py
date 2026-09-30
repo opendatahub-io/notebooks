@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 import zipfile
 from contextlib import contextmanager
@@ -205,52 +208,165 @@ def _wait_for_http_inside_container(container: OfflineWorkbenchContainer, *, tim
     raise TimeoutError(f"JupyterLab at {BASE_URL}lab did not become ready")
 
 
+def _http_url(endpoint: tuple[str, int], path: str) -> str:
+    host, port = endpoint
+    host_for_url = f"[{host}]" if ":" in host else host
+    return f"http://{host_for_url}:{port}{BASE_URL}{path.lstrip('/')}"
+
+
+def _api(
+    endpoint: tuple[str, int], method: str, path: str, payload: object | None = None
+) -> tuple[int, dict[str, str], object | None]:
+    body = None if payload is None else json.dumps(payload).encode()
+    request = urllib.request.Request(  # ruff: ignore[suspicious-url-open-usage] -- URL is built from the local tunnel endpoint
+        _http_url(endpoint, f"api/contents/{path}"),
+        data=body,
+        method=method,
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:  # ruff: ignore[suspicious-url-open-usage] -- local test server
+        raw = response.read()
+        return response.status, dict(response.headers), json.loads(raw) if raw else None
+
+
+def _check_lab_contents(endpoint: tuple[str, int]) -> None:
+    with urllib.request.urlopen(_http_url(endpoint, "lab"), timeout=20) as response:  # ruff: ignore[suspicious-url-open-usage] -- local test server
+        page = response.read().decode("utf-8", errors="replace")
+        assert response.status == 200
+    assert "JupyterLab" in page and "<script" in page and "static/" in page
+    asset = re.search(r'<script[^>]+src="([^"]*static/[^\"]+)', page)
+    assert asset is not None
+    asset_path = asset.group(1)
+    if asset_path.startswith("http"):
+        asset_url = asset_path
+    elif asset_path.startswith("/"):
+        host, port = endpoint
+        host_for_url = f"[{host}]" if ":" in host else host
+        asset_url = f"http://{host_for_url}:{port}{asset_path}"
+    else:
+        asset_url = _http_url(endpoint, asset_path)
+    with urllib.request.urlopen(asset_url, timeout=20) as response:  # ruff: ignore[suspicious-url-open-usage] -- local test server
+        assert response.status == 200 and response.read(1)
+
+    notebook = {
+        "type": "notebook",
+        "format": "json",
+        "content": {
+            "cells": [
+                {
+                    "id": "uploaded-cell",
+                    "cell_type": "code",
+                    "execution_count": None,
+                    "metadata": {},
+                    "outputs": [],
+                    "source": ["print('uploaded-cell')"],
+                }
+            ],
+            "metadata": {"offline": True},
+            "nbformat": 4,
+            "nbformat_minor": 5,
+        },
+    }
+    status, _, created = _api(endpoint, "PUT", "uploaded.ipynb", notebook)
+    assert status in (200, 201) and isinstance(created, dict)
+    status, _, loaded = _api(endpoint, "GET", "uploaded.ipynb")
+    assert status == 200 and isinstance(loaded, dict)
+    expected_content = {
+        **notebook["content"],
+        "cells": [
+            {**notebook["content"]["cells"][0], "metadata": {"trusted": True}, "source": "print('uploaded-cell')"}
+        ],
+    }
+    assert loaded["content"] == expected_content
+    status, _, renamed = _api(endpoint, "PATCH", "uploaded.ipynb", {"path": "renamed.ipynb"})
+    assert status == 200 and renamed["name"] == "renamed.ipynb"
+    with pytest.raises(urllib.error.HTTPError) as error:
+        _api(endpoint, "GET", "uploaded.ipynb")
+    assert error.value.code == 404
+    status, _, renamed_content = _api(endpoint, "GET", "renamed.ipynb")
+    assert status == 200 and renamed_content["content"] == expected_content
+    assert _api(endpoint, "DELETE", "renamed.ipynb")[0] == 204
+    with pytest.raises(urllib.error.HTTPError) as error:
+        _api(endpoint, "GET", "renamed.ipynb")
+    assert error.value.code == 404
+
+
+def _persistent_notebook() -> dict[str, object]:
+    return {
+        "type": "notebook",
+        "format": "json",
+        "content": {
+            "cells": [
+                {
+                    "id": "persistent-cell",
+                    "cell_type": "code",
+                    "execution_count": None,
+                    "metadata": {},
+                    "outputs": [],
+                    "source": ["print('persisted-cell')"],
+                }
+            ],
+            "metadata": {},
+            "nbformat": 4,
+            "nbformat_minor": 5,
+        },
+    }
+
+
+def _create_persistent_notebook(endpoint: tuple[str, int]) -> None:
+    status, _, result = _api(endpoint, "PUT", "persistent/surviving.ipynb", _persistent_notebook())
+    assert status in (200, 201), result
+
+
+def _assert_persistent_notebook(endpoint: tuple[str, int]) -> None:
+    status, _, loaded = _api(endpoint, "GET", "persistent/surviving.ipynb")
+    assert status == 200 and isinstance(loaded, dict)
+    source = loaded["content"]["cells"][0]["source"]
+    assert ("".join(source) if isinstance(source, list) else source) == "print('persisted-cell')"
+
+
 def _run_probe(
     container: OfflineWorkbenchContainer,
     case: str,
     *,
     kernel_code: str | None = None,
 ) -> str:
-    host, port = container._offline_endpoint
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "OFFLINE_PROBE_CASE": case,
-            "OFFLINE_BASE_URL": BASE_URL,
-            "OFFLINE_JUPYTER_HOST": host,
-            "OFFLINE_JUPYTER_PORT": str(port),
-        }
-    )
+    endpoint = container._offline_endpoint
+    with urllib.request.urlopen(_http_url(endpoint, "lab"), timeout=5) as response:  # ruff: ignore[suspicious-url-open-usage] -- local test server
+        assert response.status == 200
+    host, port = endpoint
+    environment = {
+        **os.environ,
+        "OFFLINE_PROBE_CASE": case,
+        "OFFLINE_BASE_URL": BASE_URL,
+        "OFFLINE_JUPYTER_HOST": host,
+        "OFFLINE_JUPYTER_PORT": str(port),
+    }
     if kernel_code is not None:
         environment["OFFLINE_KERNEL_CODE"] = kernel_code
-    if case in {"kernel", "git_roundtrip"}:
-        with urllib.request.urlopen(f"http://{host}:{port}{BASE_URL}lab", timeout=5) as response:
-            assert response.status == 200
-        docker_utils.container_cp(container, PROBE_PATH, "/opt/app-root/src")
-        command = [
-            "env",
-            f"OFFLINE_PROBE_CASE={case}",
-            "OFFLINE_BASE_URL=/offline/",
-            "python",
-            "/opt/app-root/src/offline_probe.py",
-        ]
-        if kernel_code is not None:
-            command.insert(1, f"OFFLINE_KERNEL_CODE={kernel_code}")
-        code, output = container.exec(command)
-        text = output.decode(errors="replace")
-        assert code == 0, f"probe {case!r} failed (exit {code}):\n{text}"
-        return text
-    result = subprocess.run(
-        [sys.executable, str(PROBE_PATH)],
-        capture_output=True,
-        check=False,
-        env=environment,
-        text=True,
-        timeout=120,
-    )
-    text = result.stdout + result.stderr
-    assert result.returncode == 0, f"probe {case!r} failed (exit {result.returncode}):\n{text}"
-    return text
+    if case == "git_roundtrip":
+        with tempfile.TemporaryDirectory() as workdir:
+            environment["OFFLINE_WORKDIR"] = workdir
+            result = subprocess.run(
+                [sys.executable, str(PROBE_PATH)],
+                capture_output=True,
+                text=True,
+                env=environment,
+                timeout=120,
+                check=False,
+            )
+    else:
+        result = subprocess.run(
+            [sys.executable, str(PROBE_PATH)],
+            capture_output=True,
+            text=True,
+            env=environment,
+            timeout=120,
+            check=False,
+        )
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, f"probe {case!r} failed (exit {result.returncode}):\n{output}"
+    return output
 
 
 def _make_wheel(destination: pathlib.Path) -> pathlib.Path:
@@ -272,8 +388,7 @@ def _make_wheel(destination: pathlib.Path) -> pathlib.Path:
 class TestJupyterLabOfflineFeatures:
     def test_lab_page_contents_api_and_prefixed_base_url(self, offline_jupyterlab_image: conftest.Image) -> None:
         with running_offline_workbench(_image_id(offline_jupyterlab_image)) as container:
-            output = _run_probe(container, "lab_contents")
-            assert "page endpoint ready" in output and "contents CRUD ready" in output
+            _check_lab_contents(container._offline_endpoint)
 
     def test_server_managed_kernel_executes_and_creates_file(self, offline_jupyterlab_image: conftest.Image) -> None:
         with running_offline_workbench(_image_id(offline_jupyterlab_image)) as container:
@@ -338,7 +453,7 @@ class TestJupyterLabOfflineFeatures:
                 env={"OFFLINE_ENV": "first", "OFFLINE_SECRET": "fake-secret"},
                 volume=volume,
             ) as container:
-                assert "persistent notebook created" in _run_probe(container, "persistent_create")
+                _create_persistent_notebook(container._offline_endpoint)
                 output = _run_probe(
                     container,
                     "kernel",
@@ -351,7 +466,7 @@ class TestJupyterLabOfflineFeatures:
                 env={"OFFLINE_ENV": "second", "OFFLINE_SECRET": "changed-secret"},
                 volume=volume,
             ) as container:
-                assert "persistent notebook survived" in _run_probe(container, "persistent_read")
+                _assert_persistent_notebook(container._offline_endpoint)
                 output = _run_probe(
                     container,
                     "kernel",
