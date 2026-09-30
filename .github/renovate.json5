@@ -326,6 +326,8 @@
       // Red Hat also publishes timestamp-only tags.  Exclude those aliases so
       // Renovate compares structured release tags instead of treating a Unix
       // timestamp as a new major version and hitting maxMajorIncrement.
+      // EA tags are published separately under rhai-early-access, e.g.
+      // 3.6.0-ea.1-1788988352, and are outside this stable rhai rule.
       "allowedVersions": "/^\\d+\\.\\d+\\.\\d+-\\d+$/",
       "groupName": "Red Hat registry base images",
       "pinDigests": true,
