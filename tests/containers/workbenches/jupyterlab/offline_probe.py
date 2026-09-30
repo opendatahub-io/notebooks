@@ -56,28 +56,37 @@ def execute(code: str) -> str:
     )
     ws = None
     try:
-        deadline = time.monotonic() + KERNEL_TIMEOUT
         ws = websocket.create_connection(
             f"ws://{HOST}:{PORT}{BASE}api/kernels/{kernel_id}/channels",
             timeout=5,
         )
         info = session.msg("kernel_info_request", content={})
         ws.send(json.dumps(info, default=str))
+        deadline = time.monotonic() + KERNEL_TIMEOUT
         while time.monotonic() < deadline:
             try:
                 raw = ws.recv()
             except websocket.WebSocketTimeoutException:
+                # A request sent immediately after the REST create can be
+                # lost while the kernel is still connecting its ZMQ sockets.
+                # Retry until the kernel answers instead of waiting forever
+                # for a reply to a request it never received.
+                info = session.msg("kernel_info_request", content={})
+                ws.send(json.dumps(info, default=str))
                 continue
             if raw is None:
                 raise RuntimeError("kernel WebSocket closed during kernel-info handshake")
             incoming = json.loads(raw)
-            if incoming.get("parent_header", {}).get("msg_id") != info["header"]["msg_id"]:
-                continue
             if incoming.get("msg_type") == "kernel_info_reply":
+                # A fresh channel has no other outstanding request. Jupyter
+                # Server may adapt the parent header while translating
+                # protocol versions, so the message type is the reliable
+                # readiness signal here.
                 break
         else:
             raise TimeoutError(f"kernel did not answer kernel-info request within {KERNEL_TIMEOUT}s")
         ws.send(json.dumps(message, default=str))
+        deadline = time.monotonic() + KERNEL_TIMEOUT
         output: list[str] = []
         saw_reply = False
         saw_idle = False
