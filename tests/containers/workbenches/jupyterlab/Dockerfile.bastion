@@ -1,0 +1,6 @@
+# https://gallery.ecr.aws/docker/library/alpine
+FROM public.ecr.aws/docker/library/alpine:latest
+
+RUN apk --update add socat
+
+ENTRYPOINT ["socat"]
