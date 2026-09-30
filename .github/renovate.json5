@@ -326,8 +326,11 @@
       // Red Hat also publishes timestamp-only tags.  Exclude those aliases so
       // Renovate compares structured release tags instead of treating a Unix
       // timestamp as a new major version and hitting maxMajorIncrement.
+      // For example, GA uses
+      // registry.redhat.io/rhai/base-image-cuda-rhel9:3.0.2-1782929069.
       // EA tags are published separately under rhai-early-access, e.g.
-      // 3.6.0-ea.1-1788988352, and are outside this stable rhai rule.
+      // registry.redhat.io/rhai-early-access/base-image-rocm-7.14-rhel9:3.6.0-ea.1-1788988352,
+      // and are outside this stable rhai rule.
       "allowedVersions": "/^\\d+\\.\\d+\\.\\d+-\\d+$/",
       "groupName": "Red Hat registry base images",
       "pinDigests": true,
