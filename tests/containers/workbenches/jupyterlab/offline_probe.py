@@ -17,10 +17,9 @@ BASE = os.environ.get("OFFLINE_BASE_URL", "/offline/")
 HOST = os.environ.get("OFFLINE_JUPYTER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("OFFLINE_JUPYTER_PORT", "8888"))
 TIMEOUT = 20
-# Kernel startup is noticeably slower on ARM workbench runners. The caller
-# supplies a longer bound only for ARM images; keep the default strict for
-# native amd64 runs.
-KERNEL_TIMEOUT = float(os.environ.get("OFFLINE_KERNEL_TIMEOUT", "30"))
+# Kernel startup is noticeably slower on non-amd64 workbench runners. The
+# caller supplies a longer bound only for those images.
+KERNEL_TIMEOUT = int(os.environ.get("OFFLINE_KERNEL_TIMEOUT", "30"))
 
 
 def kernel_api(method: str, path: str, payload: object | None = None) -> object | None:
@@ -57,12 +56,28 @@ def execute(code: str) -> str:
     )
     ws = None
     try:
+        deadline = time.monotonic() + KERNEL_TIMEOUT
         ws = websocket.create_connection(
             f"ws://{HOST}:{PORT}{BASE}api/kernels/{kernel_id}/channels",
             timeout=5,
         )
+        info = session.msg("kernel_info_request", content={})
+        ws.send(json.dumps(info, default=str))
+        while time.monotonic() < deadline:
+            try:
+                raw = ws.recv()
+            except websocket.WebSocketTimeoutException:
+                continue
+            if raw is None:
+                raise RuntimeError("kernel WebSocket closed during kernel-info handshake")
+            incoming = json.loads(raw)
+            if incoming.get("parent_header", {}).get("msg_id") != info["header"]["msg_id"]:
+                continue
+            if incoming.get("msg_type") == "kernel_info_reply":
+                break
+        else:
+            raise TimeoutError(f"kernel did not answer kernel-info request within {KERNEL_TIMEOUT}s")
         ws.send(json.dumps(message, default=str))
-        deadline = time.monotonic() + KERNEL_TIMEOUT
         output: list[str] = []
         saw_reply = False
         saw_idle = False

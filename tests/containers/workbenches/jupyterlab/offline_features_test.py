@@ -473,8 +473,10 @@ def _kernel_timeout(container: OfflineWorkbenchContainer) -> int:
     architecture = os.environ.get("BUILD_ARCH", "").rsplit("/", 1)[-1]
     if not architecture:
         wrapped = container.get_wrapped_container()
-        architecture = str((wrapped.attrs if wrapped is not None else {}).get("Architecture", ""))
-    return 60 if architecture in {"arm64", "aarch64"} else 30
+        image = wrapped.image if wrapped is not None else None
+        architecture = str((image.attrs if image is not None else {}).get("Architecture", ""))
+    slow_architectures = {"arm64", "aarch64", "s390x", "ppc64le"}
+    return 60 if architecture in slow_architectures else 30
 
 
 def _make_wheel(destination: pathlib.Path) -> pathlib.Path:
