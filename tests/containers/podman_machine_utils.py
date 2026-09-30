@@ -68,16 +68,12 @@ def open_ssh_tunnel_for_client(
 ) -> Iterator[tuple[str, int]]:
     """Open a local tunnel to a destination reachable from the Podman Machine.
 
-    Linux hosts can connect to the container address directly. macOS hosts run
-    Podman inside a VM, so this opens and owns an SSH local-forward through the
-    matching Podman Machine. The context manager waits for the endpoint and
-    always closes the tunnel when leaving the context.
+    Open and own an SSH local-forward through the matching Podman Machine. The
+    context manager waits for the endpoint and always closes the tunnel when
+    leaving the context.
     """
     system = platform.system().lower()
-    if system == "linux":
-        yield remote_interface, remote_port
-        return
-    if system != "darwin":
+    if system not in {"linux", "darwin"}:
         raise RuntimeError(f"Podman SSH tunneling is supported on Linux and macOS, not {platform.system()}")
 
     local_port = find_free_port()

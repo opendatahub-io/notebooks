@@ -6,9 +6,7 @@ import json
 import logging
 import os
 import pathlib
-import platform
 import re
-import socket
 import subprocess
 import sys
 import tempfile
@@ -21,7 +19,6 @@ from typing import TYPE_CHECKING, Any
 
 import docker.errors
 import pytest
-import testcontainers.core.container
 import testcontainers.core.docker_client
 import testcontainers.core.network
 
@@ -44,40 +41,6 @@ SERVER_ARGS = "\n".join(
 )
 DEFAULT_USER = 4321
 PROBE_PATH = pathlib.Path(__file__).with_name("offline_probe.py")
-BASTION_PORT = 9000
-BASTION_SCRIPT = """
-import selectors
-import socket
-import sys
-import threading
-
-target = (sys.argv[1], int(sys.argv[2]))
-listener = socket.socket()
-listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-listener.bind(("0.0.0.0", 9000))
-listener.listen()
-
-def relay(client):
-    try:
-        peer = socket.create_connection(target, timeout=10)
-        selector = selectors.DefaultSelector()
-        selector.register(client, selectors.EVENT_READ, peer)
-        selector.register(peer, selectors.EVENT_READ, client)
-        while events := selector.select():
-            for event, _ in events:
-                data = event.fileobj.recv(65536)
-                if not data:
-                    return
-                event.data.sendall(data)
-    finally:
-        client.close()
-        if "peer" in locals():
-            peer.close()
-
-while True:
-    client, _ = listener.accept()
-    threading.Thread(target=relay, args=(client,), daemon=True).start()
-"""
 
 
 def has_ipv4_default_route(table: str) -> bool:
@@ -180,14 +143,10 @@ def running_offline_workbench(
         assert wrapped is not None
         remote_interface = wrapped.attrs["NetworkSettings"]["Networks"][network.name]["IPAddress"]
         assert remote_interface
-        endpoint_context = (
-            _open_bastion_endpoint(image, network, remote_interface)
-            if platform.system().lower() == "linux"
-            else podman_machine_utils.open_ssh_tunnel_for_client(
-                client=docker_client.client,
-                remote_port=container.port,
-                remote_interface=remote_interface,
-            )
+        endpoint_context = podman_machine_utils.open_ssh_tunnel_for_client(
+            client=docker_client.client,
+            remote_port=container.port,
+            remote_interface=remote_interface,
         )
         with endpoint_context as endpoint:
             container._offline_endpoint = endpoint
@@ -221,38 +180,6 @@ def running_offline_workbench(
                 raise ExceptionGroup("offline cleanup failed", cleanup_errors)
         finally:
             docker_client.client.close()
-
-
-@contextmanager
-def _open_bastion_endpoint(
-    image: str,
-    network: testcontainers.core.network.Network,
-    remote_interface: str,
-) -> Iterator[tuple[str, int]]:
-    bastion = testcontainers.core.container.DockerContainer(image)
-    bastion.with_exposed_ports(BASTION_PORT).with_kwargs(entrypoint=["python"]).with_command(
-        ["-c", BASTION_SCRIPT, remote_interface, "8888"]
-    )
-    bastion.start()
-    wrapped = bastion.get_wrapped_container()
-    assert wrapped is not None
-    assert wrapped.id is not None
-    network.connect(wrapped.id)
-    endpoint = ("127.0.0.1", int(bastion.get_exposed_port(BASTION_PORT)))
-    deadline = time.monotonic() + 10
-    while time.monotonic() < deadline:
-        try:
-            with socket.create_connection(endpoint, timeout=0.2):
-                break
-        except OSError:
-            time.sleep(0.1)
-    else:
-        bastion.stop()
-        raise TimeoutError(f"Bastion did not open {endpoint[0]}:{endpoint[1]} within 10s")
-    try:
-        yield endpoint
-    finally:
-        bastion.stop()
 
 
 def _assert_internal(container: OfflineWorkbenchContainer, network: testcontainers.core.network.Network) -> None:

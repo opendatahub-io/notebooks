@@ -1,3 +1,5 @@
+# Manual/local bastion image only. GitHub Actions must avoid building it because
+# anonymous pulls from public.ecr.aws can hit registry data limits.
 # https://gallery.ecr.aws/docker/library/alpine
 FROM public.ecr.aws/docker/library/alpine:latest
 
