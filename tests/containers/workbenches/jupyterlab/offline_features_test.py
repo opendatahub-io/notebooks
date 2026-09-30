@@ -19,10 +19,11 @@ from typing import TYPE_CHECKING, Any
 
 import docker.errors
 import pytest
+import testcontainers.core.container
 import testcontainers.core.docker_client
 import testcontainers.core.network
 
-from tests.containers import conftest, docker_utils, podman_machine_utils
+from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if TYPE_CHECKING:
@@ -41,6 +42,8 @@ SERVER_ARGS = "\n".join(
 )
 DEFAULT_USER = 4321
 PROBE_PATH = pathlib.Path(__file__).with_name("offline_probe.py")
+CADDY_IMAGE = "quay.io/hummingbird/caddy:latest"
+CADDY_PORT = 9000
 
 
 def has_ipv4_default_route(table: str) -> bool:
@@ -143,11 +146,7 @@ def running_offline_workbench(
         assert wrapped is not None
         remote_interface = wrapped.attrs["NetworkSettings"]["Networks"][network.name]["IPAddress"]
         assert remote_interface
-        endpoint_context = podman_machine_utils.open_ssh_tunnel_for_client(
-            client=docker_client.client,
-            remote_port=container.port,
-            remote_interface=remote_interface,
-        )
+        endpoint_context = _open_bastion_endpoint(network, remote_interface)
         with endpoint_context as endpoint:
             container._offline_endpoint = endpoint
             yield container
@@ -180,6 +179,51 @@ def running_offline_workbench(
                 raise ExceptionGroup("offline cleanup failed", cleanup_errors)
         finally:
             docker_client.client.close()
+
+
+@contextmanager
+def _open_bastion_endpoint(
+    network: testcontainers.core.network.Network,
+    remote_interface: str,
+) -> Iterator[tuple[str, int]]:
+    """Expose the internal workbench through a Quay-hosted Caddy sidecar.
+
+    The sidecar starts on the regular Podman network, where published ports are
+    reachable from both native Linux and macOS Podman hosts, then joins the
+    internal network to reach JupyterLab. The workbench remains attached only
+    to the internal network.
+    """
+    bastion = testcontainers.core.container.DockerContainer(CADDY_IMAGE)
+    bastion.with_exposed_ports(CADDY_PORT).with_kwargs(entrypoint=["caddy"]).with_command(
+        [
+            "reverse-proxy",
+            "--from",
+            f"http://:{CADDY_PORT}",
+            "--to",
+            f"http://{remote_interface}:8888",
+        ]
+    )
+    try:
+        bastion.start()
+        wrapped = bastion.get_wrapped_container()
+        assert wrapped is not None
+        assert wrapped.id is not None
+        network.connect(wrapped.id)
+        endpoint = ("127.0.0.1", int(bastion.get_exposed_port(CADDY_PORT)))
+        _wait_for_endpoint(endpoint, timeout=10)
+        yield endpoint
+    except BaseException:
+        try:
+            stdout, stderr = bastion.get_logs()
+            logging.warning(
+                "Caddy bastion logs before cleanup:\n%s",
+                (stdout + stderr).decode(errors="replace")[-8000:],
+            )
+        except Exception:
+            logging.exception("Could not collect Caddy bastion logs before cleanup")
+        raise
+    finally:
+        bastion.stop()
 
 
 def _assert_internal(container: OfflineWorkbenchContainer, network: testcontainers.core.network.Network) -> None:
@@ -217,6 +261,20 @@ def _http_url(endpoint: tuple[str, int], path: str) -> str:
     host, port = endpoint
     host_for_url = f"[{host}]" if ":" in host else host
     return f"http://{host_for_url}:{port}{BASE_URL}{path.lstrip('/')}"
+
+
+def _wait_for_endpoint(endpoint: tuple[str, int], *, timeout: float) -> None:
+    deadline = time.monotonic() + timeout
+    last_error: OSError | None = None
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(_http_url(endpoint, "lab"), timeout=2) as response:  # ruff: ignore[suspicious-url-open-usage] -- local test server
+                if response.status == 200:
+                    return
+        except OSError as error:
+            last_error = error
+        time.sleep(0.1)
+    raise TimeoutError(f"Caddy bastion did not serve JupyterLab within {timeout}s: {last_error}")
 
 
 def _api(
@@ -337,8 +395,7 @@ def _run_probe(
     kernel_code: str | None = None,
 ) -> str:
     endpoint = container._offline_endpoint
-    with urllib.request.urlopen(_http_url(endpoint, "lab"), timeout=5) as response:  # ruff: ignore[suspicious-url-open-usage] -- local test server
-        assert response.status == 200
+    _wait_for_endpoint(endpoint, timeout=10)
     host, port = endpoint
     environment = {
         **{key: value for key, value in os.environ.items() if not key.startswith("GIT_")},
