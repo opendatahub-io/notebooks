@@ -165,6 +165,12 @@ def running_offline_workbench(
         cleanup_errors: list[Exception] = []
         try:
             if container is not None:
+                if volume is not None:
+                    try:
+                        _make_volume_host_cleanup_safe(container)
+                    except Exception as exc:
+                        cleanup_errors.append(exc)
+                        logging.exception("Could not make the persistent volume removable; continuing")
                 try:
                     docker_utils.NotebookContainer(container).stop(timeout=0)
                 except Exception as exc:
@@ -179,6 +185,31 @@ def running_offline_workbench(
                 raise ExceptionGroup("offline cleanup failed", cleanup_errors)
         finally:
             docker_client.client.close()
+
+
+def _make_volume_host_cleanup_safe(container: OfflineWorkbenchContainer) -> None:
+    """Make files created by the arbitrary workbench UID removable by the host.
+
+    The persistent directory is a host bind mount. Jupyter creates checkpoint
+    directories and files as ``DEFAULT_USER``; on native Linux the pytest
+    process may use a different UID and cannot remove them during
+    ``TemporaryDirectory`` cleanup. Run the fixed-path chmod as container root
+    while the workbench is still running. This does not change the volume's
+    contents or its behavior during the test.
+    """
+    wrapped = container.get_wrapped_container()
+    if wrapped is None:
+        return
+    wrapped.reload()
+    if wrapped.status != "running":
+        return
+    result = wrapped.exec_run(
+        ["sh", "-c", "chmod -R a+rwX /opt/app-root/src/persistent"],
+        user="0",
+    )
+    if result.exit_code != 0:
+        output = result.output.decode(errors="replace") if isinstance(result.output, bytes) else str(result.output)
+        raise RuntimeError(f"Could not make persistent volume removable (exit {result.exit_code}): {output}")
 
 
 @contextmanager
