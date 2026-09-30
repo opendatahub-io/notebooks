@@ -12,6 +12,11 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from jupyter_client.session import Session
+    from websocket import WebSocket
 
 BASE = os.environ.get("OFFLINE_BASE_URL", "/offline/")
 HOST = os.environ.get("OFFLINE_JUPYTER_HOST", "127.0.0.1")
@@ -20,6 +25,7 @@ TIMEOUT = 20
 # Kernel startup is noticeably slower on non-amd64 workbench runners. The
 # caller supplies a longer bound only for those images.
 KERNEL_TIMEOUT = int(os.environ.get("OFFLINE_KERNEL_TIMEOUT", "30"))
+CHANNEL_TIMEOUT = 5
 
 
 def kernel_api(method: str, path: str, payload: object | None = None) -> object | None:
@@ -35,67 +41,93 @@ def kernel_api(method: str, path: str, payload: object | None = None) -> object 
         return json.loads(raw) if raw else None
 
 
-def execute(code: str) -> str:
+def _close_channels(ws: WebSocket) -> None:
+    try:
+        ws.close(timeout=1)
+    except Exception:
+        logging.exception("Failed to close kernel WebSocket")
+
+
+def _ready_channels(kernel_id: str) -> tuple[WebSocket, Session]:
+    """Connect to the same kernel until a correlated shell reply proves readiness."""
     websocket = importlib.import_module("websocket")
     Session = importlib.import_module("jupyter_client.session").Session
+
+    deadline = time.monotonic() + KERNEL_TIMEOUT
+    attempts = 0
+    while (remaining := deadline - time.monotonic()) > 0:
+        attempts += 1
+        session = Session()
+        ws = None
+        ready = False
+        try:
+            ws = websocket.create_connection(
+                f"ws://{HOST}:{PORT}{BASE}api/kernels/{kernel_id}/channels?session_id={session.session}",
+                timeout=min(CHANNEL_TIMEOUT, remaining),
+            )
+            info = session.msg("kernel_info_request", content={})
+            ws.send(json.dumps({**info, "channel": "shell"}, default=str))
+            attempt_deadline = min(deadline, time.monotonic() + CHANNEL_TIMEOUT)
+            while (remaining := attempt_deadline - time.monotonic()) > 0:
+                ws.settimeout(remaining)
+                raw = ws.recv()
+                if not raw:
+                    raise RuntimeError("kernel WebSocket closed during kernel-info handshake")
+                incoming = json.loads(raw)
+                if (
+                    incoming.get("channel") == "shell"
+                    and incoming.get("msg_type") == "kernel_info_reply"
+                    and incoming.get("parent_header", {}).get("msg_id") == info["header"]["msg_id"]
+                ):
+                    ready = True
+                    return ws, session
+        except websocket.WebSocketTimeoutException:
+            pass
+        finally:
+            if ws is not None and not ready:
+                _close_channels(ws)
+        # Work around ipykernel 7's lost ZMQ wake-up:
+        # https://github.com/ipython/ipykernel/issues/1554
+        # Resending on the same socket cannot wake it. A fresh session_id
+        # opens new ZMQ channels instead of restoring the server's buffered
+        # connection. Retry only readiness; never replay submitted code.
+        logging.warning("Kernel %s did not answer readiness attempt %d; refreshing channels", kernel_id, attempts)
+    raise TimeoutError(f"kernel did not answer kernel-info request within {KERNEL_TIMEOUT}s ({attempts} connections)")
+
+
+def execute(code: str) -> str:
+    websocket = importlib.import_module("websocket")
 
     kernel = kernel_api("POST", "/api/kernels", {"name": "python3"})
     assert isinstance(kernel, dict)
     kernel_id = kernel["id"]
-    session = Session()
-    message = session.msg(
-        "execute_request",
-        content={
-            "code": code,
-            "silent": False,
-            "store_history": True,
-            "user_expressions": {},
-            "allow_stdin": False,
-            "stop_on_error": True,
-        },
-    )
     ws = None
     try:
-        ws = websocket.create_connection(
-            f"ws://{HOST}:{PORT}{BASE}api/kernels/{kernel_id}/channels",
-            timeout=5,
+        ws, session = _ready_channels(kernel_id)
+        message = session.msg(
+            "execute_request",
+            content={
+                "code": code,
+                "silent": False,
+                "store_history": True,
+                "user_expressions": {},
+                "allow_stdin": False,
+                "stop_on_error": True,
+            },
         )
-        info = session.msg("kernel_info_request", content={})
-        ws.send(json.dumps({**info, "channel": "shell"}, default=str))
-        deadline = time.monotonic() + KERNEL_TIMEOUT
-        while time.monotonic() < deadline:
-            try:
-                raw = ws.recv()
-            except websocket.WebSocketTimeoutException:
-                # A request sent immediately after the REST create can be
-                # lost while the kernel is still connecting its ZMQ sockets.
-                # Retry until the kernel answers instead of waiting forever
-                # for a reply to a request it never received.
-                info = session.msg("kernel_info_request", content={})
-                ws.send(json.dumps({**info, "channel": "shell"}, default=str))
-                continue
-            if raw is None:
-                raise RuntimeError("kernel WebSocket closed during kernel-info handshake")
-            incoming = json.loads(raw)
-            if incoming.get("msg_type") == "kernel_info_reply":
-                # A fresh channel has no other outstanding request. Jupyter
-                # Server may adapt the parent header while translating
-                # protocol versions, so the message type is the reliable
-                # readiness signal here.
-                break
-        else:
-            raise TimeoutError(f"kernel did not answer kernel-info request within {KERNEL_TIMEOUT}s")
+        ws.settimeout(CHANNEL_TIMEOUT)
         ws.send(json.dumps({**message, "channel": "shell"}, default=str))
         deadline = time.monotonic() + KERNEL_TIMEOUT
         output: list[str] = []
         saw_reply = False
         saw_idle = False
-        while time.monotonic() < deadline:
+        while (remaining := deadline - time.monotonic()) > 0:
+            ws.settimeout(min(CHANNEL_TIMEOUT, remaining))
             try:
                 raw = ws.recv()
             except websocket.WebSocketTimeoutException:
                 continue
-            if raw is None:
+            if not raw:
                 raise RuntimeError("kernel WebSocket closed before execute completed")
             incoming = json.loads(raw)
             if incoming.get("parent_header", {}).get("msg_id") != message["header"]["msg_id"]:
@@ -116,10 +148,7 @@ def execute(code: str) -> str:
     finally:
         primary_error = sys.exc_info()[1]
         if ws is not None:
-            try:
-                ws.close()
-            except Exception:
-                logging.exception("Failed to close kernel WebSocket")
+            _close_channels(ws)
         delete_error: BaseException | None = None
         try:
             kernel_api("DELETE", f"/api/kernels/{kernel_id}")
