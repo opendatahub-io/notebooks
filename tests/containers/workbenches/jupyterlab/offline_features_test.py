@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import pathlib
+import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 import zipfile
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
@@ -16,7 +19,7 @@ import pytest
 import testcontainers.core.docker_client
 import testcontainers.core.network
 
-from tests.containers import conftest, docker_utils
+from tests.containers import conftest, docker_utils, podman_machine_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if TYPE_CHECKING:
@@ -115,7 +118,8 @@ def running_offline_workbench(
     image: str, *, env: dict[str, str] | None = None, volume: pathlib.Path | None = None
 ) -> Iterator[OfflineWorkbenchContainer]:
     network = testcontainers.core.network.Network(docker_network_kw={"internal": True, "enable_ipv6": False})
-    container = runner = None
+    container = None
+    docker_client = testcontainers.core.docker_client.DockerClient()
     try:
         network.create()
         container = OfflineWorkbenchContainer(image=image, user=DEFAULT_USER, group_add=[0])
@@ -132,16 +136,17 @@ def running_offline_workbench(
         container.start(wait_for_readiness=False)
         _wait_for_http_inside_container(container, timeout=60)
         _assert_internal(container, network)
-
-        runner = OfflineWorkbenchContainer(image=image, user=DEFAULT_USER, group_add=[0])
-        runner.ports.clear()
-        runner.with_network(network).with_env("OFFLINE_JUPYTER_HOST", "jupyterlab")
-        runner.with_kwargs(network=network.name, user=DEFAULT_USER, group_add=[0], entrypoint="")
-        runner.with_command("/bin/sh -c 'sleep infinity'")
-        runner.start(wait_for_readiness=False)
-        _assert_internal(runner, network)
-        container._offline_runner = runner
-        yield container
+        wrapped = container.get_wrapped_container()
+        assert wrapped is not None
+        remote_interface = wrapped.attrs["NetworkSettings"]["Networks"][network.name]["IPAddress"]
+        assert remote_interface
+        with podman_machine_utils.open_ssh_tunnel_for_client(
+            client=docker_client.client,
+            remote_port=container.port,
+            remote_interface=remote_interface,
+        ) as endpoint:
+            container._offline_endpoint = endpoint
+            yield container
     finally:
         primary_error = sys.exc_info()[1]
         if container is not None and container.get_wrapped_container() is not None:
@@ -155,7 +160,7 @@ def running_offline_workbench(
             except Exception:
                 logging.exception("Could not collect JupyterLab logs before cleanup")
         cleanup_errors: list[BaseException] = []
-        for resource in (runner, container, network):
+        for resource in (container, network):
             try:
                 if resource is network:
                     network.remove()
@@ -166,6 +171,7 @@ def running_offline_workbench(
                 logging.exception("Offline cleanup failed; continuing")
         if cleanup_errors and primary_error is None:
             raise ExceptionGroup("offline cleanup failed", cleanup_errors)
+        docker_client.client.close()
 
 
 def _assert_internal(container: OfflineWorkbenchContainer, network: testcontainers.core.network.Network) -> None:
@@ -204,29 +210,46 @@ def _run_probe(
     case: str,
     *,
     kernel_code: str | None = None,
-    target: OfflineWorkbenchContainer | None = None,
 ) -> str:
-    target = target or getattr(container, "_offline_runner", container)
-    docker_utils.container_cp(target, PROBE_PATH, "/opt/app-root/src")
-    command = [
-        "env",
-        f"OFFLINE_PROBE_CASE={case}",
-        "OFFLINE_BASE_URL=/offline/",
-        "python",
-        "/opt/app-root/src/offline_probe.py",
-    ]
+    host, port = container._offline_endpoint
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "OFFLINE_PROBE_CASE": case,
+            "OFFLINE_BASE_URL": BASE_URL,
+            "OFFLINE_JUPYTER_HOST": host,
+            "OFFLINE_JUPYTER_PORT": str(port),
+        }
+    )
     if kernel_code is not None:
-        command.insert(1, f"OFFLINE_KERNEL_CODE={kernel_code}")
-    # Python wrapper bounds the complete helper process, including WebSocket cleanup.
-    wrapped = [
-        "python",
-        "-c",
-        "import subprocess,sys; subprocess.run(sys.argv[1:], check=True, timeout=90)",
-        *command,
-    ]
-    code, output = target.exec(wrapped)
-    text = output.decode(errors="replace")
-    assert code == 0, f"probe {case!r} failed (exit {code}):\n{text}"
+        environment["OFFLINE_KERNEL_CODE"] = kernel_code
+    if case in {"kernel", "git_roundtrip"}:
+        with urllib.request.urlopen(f"http://{host}:{port}{BASE_URL}lab", timeout=5) as response:
+            assert response.status == 200
+        docker_utils.container_cp(container, PROBE_PATH, "/opt/app-root/src")
+        command = [
+            "env",
+            f"OFFLINE_PROBE_CASE={case}",
+            "OFFLINE_BASE_URL=/offline/",
+            "python",
+            "/opt/app-root/src/offline_probe.py",
+        ]
+        if kernel_code is not None:
+            command.insert(1, f"OFFLINE_KERNEL_CODE={kernel_code}")
+        code, output = container.exec(command)
+        text = output.decode(errors="replace")
+        assert code == 0, f"probe {case!r} failed (exit {code}):\n{text}"
+        return text
+    result = subprocess.run(
+        [sys.executable, str(PROBE_PATH)],
+        capture_output=True,
+        check=False,
+        env=environment,
+        text=True,
+        timeout=120,
+    )
+    text = result.stdout + result.stderr
+    assert result.returncode == 0, f"probe {case!r} failed (exit {result.returncode}):\n{text}"
     return text
 
 
@@ -303,7 +326,7 @@ class TestJupyterLabOfflineFeatures:
 
     def test_local_git_clone_commit_push_pull_roundtrip(self, offline_jupyterlab_image: conftest.Image) -> None:
         with running_offline_workbench(_image_id(offline_jupyterlab_image)) as container:
-            assert "git roundtrip ready" in _run_probe(container, "git_roundtrip", target=container)
+            assert "git roundtrip ready" in _run_probe(container, "git_roundtrip")
 
     def test_environment_secret_recreated_and_persistent_volume_survives(
         self, offline_jupyterlab_image: conftest.Image

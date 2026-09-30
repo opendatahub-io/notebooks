@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import os
@@ -11,12 +12,9 @@ import time
 import urllib.error
 import urllib.request
 
-import nbformat
-import websocket
-from jupyter_client.session import Session
-
 BASE = os.environ.get("OFFLINE_BASE_URL", "/offline/")
 HOST = os.environ.get("OFFLINE_JUPYTER_HOST", "127.0.0.1")
+PORT = int(os.environ.get("OFFLINE_JUPYTER_PORT", "8888"))
 TIMEOUT = 20
 KERNEL_TIMEOUT = 30
 
@@ -24,7 +22,7 @@ KERNEL_TIMEOUT = 30
 def api(method: str, path: str, payload: object | None = None) -> tuple[int, dict, object | None]:
     body = None if payload is None else json.dumps(payload).encode()
     request = urllib.request.Request(
-        f"http://{HOST}:8888{BASE}api/contents/{path.lstrip('/')}",
+        f"http://{HOST}:{PORT}{BASE}api/contents/{path.lstrip('/')}",
         data=body,
         method=method,
         headers={"Content-Type": "application/json"},
@@ -41,7 +39,7 @@ def api(method: str, path: str, payload: object | None = None) -> tuple[int, dic
 def kernel_api(method: str, path: str, payload: object | None = None) -> object | None:
     body = None if payload is None else json.dumps(payload).encode()
     request = urllib.request.Request(
-        f"http://{HOST}:8888{BASE}{path.lstrip('/')}",
+        f"http://{HOST}:{PORT}{BASE}{path.lstrip('/')}",
         data=body,
         method=method,
         headers={"Content-Type": "application/json"},
@@ -52,6 +50,9 @@ def kernel_api(method: str, path: str, payload: object | None = None) -> object 
 
 
 def execute(code: str) -> str:
+    websocket = importlib.import_module("websocket")
+    Session = importlib.import_module("jupyter_client.session").Session
+
     kernel = kernel_api("POST", "/api/kernels", {"name": "python3"})
     assert isinstance(kernel, dict)
     kernel_id = kernel["id"]
@@ -70,7 +71,7 @@ def execute(code: str) -> str:
     ws = None
     try:
         ws = websocket.create_connection(
-            f"ws://{HOST}:8888{BASE}api/kernels/{kernel_id}/channels",
+            f"ws://{HOST}:{PORT}{BASE}api/kernels/{kernel_id}/channels",
             timeout=5,
         )
         ws.send(json.dumps(message, default=str))
@@ -128,13 +129,13 @@ def execute(code: str) -> str:
 
 
 def lab_contents() -> None:
-    with urllib.request.urlopen(f"http://{HOST}:8888{BASE}lab", timeout=TIMEOUT) as response:
+    with urllib.request.urlopen(f"http://{HOST}:{PORT}{BASE}lab", timeout=TIMEOUT) as response:
         page = response.read().decode("utf-8", errors="replace")
         assert response.status == 200
     assert "JupyterLab" in page and "<script" in page and "static/" in page
     asset = re.search(r'<script[^>]+src="([^"]*static/[^"]+)', page)
     assert asset is not None
-    asset_url = asset.group(1) if asset.group(1).startswith("http") else f"http://{HOST}:8888{asset.group(1)}"
+    asset_url = asset.group(1) if asset.group(1).startswith("http") else f"http://{HOST}:{PORT}{asset.group(1)}"
     with urllib.request.urlopen(asset_url, timeout=TIMEOUT) as response:  # ruff: ignore[suspicious-url-open-usage] -- local server asset URL
         assert response.status == 200 and response.read(1)
 
@@ -240,28 +241,27 @@ def git_roundtrip() -> None:
     run("git", "clone", f"file://{remote}", str(first))
     run("git", "-C", str(first), "config", "user.email", "offline@example.invalid")
     run("git", "-C", str(first), "config", "user.name", "Offline Test")
-    original = nbformat.v4.new_notebook(
-        cells=[nbformat.v4.new_code_cell("print('original')")],
-        metadata={"offline": True},
-    )
-    (first / "roundtrip.ipynb").write_text(nbformat.writes(original))
+    original = {
+        "cells": [{"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": "print('original')"}],
+        "metadata": {"offline": True},
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+    (first / "roundtrip.ipynb").write_text(json.dumps(original))
     run("git", "-C", str(first), "add", "roundtrip.ipynb")
     run("git", "-C", str(first), "commit", "-m", "first")
     run("git", "-C", str(first), "push", "--set-upstream", "origin", "HEAD:main")
     run("git", "clone", f"file://{remote}", str(second))
-    assert nbformat.read(second / "roundtrip.ipynb", as_version=4)["cells"][0]["source"] == "print('original')"
+    assert json.loads((second / "roundtrip.ipynb").read_text())["cells"][0]["source"] == "print('original')"
     run("git", "-C", str(second), "config", "user.email", "offline@example.invalid")
     run("git", "-C", str(second), "config", "user.name", "Offline Test")
-    updated = nbformat.v4.new_notebook(
-        cells=[nbformat.v4.new_code_cell("print('updated')")],
-        metadata={"offline": True},
-    )
-    (second / "roundtrip.ipynb").write_text(nbformat.writes(updated))
+    updated = {**original, "cells": [{**original["cells"][0], "source": "print('updated')"}]}
+    (second / "roundtrip.ipynb").write_text(json.dumps(updated))
     run("git", "-C", str(second), "add", "roundtrip.ipynb")
     run("git", "-C", str(second), "commit", "-m", "second")
     run("git", "-C", str(second), "push")
     run("git", "-C", str(first), "pull", "--ff-only")
-    assert nbformat.read(first / "roundtrip.ipynb", as_version=4)["cells"][0]["source"] == "print('updated')"
+    assert json.loads((first / "roundtrip.ipynb").read_text())["cells"][0]["source"] == "print('updated')"
     print("git roundtrip ready")
 
 
