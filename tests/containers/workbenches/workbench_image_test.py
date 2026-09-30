@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import http.client
 import logging
-import os
 import pathlib
 import platform
 import tempfile
@@ -93,14 +92,8 @@ class TestWorkbenchImage:
                     if platform.system().lower() == "darwin":
                         # the container host is a podman machine, we need to expose port on podman machine first
                         host = "localhost"
-                        port = podman_machine_utils.find_free_port()
-                        socket_path = os.path.realpath(docker_utils.get_socket_path(client.client))
-                        logging.debug(f"{socket_path=}")
-                        process = podman_machine_utils.open_ssh_tunnel(
-                            machine_predicate=lambda m: (
-                                os.path.realpath(m.ConnectionInfo.PodmanSocket.Path) == socket_path
-                            ),
-                            local_port=port,
+                        port, process = podman_machine_utils.open_ssh_tunnel_for_client(
+                            client=client.client,
                             remote_port=container.port,
                             remote_interface=f"[{ipv6_address}]",
                         )

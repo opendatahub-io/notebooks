@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import json
 import logging
+import os.path
 import socket
 import subprocess
 from typing import TYPE_CHECKING
 
 import tests.containers.pydantic_schemas
+from tests.containers import docker_utils
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    import docker.client
 
 
 def open_ssh_tunnel(
@@ -49,6 +53,29 @@ def open_ssh_tunnel(
 
     logging.info(f"SSH tunnel opened for {machine.Name}: {remote_interface}:{local_port} -> localhost:{remote_port}")
     return process
+
+
+def open_ssh_tunnel_for_client(
+    client: docker.client.DockerClient,
+    remote_port: int,
+    remote_interface: str = "localhost",
+) -> tuple[int, subprocess.Popen]:
+    """Open a local tunnel to a destination reachable from the Podman Machine.
+
+    The Docker API socket identifies which Podman Machine is serving the client.
+    The returned port is bound on the local host and should be registered with
+    the caller's cleanup mechanism together with the returned SSH process.
+    """
+    local_port = find_free_port()
+    socket_path = os.path.realpath(docker_utils.get_socket_path(client))
+    logging.debug("socket_path=%s", socket_path)
+    process = open_ssh_tunnel(
+        machine_predicate=lambda machine: os.path.realpath(machine.ConnectionInfo.PodmanSocket.Path) == socket_path,
+        local_port=local_port,
+        remote_port=remote_port,
+        remote_interface=remote_interface,
+    )
+    return local_port, process
 
 
 def find_free_port() -> int:
