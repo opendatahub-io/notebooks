@@ -19,7 +19,6 @@ import zipfile
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
-import docker.client
 import docker.errors
 import pytest
 import testcontainers.core.container
@@ -45,8 +44,40 @@ SERVER_ARGS = "\n".join(
 )
 DEFAULT_USER = 4321
 PROBE_PATH = pathlib.Path(__file__).with_name("offline_probe.py")
-BASTION_IMAGE = "offline-jupyterlab-bastion:test"
 BASTION_PORT = 9000
+BASTION_SCRIPT = """
+import selectors
+import socket
+import sys
+import threading
+
+target = (sys.argv[1], int(sys.argv[2]))
+listener = socket.socket()
+listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+listener.bind(("0.0.0.0", 9000))
+listener.listen()
+
+def relay(client):
+    try:
+        peer = socket.create_connection(target, timeout=10)
+        selector = selectors.DefaultSelector()
+        selector.register(client, selectors.EVENT_READ, peer)
+        selector.register(peer, selectors.EVENT_READ, client)
+        while events := selector.select():
+            for event, _ in events:
+                data = event.fileobj.recv(65536)
+                if not data:
+                    return
+                event.data.sendall(data)
+    finally:
+        client.close()
+        if "peer" in locals():
+            peer.close()
+
+while True:
+    client, _ = listener.accept()
+    threading.Thread(target=relay, args=(client,), daemon=True).start()
+"""
 
 
 def has_ipv4_default_route(table: str) -> bool:
@@ -150,7 +181,7 @@ def running_offline_workbench(
         remote_interface = wrapped.attrs["NetworkSettings"]["Networks"][network.name]["IPAddress"]
         assert remote_interface
         endpoint_context = (
-            _open_bastion_endpoint(docker_client.client, network, remote_interface)
+            _open_bastion_endpoint(image, network, remote_interface)
             if platform.system().lower() == "linux"
             else podman_machine_utils.open_ssh_tunnel_for_client(
                 client=docker_client.client,
@@ -194,29 +225,19 @@ def running_offline_workbench(
 
 @contextmanager
 def _open_bastion_endpoint(
-    client: docker.client.DockerClient,
+    image: str,
     network: testcontainers.core.network.Network,
     remote_interface: str,
 ) -> Iterator[tuple[str, int]]:
-    try:
-        client.images.get(BASTION_IMAGE)
-    except docker.errors.ImageNotFound:
-        client.images.build(
-            path=str(PROBE_PATH.parent),
-            dockerfile="Dockerfile.bastion",
-            tag=BASTION_IMAGE,
-        )
-    bastion = testcontainers.core.container.DockerContainer(BASTION_IMAGE)
-    bastion.with_exposed_ports(BASTION_PORT).with_kwargs(entrypoint=["/bin/sh"]).with_command(["-c", "sleep infinity"])
+    bastion = testcontainers.core.container.DockerContainer(image)
+    bastion.with_exposed_ports(BASTION_PORT).with_kwargs(entrypoint=["python"]).with_command(
+        ["-c", BASTION_SCRIPT, remote_interface, "8888"]
+    )
     bastion.start()
     wrapped = bastion.get_wrapped_container()
     assert wrapped is not None
     assert wrapped.id is not None
     network.connect(wrapped.id)
-    wrapped.exec_run(
-        ["socat", f"TCP-LISTEN:{BASTION_PORT},fork,reuseaddr", f"TCP:{remote_interface}:8888"],
-        detach=True,
-    )
     endpoint = ("127.0.0.1", int(bastion.get_exposed_port(BASTION_PORT)))
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
