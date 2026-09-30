@@ -331,6 +331,9 @@
       // EA tags are published separately under rhai-early-access, e.g.
       // registry.redhat.io/rhai-early-access/base-image-rocm-7.14-rhel9:3.6.0-ea.1-1788988352,
       // and are outside this stable rhai rule.
+      // Use regex versioning so timestamp-only registry aliases are rejected
+      // before Docker versioning interprets them as huge major versions.
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-(?<build>\\d+)$",
       "allowedVersions": "/^\\d+\\.\\d+\\.\\d+-\\d+$/",
       "groupName": "Red Hat registry base images",
       "pinDigests": true,
