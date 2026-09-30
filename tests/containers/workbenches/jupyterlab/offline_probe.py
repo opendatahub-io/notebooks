@@ -116,7 +116,7 @@ def git_roundtrip() -> None:
     def run(*args: str) -> None:
         subprocess.run(args, check=True, text=True, capture_output=True, timeout=15)
 
-    root = pathlib.Path(os.environ["OFFLINE_WORKDIR"])
+    root = pathlib.Path(os.environ.get("OFFLINE_WORKDIR", "/opt/app-root/src/.offline-git-workdir"))
     remote, first, second = (root / name for name in ("remote.git", "first", "second"))
     run("git", "init", "--bare", str(remote))
     run("git", "--git-dir", str(remote), "symbolic-ref", "HEAD", "refs/heads/main")

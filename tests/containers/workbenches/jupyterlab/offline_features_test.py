@@ -6,7 +6,9 @@ import json
 import logging
 import os
 import pathlib
+import platform
 import re
+import socket
 import subprocess
 import sys
 import tempfile
@@ -17,8 +19,10 @@ import zipfile
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
+import docker.client
 import docker.errors
 import pytest
+import testcontainers.core.container
 import testcontainers.core.docker_client
 import testcontainers.core.network
 
@@ -41,6 +45,8 @@ SERVER_ARGS = "\n".join(
 )
 DEFAULT_USER = 4321
 PROBE_PATH = pathlib.Path(__file__).with_name("offline_probe.py")
+BASTION_IMAGE = "offline-jupyterlab-bastion:test"
+BASTION_PORT = 9000
 
 
 def has_ipv4_default_route(table: str) -> bool:
@@ -143,11 +149,16 @@ def running_offline_workbench(
         assert wrapped is not None
         remote_interface = wrapped.attrs["NetworkSettings"]["Networks"][network.name]["IPAddress"]
         assert remote_interface
-        with podman_machine_utils.open_ssh_tunnel_for_client(
-            client=docker_client.client,
-            remote_port=container.port,
-            remote_interface=remote_interface,
-        ) as endpoint:
+        endpoint_context = (
+            _open_bastion_endpoint(docker_client.client, network, remote_interface)
+            if platform.system().lower() == "linux"
+            else podman_machine_utils.open_ssh_tunnel_for_client(
+                client=docker_client.client,
+                remote_port=container.port,
+                remote_interface=remote_interface,
+            )
+        )
+        with endpoint_context as endpoint:
             container._offline_endpoint = endpoint
             yield container
     finally:
@@ -162,19 +173,65 @@ def running_offline_workbench(
                 )
             except Exception:
                 logging.exception("Could not collect JupyterLab logs before cleanup")
-        cleanup_errors: list[BaseException] = []
-        for resource in (container, network):
+        cleanup_errors: list[Exception] = []
+        try:
+            if container is not None:
+                try:
+                    docker_utils.NotebookContainer(container).stop(timeout=0)
+                except Exception as exc:
+                    cleanup_errors.append(exc)
+                    logging.exception("Offline cleanup failed; continuing")
             try:
-                if resource is network:
-                    network.remove()
-                elif resource is not None:
-                    docker_utils.NotebookContainer(resource).stop(timeout=0)
+                network.remove()
             except Exception as exc:
                 cleanup_errors.append(exc)
                 logging.exception("Offline cleanup failed; continuing")
-        if cleanup_errors and primary_error is None:
-            raise ExceptionGroup("offline cleanup failed", cleanup_errors)
-        docker_client.client.close()
+            if cleanup_errors and primary_error is None:
+                raise ExceptionGroup("offline cleanup failed", cleanup_errors)
+        finally:
+            docker_client.client.close()
+
+
+@contextmanager
+def _open_bastion_endpoint(
+    client: docker.client.DockerClient,
+    network: testcontainers.core.network.Network,
+    remote_interface: str,
+) -> Iterator[tuple[str, int]]:
+    try:
+        client.images.get(BASTION_IMAGE)
+    except docker.errors.ImageNotFound:
+        client.images.build(
+            path=str(PROBE_PATH.parent),
+            dockerfile="Dockerfile.bastion",
+            tag=BASTION_IMAGE,
+        )
+    bastion = testcontainers.core.container.DockerContainer(BASTION_IMAGE)
+    bastion.with_exposed_ports(BASTION_PORT).with_kwargs(entrypoint=["/bin/sh"]).with_command(["-c", "sleep infinity"])
+    bastion.start()
+    wrapped = bastion.get_wrapped_container()
+    assert wrapped is not None
+    assert wrapped.id is not None
+    network.connect(wrapped.id)
+    wrapped.exec_run(
+        ["socat", f"TCP-LISTEN:{BASTION_PORT},fork,reuseaddr", f"TCP:{remote_interface}:8888"],
+        detach=True,
+    )
+    endpoint = ("127.0.0.1", int(bastion.get_exposed_port(BASTION_PORT)))
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(endpoint, timeout=0.2):
+                break
+        except OSError:
+            time.sleep(0.1)
+    else:
+        bastion.stop()
+        raise TimeoutError(f"Bastion did not open {endpoint[0]}:{endpoint[1]} within 10s")
+    try:
+        yield endpoint
+    finally:
+        bastion.stop()
 
 
 def _assert_internal(container: OfflineWorkbenchContainer, network: testcontainers.core.network.Network) -> None:
@@ -336,7 +393,7 @@ def _run_probe(
         assert response.status == 200
     host, port = endpoint
     environment = {
-        **os.environ,
+        **{key: value for key, value in os.environ.items() if not key.startswith("GIT_")},
         "OFFLINE_PROBE_CASE": case,
         "OFFLINE_BASE_URL": BASE_URL,
         "OFFLINE_JUPYTER_HOST": host,
@@ -345,28 +402,30 @@ def _run_probe(
     if kernel_code is not None:
         environment["OFFLINE_KERNEL_CODE"] = kernel_code
     if case == "git_roundtrip":
-        with tempfile.TemporaryDirectory() as workdir:
-            environment["OFFLINE_WORKDIR"] = workdir
-            result = subprocess.run(
-                [sys.executable, str(PROBE_PATH)],
-                capture_output=True,
-                text=True,
-                env=environment,
-                timeout=120,
-                check=False,
-            )
-    else:
-        result = subprocess.run(
-            [sys.executable, str(PROBE_PATH)],
-            capture_output=True,
-            text=True,
-            env=environment,
-            timeout=120,
-            check=False,
-        )
-    output = result.stdout + result.stderr
-    assert result.returncode == 0, f"probe {case!r} failed (exit {result.returncode}):\n{output}"
-    return output
+        docker_utils.container_cp(container, PROBE_PATH, "/opt/app-root/src")
+        command = [
+            "env",
+            "OFFLINE_PROBE_CASE=git_roundtrip",
+            f"OFFLINE_BASE_URL={BASE_URL}",
+            "OFFLINE_WORKDIR=/opt/app-root/src/.offline-git-workdir",
+            "python",
+            "/opt/app-root/src/offline_probe.py",
+        ]
+        code, output = container.exec(command)
+        text = output.decode(errors="replace")
+        assert code == 0, f"probe {case!r} failed (exit {code}):\n{text}"
+        return text
+    result = subprocess.run(
+        [sys.executable, str(PROBE_PATH)],
+        capture_output=True,
+        check=False,
+        env=environment,
+        text=True,
+        timeout=120,
+    )
+    text = result.stdout + result.stderr
+    assert result.returncode == 0, f"probe {case!r} failed (exit {result.returncode}):\n{text}"
+    return text
 
 
 def _make_wheel(destination: pathlib.Path) -> pathlib.Path:
