@@ -263,7 +263,10 @@ def _assert_internal(container: OfflineWorkbenchContainer, network: testcontaine
     wrapped.reload()
     attrs = wrapped.attrs
     assert set(attrs.get("NetworkSettings", {}).get("Networks", {})) == {network.name}
-    assert not attrs.get("NetworkSettings", {}).get("Ports")
+    # The image may declare ports (for example, ``8080/tcp``) without any
+    # host publication. Only non-empty bindings expose a container port.
+    ports = attrs.get("NetworkSettings", {}).get("Ports", {})
+    assert all(not bindings for bindings in ports.values())
     network._unwrap_network.reload()
     assert network._unwrap_network.attrs.get("Internal") is True
     assert container.exec(["id", "-u"])[1].decode().strip() == str(DEFAULT_USER)
@@ -437,6 +440,7 @@ def _run_probe(
     }
     if kernel_code is not None:
         environment["OFFLINE_KERNEL_CODE"] = kernel_code
+        environment["OFFLINE_KERNEL_TIMEOUT"] = str(_kernel_timeout(container))
     if case == "git_roundtrip":
         docker_utils.container_cp(container, PROBE_PATH, "/opt/app-root/src")
         command = [
@@ -462,6 +466,15 @@ def _run_probe(
     text = result.stdout + result.stderr
     assert result.returncode == 0, f"probe {case!r} failed (exit {result.returncode}):\n{text}"
     return text
+
+
+def _kernel_timeout(container: OfflineWorkbenchContainer) -> int:
+    """Allow extra kernel startup time only when the image is ARM-based."""
+    architecture = os.environ.get("BUILD_ARCH", "").rsplit("/", 1)[-1]
+    if not architecture:
+        wrapped = container.get_wrapped_container()
+        architecture = str((wrapped.attrs if wrapped is not None else {}).get("Architecture", ""))
+    return 60 if architecture in {"arm64", "aarch64"} else 30
 
 
 def _make_wheel(destination: pathlib.Path) -> pathlib.Path:

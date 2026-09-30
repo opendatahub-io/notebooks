@@ -17,7 +17,10 @@ BASE = os.environ.get("OFFLINE_BASE_URL", "/offline/")
 HOST = os.environ.get("OFFLINE_JUPYTER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("OFFLINE_JUPYTER_PORT", "8888"))
 TIMEOUT = 20
-KERNEL_TIMEOUT = 30
+# Kernel startup is noticeably slower on ARM workbench runners. The caller
+# supplies a longer bound only for ARM images; keep the default strict for
+# native amd64 runs.
+KERNEL_TIMEOUT = float(os.environ.get("OFFLINE_KERNEL_TIMEOUT", "30"))
 
 
 def kernel_api(method: str, path: str, payload: object | None = None) -> object | None:
