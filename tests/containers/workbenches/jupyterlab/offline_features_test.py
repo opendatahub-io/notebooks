@@ -440,7 +440,10 @@ def _run_probe(
     }
     if kernel_code is not None:
         environment["OFFLINE_KERNEL_CODE"] = kernel_code
-        environment["OFFLINE_KERNEL_TIMEOUT"] = str(_kernel_timeout(container))
+        kernel_timeout = _kernel_timeout(container)
+        environment["OFFLINE_KERNEL_TIMEOUT"] = str(kernel_timeout)
+    else:
+        kernel_timeout = 0
     if case == "git_roundtrip":
         docker_utils.container_cp(container, PROBE_PATH, "/opt/app-root/src")
         command = [
@@ -461,7 +464,9 @@ def _run_probe(
         check=False,
         env=environment,
         text=True,
-        timeout=120,
+        # The probe gets separate readiness and execution budgets, plus time
+        # to clean up the kernel after either phase.
+        timeout=max(120, 2 * kernel_timeout + 30),
     )
     text = result.stdout + result.stderr
     assert result.returncode == 0, f"probe {case!r} failed (exit {result.returncode}):\n{text}"

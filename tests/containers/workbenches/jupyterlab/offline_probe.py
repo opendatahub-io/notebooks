@@ -61,7 +61,7 @@ def execute(code: str) -> str:
             timeout=5,
         )
         info = session.msg("kernel_info_request", content={})
-        ws.send(json.dumps(info, default=str))
+        ws.send(json.dumps({**info, "channel": "shell"}, default=str))
         deadline = time.monotonic() + KERNEL_TIMEOUT
         while time.monotonic() < deadline:
             try:
@@ -72,7 +72,7 @@ def execute(code: str) -> str:
                 # Retry until the kernel answers instead of waiting forever
                 # for a reply to a request it never received.
                 info = session.msg("kernel_info_request", content={})
-                ws.send(json.dumps(info, default=str))
+                ws.send(json.dumps({**info, "channel": "shell"}, default=str))
                 continue
             if raw is None:
                 raise RuntimeError("kernel WebSocket closed during kernel-info handshake")
@@ -85,7 +85,7 @@ def execute(code: str) -> str:
                 break
         else:
             raise TimeoutError(f"kernel did not answer kernel-info request within {KERNEL_TIMEOUT}s")
-        ws.send(json.dumps(message, default=str))
+        ws.send(json.dumps({**message, "channel": "shell"}, default=str))
         deadline = time.monotonic() + KERNEL_TIMEOUT
         output: list[str] = []
         saw_reply = False
