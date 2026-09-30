@@ -323,6 +323,10 @@
       // matchPackageNames supports exact, glob, regex (/pattern/), and negation (!)
       // https://docs.renovatebot.com/configuration-options/#matchpackagenames
       "matchPackageNames": ["/^registry\\.redhat\\.io\\/rhai\\//"],
+      // Red Hat also publishes timestamp-only tags.  Exclude those aliases so
+      // Renovate compares structured release tags instead of treating a Unix
+      // timestamp as a new major version and hitting maxMajorIncrement.
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+-\\d+$/",
       "groupName": "Red Hat registry base images",
       "pinDigests": true,
       "semanticCommits": "enabled",
