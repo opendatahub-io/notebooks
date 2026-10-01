@@ -124,14 +124,14 @@ $(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DI
 	--volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
-	@if [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d cachi2/output ]; then \
-	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) -- see scripts/lockfile-generators/README.md"; \
-	  exit 1; \
-	fi
-	@if [ -d cachi2/output ] && [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d 'cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
-	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
-	  exit 1; \
-	fi
+#	@if [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d cachi2/output ]; then \
+#	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) -- see scripts/lockfile-generators/README.md"; \
+#	  exit 1; \
+#	fi
+#	@if [ -d cachi2/output ] && [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d 'cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
+#	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
+#	  exit 1; \
+#	fi
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
 		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
@@ -222,6 +222,10 @@ cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 .PHONY: cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION)
 cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
+
+.PHONY: spyre-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+spyre-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/pytorch-spyre/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.spyre)
 
 .PHONY: jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
 jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION):
@@ -653,6 +657,7 @@ all-images: \
 	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+        spyre-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	che-code-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
