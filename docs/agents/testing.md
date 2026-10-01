@@ -24,14 +24,15 @@ PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"
 
 | Target | What it runs | Requires |
 |--------|-------------|----------|
-| `make test` | Static tests (pytest) | Nothing |
-| `make test-unit` | Python unit tests + doctests + Go tests | Nothing (Go auto-downloads) |
+| `make test` | Static checks, Python unit tests and doctests | Locked Python environment |
+| `make test-unit` | Python tests + doctests, explicit agentic-reviewer tests, and Go tests | Locked Python environment (Go auto-downloads) |
 | `make test-integration PYTEST_ARGS="--image=<img>"` | Container integration tests | Podman/Docker |
 | `make test-<notebook>` | Notebook smoke test via papermill | kubectl + deployed workbench |
 
 ### Deploying for notebook smoke tests
 
-`make test-<notebook>` requires a deployed workbench on OpenShift. For the full
+`make test-<notebook>` requires a deployed workbench on Kubernetes; OpenShift is
+one supported environment. CI provisions Kubernetes for these smoke tests. For the full
 deploy/test/undeploy cycle, see [README.md § Notebooks](../../README.md#notebooks)
 and [README.md § Runtimes](../../README.md#runtimes).
 
@@ -51,7 +52,73 @@ and [README.md § Runtimes](../../README.md#runtimes).
 - `tests/containers/` is **excluded from default collection** via `collect_ignore` in
   `tests/conftest.py`. Run container tests explicitly with `pytest tests/containers --image=<img>`.
 - Default `make test` collects from `tests/`, `ntb/`, and `ci/` (doctests).
+- `ci/agentic-reviewer/` is excluded from recursive collection; `make test-unit`
+  explicitly includes its tests and also runs the Go tests.
 - `--strict-markers` is on — unregistered markers fail the run.
+
+### Offline JupyterLab feature tests
+
+The JupyterLab offline feature suite runs explicitly against a preloaded image.
+The workbench is attached only to an internal container network, without a
+default route or published host ports. Host HTTP and WebSocket clients reach it
+through a Caddy sidecar attached to both the internal network and a regular
+network, with a published proxy port. This topology is also called a **bastion**:
+a pod, container, or virtual machine that provides controlled access between an
+air-gapped part of the system and the outside world. Here, Caddy forwards requests
+to Jupyter; it does not provide the workbench with general outbound connectivity.
+
+```bash
+podman pull quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:odh-stable
+podman pull quay.io/hummingbird/caddy:latest
+uv sync --locked
+TESTCONTAINERS_RYUK_DISABLED=true uv run --offline --no-sync pytest \
+  tests/containers/workbenches/jupyterlab/offline_features_test.py \
+  --image=quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:odh-stable
+```
+
+Pulling both images and preparing the locked `uv` environment are separate from
+the offline test run. Caddy may be pulled during setup if it is not cached.
+`uv --offline` controls dependency resolution; the internal network isolates the
+workbench. This invocation's `--offline` and Ryuk setting do not change the network
+or cleanup behavior of other integration suites. The helper manages the workbench,
+bastion and networks on Linux and macOS.
+
+Protocol clients (`jupyter-client` and `websocket-client`, included in the locked
+development dependencies) run on the host. Git commands run inside the workbench
+against temporary repositories there, so the test exercises the image's Git.
+
+Kernel readiness and execution each have a 30-second budget, increased to 120
+seconds for `arm64`/`aarch64`, `s390x` and `ppc64le`. Architecture comes from
+`BUILD_ARCH`, or image metadata when it is unset. During readiness, the probe
+reconnects unresponsive WebSocket channels with fresh session IDs to recover from
+[ipykernel #1554](https://github.com/ipython/ipykernel/issues/1554). It sends user
+code once after readiness and never replays execution to recover a timeout.
+
+It covers prefixed Lab startup and local assets, Contents API CRUD, server-managed
+kernel execution, offline wheel installation, local Git clone/commit/push/pull,
+environment and secret propagation across replacement, and persistent versus
+ephemeral storage. Dashboard/RBAC/Kueue/ImageStream and hardware behavior require
+OpenShift tests; S3 and certificate behavior require service-backed tests; other
+IDEs, R, GPU, and browser-specific behavior are outside this backend suite.
+
+Coverage of the [workbench feature inventory](../features.md):
+
+| Feature group | Local offline coverage | Requires a different environment |
+|---|---|---|
+| Create and manage workbenches | Normal Jupyter entrypoint, Python package installation and kernel import, container replacement | Dashboard lifecycle, image selection, other IDEs |
+| Customize images and resources | Arbitrary UID with group 0 | ImageStreams, Notebook CRs, hardware profiles and accelerators |
+| Secrets, connections and storage | Dummy environment values reach kernels; replacement loads changed values; mounted notebooks survive replacement and container-layer files do not | Kubernetes Secret/ConfigMap injection, connection management, S3/TLS, PVC provisioning and access-mode enforcement |
+| Develop and collaborate | Notebook Contents API, execution through server-managed kernels, local Git clone/commit/push/pull | External Git authentication, R workflows |
+| Schedule and govern access | None | Kueue, RBAC, administrator controls, idle shutdown and scheduling |
+
+Browser interactions have a [separate Playwright suite](../../tests/browser/README.md#running-the-offline-jupyterlab-suite).
+The dedicated `run-offline-browser.sh` launcher places the browser runner and
+workbench on an internal network. Ordinary Playwright runs use a Testcontainers
+fixture on a regular network with a published Jupyter port; the `@offline` tag
+means the tests need no internet access to pass, making them suitable for
+air-gapped (disconnected) clusters. Neither local Jupyter suite requires a cluster
+or external services during execution. Image pulls and test dependency
+installation are preparation steps and require connectivity unless already cached.
 
 ## Markers
 
@@ -68,8 +135,10 @@ All markers must be registered in `pytest.ini`:
 
 ## CI parity
 
-Local `make test` + `make test-unit` covers the `pytest-tests` job in
-`.github/workflows/code-quality.yaml`. Other CI checks that are **not yet**
+The `pytest-tests` job in `.github/workflows/code-quality.yaml` runs `make test`.
+`make test-unit` overlaps that coverage, explicitly adds agentic-reviewer tests,
+and runs the Go tests that CI runs separately with `gotestsum`. Other CI checks
+whose exact workflow commands are **not yet**
 exposed as `make` targets:
 
 - yamllint (inline in workflow)
@@ -79,6 +148,18 @@ exposed as `make` targets:
 
 Closing this gap (moving inline CI logic into Makefile targets) is tracked in
 [#3174](https://github.com/opendatahub-io/notebooks/issues/3174).
+
+Jupyter workbench builds in `build-notebooks-TEMPLATE.yaml` run the local
+`playwright-test` action with `--grep @jupyter`; runtime images are excluded.
+`test-playwright-action.yaml` also tests that action with separate Code-Server and
+JupyterLab matrix legs. These callers enable report and JUnit uploads for all
+supported events, including scheduled and manually dispatched runs. The HTML
+report and raw results (screenshots, videos and traces) share one artifact; JUnit
+is uploaded separately.
+
+The browser action passes the image architecture as `TEST_TARGET_ARCH`. The
+Jupyter fixture allows 120 seconds for startup when that architecture differs
+from the runner's normalized `process.arch`, and 30 seconds otherwise.
 
 ### `check-generated-code` (lock scoping)
 
@@ -100,7 +181,7 @@ The `check-generated-code` job runs `ci/generate_code.sh`, then verifies a clean
 | Tool | Purpose |
 |------|---------|
 | pytest | Test runner for all Python tests |
-| pytest-subtests | Granular sub-assertions within a single test |
+| pytest's built-in `subtests` fixture (pytest 9+) | Granular sub-assertions within a single test |
 | pytest-cov | Coverage (XML + terminal) |
 | allure-pytest | Issue tracking + step decoration |
 | hypothesis | Property-based tests for pure helpers (`tests/unit/test_property_helpers.py`) |
@@ -130,6 +211,7 @@ uv run pytest tests/unit/test_property_helpers.py --hypothesis-profile=crosshair
 Do **not** enable `backend="crosshair"` on the default CI path: it is slower and the
 standard Hypothesis backend already covers PR gating. Standalone `crosshair check`
 needs explicit contracts (`pre:`/`post:`) and is not wired up yet.
+
 ## Troubleshooting
 
 - **Container tests hang:** Ensure the container runtime (podman/docker) is running.
@@ -198,10 +280,12 @@ generation, CI tooling). These tests are fast and don't require containers.
 
 ```bash
 # Non-GPU images (minimal, datascience, trustyai):
-make jupyter-datascience-ubi9-python-3.12
+make jupyter-datascience-ubi9-python-3.12 PRODUCT=odh \
+  IMAGE_REGISTRY=localhost/workbench-images IMAGE_TAG=latest PUSH_IMAGES=no
 
 # CUDA GPU images (pytorch, tensorflow):
-make cuda-jupyter-pytorch-ubi9-python-3.12
+make cuda-jupyter-pytorch-ubi9-python-3.12 PRODUCT=odh \
+  IMAGE_REGISTRY=localhost/workbench-images IMAGE_TAG=latest PUSH_IMAGES=no
 ```
 
 GPU images require a `cuda-` or `rocm-` prefix on the target name.
@@ -211,17 +295,17 @@ Set `PUSH_IMAGES=no` for local-only builds.
 libraries, broken pip constraints. If the build fails, the package combination is
 not viable.
 
-Keep `KONFLUX` consistent between build and test steps (see
+Keep `PRODUCT=odh` or `PRODUCT=rhoai` consistent between build and test steps (see
 [CONTRIBUTING.md § ODH vs RHOAI local builds](../../CONTRIBUTING.md#odh-vs-rhoai-local-builds)).
 
 ### 5. Run container integration tests
 
 ```bash
-make test-integration PYTEST_ARGS="--image=<image>"
+make test-integration PRODUCT=odh PYTEST_ARGS="--image=<image>"
 ```
 
 where `<image>` is the full image reference from the build step (e.g.,
-`quay.io/opendatahub/workbench-images:jupyter-pytorch-ubi9-python-3.12-latest`).
+`localhost/workbench-images:cuda-jupyter-pytorch-ubi9-python-3.12-latest`).
 
 **What this catches:**
 - Entrypoint fails to start (JupyterLab/Code-Server doesn't come up)
@@ -251,8 +335,18 @@ If the upgrade could affect JupyterLab or Code-Server UI (e.g., upgrading
 `jupyterlab`, a JupyterLab extension, or `code-server`):
 
 ```bash
-cd tests/browser && pnpm install --frozen-lockfile && pnpm exec playwright test
+cd tests/browser
+pnpm install --frozen-lockfile
+# Each IDE uses its own default image when TEST_TARGET is unset:
+pnpm exec playwright test --grep @jupyter
+pnpm exec playwright test --grep @codeserver
+# To test a specific image, select the matching IDE suite:
+TEST_TARGET='<jupyter-image>' pnpm exec playwright test --grep @jupyter
 ```
+
+With `TEST_TARGET` set, the caller must filter on the matching `@jupyter` or
+`@codeserver` tag. An unfiltered run also includes `@openshift` tests that require
+a configured cluster. Jupyter tests use the shared `playwright.config.ts`.
 
 See [tests/browser/AGENTS.md](../../tests/browser/AGENTS.md) for setup details.
 
@@ -276,12 +370,14 @@ Build with a predictable tag and push disabled, then run:
 
 ```bash
 # JupyterLab (port 8888)
-make jupyter-minimal-ubi9-python-3.12 IMAGE_TAG=latest PUSH_IMAGES=no
-podman run -it -p 8888:8888 quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.12-latest
+make jupyter-minimal-ubi9-python-3.12 PRODUCT=odh \
+  IMAGE_REGISTRY=localhost/workbench-images IMAGE_TAG=latest PUSH_IMAGES=no
+podman run -it -p 8888:8888 localhost/workbench-images:jupyter-minimal-ubi9-python-3.12-latest
 
 # Code-Server (port 8787)
-make codeserver-ubi9-python-3.12 IMAGE_TAG=latest PUSH_IMAGES=no
-podman run -it -p 8787:8787 quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12-latest
+make codeserver-ubi9-python-3.12 PRODUCT=odh \
+  IMAGE_REGISTRY=localhost/workbench-images IMAGE_TAG=latest PUSH_IMAGES=no
+podman run -it -p 8787:8787 localhost/workbench-images:codeserver-ubi9-python-3.12-latest
 ```
 
 For published image references, see the [README.md Image Inventory](../../README.md#image-inventory-list).
