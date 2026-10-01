@@ -25,7 +25,7 @@ PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"
 | Target | What it runs | Requires |
 |--------|-------------|----------|
 | `make test` | Static checks, Python unit tests and doctests | Locked Python environment |
-| `make test-unit` | Python tests + doctests, explicit agentic-reviewer tests, and Go tests | Locked Python environment (Go auto-downloads) |
+| `make test-unit` | Pytest on `tests/`, `ntb/`, and `ci/agentic-reviewer/tests/` (excluding containers), plus Go tests; excludes other `ci/` tests and doctests | Locked Python environment (Go auto-downloads) |
 | `make test-integration PYTEST_ARGS="--image=<img>"` | Container integration tests | Podman/Docker |
 | `make test-<notebook>` | Notebook smoke test via papermill | kubectl + deployed workbench |
 
@@ -52,8 +52,10 @@ and [README.md § Runtimes](../../README.md#runtimes).
 - `tests/containers/` is **excluded from default collection** via `collect_ignore` in
   `tests/conftest.py`. Run container tests explicitly with `pytest tests/containers --image=<img>`.
 - Default `make test` collects from `tests/`, `ntb/`, and `ci/` (doctests).
-- `ci/agentic-reviewer/` is excluded from recursive collection; `make test-unit`
-  explicitly includes its tests and also runs the Go tests.
+- `ci/agentic-reviewer/` is excluded from default recursive collection.
+  `make test-unit` explicitly collects `tests/`, `ntb/`, and
+  `ci/agentic-reviewer/tests/`, excluding containers and all other `ci/` tests and
+  doctests. It also runs the Go tests.
 - `--strict-markers` is on — unregistered markers fail the run.
 
 ### Offline JupyterLab feature tests
@@ -136,8 +138,9 @@ All markers must be registered in `pytest.ini`:
 ## CI parity
 
 The `pytest-tests` job in `.github/workflows/code-quality.yaml` runs `make test`.
-`make test-unit` overlaps that coverage, explicitly adds agentic-reviewer tests,
-and runs the Go tests that CI runs separately with `gotestsum`. Other CI checks
+`make test-unit` overlaps that coverage, adds agentic-reviewer tests, excludes
+other `ci/` tests and doctests, and runs the Go tests that CI runs separately with
+`gotestsum`. Other CI checks
 whose exact workflow commands are **not yet**
 exposed as `make` targets:
 
