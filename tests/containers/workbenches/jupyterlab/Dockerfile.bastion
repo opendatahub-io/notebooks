@@ -1,0 +1,8 @@
+# Manual/local bastion image only. GitHub Actions must avoid building it because
+# anonymous pulls from public.ecr.aws can hit registry data limits.
+# https://gallery.ecr.aws/docker/library/alpine
+FROM public.ecr.aws/docker/library/alpine:latest
+
+RUN apk add --no-cache socat=1.8.1.3-r0
+
+ENTRYPOINT ["socat"]

@@ -55,6 +55,9 @@ providers, rootless configurations, or Linux hosts.
 | SSH local forwarding through Podman Machine to the internal application IP | Host access worked. |
 | Dual-network bastion running a Python HTTP relay | Host received the application response; application internet TCP connection failed with `Network is unreachable`. |
 | Dual-network bastion using nftables DNAT and masquerade | Host received the application response without a userspace network listener in the bastion; application internet TCP connection failed with `Network is unreachable`. |
+| Dual-network bastion with a published port on the regular bridge | On macOS, the host reached the application through the bastion while direct access to the application address timed out. The application still had no route to the internet. |
+| Hummingbird Caddy bastion (`quay.io/hummingbird/caddy:latest`) | Caddy's HTTP reverse proxy reached the JupyterLab workbench through the internal network; the complete six-test local offline suite passed on macOS. |
+| Linux rootless CI with direct access to the internal container address | The CI runner could not reach the container address reliably; a published bastion endpoint avoids depending on bridge-address routing. |
 | Per-container nftables output filtering on a regular network | Host HTTP returned 200; outbound TCP was dropped and the drop counter increased. |
 | VM-level firewall filtering on the default bridge | Host HTTP returned 200 and outbound TCP timed out, but rule counters stayed zero. The proposed filtering mechanism was not conclusively verified. |
 
@@ -157,17 +160,30 @@ variants add container lifecycle, service discovery, and readiness coordination.
 #### Userspace forwarding
 
 A relay or reverse proxy accepts host traffic and opens a connection to the
-application on the internal bridge. A Python HTTP relay verified this topology;
-the candidate packaged implementations below were not tested end to end.
+application on the internal bridge. A Python HTTP relay verified this topology.
+The Hummingbird Caddy image was subsequently validated as the packaged
+implementation: its `caddy reverse-proxy --from http://:9000 --to
+http://<internal-address>:8888` command served the JupyterLab base URL and all
+six offline feature tests passed locally on macOS. The test publishes the
+bastion port on the regular bridge and attaches the same bastion to the
+internal bridge after startup.
 
-- **Caddy:** convenient HTTP reverse proxy; standard `caddy reverse-proxy` does
-  not provide arbitrary TCP forwarding. Additional modules would need evaluation
-  if protocol-independent forwarding is required.
+- **Caddy:** convenient HTTP reverse proxy, available from Quay through
+  Hummingbird. It is suitable when the workbench protocol is HTTP/WebSocket;
+  standard `caddy reverse-proxy` is not a general arbitrary-TCP relay.
 - **HAProxy:** TCP or HTTP forwarding, with configurable timeouts and checks.
 - **NGINX:** HTTP forwarding, or TCP forwarding if the image includes the needed
   stream module and configuration.
 - **socat:** a simple TCP relay that passes protocol bytes without interpreting
   HTTP or WebSocket traffic.
+- **Python relay:** useful as a dependency-free experiment when the workbench
+  image already contains Python, but less appropriate as a maintained bastion
+  runtime.
+
+The published port belongs to the bastion, not the application. This distinction
+is required on the tested macOS Podman Machine: publishing a port directly from
+an application attached only to an `--internal` network reset the host
+connection, while publishing the bastion port on the regular bridge worked.
 
 HTTP-aware forwarding needs validation for redirects, headers, WebSockets, and
 long-lived workbench sessions. TCP forwarding reduces HTTP-specific configuration
@@ -269,8 +285,15 @@ Hummingbird distributes these images separately from the upstream projects;
 these are not claims of upstream official image status. **Caddy is available on
 Quay.io through Hummingbird**, correcting the earlier research assumption that
 using Caddy would require Docker Hub. The Hummingbird versions came from tag
-metadata; `socat -V` was executed successfully. Forwarding configurations and
-native arm64 availability still need validation.
+metadata. Caddy's command-line reverse proxy was tested locally, but native
+arm64 availability and Linux CI execution remain to be confirmed.
+
+The earlier Alpine/socat image was not suitable for GitHub Actions: building it
+from `public.ecr.aws/docker/library/alpine:latest` hit the registry's anonymous
+data limit. The investigation found no ready-to-use public Quay proxy endpoint
+for Docker Hub's `alpine`; a Quay pull-through cache requires an administered
+Quay instance and cache organization. The current Caddy option therefore avoids
+both the Docker Hub image and the public ECR Alpine dependency.
 
 The inspected `quay.io/iovisor/bpftrace:latest`,
 `quay.io/openshift/origin-network-tools:latest`,
@@ -280,8 +303,9 @@ image; a prepared dedicated image remains an option. Runtime package installatio
 would be moved into preparation for a repeatable disconnected test.
 
 No usable `ghcr.io/quickwit-oss/pingora-proxy:latest` image or its proposed YAML
-configuration was verified. Pingora is a framework, so that earlier suggested
-command is not an established alternative to a working packaged bastion.
+configuration was verified. Pingora is a Rust framework, not a confirmed
+standalone generic proxy image with that CLI, so it is not an established
+alternative to the working packaged bastion.
 
 ## Evaluation criteria and remaining work
 
@@ -311,6 +335,9 @@ is needed; whether reusing SSH helpers is preferable to managing a bastion; and
 whether kernel forwarding justifies its rule, image, and discovery management
 compared with a userspace relay. The eventual decision should record which
 platforms and traffic types are supported and which observations justify it.
+The current Caddy implementation is evidence for the userspace-bastion option,
+not a final ADR selection; Linux CI, rootless/rootful variants, and arm64 still
+need explicit coverage.
 
 ## Consequences
 

@@ -3,15 +3,18 @@ from __future__ import annotations
 import json
 import logging
 import os.path
+import platform
 import socket
 import subprocess
+import time
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import tests.containers.pydantic_schemas
 from tests.containers import docker_utils
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     import docker.client
 
@@ -45,6 +48,8 @@ def open_ssh_tunnel(
         "UserKnownHostsFile=/dev/null",
         "-o",
         "StrictHostKeyChecking=no",
+        "-o",
+        "LogLevel=ERROR",
         f"{machine.SSHConfig.RemoteUsername}@localhost",
     ]
 
@@ -55,17 +60,26 @@ def open_ssh_tunnel(
     return process
 
 
+@contextmanager
 def open_ssh_tunnel_for_client(
     client: docker.client.DockerClient,
     remote_port: int,
     remote_interface: str = "localhost",
-) -> tuple[int, subprocess.Popen]:
+) -> Iterator[tuple[str, int]]:
     """Open a local tunnel to a destination reachable from the Podman Machine.
 
-    The Docker API socket identifies which Podman Machine is serving the client.
-    The returned port is bound on the local host and should be registered with
-    the caller's cleanup mechanism together with the returned SSH process.
+    Linux hosts can connect to the container address directly. macOS hosts run
+    Podman inside a VM, so this opens and owns an SSH local-forward through the
+    matching Podman Machine. The context manager waits for the endpoint and
+    always closes the tunnel when leaving the context.
     """
+    system = platform.system().lower()
+    if system == "linux":
+        yield remote_interface, remote_port
+        return
+    if system != "darwin":
+        raise RuntimeError(f"Podman SSH tunneling is supported on Linux and macOS, not {platform.system()}")
+
     local_port = find_free_port()
     socket_path = os.path.realpath(docker_utils.get_socket_path(client))
     logging.debug("socket_path=%s", socket_path)
@@ -75,7 +89,35 @@ def open_ssh_tunnel_for_client(
         remote_port=remote_port,
         remote_interface=remote_interface,
     )
-    return local_port, process
+    try:
+        _wait_for_local_port(local_port, process)
+        yield "127.0.0.1", local_port
+    finally:
+        _close_process(process)
+
+
+def _wait_for_local_port(port: int, process: subprocess.Popen, timeout: float = 10) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise RuntimeError(f"SSH tunnel exited before opening local port {port}: {process.returncode}")
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+                return
+        except OSError:
+            time.sleep(0.1)
+    raise TimeoutError(f"SSH tunnel did not open local port {port} within {timeout}s")
+
+
+def _close_process(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
 
 
 def find_free_port() -> int:
