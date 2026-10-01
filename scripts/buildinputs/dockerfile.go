@@ -15,6 +15,7 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/moby/buildkit/frontend/dockerui"
 	"github.com/moby/buildkit/solver/pb"
+	"github.com/moby/buildkit/util/apicaps"
 	"github.com/opencontainers/go-digest"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -23,6 +24,9 @@ import (
 func getDockerfileDeps(dockerfile string, targetArch string, buildArgs map[string]string) []string {
 	ctx := context.Background()
 	data := noErr2(os.ReadFile(dockerfile))
+        // Provide a non-nil empty CapSet so that RUN --mount=type=bind instructions
+        // do not trigger a nil-pointer dereference in buildkit's convert_runmount.go.
+        emptyCaps := (&apicaps.CapList{}).CapSet(nil)
 
 	result, err := dockerfile2llb.Dockerfile2LLB(ctx, data, dockerfile2llb.ConvertOpt{
 		// building an image requires fetching the metadata for its parent
@@ -33,6 +37,7 @@ func getDockerfileDeps(dockerfile string, targetArch string, buildArgs map[strin
 			dir:      "/",
 			platform: "linux/" + targetArch,
 		},
+		LLBCaps: &emptyCaps,
 		Config: dockerui.Config{
 			BuildArgs:      buildArgs,
 			BuildPlatforms: []ocispecs.Platform{{OS: "linux", Architecture: targetArch}},
