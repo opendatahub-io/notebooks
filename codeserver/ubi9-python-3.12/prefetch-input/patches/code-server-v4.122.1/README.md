@@ -23,7 +23,7 @@ High/critical runtime CVEs cleared via npm overrides (refresh locks after changi
 - Root `code-server`: `compression@1.8.2`, `js-yaml@4.3.2`, `qs@6.16.0`, plus `fast-uri@3.1.8` / `ws@8.21.0` / `brace-expansion` major-line floors for Dependency Review
 - `lib/vscode` / `remote` / `extensions/notebook-renderers`: `undici@7.29.1`, with `js-yaml@4.3.2` / `qs@6.16.0` / `compression@1.8.2` / `fast-uri@3.1.8` on vscode where needed
 - `test`: `js-yaml@3.15.2` (Jest 3.x line)
-- Also retained on vscode/remote: `ip-address@10.3.1`, `tar@7.5.21`, `shell-quote@1.9.0`, `axios@1.20.0`, `form-data@4.0.6`, `ws@8.21.0` / `ws@7.5.11`
+- Also retained on vscode/remote: `ip-address@10.3.1`, `tar@7.5.21`, `shell-quote@1.9.0`, `axios@1.20.0`, `form-data@4`/`form-data@3` major-line floors (`4.0.6`/`3.0.5`), `ws@8.21.0` / `ws@7.5.11`
 - `microsoft-authentication`: `@nevware21/ts-utils@0.14.0`, `form-data@3.0.5`
 - `custom-packages`: `picomatch@4.0.5`
 
