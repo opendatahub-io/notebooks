@@ -98,7 +98,7 @@ jobs:
             -u "${AIPCC_USER}" --password-stdin
 
       - name: Export RENOVATE_HOST_RULES from Docker config
-        run: uv run scripts/ci/docker_config_to_renovate_host_rules.py >> "$GITHUB_ENV"
+        run: uv run scripts/ci/docker_config_to_renovate_host_rules.py --github-env "$GITHUB_ENV"
 
       - name: Set base branches per repository
         env:
