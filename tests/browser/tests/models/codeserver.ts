@@ -65,7 +65,9 @@ export class CodeServer {
         const textarea = this.page.locator("textarea.xterm-helper-textarea")
         await textarea.waitFor({state: "visible", timeout: 15000})
         await textarea.click()
-        await textarea.pressSequentially(command, {delay: 50})
+        // Insert the command atomically. Sending one key event at a time can drop
+        // the final character while xterm is busy processing terminal output.
+        await this.page.keyboard.insertText(command)
         await textarea.press("Enter")
     }
 
@@ -150,28 +152,18 @@ export class CodeServer {
         this.logger.debug(`opening terminal took ${attempts} ${plural(attempts, "attempt")}`)
     }
 
-    /**
-     * Open a workspace file via the Explorer, falling back to File → Open File.
-     */
+    /** Open a workspace file via the Explorer. */
     async openFile(file: string) {
         const basename = path.basename(file)
         await this.dismissStartupReadme()
         await this.focusWorkbench()
         await this.closeQuickInputIfOpen()
 
-        try {
-            await this.executeCommandViaPalette("View: Show Explorer")
-            const fileEntry = this.page.getByRole("treeitem", {name: basename, exact: true})
-            await expect(fileEntry).toBeVisible({timeout: 30000})
-            await fileEntry.dblclick()
-            await this.waitForTab(file)
-            return
-        } catch (_error) {
-            await this.closeQuickInputIfOpen()
-        }
-
-        await this.navigateMenus(["File", "Open File..."])
-        await this.navigateQuickInput([basename])
+        await this.executeCommandViaPalette("View: Show Explorer")
+        const explorer = this.page.getByRole("tree", {name: "Files Explorer"})
+        const fileEntry = explorer.getByRole("treeitem", {name: basename, exact: true})
+        await expect(fileEntry).toBeVisible({timeout: 30000})
+        await fileEntry.dblclick()
         await this.waitForTab(file)
     }
 
