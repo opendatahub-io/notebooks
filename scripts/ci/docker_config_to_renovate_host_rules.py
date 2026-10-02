@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Emit a GITHUB_ENV fragment (RENOVATE_HOST_RULES multiline) for GitHub Actions.
+"""Write masked RENOVATE_HOST_RULES to GITHUB_ENV for GitHub Actions.
 
 Reads Docker config.json from $DOCKER_CONFIG/config.json (same layout the workflow
 prepares for Renovate) and converts auths entries into Renovate hostRules JSON.
 
 Renovate's docker datasource applies hostRules reliably; relying on DOCKER_CONFIG alone
 inside the renovate container is brittle across renovatebot/github-action versions.
+
+The GitHub Actions mode registers every credential and the complete JSON payload with
+``add-mask`` before writing the payload to GITHUB_ENV. Use ``--json`` for local callers
+that need the compact JSON on stdout instead.
 """
 
 from __future__ import annotations
@@ -59,21 +63,40 @@ def docker_config_to_host_rules(config_path: Path) -> list[dict[str, str]]:
     return rules
 
 
-def _emit_github_env(rules: list[dict[str, str]]) -> None:
+def _escape_workflow_command(value: str) -> str:
+    """Escape data using the GitHub Actions workflow-command encoding."""
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _write_github_env(rules: list[dict[str, str]], github_env: Path) -> None:
     payload = json.dumps(rules, separators=(",", ":"))
+    masked_values = dict.fromkeys(
+        value for rule in rules for key in ("username", "password") if (value := rule.get(key))
+    )
+    if masked_values:
+        masked_values[payload] = None
+    for value in masked_values:
+        print(f"::add-mask::{_escape_workflow_command(value)}", flush=True)
+
     delim = "RENOHOST"
     # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#multiline-strings
-    print(f"RENOVATE_HOST_RULES<<{delim}")
-    print(payload)
-    print(delim)
+    with github_env.open("a", encoding="utf-8") as env_file:
+        env_file.write(f"RENOVATE_HOST_RULES<<{delim}\n{payload}\n{delim}\n")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
+    output = parser.add_mutually_exclusive_group(required=True)
+    output.add_argument(
         "--json",
         action="store_true",
         help="Print compact JSON only (for RENOVATE_HOST_RULES in a shell env).",
+    )
+    output.add_argument(
+        "--github-env",
+        type=Path,
+        metavar="PATH",
+        help="Mask credentials, then append RENOVATE_HOST_RULES to this GITHUB_ENV file.",
     )
     args = parser.parse_args()
 
@@ -89,7 +112,7 @@ def main() -> None:
     if args.json:
         print(json.dumps(rules, separators=(",", ":")))
         return
-    _emit_github_env(rules)
+    _write_github_env(rules, args.github_env)
 
 
 if __name__ == "__main__":
