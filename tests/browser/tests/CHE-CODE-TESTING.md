@@ -80,7 +80,7 @@ exec /opt/app-root/bin/run-che-code.sh
 Start the container with:
 
 ```bash
-podman run -d --name che-code-test -p 0.0.0.0:18888:8888 \
+podman run -d --name che-code-test -p 127.0.0.1:18888:8888 \
   -v /tmp/enable-ssl.sh:/tmp/enable-ssl.sh:ro,Z \
   localhost/notebooks:che-code-test \
   bash /tmp/enable-ssl.sh
@@ -150,8 +150,9 @@ await expect(page.locator('.tab').filter({ hasText: /\.ipynb/ }))
 // 2. Select kernel (app-root has ipykernel pre-installed)
 await page.getByRole('button', { name: /Select Kernel/i }).first().click();
 await page.waitForSelector('.quick-input-widget', { timeout: 5000 });
-await pickQuickInputOption(page, 'Python Env');
-await expect(page.locator('.quick-input-widget').getByText('Select a Python Environment'))
+// Python Env route needs `pet`, unavailable on ARM64 — use Jupyter Kernel instead
+await pickQuickInputOption(page, 'Jupyter Kernel');
+await expect(page.locator('.quick-input-widget').getByText(/Jupyter Kernel/i))
     .toBeVisible({ timeout: 10000 });
 await pickQuickInputOption(page, 'app-root');
 
@@ -162,7 +163,7 @@ await expect(async () => {
   }
   const snap = await page.ariaSnapshot();
   expect(snap).toContain('app-root');
-  expect(snap).not.toMatch(/Select Kernel.*Python Environments/s);
+  expect(snap).not.toMatch(/Select Kernel.*Jupyter Kernels/s);
 }).toPass({ timeout: 30000 });
 
 // 4. Type into cell
@@ -229,13 +230,13 @@ await expect(async () => {
   }
   const snap = await page.ariaSnapshot();
   expect(snap).toContain('app-root');
-  expect(snap).not.toMatch(/Select Kernel.*Python Environments/s);
+  expect(snap).not.toMatch(/Select Kernel.*Jupyter Kernels/s);
 }).toPass({ timeout: 30000 });
 ```
 
 ## ARIA Snapshots
 
-`page.ariaSnapshot()` (Playwright 1.57+) returns a YAML string of the accessibility
+`page.ariaSnapshot()` (Playwright 1.59+) returns a YAML string of the accessibility
 tree. It replaced the deprecated `page.accessibility.snapshot()`.
 
 ### Usage in tests
