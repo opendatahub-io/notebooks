@@ -59,7 +59,7 @@ jobs:
       COMPONENT_DIR: "jupyter/minimal/ubi9-python-3.12"
       BUILD_ARCH: ${{ matrix.platform }}
       PODMAN_BUILDER_IMAGE: "ibm-trial/podman-builder:latest"
-      HERMETO_IMAGE: "ghcr.io/hermetoproject/hermeto:0.46.2"
+      HERMETO_IMAGE: "ghcr.io/hermetoproject/hermeto:0.51.0"
       # s390x: renamed binary bypasses the AppArmor path-based socket() block;
       # ppc64le: plain podman is expected to work (doc: only s390x is affected).
       PODMAN_BIN: ${{ matrix.platform == 'linux/s390x' && 'podman-build' || 'podman' }}
