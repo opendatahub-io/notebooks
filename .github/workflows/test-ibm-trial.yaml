@@ -333,12 +333,12 @@ jobs:
           rm -rf .venv
           python3 -m uv venv --python 3.14 --seed .venv
           DEPS="pytest pytest-instafail allure-pytest hypothesis pydantic \
-            requests testcontainers docker podman kubernetes certifi"
+            requests testcontainers docker podman kubernetes ocp-resources certifi"
           if python3 -m uv pip install --python .venv/bin/python --quiet $DEPS; then
             echo "VERDICT: test dep set wheel-installable on $(uname -m) for cp314"
           else
             echo "note: wheel-only install failed (expected where PyYAML has no cp314 wheel); retrying with pyyaml from source"
-            python3 -m uv pip install --python .venv/bin/python --quiet --no-binary-package pyyaml $DEPS
+            python3 -m uv pip install --python .venv/bin/python --quiet --no-binary pyyaml $DEPS
             echo "VERDICT: pyyaml source build OK on $(uname -m) (C toolchain present)"
           fi
           .venv/bin/python -m pytest \
