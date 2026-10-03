@@ -136,16 +136,14 @@ jobs:
             fi
           ' || true
 
-      - name: "podman-in-docker: pull via ${PODMAN_BIN} (claim: ppc64le native OK / s390x rename fixes)"
+      - name: "podman-in-docker: pull (claim: ppc64le native OK / s390x rename fixes)"
         run: |
           set -Eeuxo pipefail
           docker run --rm --privileged --network=host "${PODMAN_BUILDER_IMAGE}" bash -c '
             set -Eeuxo pipefail
-            "${PODMAN_BIN}" pull quay.io/centos/centos:stream9-minimal
-            "${PODMAN_BIN}" images
+            "${{ env.PODMAN_BIN }}" pull quay.io/centos/centos:stream9-minimal
+            "${{ env.PODMAN_BIN }}" images
           '
-        env:
-          PODMAN_BIN: ${{ env.PODMAN_BIN }}
 
       - name: "podman-in-docker: network build (claim: DNS works in RUN steps after fix)"
         run: |
@@ -154,12 +152,10 @@ jobs:
             -v "${{ github.workspace }}:/workspace:z" -w /workspace \
             "${PODMAN_BUILDER_IMAGE}" bash -c '
             set -Eeuxo pipefail
-            "${PODMAN_BIN}" build -t ibm-trial/nettest \
+            "${{ env.PODMAN_BIN }}" build -t ibm-trial/nettest \
               -f /workspace/ci/cached-builds/Containerfile.test-network /workspace/ci/cached-builds/
-            "${PODMAN_BIN}" run --rm ibm-trial/nettest cat /etc/os-release
+            "${{ env.PODMAN_BIN }}" run --rm ibm-trial/nettest cat /etc/os-release
           '
-        env:
-          PODMAN_BIN: ${{ env.PODMAN_BIN }}
 
       - name: "podman-in-docker: HEREDOC build (claim: buildah 1.35+ required, absent in Ubuntu 4.9.3)"
         run: |
@@ -168,12 +164,10 @@ jobs:
             -v "${{ github.workspace }}:/workspace:z" -w /workspace \
             "${PODMAN_BUILDER_IMAGE}" bash -c '
             set -Eeuxo pipefail
-            "${PODMAN_BIN}" build -t ibm-trial/heredoctest \
+            "${{ env.PODMAN_BIN }}" build -t ibm-trial/heredoctest \
               -f /workspace/ci/cached-builds/Containerfile.test-heredoc /workspace/ci/cached-builds/
-            "${PODMAN_BIN}" run --rm ibm-trial/heredoctest which bash
+            "${{ env.PODMAN_BIN }}" run --rm ibm-trial/heredoctest which bash
           '
-        env:
-          PODMAN_BIN: ${{ env.PODMAN_BIN }}
 
       - name: "podman-in-docker: --volume cachi2 mount (claim: podman-only feature, the Konflux way)"
         run: |
@@ -185,13 +179,11 @@ jobs:
             -v "${{ github.workspace }}:/workspace:z" -w /workspace \
             "${PODMAN_BUILDER_IMAGE}" bash -c '
             set -Eeuxo pipefail
-            "${PODMAN_BIN}" build \
+            "${{ env.PODMAN_BIN }}" build \
               --volume /cachi2/output:/cachi2/output:Z \
               -t ibm-trial/voltest \
               -f /workspace/ci/cached-builds/Containerfile.test-volume /workspace/ci/cached-builds/
           '
-        env:
-          PODMAN_BIN: ${{ env.PODMAN_BIN }}
 
       - name: "podman-in-docker: image transfer (claim: podman save docker-archive -> docker load)"
         run: |
@@ -200,12 +192,10 @@ jobs:
             -v "${{ github.workspace }}:/workspace:z" -w /workspace \
             "${PODMAN_BUILDER_IMAGE}" bash -c '
             set -Eeuxo pipefail
-            "${PODMAN_BIN}" build -t ibm-trial/transfer \
+            "${{ env.PODMAN_BIN }}" build -t ibm-trial/transfer \
               -f /workspace/ci/cached-builds/Containerfile.test /workspace/ci/cached-builds/
-            "${PODMAN_BIN}" save --format docker-archive -o /workspace/ibm-trial-transfer.tar ibm-trial/transfer
+            "${{ env.PODMAN_BIN }}" save --format docker-archive -o /workspace/ibm-trial-transfer.tar ibm-trial/transfer
           '
-        env:
-          PODMAN_BIN: ${{ env.PODMAN_BIN }}
 
       - name: "docker load transferred image and run"
         run: |
