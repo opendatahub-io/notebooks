@@ -15,7 +15,9 @@
 #   "ppc64le: podman works natively"             -> "podman-in-docker: pull"
 #   "s390x: AppArmor blocks /usr/bin/podman by path; rename fixes"
 #                                                -> "s390x AppArmor negative control", "podman-in-docker: pull"
-#   "podman 5.x HEREDOC support needed"          -> "podman-in-docker: HEREDOC build"
+#   "podman 5.x HEREDOC support needed"          -> "podman-in-docker: HEREDOC build" (body-as-command form,
+#                                                      hard) + "HEREDOC stdin form probe"
+#                                                      (RUN cmd <<EOF, informational)
 #   "podman --volume = Konflux hermetic mount"   -> "podman-in-docker: --volume cachi2 mount"
 #   "podman save -> docker load -> testcontainers"
 #                                                -> "image transfer", "Testcontainers pytest"
@@ -168,6 +170,22 @@ jobs:
               -f /workspace/ci/cached-builds/Containerfile.test-heredoc /workspace/ci/cached-builds/
             "${{ env.PODMAN_BIN }}" run --rm ibm-trial/heredoctest which bash
           '
+
+      - name: "podman-in-docker: HEREDOC stdin form probe (claim: buildah passes body as stdin)"
+        continue-on-error: true
+        run: |
+          set -x
+          if docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" -w /workspace \
+            "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            "${{ env.PODMAN_BIN }}" build -t ibm-trial/heredocstdin \
+              -f /workspace/ci/cached-builds/Containerfile.test-heredoc-stdin /workspace/ci/cached-builds/
+          ' 2>&1; then
+            echo "VERDICT: heredoc stdin form (RUN cmd <<EOF) SUCCEEDED on $(uname -m) with buildah 1.43.4"
+          else
+            echo "VERDICT: heredoc stdin form (RUN cmd <<EOF) FAILED on $(uname -m) — buildah 1.43.4 does not pass the heredoc body as stdin (use the body-as-command form)"
+          fi
 
       - name: "podman-in-docker: --volume cachi2 mount (claim: podman-only feature, the Konflux way)"
         run: |
