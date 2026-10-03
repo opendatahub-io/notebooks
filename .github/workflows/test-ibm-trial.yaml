@@ -314,21 +314,37 @@ jobs:
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/docker.sock"
           TESTCONTAINERS_RYUK_DISABLED: "true"
           FORCE_COLOR: "1"
+          PYTHONPATH: "${{ github.workspace }}"
         run: |
           set -Eeuxo pipefail
-          # The repo requires Python 3.14 (tests/containers helpers use
-          # PEP 758 syntax); the runner system python3 is 3.12 and cannot
-          # parse it. uv serves standalone CPython for both arches (proven
-          # by the uv sync probe step). Clean the .venv the probe left.
+          # The repo requires Python 3.14 (tests/containers helpers use PEP 758
+          # syntax); the runner system python3 is 3.12. uv serves standalone
+          # CPython for both arches (proven by the uv sync probe step).
+          #
+          # Scoped to the test files whose import closure is wheel-installable
+          # for cp314 on ppc64le/s390x: the full tests/containers tree needs
+          # torch/tensorflow/jupyter-client(pyzmq), which have no wheels for
+          # these arches, and the repo's [tool.uv] no-build=true policy
+          # forbids source builds. kubernetes -> PyYAML is the one gap: pyyaml
+          # ships a cp314 s390x wheel but none for ppc64le, so fall back to a
+          # source build (needs a C compiler).
+          command -v gcc || echo "note: no gcc on runner"
           python3 -m pip install --user --break-system-packages --quiet uv
           rm -rf .venv
           python3 -m uv venv --python 3.14 --seed .venv
-          python3 -m uv pip install --python .venv/bin/python --quiet \
-            pytest pytest-cov pytest-instafail allure-pytest hypothesis pyfakefs \
-            "pydantic>=2.13.0" requests pyyaml pyjson5 ruamel-yaml structlog \
-            tenacity stamina testcontainers docker jupyter-client websocket-client \
-            podman kubernetes certifi pygments rich typer inline-snapshot
-          .venv/bin/python -m pytest --capture=fd tests/containers \
+          DEPS="pytest pytest-instafail allure-pytest hypothesis pydantic \
+            requests testcontainers docker podman kubernetes certifi"
+          if python3 -m uv pip install --python .venv/bin/python --quiet $DEPS; then
+            echo "VERDICT: test dep set wheel-installable on $(uname -m) for cp314"
+          else
+            echo "note: wheel-only install failed (expected where PyYAML has no cp314 wheel); retrying with pyyaml from source"
+            python3 -m uv pip install --python .venv/bin/python --quiet --no-binary-package pyyaml $DEPS
+            echo "VERDICT: pyyaml source build OK on $(uname -m) (C toolchain present)"
+          fi
+          .venv/bin/python -m pytest \
+            tests/containers/base_image_test.py \
+            tests/containers/workbenches/workbench_image_test.py \
+            tests/containers/workbenches/jupyterlab/jupyterlab_test.py \
             -m 'not openshift and not cuda and not rocm and not manifest_validation' \
             --image="${IMAGE_NAME}" -v
 
