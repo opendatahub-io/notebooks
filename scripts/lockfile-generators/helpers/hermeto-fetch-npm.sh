@@ -22,9 +22,11 @@ source "$(dirname "$0")/hermeto-common.sh"
 
 # Run hermeto in a container; requires podman and network access.
 hermeto() {
-  local -a podman_args=(--rm --userns=keep-id -i)
-  [ -t 0 ] && podman_args+=(-t)
-  $CONTAINER_ENGINE run "${podman_args[@]}" \
+  # --userns=keep-id is podman-only; docker rejects it ("invalid USER mode").
+  local -a container_args=(--rm -i)
+  case "$CONTAINER_ENGINE" in podman*) container_args=(--rm --userns=keep-id -i) ;; esac
+  [ -t 0 ] && container_args+=(-t)
+  $CONTAINER_ENGINE run "${container_args[@]}" \
     -v "$PWD:$PWD:z" \
     -w "$PWD" \
     "$HERMETO_IMAGE" \

@@ -3,6 +3,10 @@ set -euo pipefail
 
 CONTAINER_ENGINE="${CONTAINER_ENGINE:-podman}"
 
+# --userns=keep-id is podman-only; docker rejects it ("invalid USER mode").
+USERNS_ARGS=()
+case "$CONTAINER_ENGINE" in podman*) USERNS_ARGS=(--userns=keep-id) ;; esac
+
 # hermeto-fetch-rpm.sh — Download RPMs using Hermeto and create repo metadata.
 #
 # Fetches all RPMs listed in rpms.lock.yaml into cachi2/output/deps/rpm/
@@ -213,7 +217,7 @@ trap 'cleanup_staging "$HERMETO_STAGING" "${CDN_CERT_DIR:-}"' EXIT
 
 echo "--- Downloading RPMs via hermeto ---"
 $CONTAINER_ENGINE run --rm \
-  --userns=keep-id \
+  ${USERNS_ARGS[@]+"${USERNS_ARGS[@]}"} \
   -v "$(pwd)/$PREFETCH_DIR:/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   ${CDN_CERT_DIR:+-v "$CDN_CERT_DIR:/certs:ro,z"} \
@@ -224,7 +228,7 @@ $CONTAINER_ENGINE run --rm \
 # so the Dockerfile can `dnf install` from the local repo.
 echo "--- Generating repo metadata ---"
 $CONTAINER_ENGINE run --rm \
-  --userns=keep-id \
+  ${USERNS_ARGS[@]+"${USERNS_ARGS[@]}"} \
   -v "$HERMETO_STAGING:/output:z" \
   "$HERMETO_IMAGE" \
   inject-files /output --for-output-dir /cachi2/output
