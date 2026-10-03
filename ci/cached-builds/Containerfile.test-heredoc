@@ -1,0 +1,6 @@
+FROM quay.io/centos/centos:stream9-minimal
+RUN /usr/bin/microdnf <<'HEREDOC'
+install -y --setopt=install_weak_deps=0 bash
+clean all
+HEREDOC
+RUN echo "heredoc build OK on $(uname -m)"

@@ -1,0 +1,2 @@
+FROM quay.io/centos/centos:stream9-minimal
+RUN cat /cachi2/output/proof.txt | grep -q IBM-TRIAL-VOLUME-OK && echo "volume mount OK on $(uname -m)"

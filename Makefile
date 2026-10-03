@@ -28,7 +28,7 @@ CHECK_PAYLOAD_CONFIG_OVERLAY := scripts/check-payload/.overlay.toml
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 # security options for podman (label=disable fixes permission denied on macOS rootful)
-CONTAINER_BUILD_SECURITY_ARGS ?= $(if $(filter podman,$(CONTAINER_ENGINE)),--security-opt label=disable,)
+CONTAINER_BUILD_SECURITY_ARGS ?= $(if $(filter podman%,$(CONTAINER_ENGINE)),--security-opt label=disable,)
 # whether to push the images to a registry as they are built
 PUSH_IMAGES ?= yes
 # INDEX_MODE: auto (default), public-index, or rh-index - controls lock file generation
