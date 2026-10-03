@@ -332,8 +332,13 @@ jobs:
           python3 -m pip install --user --break-system-packages --quiet uv
           rm -rf .venv
           python3 -m uv venv --python 3.14 --seed .venv
+          # 11.0.124 (the version the resolver otherwise backtracks to on
+          # ppc64le/s390x) has a broken sdist: AGENTS.md is an absolute
+          # symlink to the maintainer's home dir, which uv refuses to
+          # unpack. 11.0.141's sdist is clean.
           DEPS="pytest pytest-instafail allure-pytest hypothesis pydantic \
-            requests testcontainers docker podman kubernetes openshift-python-wrapper certifi"
+            requests testcontainers docker podman kubernetes \
+            openshift-python-wrapper==11.0.141 certifi"
           # openshift-python-wrapper (provides the ocp_resources module) is
           # sdist-only, as are three of its transitive deps - the same four the
           # repo exempts in pyproject [tool.uv] no-binary-package.
