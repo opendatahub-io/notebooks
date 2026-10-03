@@ -168,7 +168,7 @@ jobs:
             set -Eeuxo pipefail
             "${{ env.PODMAN_BIN }}" build -t ibm-trial/heredoctest \
               -f /workspace/ci/cached-builds/Containerfile.test-heredoc /workspace/ci/cached-builds/
-            "${{ env.PODMAN_BIN }}" run --rm ibm-trial/heredoctest which bash
+            "${{ env.PODMAN_BIN }}" run --rm ibm-trial/heredoctest bash -c 'echo bash OK on \$(uname -m)'
           '
 
       - name: "podman-in-docker: HEREDOC stdin form probe (claim: buildah passes body as stdin)"
