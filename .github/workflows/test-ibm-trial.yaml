@@ -333,12 +333,16 @@ jobs:
           rm -rf .venv
           python3 -m uv venv --python 3.14 --seed .venv
           DEPS="pytest pytest-instafail allure-pytest hypothesis pydantic \
-            requests testcontainers docker podman kubernetes ocp-resources certifi"
-          if python3 -m uv pip install --python .venv/bin/python --quiet $DEPS; then
-            echo "VERDICT: test dep set wheel-installable on $(uname -m) for cp314"
+            requests testcontainers docker podman kubernetes openshift-python-wrapper certifi"
+          # openshift-python-wrapper (provides the ocp_resources module) is
+          # sdist-only, as are three of its transitive deps - the same four the
+          # repo exempts in pyproject [tool.uv] no-binary-package.
+          NOBIN="openshift-python-wrapper pyhelper-utils python-simple-logger timeout-sampler"
+          if python3 -m uv pip install --python .venv/bin/python --quiet --no-binary $NOBIN $DEPS; then
+            echo "VERDICT: test dep set installable on $(uname -m) for cp314 (wheels + sdist-exempt packages)"
           else
-            echo "note: wheel-only install failed (expected where PyYAML has no cp314 wheel); retrying with pyyaml from source"
-            python3 -m uv pip install --python .venv/bin/python --quiet --no-binary pyyaml $DEPS
+            echo "note: install failed (expected where PyYAML has no cp314 wheel); retrying with pyyaml from source"
+            python3 -m uv pip install --python .venv/bin/python --quiet --no-binary $NOBIN --no-binary pyyaml $DEPS
             echo "VERDICT: pyyaml source build OK on $(uname -m) (C toolchain present)"
           fi
           .venv/bin/python -m pytest \
