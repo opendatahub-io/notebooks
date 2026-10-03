@@ -307,55 +307,56 @@ jobs:
           rm -f ibm-trial-image.tar
           docker images --digests | head -20
 
-      - name: "Testcontainers pytest (claim: works via /var/run/docker.sock on IBM arches)"
+      - name: "Testcontainers smoke (claim: works via /var/run/docker.sock on IBM arches)"
         if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
         env:
           DOCKER_HOST: "unix:///var/run/docker.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/docker.sock"
           TESTCONTAINERS_RYUK_DISABLED: "true"
-          FORCE_COLOR: "1"
-          PYTHONPATH: "${{ github.workspace }}"
         run: |
           set -Eeuxo pipefail
-          # The repo requires Python 3.14 (tests/containers helpers use PEP 758
-          # syntax); the runner system python3 is 3.12. uv serves standalone
-          # CPython for both arches (proven by the uv sync probe step).
+          # Claim 15: testcontainers runs the built image via the runner's
+          # docker socket on ppc64le/s390x.
           #
-          # Scoped to the test files whose import closure is wheel-installable
-          # for cp314 on ppc64le/s390x: the full tests/containers tree needs
-          # torch/tensorflow/jupyter-client(pyzmq), which have no wheels for
-          # these arches, and the repo's [tool.uv] no-build=true policy
-          # forbids source builds. kubernetes -> PyYAML is the one gap: pyyaml
-          # ships a cp314 s390x wheel but none for ppc64le, so fall back to a
-          # source build (needs a C compiler).
-          command -v gcc || echo "note: no gcc on runner"
-          python3 -m pip install --user --break-system-packages --quiet uv
-          rm -rf .venv
-          python3 -m uv venv --python 3.14 --seed .venv
-          # 11.0.124 (the version the resolver otherwise backtracks to on
-          # ppc64le/s390x) has a broken sdist: AGENTS.md is an absolute
-          # symlink to the maintainer's home dir, which uv refuses to
-          # unpack. 11.0.141's sdist is clean.
-          DEPS="pytest pytest-instafail allure-pytest hypothesis pydantic \
-            requests testcontainers docker podman kubernetes \
-            openshift-python-wrapper==11.0.141 certifi"
-          # openshift-python-wrapper (provides the ocp_resources module) is
-          # sdist-only, as are three of its transitive deps - the same four the
-          # repo exempts in pyproject [tool.uv] no-binary-package.
-          NOBIN="openshift-python-wrapper pyhelper-utils python-simple-logger timeout-sampler"
-          if python3 -m uv pip install --python .venv/bin/python --quiet --no-binary $NOBIN $DEPS; then
-            echo "VERDICT: test dep set installable on $(uname -m) for cp314 (wheels + sdist-exempt packages)"
-          else
-            echo "note: install failed (expected where PyYAML has no cp314 wheel); retrying with pyyaml from source"
-            python3 -m uv pip install --python .venv/bin/python --quiet --no-binary $NOBIN --no-binary pyyaml $DEPS
-            echo "VERDICT: pyyaml source build OK on $(uname -m) (C toolchain present)"
-          fi
-          .venv/bin/python -m pytest \
-            tests/containers/base_image_test.py \
-            tests/containers/workbenches/workbench_image_test.py \
-            tests/containers/workbenches/jupyterlab/jupyterlab_test.py \
-            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
-            --image="${IMAGE_NAME}" -v
+          # Direct testcontainers smoke, not the repo's pytest suite: under the
+          # repo's [tool.uv] no-build=true wheel-only policy the suite's import
+          # closure is not installable on these arches (markupsafe: no
+          # ppc64le/s390x wheels for ANY version -> jinja2 ->
+          # openshift-python-wrapper -> ocp_resources; pyzmq: no cp314 wheels
+          # for either arch -> jupyter-client; pyyaml: no cp314 ppc64le wheel;
+          # plus torch/tensorflow in the full tree). See
+          # .scratch/ibm-trial-revalidation.md for the wheel-landscape table.
+          # testcontainers/docker/requests are pure python, so the system
+          # python 3.12 is fine for the smoke (no PEP 758 syntax involved).
+          python3 -m pip install --user --break-system-packages --quiet \
+            testcontainers docker requests
+          python3 -c '
+          import os
+          import time
+
+          import requests
+          from testcontainers.core.container import DockerContainer
+
+          image = os.environ["IMAGE_NAME"]
+          print("smoke image:", image)
+          with DockerContainer(image).with_exposed_ports(8888) as c:
+              url = "http://" + c.get_container_host_ip() + ":" + str(c.get_exposed_port(8888)) + "/"
+              deadline = time.time() + 600
+              last = None
+              while time.time() < deadline:
+                  try:
+                      r = requests.get(url, timeout=10)
+                      print("GET", url, "->", r.status_code, "len", len(r.content))
+                      assert 200 <= r.status_code < 400
+                      break
+                  except Exception as e:
+                      last = e
+                      time.sleep(5)
+              else:
+                  raise SystemExit("jupyter never became ready: %r" % (last,))
+              print("VERDICT: testcontainers via docker socket OK on", os.uname().machine,
+                    "- built image serves jupyter")
+          '
 
       - name: "Failure breadcrumbs"
         if: ${{ failure() }}
