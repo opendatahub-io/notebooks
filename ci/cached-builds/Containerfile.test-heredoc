@@ -1,0 +1,7 @@
+FROM quay.io/centos/centos:stream9-minimal
+# Heredoc form A (spec form): the heredoc body IS the command run by the shell.
+RUN <<'HEREDOC'
+/usr/bin/microdnf install -y --setopt=install_weak_deps=0 bash
+/usr/bin/microdnf clean all
+HEREDOC
+RUN echo "heredoc body-as-command build OK on $(uname -m)"

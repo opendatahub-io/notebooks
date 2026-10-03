@@ -1,0 +1,9 @@
+FROM quay.io/centos/centos:stream9-minimal
+# Heredoc form B: heredoc body as stdin for the named command (microdnf reads
+# commands from stdin). buildah 1.43.4 observed NOT passing the body through
+# (run 2: microdnf printed its help, "error: No command specified").
+RUN /usr/bin/microdnf <<'HEREDOC'
+install -y --setopt=install_weak_deps=0 bash
+clean all
+HEREDOC
+RUN echo "heredoc stdin build OK on $(uname -m)"

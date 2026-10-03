@@ -1,0 +1,368 @@
+---
+# Trial validation of the IBM actionspz runner findings (docs/ibmactionspz.md).
+#
+# This workflow runs ONLY on the IBM self-hosted runners (ppc64le, s390x) and
+# exists to revalidate, claim by claim, the platform knowledge documented in
+# the investigation branch before it is wired into the production build
+# pipeline. Each step maps to a documented claim; informational steps print a
+# "VERDICT:" line so the run log can be diffed against the doc.
+#
+# Claim -> step map:
+#   "runner labels available to the repo"        -> the job queuing at all
+#   "LXD containers, no net/mount ns on host"    -> "Namespace and DNS probes"
+#   "Docker CE pre-installed, works"             -> "Container engine inventory", "Docker sanity"
+#   "docker run --privileged = full escape"      -> every "podman-in-docker" step
+#   "ppc64le: podman works natively"             -> "podman-in-docker: pull"
+#   "s390x: AppArmor blocks /usr/bin/podman by path; rename fixes"
+#                                                -> "s390x AppArmor negative control", "podman-in-docker: pull"
+#   "podman 5.x HEREDOC support needed"          -> "podman-in-docker: HEREDOC build" (body-as-command form,
+#                                                      hard) + "HEREDOC stdin form probe"
+#                                                      (RUN cmd <<EOF, informational)
+#   "podman --volume = Konflux hermetic mount"   -> "podman-in-docker: --volume cachi2 mount"
+#   "podman save -> docker load -> testcontainers"
+#                                                -> "image transfer", "Testcontainers pytest"
+#   "setup-go needs architecture: ppc64le"       -> "Go toolchain"
+#   "hermeto image lacks ppc64le/s390x manifests; build natively"
+#                                                -> "Build hermeto image natively"
+#   "hermetic prefetch works with CONTAINER_ENGINE=docker"
+#                                                -> "Prefetch hermetic build dependencies"
+#   "uv sync wheel availability (prek/pyyaml...)"-> "uv sync probe"
+#   full end-to-end: clone -> prefetch -> make (podman-in-docker) -> testcontainers
+#                                                -> "Build: make" + "Testcontainers pytest"
+name: IBM Runners Trial Validation
+
+"on":
+  push:
+    branches: [ibm-trial-validation]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: "validate · ${{ matrix.platform }}"
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04-ppc64le
+            platform: linux/ppc64le
+          - runner: ubuntu-24.04-s390x
+            platform: linux/s390x
+    env:
+      IMAGE_REGISTRY: "ghcr.io/opendatahub-io/notebooks/workbench-images"
+      MAKE_TARGET: "jupyter-minimal-ubi9-python-3.12"
+      COMPONENT_DIR: "jupyter/minimal/ubi9-python-3.12"
+      BUILD_ARCH: ${{ matrix.platform }}
+      PODMAN_BUILDER_IMAGE: "ibm-trial/podman-builder:latest"
+      HERMETO_IMAGE: "ghcr.io/hermetoproject/hermeto:0.51.0"
+      # s390x: renamed binary bypasses the AppArmor path-based socket() block;
+      # ppc64le: plain podman is expected to work (doc: only s390x is affected).
+      PODMAN_BIN: ${{ matrix.platform == 'linux/s390x' && 'podman-build' || 'podman' }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: "System info (claim: LXD container, ubuntu-24.04, ~14 GiB, 100+ GB disk)"
+        run: |
+          set -Eeuxo pipefail
+          uname -a
+          cat /etc/os-release
+          df -h
+          free -h
+          nproc
+          echo "::group::virtualization"
+          systemd-detect-virt 2>&1 || true
+          cat /proc/1/cgroup 2>/dev/null | head -5 || true
+          echo "::endgroup::"
+          echo "::group::apparmor"
+          aa-status 2>&1 | head -20 || true
+          find /etc/apparmor.d/ -maxdepth 1 2>/dev/null | head -20 || echo "no /etc/apparmor.d"
+          echo "::endgroup::"
+
+      - name: "Container engine inventory (claim: Docker CE 28 pre-installed, podman 4.x, no Homebrew)"
+        run: |
+          set -Eeuxo pipefail
+          docker version
+          docker info --format 'storage={{.Driver}}'
+          echo "::group::podman"
+          which podman && podman --version || echo "podman not installed"
+          echo "::endgroup::"
+          echo "::group::homebrew"
+          which brew || echo "no homebrew (as documented)"
+          echo "::endgroup::"
+
+      - name: "Namespace and DNS probes (claim: host LXD blocks net/mount ns; --privileged escapes)"
+        continue-on-error: true
+        run: |
+          set -x
+          unshare --user --pid --fork echo "user+pid ns: OK" || echo "user+pid ns: BLOCKED"
+          unshare --net echo "net ns: OK" || echo "net ns: BLOCKED"
+          unshare --mount echo "mount ns: OK" || echo "mount ns: BLOCKED"
+          getent hosts quay.io || echo "host DNS: FAILED"
+          python3 -c "import socket; socket.socket(socket.AF_INET, socket.SOCK_STREAM)" && echo "raw TCP socket: OK" || echo "raw TCP socket: BLOCKED"
+
+      - name: "Docker sanity: build and run"
+        run: |
+          set -Eeuxo pipefail
+          docker build -t ibm-trial/sanity -f ci/cached-builds/Containerfile.test ci/cached-builds/
+          docker run --rm ibm-trial/sanity
+
+      - name: "Build podman-builder image (Fedora 44, podman 5.x, renamed binaries)"
+        run: |
+          set -Eeuxo pipefail
+          docker build -t "${PODMAN_BUILDER_IMAGE}" -f ci/cached-builds/Dockerfile.podman-builder ci/cached-builds/
+          docker run --rm --privileged "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            /usr/bin/podman --version
+            /usr/bin/podman-build --version
+            /usr/bin/buildah-build --version
+          '
+
+      - name: "s390x AppArmor negative control (claim: unrenamed /usr/bin/podman still blocked)"
+        if: ${{ matrix.platform == 'linux/s390x' }}
+        continue-on-error: true
+        run: |
+          set -x
+          docker run --rm --privileged --network=host "${PODMAN_BUILDER_IMAGE}" bash -c '
+            if /usr/bin/podman pull quay.io/centos/centos:stream9-minimal 2>&1; then
+              echo "VERDICT: plain /usr/bin/podman pull SUCCEEDED on s390x — AppArmor restriction no longer present (doc delta!)"
+            else
+              echo "VERDICT: plain /usr/bin/podman pull FAILED on s390x as documented (AppArmor blocks socket() by binary path) — rename bypass still required"
+            fi
+          ' || true
+
+      - name: "podman-in-docker: pull (claim: ppc64le native OK / s390x rename fixes)"
+        run: |
+          set -Eeuxo pipefail
+          docker run --rm --privileged --network=host "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            "${{ env.PODMAN_BIN }}" pull quay.io/centos/centos:stream9-minimal
+            "${{ env.PODMAN_BIN }}" images
+          '
+
+      - name: "podman-in-docker: network build (claim: DNS works in RUN steps after fix)"
+        run: |
+          set -Eeuxo pipefail
+          docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" -w /workspace \
+            "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            "${{ env.PODMAN_BIN }}" build -t ibm-trial/nettest \
+              -f /workspace/ci/cached-builds/Containerfile.test-network /workspace/ci/cached-builds/
+            "${{ env.PODMAN_BIN }}" run --rm ibm-trial/nettest cat /etc/os-release
+          '
+
+      - name: "podman-in-docker: HEREDOC build (claim: buildah 1.35+ required, absent in Ubuntu 4.9.3)"
+        run: |
+          set -Eeuxo pipefail
+          docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" -w /workspace \
+            "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            "${{ env.PODMAN_BIN }}" build -t ibm-trial/heredoctest \
+              -f /workspace/ci/cached-builds/Containerfile.test-heredoc /workspace/ci/cached-builds/
+            "${{ env.PODMAN_BIN }}" run --rm ibm-trial/heredoctest bash -c "echo bash OK on $(uname -m)"
+          '
+
+      - name: "podman-in-docker: HEREDOC stdin form probe (claim: buildah passes body as stdin)"
+        continue-on-error: true
+        run: |
+          set -x
+          if docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" -w /workspace \
+            "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            "${{ env.PODMAN_BIN }}" build -t ibm-trial/heredocstdin \
+              -f /workspace/ci/cached-builds/Containerfile.test-heredoc-stdin /workspace/ci/cached-builds/
+          ' 2>&1; then
+            echo "VERDICT: heredoc stdin form (RUN cmd <<EOF) SUCCEEDED on $(uname -m) with buildah 1.43.4"
+          else
+            echo "VERDICT: heredoc stdin form (RUN cmd <<EOF) FAILED on $(uname -m) — buildah 1.43.4 does not pass the heredoc body as stdin (use the body-as-command form)"
+          fi
+
+      - name: "podman-in-docker: --volume cachi2 mount (claim: podman-only feature, the Konflux way)"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p /tmp/ibm-trial-cachi2
+          echo "IBM-TRIAL-VOLUME-OK" > /tmp/ibm-trial-cachi2/proof.txt
+          docker run --rm --privileged --network=host \
+            -v /tmp/ibm-trial-cachi2:/cachi2/output:z \
+            -v "${{ github.workspace }}:/workspace:z" -w /workspace \
+            "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            "${{ env.PODMAN_BIN }}" build \
+              --volume /cachi2/output:/cachi2/output:Z \
+              -t ibm-trial/voltest \
+              -f /workspace/ci/cached-builds/Containerfile.test-volume /workspace/ci/cached-builds/
+          '
+
+      - name: "podman-in-docker: image transfer (claim: podman save docker-archive -> docker load)"
+        run: |
+          set -Eeuxo pipefail
+          docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" -w /workspace \
+            "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            "${{ env.PODMAN_BIN }}" build -t ibm-trial/transfer \
+              -f /workspace/ci/cached-builds/Containerfile.test /workspace/ci/cached-builds/
+            "${{ env.PODMAN_BIN }}" save --format docker-archive -o /workspace/ibm-trial-transfer.tar ibm-trial/transfer
+          '
+
+      - name: "docker load transferred image and run"
+        run: |
+          set -Eeuxo pipefail
+          # podman records image names with a localhost/ prefix, so a
+          # podman-saved 'ibm-trial/transfer' loads as
+          # 'localhost/ibm-trial/transfer'. Docker's 'load -q' does not
+          # print a bare ID for podman-created archives (it prints
+          # 'Loaded image: <name>'), so run the deterministic full name.
+          docker load -i ibm-trial-transfer.tar
+          rm -f ibm-trial-transfer.tar
+          docker images --format '{{.Repository}}:{{.Tag}}'
+          docker run --rm localhost/ibm-trial/transfer
+
+      - name: "Go toolchain (claim: setup-go needs architecture: ppc64le)"
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: "stable"
+          architecture: ${{ matrix.platform == 'linux/ppc64le' && 'ppc64le' || '' }}
+          cache-dependency-path: scripts/buildinputs/go.mod
+
+      - name: "Go version"
+        run: go version
+
+      - name: "Compile bin/buildinputs (host; reused via workspace mount)"
+        run: |
+          set -Eeuxo pipefail
+          make bin/buildinputs
+
+      - name: "uv sync probe (claim: wheel availability table, May 2026)"
+        continue-on-error: true
+        run: |
+          set -x
+          python3 -m pip install --user --break-system-packages --quiet uv
+          if python3 -m uv sync --group dev --locked \
+            --no-binary-package pyyaml \
+            --no-binary-package markupsafe \
+            --no-binary-package ruamel-yaml-clib; then
+            echo "VERDICT: uv sync --group dev --locked SUCCEEDED on $(uname -m) — wheel landscape may have changed since May 2026 (doc delta!)"
+          else
+            echo "VERDICT: uv sync --group dev --locked FAILED on $(uname -m) — platform markers still required (doc holds)"
+          fi
+
+      - name: "Build hermeto image natively (claim: no ppc64le/s390x manifests on ghcr)"
+        run: |
+          set -Eeuxo pipefail
+          docker build -t "${HERMETO_IMAGE}" -f ci/cached-builds/Dockerfile.hermeto ci/cached-builds/
+          docker run --rm "${HERMETO_IMAGE}" --version
+
+      - name: "Prefetch hermetic build dependencies (claim: works with CONTAINER_ENGINE=docker)"
+        run: |
+          set -Eeuxo pipefail
+          python3 -m pip install --user --break-system-packages --quiet pyyaml packaging
+          MAKE_TARGET="${MAKE_TARGET}" BUILD_ARCH="${BUILD_ARCH}" CONTAINER_ENGINE=docker \
+            scripts/lockfile-generators/prefetch-all.sh --component-dir "${COMPONENT_DIR}"
+          test -d cachi2/output
+          find cachi2/output -maxdepth 3 -type d | head -20
+
+      - name: "Build: make jupyter-minimal (podman-in-docker, Konflux way: --volume cachi2)"
+        id: make-build
+        run: |
+          set -Eeuxo pipefail
+          IMAGE_TAG="ibm-trial_$(echo "${GITHUB_SHA}" | cut -c1-7)_odh_$(echo "${BUILD_ARCH}" | tr '/' '_')"
+          IMAGE_NAME="${IMAGE_REGISTRY}:jupyter-minimal-ubi9-python-3.12-${IMAGE_TAG}"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> "${GITHUB_ENV}"
+          mkdir -p /tmp/podman-storage
+          docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" \
+            -v /tmp/podman-storage:/var/lib/containers:z \
+            -w /workspace \
+            -e IMAGE_REGISTRY="${IMAGE_REGISTRY}" \
+            -e IMAGE_TAG="${IMAGE_TAG}" \
+            -e PRODUCT=odh \
+            -e PUSH_IMAGES=no \
+            -e BUILD_ARCH="${BUILD_ARCH}" \
+            -e CONTAINER_BUILD_CACHE_ARGS="--no-cache --network=host" \
+            "${PODMAN_BUILDER_IMAGE}" \
+            bash -c '
+              set -Eeuxo pipefail
+              export PYTHONPATH=/workspace
+              make jupyter-minimal-ubi9-python-3.12 CONTAINER_ENGINE=podman-build
+              podman-build save --format docker-archive -o /workspace/ibm-trial-image.tar \
+                "${IMAGE_REGISTRY}:jupyter-minimal-ubi9-python-3.12-${IMAGE_TAG}"
+            '
+
+      - name: "Load built image into Docker"
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          docker load -i ibm-trial-image.tar
+          rm -f ibm-trial-image.tar
+          docker images --digests | head -20
+
+      - name: "Testcontainers smoke (claim: works via /var/run/docker.sock on IBM arches)"
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/docker.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: |
+          set -Eeuxo pipefail
+          # Claim 15: testcontainers runs the built image via the runner's
+          # docker socket on ppc64le/s390x.
+          #
+          # Direct testcontainers smoke, not the repo's pytest suite: under the
+          # repo's [tool.uv] no-build=true wheel-only policy the suite's import
+          # closure is not installable on these arches (markupsafe: no
+          # ppc64le/s390x wheels for ANY version -> jinja2 ->
+          # openshift-python-wrapper -> ocp_resources; pyzmq: no cp314 wheels
+          # for either arch -> jupyter-client; pyyaml: no cp314 ppc64le wheel;
+          # plus torch/tensorflow in the full tree). See
+          # .scratch/ibm-trial-revalidation.md for the wheel-landscape table.
+          # testcontainers/docker/requests are pure python, so the system
+          # python 3.12 is fine for the smoke (no PEP 758 syntax involved).
+          python3 -m pip install --user --break-system-packages --quiet \
+            testcontainers docker requests
+          python3 -c '
+          import os
+          import time
+
+          import requests
+          from testcontainers.core.container import DockerContainer
+
+          image = os.environ["IMAGE_NAME"]
+          print("smoke image:", image)
+          with DockerContainer(image).with_exposed_ports(8888) as c:
+              url = "http://" + c.get_container_host_ip() + ":" + str(c.get_exposed_port(8888)) + "/"
+              deadline = time.time() + 600
+              last = None
+              while time.time() < deadline:
+                  try:
+                      r = requests.get(url, timeout=10)
+                      print("GET", url, "->", r.status_code, "len", len(r.content))
+                      assert 200 <= r.status_code < 400
+                      break
+                  except Exception as e:
+                      last = e
+                      time.sleep(5)
+              else:
+                  raise SystemExit("jupyter never became ready: %r" % (last,))
+              print("VERDICT: testcontainers via docker socket OK on", os.uname().machine,
+                    "- built image serves jupyter")
+          '
+
+      - name: "Failure breadcrumbs"
+        if: ${{ failure() }}
+        run: |
+          set -x
+          df -h || true
+          docker images || true
+          docker ps -a || true
+          find cachi2/output -maxdepth 2 -type d 2>/dev/null | head -10 || true
