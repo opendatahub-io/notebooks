@@ -218,9 +218,14 @@ jobs:
       - name: "docker load transferred image and run"
         run: |
           set -Eeuxo pipefail
-          docker load -i ibm-trial-transfer.tar
+          # podman records image names with a localhost/ prefix, so a
+          # podman-saved 'ibm-trial/transfer' loads as
+          # 'localhost/ibm-trial/transfer'. Use the loaded image ID
+          # instead of a name to stay independent of that quirk.
+          LOADED_IMAGE=$(docker load -q -i ibm-trial-transfer.tar)
           rm -f ibm-trial-transfer.tar
-          docker run --rm ibm-trial/transfer
+          docker images --format '{{.Repository}}:{{.Tag}}'
+          docker run --rm "$LOADED_IMAGE"
 
       - name: "Go toolchain (claim: setup-go needs architecture: ppc64le)"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
