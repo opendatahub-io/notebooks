@@ -50,6 +50,7 @@ _ACCELERATOR_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^cpu(?:-el\d+(?:\.\d+)?)?$"), "cpu"),
     (re.compile(r"^cuda-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "cuda"),
     (re.compile(r"^rocm-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "rocm"),
+    (re.compile(r"^spyre(?:-el\d+(?:\.\d+)?)?$"), "spyre"),
 )
 _TAG_RE = re.compile(r"^(?P<minor>\d+\.\d+)\.\d+(?:-ea\.(?P<ea>\d+))?(?:[-.].+)?$")
 
@@ -320,7 +321,6 @@ def _resolve_from_base_image_ref(
     match = _BASE_IMAGE_RE.fullmatch(base_image)
     if match is None:
         raise IndexResolutionError(f"Unsupported BASE_IMAGE format in {conf_file}: {base_image}")
-
     accelerator = parse_accelerator(match.group("image"), conf_file)
     tag = match.group("tag")
     if tag is not None:
@@ -389,7 +389,6 @@ def resolve_index_config(
         raise IndexResolutionError(f"BASE_IMAGE is missing in {conf_file}")
 
     flavor = resolve_flavor(conf_file, entries)
-
     if resolved := _resolve_from_label(
         base_image,
         conf_file,
@@ -397,7 +396,6 @@ def resolve_index_config(
         product=product,
     ):
         return resolved
-
     return _resolve_from_base_image_ref(
         base_image,
         conf_file,
