@@ -278,10 +278,11 @@ jobs:
           image = os.environ["IMAGE_NAME"]
           print("smoke image:", image)
           # Runtime images ship no CMD: ODH launches the pipeline runtime
-          # with an explicit command. Standalone probe = import the main
-          # package in the image python (catches arch-specific wheel or
-          # extension breakage); success is a clean exit 0.
-          cmd = ["python3", "-c", "from importlib.metadata import version; print(\"elyra version:\", version(\"elyra\"))"]
+          # with an explicit command. Standalone probe = resolve and import
+          # the main package from the app site-packages (uv pip installs
+          # into /opt/app-root, not the UBI system python); success is a
+          # clean exit 0.
+          cmd = ["python3", "-c", "import sys; sys.path.insert(0, \"/opt/app-root/lib/python3.12/site-packages\"); from importlib.metadata import version; print(\"elyra version:\", version(\"elyra\")); import elyra; print(\"import elyra: OK\")"]
           with DockerContainer(image).with_command(cmd) as c:
               w = c.get_wrapped_container()
               deadline = time.time() + 300
