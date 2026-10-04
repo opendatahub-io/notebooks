@@ -116,7 +116,7 @@ if [[ -n "$CERT_DIR" ]] && [[ -d "$CERT_DIR" ]]; then
 
   # UBI9 ships /etc/rhsm/ca/redhat-uep.pem (the RHSM CA) even without
   # registration, so we can extract it with a simple `cat`.
-  $CONTAINER_ENGINE run --rm "$UBI9_IMAGE" \
+  "$CONTAINER_ENGINE" run --rm "$UBI9_IMAGE" \
     cat /etc/rhsm/ca/redhat-uep.pem \
     > "$CDN_CERT_DIR/etc/rhsm/ca/redhat-uep.pem" 2>/dev/null || true
 
@@ -145,7 +145,7 @@ elif [[ -n "$ACTIVATION_KEY" ]] && [[ -n "$ORG" ]]; then
   REG_LOG=$(mktemp)
   _xtrace_was_set=false; [[ $- == *x* ]] && _xtrace_was_set=true
   set +x 2>/dev/null
-  $CONTAINER_ENGINE run --rm \
+  "$CONTAINER_ENGINE" run --rm \
     -e SM_ORG="$ORG" \
     -e SM_KEY="$ACTIVATION_KEY" \
     "$UBI9_IMAGE" \
@@ -216,7 +216,7 @@ HERMETO_STAGING=$(mktemp -d)
 trap 'cleanup_staging "$HERMETO_STAGING" "${CDN_CERT_DIR:-}"' EXIT
 
 echo "--- Downloading RPMs via hermeto ---"
-$CONTAINER_ENGINE run --rm \
+"$CONTAINER_ENGINE" run --rm \
   ${USERNS_ARGS[@]+"${USERNS_ARGS[@]}"} \
   -v "$(pwd)/$PREFETCH_DIR:/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
@@ -227,7 +227,7 @@ $CONTAINER_ENGINE run --rm \
 # inject-files generates DNF .repo files pointing at the downloaded RPMs,
 # so the Dockerfile can `dnf install` from the local repo.
 echo "--- Generating repo metadata ---"
-$CONTAINER_ENGINE run --rm \
+"$CONTAINER_ENGINE" run --rm \
   ${USERNS_ARGS[@]+"${USERNS_ARGS[@]}"} \
   -v "$HERMETO_STAGING:/output:z" \
   "$HERMETO_IMAGE" \

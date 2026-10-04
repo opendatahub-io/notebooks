@@ -139,7 +139,7 @@ CONTAINER_WORKDIR="/workspace/$SCRIPTS_PATH"
 echo "--- Generating Lockfile using rpm-lockfile-prototype --"
 podman_run_args=(--rm -i)
 [[ -t 1 ]] && podman_run_args+=(-t)
-$CONTAINER_ENGINE run "${podman_run_args[@]}" \
+"$CONTAINER_ENGINE" run "${podman_run_args[@]}" \
     -v "$(pwd):/workspace" \
     --platform=linux/x86_64 \
     -w "$CONTAINER_WORKDIR" \

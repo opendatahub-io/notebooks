@@ -65,7 +65,7 @@ HERMETO_STAGING=$(mktemp -d)
 trap 'cleanup_staging "$HERMETO_STAGING"' EXIT
 
 echo "--- Downloading Go modules via hermeto ---"
-$CONTAINER_ENGINE run --rm \
+"$CONTAINER_ENGINE" run --rm \
   ${USERNS_ARGS[@]+"${USERNS_ARGS[@]}"} \
   -v "$(pwd):/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
