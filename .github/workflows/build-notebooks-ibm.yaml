@@ -46,6 +46,11 @@ permissions: {}
 jobs:
   gen:
     name: Generate IBM job matrix
+    # IBM's actionspz runners are approved for opendatahub-io/notebooks
+    # only. This file is synced to the other notebooks repos (e.g.
+    # red-hat-data-services), so gate on the repository: the build job
+    # needs gen, so it is skipped along with it.
+    if: github.repository == 'opendatahub-io/notebooks'
     permissions:
       contents: read
     runs-on: ubuntu-26.04
