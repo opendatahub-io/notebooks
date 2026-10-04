@@ -167,7 +167,7 @@ jobs:
           # syntax, so the repo's python helpers cannot be imported
           # here. bin/buildinputs must exist (built above): non-CI
           # make loads it as a Makefile prerequisite.
-          OUT=$(make "${MAKE_TARGET}" --just-print 2>/dev/null)
+          OUT=$(make "${MAKE_TARGET}" --just-print 2>/tmp/make-dry.err) || { cat /tmp/make-dry.err >&2; exit 1; }
           COMPONENT_DIR=$(printf '%s\n' "$OUT" | grep -F '#*# Image build directory: <' | head -1 | cut -d'<' -f2 | cut -d'>' -f1)
           [ -n "${COMPONENT_DIR}" ] || { echo "ERROR: could not resolve build directory for ${MAKE_TARGET}" >&2; exit 1; }
           [ -d "${COMPONENT_DIR}" ] || { echo "ERROR: build directory ${COMPONENT_DIR} does not exist" >&2; exit 1; }
