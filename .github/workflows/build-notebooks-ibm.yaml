@@ -37,6 +37,12 @@ concurrency:
   group: ${{ format('{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: true
 
+# No inherited token scope: the build job runs on persistent self-hosted
+# IBM runners with --privileged containers and executes PR-controlled code
+# (make, Dockerfiles, lockfile scripts). Each job declares the least
+# privilege it needs.
+permissions: {}
+
 jobs:
   gen:
     name: Generate IBM job matrix
@@ -69,6 +75,8 @@ jobs:
   build:
     name: "${{ matrix.target }} · ${{ matrix.platform }} [ibm]"
     needs: gen
+    permissions:
+      contents: read
     if: needs.gen.outputs.has_jobs == 'true'
     runs-on: ${{ matrix.platform == 'linux/ppc64le' && 'ubuntu-24.04-ppc64le' || 'ubuntu-24.04-s390x' }}
     timeout-minutes: 90
