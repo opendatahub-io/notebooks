@@ -278,26 +278,18 @@ jobs:
           image = os.environ["IMAGE_NAME"]
           print("smoke image:", image)
           # Runtime images ship no CMD: ODH launches the pipeline runtime
-          # with an explicit command. Standalone probe = resolve and import
-          # the main package from the app site-packages (uv pip installs
-          # into /opt/app-root, not the UBI system python); success is a
-          # clean exit 0.
-          cmd = ["python3", "-c", "import sys; sys.path.insert(0, \"/opt/app-root/lib/python3.12/site-packages\"); from importlib.metadata import version; print(\"elyra version:\", version(\"elyra\")); import elyra; print(\"import elyra: OK\")"]
-          with DockerContainer(image).with_command(cmd) as c:
-              w = c.get_wrapped_container()
-              deadline = time.time() + 300
-              while time.time() < deadline:
-                  if w.status == "exited":
-                      break
-                  time.sleep(5)
-              state = w.client.api.inspect_container(w.id)["State"]
-              logs = w.logs(stdout=True, stderr=True).decode()
-              print("state:", state["Status"], "exit:", state["ExitCode"])
-              print(logs[-2000:])
-              if state["Status"] == "exited" and state["ExitCode"] == 0 and "elyra version:" in logs:
+          # with an explicit command. Mirror tests/containers/
+          # docker_utils.running_container: start with sleep infinity,
+          # then exec the check with the default python3 on the image
+          # PATH (the app venv; /usr/bin/python3 does not see app packages).
+          with DockerContainer(image).with_command(["/bin/sh", "-c", "sleep infinity"]) as c:
+              exit_code, out = c.exec(["python3", "-c", "from importlib.metadata import version; print(\"elyra version:\", version(\"elyra\")); import elyra; print(\"import elyra: OK\")"])
+              text = out.decode() if isinstance(out, (bytes, bytearray)) else str(out)
+              print(text[-2000:])
+              if exit_code == 0 and "elyra version:" in text:
                   print("VERDICT: runtime image imports elyra on", os.uname().machine)
               else:
-                  raise SystemExit("runtime import probe failed (status=%s exit=%s) - recorded, build still validated" % (state["Status"], state["ExitCode"]))
+                  raise SystemExit("runtime import probe failed (exit=%s) - recorded, build still validated" % exit_code)
           '
 
       - name: Failure breadcrumbs
