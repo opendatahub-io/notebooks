@@ -278,16 +278,18 @@ jobs:
           image = os.environ["IMAGE_NAME"]
           print("smoke image:", image)
           # Runtime images ship no CMD: ODH launches the pipeline runtime
-          # with an explicit command. Mirror tests/containers/
-          # docker_utils.running_container: start with sleep infinity,
-          # then exec the check with the default python3 on the image
-          # PATH (the app venv; /usr/bin/python3 does not see app packages).
+          # with an explicit command. The runtime is kfp (2.17.0) with an
+          # Elyra bootstrapper, not a pip package named elyra. Mirror
+          # tests/containers/docker_utils.running_container: start with
+          # sleep infinity, then exec the check with the default python3
+          # on the image PATH. kfp + zmq cover the runtime core and a
+          # native extension (zmq matters on s390x, per the repo test).
           with DockerContainer(image).with_command(["/bin/sh", "-c", "sleep infinity"]) as c:
-              exit_code, out = c.exec(["python3", "-c", "from importlib.metadata import version; print(\"elyra version:\", version(\"elyra\")); import elyra; print(\"import elyra: OK\")"])
+              exit_code, out = c.exec(["python3", "-c", "from importlib.metadata import version; print(\"kfp version:\", version(\"kfp\")); import kfp; print(\"import kfp: OK\"); import zmq; z = zmq.Context(); s = z.socket(zmq.PAIR); s.close(0); z.term(); print(\"import zmq: OK\")"])
               text = out.decode() if isinstance(out, (bytes, bytearray)) else str(out)
               print(text[-2000:])
-              if exit_code == 0 and "elyra version:" in text:
-                  print("VERDICT: runtime image imports elyra on", os.uname().machine)
+              if exit_code == 0 and "kfp version:" in text and "import zmq: OK" in text:
+                  print("VERDICT: runtime image imports kfp and zmq on", os.uname().machine)
               else:
                   raise SystemExit("runtime import probe failed (exit=%s) - recorded, build still validated" % exit_code)
           '
