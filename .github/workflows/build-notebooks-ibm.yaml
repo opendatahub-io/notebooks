@@ -92,12 +92,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          # Mirrors the standard build TEMPLATE: full history (shallow
+          # clone + hermeto's symlink-preserving source copy breaks tag
+          # fetches on the superproject), recursive submodules (the
+          # mongocli-builder stage of jupyter-datascience builds from the
+          # root prefetch-input/mongocli submodule), LFS for codeserver
+          # targets.
+          fetch-depth: 0
+          lfs: ${{ contains(matrix.target, 'codeserver') }}
+          submodules: recursive
           persist-credentials: false
-          # No current IBM-compatible target needs submodules or LFS.
-          # codeserver targets do (prefetch-input/code-server); switch to
-          # `submodules: recursive` and `lfs: true` when one is added to
-          # the compat lists.
-          submodules: false
 
       - name: System info
         run: |
@@ -256,7 +260,7 @@ jobs:
               print("VERDICT: built image serves jupyter on", os.uname().machine)
           '
 
-      - name: "Smoke: runtime container stays up (probe; full suite in #4715)"
+      - name: "Smoke: runtime image imports its runtime (exits 0; full suite in #4715)"
         if: ${{ !cancelled() && steps.make-build.outcome == 'success' && env.SMOKE_MODE == 'runtime' }}
         continue-on-error: true
         env:
@@ -269,30 +273,30 @@ jobs:
           import os
           import time
 
-          import requests
           from testcontainers.core.container import DockerContainer
 
           image = os.environ["IMAGE_NAME"]
           print("smoke image:", image)
-          ports = (8080, 8888, 8000, 5000)
-          with DockerContainer(image).with_exposed_ports(*ports) as c:
-              time.sleep(60)
+          # Runtime images ship no CMD: ODH launches the pipeline runtime
+          # with an explicit command. Standalone probe = import the main
+          # package in the image python (catches arch-specific wheel or
+          # extension breakage); success is a clean exit 0.
+          cmd = ["python3", "-c", "from importlib.metadata import version; print(\"elyra version:\", version(\"elyra\"))"]
+          with DockerContainer(image).with_command(cmd) as c:
               w = c.get_wrapped_container()
-              status = w.status
-              print("status after 60s:", status)
-              if status != "running":
-                  print(w.logs(stdout=True, stderr=True).decode()[-2000:])
-                  raise SystemExit("container exited (status=%s) - runtime image may need cluster env; recorded, build still validated" % status)
-              verdict = "alive"
-              for p in ports:
-                  try:
-                      r = requests.get("http://" + c.get_container_host_ip() + ":" + str(c.get_exposed_port(p)), timeout=5)
-                      print("GET port", p, "->", r.status_code)
-                      verdict = "http port %d" % p
+              deadline = time.time() + 300
+              while time.time() < deadline:
+                  if w.status == "exited":
                       break
-                  except Exception:
-                      pass
-              print("VERDICT: runtime smoke =", verdict, "on", os.uname().machine)
+                  time.sleep(5)
+              state = w.client.api.inspect_container(w.id)["State"]
+              logs = w.logs(stdout=True, stderr=True).decode()
+              print("state:", state["Status"], "exit:", state["ExitCode"])
+              print(logs[-2000:])
+              if state["Status"] == "exited" and state["ExitCode"] == 0 and "elyra version:" in logs:
+                  print("VERDICT: runtime image imports elyra on", os.uname().machine)
+              else:
+                  raise SystemExit("runtime import probe failed (status=%s exit=%s) - recorded, build still validated" % (state["Status"], state["ExitCode"]))
           '
 
       - name: Failure breadcrumbs
