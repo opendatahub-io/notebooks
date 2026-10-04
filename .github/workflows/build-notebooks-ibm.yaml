@@ -109,12 +109,6 @@ jobs:
           nproc
           systemd-detect-virt 2>&1 || true
 
-      - name: Resolve component dir
-        run: |
-          set -Eeuxo pipefail
-          COMPONENT_DIR=$(python3 -c "import sys, os; sys.path.insert(0, 'ci/cached-builds'); import gha_pr_changed_files as g; print(g.get_build_directory(os.environ['MAKE_TARGET']))")
-          echo "COMPONENT_DIR=${COMPONENT_DIR}" >> "${GITHUB_ENV}"
-
       - name: Build podman-builder image (Fedora 44, podman 5.x)
         run: |
           set -Eeuxo pipefail
@@ -159,6 +153,21 @@ jobs:
         run: |
           set -Eeuxo pipefail
           make bin/buildinputs
+
+      - name: Resolve component dir
+        run: |
+          set -Eeuxo pipefail
+          # make --just-print emits machine-parsed lines at parse time
+          # ($(info) in the Makefile). Pure make+text tools: the IBM
+          # runners' system python is older than the repo's PEP 758
+          # syntax, so the repo's python helpers cannot be imported
+          # here. bin/buildinputs must exist (built above): non-CI
+          # make loads it as a Makefile prerequisite.
+          OUT=$(make "${MAKE_TARGET}" --just-print 2>/dev/null)
+          COMPONENT_DIR=$(printf '%s\n' "$OUT" | grep -F '#*# Image build directory: <' | head -1 | cut -d'<' -f2 | cut -d'>' -f1)
+          [ -n "${COMPONENT_DIR}" ] || { echo "ERROR: could not resolve build directory for ${MAKE_TARGET}" >&2; exit 1; }
+          [ -d "${COMPONENT_DIR}" ] || { echo "ERROR: build directory ${COMPONENT_DIR} does not exist" >&2; exit 1; }
+          echo "COMPONENT_DIR=${COMPONENT_DIR}" >> "${GITHUB_ENV}"
 
       - name: Prefetch hermetic build dependencies (docker engine, native hermeto)
         run: |
