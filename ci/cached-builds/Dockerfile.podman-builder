@@ -9,10 +9,11 @@ FROM registry.fedoraproject.org/fedora:44
 # `command -v podman` and call it by name).
 #
 # The podman shim additionally translates --userns=keep-id to
-# --userns=host on s390x: LXD blocks unprivileged user-namespace mapping
-# there (crun: "write to gid_map: Operation not permitted"), while the
-# ppc64le runners allow it. Both are identity mappings under root, so the
-# translation is behavior-preserving (hermeto fetch scripts pass
+# --userns=host, always: the IBM LXD runners inconsistently block
+# user-namespace mapping (crun: "write to gid_map: Operation not
+# permitted") - reproduced on s390x and on some ppc64le runners. Inside
+# this rootful container both are identity mappings (root -> root), so
+# the translation is behavior-preserving (hermeto fetch scripts pass
 # --userns=keep-id explicitly).
 #
 # python3-pyyaml/python3-packaging: prefetch-all.sh's host-side python
