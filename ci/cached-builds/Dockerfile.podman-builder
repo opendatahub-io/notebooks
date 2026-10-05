@@ -26,23 +26,6 @@ RUN dnf install -y --quiet --nodocs \
     cp /usr/bin/podman /usr/bin/podman-build && \
     cp /usr/bin/buildah /usr/bin/buildah-build && \
     ln -s /usr/bin/buildah-build /usr/local/bin/buildah && \
-    cat > /usr/local/bin/podman <<'PODMAN_SHIM'
-#!/bin/bash
-# Shim: plain `podman` -> renamed binary (AppArmor path bypass on s390x).
-# On s390x, translate --userns=keep-id to --userns=host (see Dockerfile
-# comment); rootful identity mapping either way.
-if [ "$(uname -m)" = "s390x" ]; then
-  args=()
-  for a in "$@"; do
-    if [ "$a" = "--userns=keep-id" ]; then
-      args+=("--userns=host")
-    else
-      args+=("$a")
-    fi
-  done
-  set -- "${args[@]}"
-fi
-exec /usr/bin/podman-build "$@"
-PODMAN_SHIM
-    && chmod 755 /usr/local/bin/podman && \
     dnf clean all
+COPY podman-shim.sh /usr/local/bin/podman
+RUN chmod 755 /usr/local/bin/podman
