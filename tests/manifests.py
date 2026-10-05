@@ -112,8 +112,11 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
             # codeserver doesn't have scope
             scope = ""
     if "-" in scope:
-        assert path_parts[start_index] == "runtimes", "this naming pattern only appears in rocm runtime images"
-        scope = scope.split("-", 1)[-1]
+        # runtimes use compound directory names like "rocm-pytorch"; extract the last segment.
+        # jupyter/pytorch-spyre uses a hyphenated directory name that is already the full scope.
+        if path_parts[start_index] == "runtimes":
+            scope = scope.split("-", 1)[-1]
+        # else: keep scope as-is (e.g. "pytorch-spyre" for jupyter/pytorch-spyre)
 
     # Determine accelerator flavor
     accelerator_flavor = None
@@ -192,6 +195,10 @@ def get_source_of_truth_filepath(
 
         elif scope == JUPYTER_BASELINE_NOTEBOOK_ID:
             filename = f"jupyter-baseline-{file_suffix}"
+
+        elif scope == "pytorch-spyre":
+            # jupyter/pytorch-spyre: scope already contains the full name; no accelerator prefix needed
+            filename = f"jupyter-{scope}-{file_suffix}"
 
         elif JUPYTER_PYTORCH_NOTEBOOK_ID in scope or JUPYTER_TENSORFLOW_NOTEBOOK_ID in scope:
             # Logic for pytorch and tensorflow

@@ -487,6 +487,19 @@ replacements:
           name: jupyter-pytorch-notebook
           version: v1
   - source:
+      fieldPath: data.odh-workbench-jupyter-pytorch-spyre-py312-ubi9-commit-n
+      kind: ConfigMap
+      name: notebook-image-commithash
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-pytorch-spyre-notebook
+          version: v1
+  - source:
       fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-commit-n
       kind: ConfigMap
       name: notebook-image-commithash
