@@ -180,6 +180,14 @@ jobs:
         run: |
           set -Eeuxo pipefail
           mkdir -p /tmp/podman-storage
+          # download-pip-packages.py falls back to the *executing* python for
+          # marker evaluation (RELEASE_PYTHON_VERSION env). Inside the builder
+          # container that is Fedora 44's python3.14, which wrongly excludes
+          # py3.12-only packages (greenlet & co). Pass the target's python,
+          # derived from the component dir name (e.g. ubi9-python-3.12).
+          RELEASE_PYTHON_VERSION="$(basename "${COMPONENT_DIR}" | sed 's/.*python-//')"
+          [ -n "${RELEASE_PYTHON_VERSION}" ] || { echo "ERROR: cannot derive target python version from ${COMPONENT_DIR}" >&2; exit 1; }
+          echo "Target python for pip marker evaluation: ${RELEASE_PYTHON_VERSION}"
           docker run --rm --privileged --network=host \
             -v "${{ github.workspace }}:/workspace:z" \
             -v /tmp/podman-storage:/var/lib/containers:z \
@@ -187,6 +195,7 @@ jobs:
             -e MAKE_TARGET="${MAKE_TARGET}" \
             -e BUILD_ARCH="${BUILD_ARCH}" \
             -e COMPONENT_DIR="${COMPONENT_DIR}" \
+            -e RELEASE_PYTHON_VERSION="${RELEASE_PYTHON_VERSION}" \
             -e HERMETO_IMAGE="ibm-ci/hermeto:0.51.0" \
             "${PODMAN_BUILDER_IMAGE}" \
             bash -c '
