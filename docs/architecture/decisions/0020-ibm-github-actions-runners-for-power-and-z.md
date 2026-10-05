@@ -879,7 +879,11 @@ Workarounds:
    network namespace. Resolved by the binary rename: the s390x
    `podman-builder` image exposes a `/usr/local/bin/podman` shim to the
    renamed `podman-build` binary, so plain `podman` calls bypass the
-   path-based rule on both arches.
+   path-based rule on both arches. LXD also blocks user-namespace
+   mapping on s390x (crun: "write to gid_map: Operation not
+   permitted"), so the shim translates the hermeto fetch scripts'
+   `--userns=keep-id` to `--userns=host` on s390x only — both are
+   identity mappings under root.
 
 2. **Use `docker buildx build --build-context`** — BuildKit named contexts
    can map external directories: `--build-context cachi2=/path/cachi2/output`.

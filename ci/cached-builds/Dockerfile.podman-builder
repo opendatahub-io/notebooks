@@ -8,6 +8,13 @@ FROM registry.fedoraproject.org/fedora:44
 # unmodified inside this image on both arches (they detect podman via
 # `command -v podman` and call it by name).
 #
+# The podman shim additionally translates --userns=keep-id to
+# --userns=host on s390x: LXD blocks unprivileged user-namespace mapping
+# there (crun: "write to gid_map: Operation not permitted"), while the
+# ppc64le runners allow it. Both are identity mappings under root, so the
+# translation is behavior-preserving (hermeto fetch scripts pass
+# --userns=keep-id explicitly).
+#
 # python3-pyyaml/python3-packaging: prefetch-all.sh's host-side python
 # helpers (create-artifact-lockfile.py, download-pip-packages.py) run in
 # this image too.
@@ -18,6 +25,24 @@ RUN dnf install -y --quiet --nodocs \
     pip install --no-cache-dir --quiet structlog && \
     cp /usr/bin/podman /usr/bin/podman-build && \
     cp /usr/bin/buildah /usr/bin/buildah-build && \
-    ln -s /usr/bin/podman-build /usr/local/bin/podman && \
     ln -s /usr/bin/buildah-build /usr/local/bin/buildah && \
+    cat > /usr/local/bin/podman <<'PODMAN_SHIM'
+#!/bin/bash
+# Shim: plain `podman` -> renamed binary (AppArmor path bypass on s390x).
+# On s390x, translate --userns=keep-id to --userns=host (see Dockerfile
+# comment); rootful identity mapping either way.
+if [ "$(uname -m)" = "s390x" ]; then
+  args=()
+  for a in "$@"; do
+    if [ "$a" = "--userns=keep-id" ]; then
+      args+=("--userns=host")
+    else
+      args+=("$a")
+    fi
+  done
+  set -- "${args[@]}"
+fi
+exec /usr/bin/podman-build "$@"
+PODMAN_SHIM
+    && chmod 755 /usr/local/bin/podman && \
     dnf clean all
