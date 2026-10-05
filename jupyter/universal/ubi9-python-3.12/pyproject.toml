@@ -1,0 +1,59 @@
+# Hermetic universal: lean jupyter deps locked from PyPI
+# (public-index layout: root pylock.toml + requirements.cpu.txt).
+
+[project]
+name = "jupyter-universal-notebook"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Installer/tooling used in Docker/CI (all supported Linux architectures)
+    "uv",
+    "micropipenv[toml]",
+
+    # Base packages
+    "wheel",
+    "setuptools",
+
+    "odh-notebooks-meta-jupyterlab-deps",
+    # PDF export (nbconvert); RHAIENG-5765 / AIPCC-7795
+    "pandoc-rhai",
+
+    # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
+    # heavy workbench/db-connector Python stack.
+    "odh-notebooks-meta-jupyterlab-datascience-deps; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+]
+
+[tool.uv]
+# RHAIENG-5451 / RHAIENG-7088: fail at lock-generation time (not inside the
+# Konflux build) if a package version lacks wheels for any architecture this
+# image ships. See opendatahub-io/notebooks#4422 for the dynamic alternative.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "sys_platform == 'linux' and platform_machine == 'ppc64le'",
+    "sys_platform == 'linux' and platform_machine == 's390x'",
+]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+]
+
+override-dependencies = [
+    # odh-elyra pins jupyter-resource-usage<1.2.dev0, but 1.1.1 needs psutil<6 while
+    # ipython 9.14+ on the RH index needs psutil>=7. Index ships 1.2.1.
+    "jupyter-resource-usage>=1.2.1,<1.3",
+    # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
+    # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
+    "urllib3>=2.7.0",
+    # AIPCC-13675: UPB segfault on s390x affects protobuf 6.33.5-6.33.6; fixed in 7.x.
+    # kfp 2.17.0's protobuf<7.0 is a conservative pin (gencode 6.31.1; APIs exist in 7.x).
+    # 7.x series only.
+    "protobuf>=7.36.1,<8",
+]
+
+[tool.uv.sources]
+odh-notebooks-meta-jupyterlab-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
+odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-datascience-deps" }
