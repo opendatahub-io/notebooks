@@ -121,6 +121,9 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
         accelerator_flavor = "rocm"
     elif "cuda" in notebook_identity_parts:
         accelerator_flavor = "cuda"
+    elif "spyre" in notebook_identity_parts:
+        accelerator_flavor = "spyre"
+
     # jupyter/pytorch has no "cuda" in the path; papermill treats jupyter-pytorch-* as cuda
     # via name matching (_get_accelerator_flavor in test_jupyter_with_papermill.sh).
     # When inferring from a directory path, detect cuda/rocm from Dockerfile.konflux.* variants.
@@ -128,6 +131,8 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
         accelerator_flavor = "cuda"
     elif (directory / "Dockerfile.konflux.rocm").exists():
         accelerator_flavor = "rocm"
+    elif (directory / "Dockerfile.konflux.spyre").exists():
+        accelerator_flavor = "spyre"
 
     return NotebookMetadata(
         type=NotebookType.RUNTIME if "runtimes" == path_parts[start_index] else NotebookType.WORKBENCH,
@@ -321,6 +326,9 @@ class TestManifests:
             "cuda-jupyter-pytorch-ubi9-python-3.12": MANIFESTS_ODH_DIR
             / "base"
             / "jupyter-pytorch-notebook-imagestream.yaml",
+            "spyre-jupyter-pytorch-ubi9-python-3.12": MANIFESTS_ODH_DIR
+            / "base"
+            / "jupyter-pytorch-spyre-notebook-imagestream.yaml",
             "runtime-cuda-pytorch-ubi9-python-3.12": MANIFESTS_ODH_DIR
             / "base"
             / "jupyter-pytorch-notebook-imagestream.yaml",

@@ -5,7 +5,7 @@ metadata:
   labels:
     opendatahub.io/notebook-image: "true"
   annotations:
-    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/pytorch/ubi9-python-3.12"
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/pytorch-spyre/ubi9-python-3.12"
     opendatahub.io/notebook-image-name: "Jupyter | PyTorch | Spyre | Python 3.12"
     opendatahub.io/notebook-image-desc: "Jupyter notebook image with PyTorch libraries and Spyre accelerator support to start experimenting with advanced AI/ML notebooks on IBM Spyre hardware."
     opendatahub.io/notebook-image-order: "14"
@@ -29,7 +29,7 @@ spec:
           [
             {"name": "JupyterLab", "version": "4.x"},
             {"name": "PyTorch", "version": "2.x"},
-            {"name": "Numpy", "version": "2.x"},
+            {"name": "Numpy", "version": "2.x"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-pytorch-spyre-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'true'
