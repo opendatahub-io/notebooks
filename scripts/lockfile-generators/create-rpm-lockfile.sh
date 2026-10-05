@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTAINER_ENGINE="${CONTAINER_ENGINE:-podman}"
-
 # create-rpm-lockfile.sh — Generate rpms.lock.yaml with exact RPM URLs and checksums.
 #
 # Hermetic builds (Konflux/cachi2) require a lockfile that pins every RPM
@@ -139,7 +137,7 @@ CONTAINER_WORKDIR="/workspace/$SCRIPTS_PATH"
 echo "--- Generating Lockfile using rpm-lockfile-prototype --"
 podman_run_args=(--rm -i)
 [[ -t 1 ]] && podman_run_args+=(-t)
-"$CONTAINER_ENGINE" run "${podman_run_args[@]}" \
+podman run "${podman_run_args[@]}" \
     -v "$(pwd):/workspace" \
     --platform=linux/x86_64 \
     -w "$CONTAINER_WORKDIR" \

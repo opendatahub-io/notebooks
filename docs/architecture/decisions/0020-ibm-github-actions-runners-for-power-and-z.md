@@ -787,7 +787,7 @@ The GHA pipeline mirrors the Konflux Tekton pipeline architecture:
 | Konflux Tekton task | GHA equivalent | Notes |
 |---|---|---|
 | `clone-repository` | `actions/checkout` + `submodules: recursive` | Submodules provide `prefetch-input/` |
-| `prefetch-dependencies-oci-ta` | `prefetch-all.sh` on host (Docker) | Produces `cachi2/output/` on disk |
+| `prefetch-dependencies-oci-ta` | `prefetch-all.sh` inside the podman-builder container | Produces `cachi2/output/` on the workspace mount |
 | `build-images` (buildah-remote-oci-ta) | podman-in-docker (`Dockerfile.podman-builder`) | Fedora 44, podman 5.x, `--volume` for cachi2 |
 | SSH remote builder (multi-platform-controller) | `docker run --privileged` wrapper | Both run podman in a container on native arch |
 | `--volume /tmp/cachi2:/cachi2` | Makefile's `CACHI2_VOLUME` `--volume` | Identical mechanism |
@@ -860,7 +860,8 @@ Makefile as build command flags, not as Dockerfile directives.
 
 Workarounds:
 1. **Build with podman inside `docker run --privileged`** (implemented,
-   **ppc64le only**) — run the `make` build step inside a privileged
+   **both arches**) — run the `make` build step (and the lockfile
+   prefetch) inside a privileged
    Fedora 44 container with podman 5.x (supports `--volume` and
    Dockerfile HEREDOCs). The workspace is mounted so pre-compiled
    `bin/buildinputs` and `cachi2/output` are reused from the host.
@@ -875,7 +876,10 @@ Workarounds:
    and the AppArmor-blocked `socket()` syscall prevents DNS resolution.
    The `--network=host` flag on both the outer docker and inner podman
    build is insufficient — the user namespace is the problem, not the
-   network namespace.
+   network namespace. Resolved by the binary rename: the s390x
+   `podman-builder` image exposes a `/usr/local/bin/podman` shim to the
+   renamed `podman-build` binary, so plain `podman` calls bypass the
+   path-based rule on both arches.
 
 2. **Use `docker buildx build --build-context`** — BuildKit named contexts
    can map external directories: `--build-context cachi2=/path/cachi2/output`.

@@ -95,12 +95,6 @@ jobs:
       # of the image name only, nothing is published.
       IMAGE_REGISTRY: "ghcr.io/opendatahub-io/notebooks/workbench-images"
       PODMAN_BUILDER_IMAGE: "ibm-ci/podman-builder:latest"
-      # The ghcr hermeto image has no ppc64le/s390x manifests; this image is
-      # built natively on the runner below (same name shadows the ghcr pull).
-      HERMETO_IMAGE: "ghcr.io/hermetoproject/hermeto:0.51.0"
-      # s390x: the renamed binary also guards against the AppArmor
-      # path-based socket() block returning; ppc64le: plain podman.
-      PODMAN_BIN: ${{ matrix.platform == 'linux/s390x' && 'podman-build' || 'podman' }}
       SMOKE_MODE: ${{ contains(matrix.target, 'jupyter') && 'workbench' || 'runtime' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -135,6 +129,8 @@ jobs:
             /usr/bin/podman --version
             /usr/bin/podman-build --version
             /usr/bin/buildah-build --version
+            podman --version
+            buildah --version
           '
 
       - name: s390x AppArmor negative control (regression watch)
@@ -152,12 +148,6 @@ jobs:
               echo "plain /usr/bin/podman pull FAILED on s390x - AppArmor restriction back, rename workaround active"
             fi
           ' || true
-
-      - name: Build hermeto image natively (no ppc64le/s390x manifests on ghcr)
-        run: |
-          set -Eeuxo pipefail
-          docker build -t "${HERMETO_IMAGE}" -f ci/cached-builds/Dockerfile.hermeto ci/cached-builds/
-          docker run --rm "${HERMETO_IMAGE}" --version
 
       - name: "Go toolchain (setup-go needs architecture: ppc64le)"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
@@ -186,12 +176,26 @@ jobs:
           [ -d "${COMPONENT_DIR}" ] || { echo "ERROR: build directory ${COMPONENT_DIR} does not exist" >&2; exit 1; }
           echo "COMPONENT_DIR=${COMPONENT_DIR}" >> "${GITHUB_ENV}"
 
-      - name: Prefetch hermetic build dependencies (docker engine, native hermeto)
+      - name: "Prefetch hermetic build dependencies (podman-in-docker, native hermeto)"
         run: |
           set -Eeuxo pipefail
-          python3 -m pip install --user --break-system-packages --quiet pyyaml packaging
-          MAKE_TARGET="${MAKE_TARGET}" BUILD_ARCH="${BUILD_ARCH}" CONTAINER_ENGINE=docker \
-            scripts/lockfile-generators/prefetch-all.sh --component-dir "${COMPONENT_DIR}"
+          mkdir -p /tmp/podman-storage
+          docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" \
+            -v /tmp/podman-storage:/var/lib/containers:z \
+            -w /workspace \
+            -e MAKE_TARGET="${MAKE_TARGET}" \
+            -e BUILD_ARCH="${BUILD_ARCH}" \
+            -e COMPONENT_DIR="${COMPONENT_DIR}" \
+            -e HERMETO_IMAGE="ibm-ci/hermeto:0.51.0" \
+            "${PODMAN_BUILDER_IMAGE}" \
+            bash -c '
+              set -Eeuxo pipefail
+              # The pinned ghcr hermeto image has no ppc64le/s390x manifests,
+              # so build it natively and point the lockfile scripts at it.
+              podman build -t ibm-ci/hermeto:0.51.0 -f ci/cached-builds/Dockerfile.hermeto ci/cached-builds/
+              scripts/lockfile-generators/prefetch-all.sh --component-dir "${COMPONENT_DIR}"
+            '
           test -d cachi2/output
           find cachi2/output -maxdepth 3 -type d | head -20
 
@@ -210,7 +214,6 @@ jobs:
             -e IMAGE_REGISTRY="${IMAGE_REGISTRY}" \
             -e IMAGE_TAG="${IMAGE_TAG}" \
             -e MAKE_TARGET="${MAKE_TARGET}" \
-            -e PODMAN_BIN="${PODMAN_BIN}" \
             -e PRODUCT=odh \
             -e PUSH_IMAGES=no \
             -e BUILD_ARCH="${BUILD_ARCH}" \
@@ -219,8 +222,8 @@ jobs:
             bash -c '
               set -Eeuxo pipefail
               export PYTHONPATH=/workspace
-              make "${MAKE_TARGET}" CONTAINER_ENGINE="${PODMAN_BIN}"
-              "${PODMAN_BIN}" save --format docker-archive -o /workspace/ibm-image.tar \
+              make "${MAKE_TARGET}"
+              podman save --format docker-archive -o /workspace/ibm-image.tar \
                 "${IMAGE_REGISTRY}:${MAKE_TARGET}-${IMAGE_TAG}"
             '
 

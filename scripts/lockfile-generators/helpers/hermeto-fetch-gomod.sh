@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTAINER_ENGINE="${CONTAINER_ENGINE:-podman}"
-
-# --userns=keep-id is podman-only; docker rejects it ("invalid USER mode").
-USERNS_ARGS=()
-case "$CONTAINER_ENGINE" in podman*) USERNS_ARGS=(--userns=keep-id) ;; esac
-
 # hermeto-fetch-gomod.sh — Download Go modules using Hermeto.
 #
 # Fetches all Go dependencies for a module (go.mod + go.sum) into
@@ -65,8 +59,8 @@ HERMETO_STAGING=$(mktemp -d)
 trap 'cleanup_staging "$HERMETO_STAGING"' EXIT
 
 echo "--- Downloading Go modules via hermeto ---"
-"$CONTAINER_ENGINE" run --rm \
-  ${USERNS_ARGS[@]+"${USERNS_ARGS[@]}"} \
+podman run --rm \
+  --userns=keep-id \
   -v "$(pwd):/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   "$HERMETO_IMAGE" \

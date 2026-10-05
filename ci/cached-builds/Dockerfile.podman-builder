@@ -2,10 +2,22 @@ FROM registry.fedoraproject.org/fedora:44
 # On IBM s390x LXD runners, AppArmor blocks socket() for /usr/bin/podman
 # and /usr/bin/buildah by binary path. Copying to a different name bypasses
 # the rule. On ppc64le this is harmless (no AppArmor restriction).
+#
+# The /usr/local/bin shims make plain `podman`/`buildah` (PATH resolution)
+# always hit the renamed binaries, so the repo's scripts and Makefile run
+# unmodified inside this image on both arches (they detect podman via
+# `command -v podman` and call it by name).
+#
+# python3-pyyaml/python3-packaging: prefetch-all.sh's host-side python
+# helpers (create-artifact-lockfile.py, download-pip-packages.py) run in
+# this image too.
 RUN dnf install -y --quiet --nodocs \
       podman buildah make which python3 python3-pip \
-      fuse-overlayfs && \
+      python3-pyyaml python3-packaging \
+      fuse-overlayfs wget findutils tar && \
     pip install --no-cache-dir --quiet structlog && \
     cp /usr/bin/podman /usr/bin/podman-build && \
     cp /usr/bin/buildah /usr/bin/buildah-build && \
+    ln -s /usr/bin/podman-build /usr/local/bin/podman && \
+    ln -s /usr/bin/buildah-build /usr/local/bin/buildah && \
     dnf clean all

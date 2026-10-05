@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTAINER_ENGINE="${CONTAINER_ENGINE:-podman}"
-
-# --userns=keep-id is podman-only; docker rejects it ("invalid USER mode").
-USERNS_ARGS=()
-case "$CONTAINER_ENGINE" in podman*) USERNS_ARGS=(--userns=keep-id) ;; esac
-
 # hermeto-fetch-rpm.sh — Download RPMs using Hermeto and create repo metadata.
 #
 # Fetches all RPMs listed in rpms.lock.yaml into cachi2/output/deps/rpm/
@@ -116,7 +110,7 @@ if [[ -n "$CERT_DIR" ]] && [[ -d "$CERT_DIR" ]]; then
 
   # UBI9 ships /etc/rhsm/ca/redhat-uep.pem (the RHSM CA) even without
   # registration, so we can extract it with a simple `cat`.
-  "$CONTAINER_ENGINE" run --rm "$UBI9_IMAGE" \
+  podman run --rm "$UBI9_IMAGE" \
     cat /etc/rhsm/ca/redhat-uep.pem \
     > "$CDN_CERT_DIR/etc/rhsm/ca/redhat-uep.pem" 2>/dev/null || true
 
@@ -145,7 +139,7 @@ elif [[ -n "$ACTIVATION_KEY" ]] && [[ -n "$ORG" ]]; then
   REG_LOG=$(mktemp)
   _xtrace_was_set=false; [[ $- == *x* ]] && _xtrace_was_set=true
   set +x 2>/dev/null
-  "$CONTAINER_ENGINE" run --rm \
+  podman run --rm \
     -e SM_ORG="$ORG" \
     -e SM_KEY="$ACTIVATION_KEY" \
     "$UBI9_IMAGE" \
@@ -216,8 +210,8 @@ HERMETO_STAGING=$(mktemp -d)
 trap 'cleanup_staging "$HERMETO_STAGING" "${CDN_CERT_DIR:-}"' EXIT
 
 echo "--- Downloading RPMs via hermeto ---"
-"$CONTAINER_ENGINE" run --rm \
-  ${USERNS_ARGS[@]+"${USERNS_ARGS[@]}"} \
+podman run --rm \
+  --userns=keep-id \
   -v "$(pwd)/$PREFETCH_DIR:/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   ${CDN_CERT_DIR:+-v "$CDN_CERT_DIR:/certs:ro,z"} \
@@ -227,8 +221,8 @@ echo "--- Downloading RPMs via hermeto ---"
 # inject-files generates DNF .repo files pointing at the downloaded RPMs,
 # so the Dockerfile can `dnf install` from the local repo.
 echo "--- Generating repo metadata ---"
-"$CONTAINER_ENGINE" run --rm \
-  ${USERNS_ARGS[@]+"${USERNS_ARGS[@]}"} \
+podman run --rm \
+  --userns=keep-id \
   -v "$HERMETO_STAGING:/output:z" \
   "$HERMETO_IMAGE" \
   inject-files /output --for-output-dir /cachi2/output
