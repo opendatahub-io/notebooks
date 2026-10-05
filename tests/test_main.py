@@ -299,11 +299,17 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
             # Pin platform_machine to x86_64: public-index Jupyter deps use Path B allowlist
             # ``== 'x86_64' or == 'aarch64'``. Host macOS reports ``arm64``, which is not
             # ``aarch64``, so those packages would otherwise vanish from the filtered lock.
+            # Exception: ppc64le-only locks (e.g. Spyre) only carry ppc64le-gated packages;
+            # use ppc64le so the marker filter doesn't discard all packages.
+            _all_markers = [p.get("marker", "") for p in pylock.get("packages", []) if p.get("marker")]
+            _has_x86 = any("x86_64" in m for m in _all_markers)
+            _has_ppc64le = any("ppc64le" in m for m in _all_markers)
+            _resolved_machine = "ppc64le" if (_has_ppc64le and not _has_x86) else "x86_64"
             marker_env = {
                 "python_full_version": f"{python}.0",
                 "implementation_name": "cpython",
                 "sys_platform": "linux",
-                "platform_machine": "x86_64",
+                "platform_machine": _resolved_machine,
             }
             pylock_packages: dict[str, dict[str, Any]] = {}
             for p in pylock["packages"]:
@@ -357,7 +363,7 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
                         elif s.get("name") in ("R", "code-server"):
                             # TODO(jdanek): check not implemented yet
                             continue
-                        elif s.get("name") in ("CUDA", "ROCm"):
+                        elif s.get("name") in ("CUDA", "ROCm", "Spyre"):
                             expected_version = get_accelerator_version_for_directory(directory, s["name"])
                             if expected_version is None:
                                 continue
@@ -495,7 +501,7 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
             ),
         ),
         ("Tensorboard", ("2.19", "2.20")),
-        ("PyTorch", ("2.9", "2.10")),
+        ("PyTorch", ("2.11", "2.13")),
     )
 
     for name, data in packages.items():

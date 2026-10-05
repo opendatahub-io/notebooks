@@ -344,4 +344,5 @@ class TestSelf(unittest.TestCase):
             "rocm-jupyter-minimal-ubi9-python-3.12",
             "rocm-jupyter-pytorch-ubi9-python-3.12",
             "rocm-jupyter-tensorflow-ubi9-python-3.12",
+            "spyre-jupyter-pytorch-ubi9-python-3.12",
         }

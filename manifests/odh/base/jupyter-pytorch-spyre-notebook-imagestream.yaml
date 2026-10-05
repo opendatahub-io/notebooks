@@ -22,14 +22,15 @@ spec:
           [
             {"name": "Spyre", "version": "latest"},
             {"name": "Python", "version": "v3.12"},
-            {"name": "PyTorch", "version": "2.x"}
+            {"name": "PyTorch", "version": "2.11"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name": "JupyterLab", "version": "4.x"},
-            {"name": "PyTorch", "version": "2.x"},
-            {"name": "Numpy", "version": "2.x"}
+            {"name": "JupyterLab", "version": "4.5"},
+            {"name": "PyTorch", "version": "2.11"},
+            {"name": "Numpy", "version": "2.5"},
+            {"name": "Transformers", "version": "5.17"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-pytorch-spyre-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'true'
