@@ -1287,7 +1287,7 @@ def process_directory(
                 if extra_constraints is not None:
                     extra_constraints.unlink(missing_ok=True)
     else:
-        for flavor in ("cpu", "cuda", "rocm", "spyre"):
+        for flavor in FLAVORS:
             if flavor not in flavors:
                 continue
             if requirements_only:

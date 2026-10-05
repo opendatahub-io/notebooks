@@ -7,7 +7,7 @@ resources:
   - jupyter-baseline-notebook-imagestream.yaml
   - jupyter-minimal-gpu-notebook-imagestream.yaml
   - jupyter-pytorch-notebook-imagestream.yaml
-  - jupyter-spyre-pytorch-notebook-imagestream.yaml
+  - jupyter-pytorch-spyre-notebook-imagestream.yaml
   - jupyter-tensorflow-notebook-imagestream.yaml
   - jupyter-trustyai-notebook-imagestream.yaml
   - code-server-notebook-imagestream.yaml
@@ -142,7 +142,7 @@ replacements:
       version: v1
     targets:
       - fieldPaths:
-          - spec.tags.1.from.name
+          - spec.tags.0.from.name
         select:
           group: image.openshift.io
           kind: ImageStream

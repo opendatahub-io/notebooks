@@ -18,7 +18,6 @@ USER 0
 
 # Install useful OS packages
 # hadolint ignore=DL3041
-RUN subscription-manager refresh && subscription-manager repos   --enable="rhocp-4.19-for-rhel-9-ppc64le-rpms" && dnf repolist
 RUN --mount=type=bind,source=base-images/utils,target=/utils,rw \
     ls -lrt /utils/dnf-helper.sh && bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
@@ -98,7 +97,7 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
       version="${RELEASE}"
 
-# pylock.toml documents the graph; requirements.cuda.txt drives Cachi2 prefetch and hermetic uv install
+# pylock.toml documents the graph; requirements.spyre.txt drives Cachi2 prefetch and hermetic uv install
 COPY ${PYTORCH_SPYRE_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${PYTORCH_SPYRE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
@@ -111,8 +110,12 @@ set -Eeuxo pipefail
 umask 0002
 
 echo "Installing software and packages"
-pip install --no-cache-dir \
-    --requirement ./requirements.txt
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
+    --strict --no-deps --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
 
 # setup path for runtime configuration
 mkdir -p /opt/app-root/runtimes
