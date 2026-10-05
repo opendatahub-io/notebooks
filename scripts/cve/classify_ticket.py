@@ -157,7 +157,8 @@ def classify_ticket_role(issue: dict[str, Any]) -> str:
     issue_type = _issue_type(issue)
     issue_links = (issue.get("fields") or {}).get("issuelinks")
 
-    if project == "RHOAIENG":
+    # ProdSec per-image Vulnerability tickets (RHOAIENG or RHAI).
+    if project in {"RHOAIENG", "RHAI"}:
         if issue_type == "Vulnerability":
             return "rhoaieng_source"
         if any(label.startswith("pscomponent:") for label in labels):
@@ -165,6 +166,7 @@ def classify_ticket_role(issue: dict[str, Any]) -> str:
         if "rhoai/" in summary.lower() or "odh-wb-" in summary.lower():
             return "rhoaieng_source"
 
+    # Legacy RHAIENG parent trackers (optional; no longer required for intake).
     if project == "RHAIENG" and "CVE" in labels:
         if _has_blocked_children(description, issue_links):
             return "rhaieng_parent"
@@ -274,18 +276,18 @@ def classify_action(
     *,
     issue_key: str,
 ) -> tuple[str, str | None, str]:
-    if ticket_role in {"rhoaieng_source", "rhoaieng_child"}:
+    if ticket_role in {"rhoaieng_source", "rhoaieng_child", "rhai_source"}:
         if package_type == "python":
             return (
                 "autofix",
                 None,
-                "Python RHOAIENG CVE — fix via constraints.txt for CVE+release group.",
+                "Python ProdSec CVE (RHOAIENG/RHAI) — fix via constraints.txt for CVE+release group.",
             )
         if package_type == "rpm":
             return (
                 "rpm_check",
                 None,
-                "RPM RHOAIENG CVE — check RHSA/VEX before any PR.",
+                "RPM ProdSec CVE (RHOAIENG/RHAI) — check RHSA/VEX before any PR.",
             )
         if package_type in {"go", "java", "npm"}:
             reasons = {
@@ -297,14 +299,14 @@ def classify_action(
         return (
             "needs_info",
             "needs_info",
-            "Could not determine RHOAIENG package ecosystem.",
+            "Could not determine ProdSec package ecosystem.",
         )
 
     if ticket_role != "rhaieng_parent":
         return (
             "needs_info",
             "needs_info",
-            f"{issue_key} is not a RHAIENG parent CVE tracker.",
+            f"{issue_key} is not a ProdSec source ticket or RHAIENG parent tracker.",
         )
 
     if package_type == "python":

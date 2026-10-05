@@ -189,7 +189,7 @@ jobs:
 
       - name: Upload Python coverage to Codecov
         if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: opendatahub-io/notebooks
@@ -212,7 +212,7 @@ jobs:
       # risk here; the fix belongs upstream (pass those values via env:).
       - name: Upload Python coverage to GitHub Code Quality
         if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
-        uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34  # v1.4.2
+        uses: actions/upload-code-coverage@2b21a77928be8d5168c2b9581a67f2adbebacc52  # v1.4.4
         with:
           file: coverage.xml
           language: Python
@@ -246,7 +246,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a  # v9.3.0
         with:
-          version: v2.12.2
+          version: v2.14.0
           working-directory: scripts/buildinputs
 
       - name: Install gotestsum
@@ -272,7 +272,7 @@ jobs:
 
       - name: Upload Go coverage to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: opendatahub-io/notebooks
@@ -283,7 +283,7 @@ jobs:
       # See the upstream-injection note on the Python upload above (github.com/actions/upload-code-coverage/issues/26).
       - name: Upload Go coverage to GitHub Code Quality
         if: ${{ !cancelled() && steps.go-cobertura.outcome == 'success' }}
-        uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34  # v1.4.2
+        uses: actions/upload-code-coverage@2b21a77928be8d5168c2b9581a67f2adbebacc52  # v1.4.4
         with:
           file: scripts/buildinputs/coverage-go.xml
           language: Go

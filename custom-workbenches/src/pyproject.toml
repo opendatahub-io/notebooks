@@ -1,0 +1,19 @@
+[project]
+name = "custom-workbench"
+version = "0.1.0"
+requires-python = "==3.12.*"
+description = "Customer-built GPU workbench — packages resolve to latest at image build time"
+
+# Unpinned on purpose (RHAIENG-7526 PoC): pip/uv fetches the newest compatible
+# release from INDEX_URL. Pin here only if a package breaks the build.
+dependencies = [
+    "jupyterlab",
+    "jupyter-server",
+    "jupyter-server-proxy",
+    "jupyterlab-git",
+    "jupyter-resource-usage",
+    "nbdime",
+    "nbgitpuller",
+    "ipywidgets",
+    "notebook",
+]

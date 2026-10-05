@@ -2,10 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 import * as process from "node:process";
 import {CodeServerSource, ConfigFixtures} from "./tests/fixtures";
 
-// Default test image used when TEST_TARGET env var is not set.
+// Default code-server image used when TEST_TARGET env var is not set for the regular suite.
 // WARNING: This value is parsed by .github/workflows/test-playwright-action.yaml via grep.
 // Keep it as a single-line string assignment (do not split across lines or rename the variable).
-export const DEFAULT_TEST_IMAGE = "quay.io/modh/codeserver:codeserver-ubi9-python-3.9-20241114-aed66a4";
+export const DEFAULT_CODESERVER_TEST_IMAGE = "quay.io/modh/codeserver:codeserver-ubi9-python-3.9-20241114-aed66a4";
+
+// Default Jupyter image used by the offline runner.
+export const DEFAULT_JUPYTER_TEST_IMAGE = "quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:odh-stable";
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -33,6 +36,7 @@ export default defineConfig<ConfigFixtures>({
   outputDir: 'results/playwright-output',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
+    ...(process.env['OFFLINE_BASE_URL'] ? {baseURL: process.env['OFFLINE_BASE_URL']} : {}),
     // Only override the fixture default when TEST_TARGET is set
     ...(process.env['TEST_TARGET'] ? {
       codeServerSource: CodeServerSource.image(process.env['TEST_TARGET']),
@@ -41,7 +45,8 @@ export default defineConfig<ConfigFixtures>({
     ignoreHTTPSErrors: true,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
+    video: 'retain-on-failure',
 
     // https://github.com/microsoft/playwright/issues/14854#issuecomment-1666185768
     screenshot: "only-on-failure",
@@ -83,7 +88,7 @@ function getProjects() {
         connectCDP: false as const,  // false | number: connect to an existing browser running at given port (e.g. 9222)
         codeServerSource:  // prefers url if specified, otherwise will start the specified docker image
           // CodeServerSource.url(""),  // not-present | string
-          CodeServerSource.image(DEFAULT_TEST_IMAGE),  // string
+          CodeServerSource.image(DEFAULT_CODESERVER_TEST_IMAGE),  // string
       },
     }
   ]

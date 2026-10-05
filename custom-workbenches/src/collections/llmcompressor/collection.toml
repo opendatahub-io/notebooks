@@ -1,0 +1,27 @@
+[collection]
+id = "llmcompressor"
+name = "LLM Compressor"
+description = "LLM Compressor and model-opt related packages (RHAIENG-7241 §3)."
+index_hint = "aipcc"
+recommended_accelerator = "cuda"
+source_of_truth = "dependencies/odh-notebooks-meta-llmcompressor-deps/pyproject.toml"
+conflicts_with = ["trustyai"]
+packages = [
+    "llmcompressor",
+    "compressed-tensors",
+    "transformers",
+    "datasets",
+    "accelerate",
+    "torch",
+    "torchvision",
+    "loguru",
+    "PyYAML",
+    "numpy",
+    "requests",
+    "tqdm",
+    "nvidia-ml-py",
+]
+constraints = [
+    "numpy>=2.0",
+    "pandas>=2.2",
+]

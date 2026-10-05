@@ -25,7 +25,8 @@ export default tseslint.config(
     },
     rules: {
       "@typescript-eslint/no-unnecessary-condition": "error",
-      "@typescript-eslint/no-floating-promises": "error",
+      // Also inspect custom PromiseLike values such as JupyterLab's fluent chains.
+      "@typescript-eslint/no-floating-promises": ["error", { checkThenables: true }],
       // catch (e) { throw new Error(`...${e}`) } is common and fine
       "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
       // Allow _prefixed unused vars (destructuring, callback signatures)

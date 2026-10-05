@@ -29,6 +29,8 @@ ODH_BASE_ENABLE_RULE_DESCRIPTION = "ODH BASE_IMAGE digest updates on opendatahub
 ODH_BASE_MANAGER_DESCRIPTION = "Update BASE_IMAGE in ODH (non-konflux) build-args conf files"
 ODH_BASE_MANAGER_FILE_PATTERN = "/(jupyter|codeserver|runtimes)/.+/build-args/(cpu|cuda|rocm)\\.conf$/"
 ODH_BASE_PACKAGE_PATTERN = "/^quay\\.io\\/opendatahub\\//"
+RENOVATE_JSON_MAX_LINES = 10
+RENOVATE_JSON_SHAPE_ERROR = "renovate.json should include renovate.json5, and nothing else"
 
 
 @dataclass(frozen=True)
@@ -122,13 +124,41 @@ def validate_mintmaker_policy(
     return errors
 
 
+def _renovate_json_shape_errors(path: Path) -> list[str]:
+    """Allow a short JSON wrapper that only includes renovate.json5.
+
+    JSON has no comments. A present file must stay under 10 lines and contain
+    only an optional ``$schema`` plus a single ``extends`` entry that includes
+    ``renovate.json5``.
+    """
+    if not path.is_file():
+        return []
+    raw = path.read_text(encoding="utf-8")
+    if len(raw.splitlines()) >= RENOVATE_JSON_MAX_LINES:
+        return [RENOVATE_JSON_SHAPE_ERROR]
+    try:
+        data = pyjson5.loads(raw)
+    except pyjson5.Json5Exception:
+        return [RENOVATE_JSON_SHAPE_ERROR]
+    if not isinstance(data, dict):
+        return [RENOVATE_JSON_SHAPE_ERROR]
+    if set(data) - {"$schema", "extends"} or "extends" not in data:
+        return [RENOVATE_JSON_SHAPE_ERROR]
+    extends = data["extends"]
+    if isinstance(extends, str):
+        extends = [extends]
+    if not isinstance(extends, list) or len(extends) != 1:
+        return [RENOVATE_JSON_SHAPE_ERROR]
+    include = extends[0]
+    if not isinstance(include, str) or "renovate.json5" not in include:
+        return [RENOVATE_JSON_SHAPE_ERROR]
+    return []
+
+
 def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".github") -> list[str]:
     errors: list[str] = []
 
-    shadow_config = config_dir / "renovate.json"
-    if shadow_config.is_file():
-        rel = shadow_config.relative_to(ROOT) if shadow_config.is_relative_to(ROOT) else shadow_config
-        errors.append(f"{rel} must not exist (shadows renovate.json5)")
+    errors.extend(_renovate_json_shape_errors(config_dir / "renovate.json"))
 
     for forbidden in ("baseBranchPatterns", "baseBranches"):
         if forbidden in config:

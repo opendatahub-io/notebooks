@@ -46,7 +46,7 @@ class FixPlan:
 
     @property
     def comment_keys(self) -> list[str]:
-        keys = list(self.group.rhoaieng_keys) + list(self.group.rhaieng_keys)
+        keys = list(self.group.rhoaieng_keys) + list(self.group.rhai_keys) + list(self.group.rhaieng_keys)
         return sorted(set(keys))
 
     def to_dict(self) -> dict[str, Any]:
@@ -63,6 +63,7 @@ class FixPlan:
             "verdict": self.verdict,
             "verdict_reason": self.verdict_reason,
             "rhoaieng_count": len(self.group.rhoaieng_keys),
+            "rhai_count": len(self.group.rhai_keys),
             "rhaieng_count": len(self.group.rhaieng_keys),
             "comment_keys": self.comment_keys,
             "existing_constraint": self.existing_constraint,
@@ -307,6 +308,7 @@ def format_plan(plan: FixPlan) -> str:
         f"│ PR branch: {plan.pr_branch or '-':<43} │",
         f"│ PR title:  {(plan.pr_title or '-')[:43]:<43} │",
         f"│ RHOAIENG:  {len(plan.group.rhoaieng_keys):<43} │",
+        f"│ RHAI:      {len(plan.group.rhai_keys):<43} │",
         f"│ RHAIENG:   {len(plan.group.rhaieng_keys):<43} │",
         f"│ Verdict:   {action:<43} │",
     ]

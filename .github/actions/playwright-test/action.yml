@@ -7,7 +7,7 @@ description: |
   - Runs Playwright tests inside the repo's tests/browser image
   - Uses Podman to run the test container with proper isolation
   - Supports testcontainers for container orchestration
-  - Uploads test reports as artifacts on pull requests
+  - Uploads the HTML report and its failure artifacts together when requested by the caller
 
   Requirements:
   - Podman must be installed and running
@@ -38,14 +38,14 @@ inputs:
     required: false
     default: 'tests/browser'
   upload-report:
-    description: 'Whether to upload the Playwright HTML report as an artifact'
+    description: 'Whether to upload the Playwright HTML report and raw failure artifacts as one artifact'
     required: false
     default: 'false'
   upload-junit:
     description: 'Whether to upload the Playwright JUnit XML report as an uncompressed artifact'
     required: false
     default: 'true'
-  artifact-name:
+  report-artifact-name:
     description: 'Name for the uploaded HTML report artifact (required if upload-report is true)'
     required: false
     default: 'playwright-report'
@@ -108,6 +108,7 @@ runs:
         if [[ -n "${GREP_PATTERN}" ]]; then
           args+=(--grep "${GREP_PATTERN}")
         fi
+        target_arch=$(podman inspect --format '{{.Architecture}}' "${TEST_TARGET}")
         podman run \
           --rm \
           --ipc=host \
@@ -116,6 +117,7 @@ runs:
           --env "DEBUG=testcontainers:*" \
           --env "PODMAN_SOCK=/var/run/docker.sock" \
           --env "TEST_TARGET" \
+          --env "TEST_TARGET_ARCH=${target_arch}" \
           --volume "${PODMAN_SOCKET}":/var/run/docker.sock \
           --volume "${PWD}/results":/home/pwuser/tests/browser/results:Z \
           --volume "${PWD}/playwright-report":/home/pwuser/tests/browser/playwright-report:Z \
@@ -138,9 +140,9 @@ runs:
         if [[ -n "${JUNIT_ARTIFACT_FILE}" ]]; then
           artifact_file="${JUNIT_ARTIFACT_FILE}"
         else
-          artifact_file="${ARTIFACT_NAME/_playwright-report/_playwright-junit.xml}"
-          if [[ "${artifact_file}" == "${ARTIFACT_NAME}" ]]; then
-            artifact_file="${ARTIFACT_NAME}-junit.xml"
+          artifact_file="${REPORT_ARTIFACT_NAME/_playwright-report/_playwright-junit.xml}"
+          if [[ "${artifact_file}" == "${REPORT_ARTIFACT_NAME}" ]]; then
+            artifact_file="${REPORT_ARTIFACT_NAME}-junit.xml"
           fi
         fi
         dest="${RUNNER_TEMP}/playwright-reports/${artifact_file}"
@@ -154,7 +156,7 @@ runs:
         fi
       env:
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
-        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        REPORT_ARTIFACT_NAME: ${{ inputs.report-artifact-name }}
         JUNIT_ARTIFACT_FILE: ${{ inputs.junit-artifact-file }}
 
     - name: Upload Playwright JUnit XML
@@ -170,6 +172,9 @@ runs:
       if: ${{ !cancelled() && inputs.upload-report == 'true' }}
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
-        name: ${{ inputs.artifact-name }}
-        path: ${{ inputs.working-directory }}/playwright-report/
+        name: ${{ inputs.report-artifact-name }}
+        path: |
+          ${{ inputs.working-directory }}/playwright-report/
+          ${{ inputs.working-directory }}/results/playwright-output/
         retention-days: ${{ inputs.artifact-retention-days }}
+        if-no-files-found: warn

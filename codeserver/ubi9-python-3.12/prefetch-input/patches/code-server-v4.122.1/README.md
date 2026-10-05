@@ -20,9 +20,13 @@ Dockerfile `rpm-base` stage (`COPY .../patches/code-server-${CODESERVER_VERSION}
 
 ## Runtime Dependency Review pins
 High/critical runtime CVEs cleared via npm overrides (refresh locks after changing):
-- `lib/vscode` / `remote`: `undici@7.29.0`, `ip-address@10.3.1`, `tar@7.5.19`, `shell-quote@1.9.0`, `axios@1.18.0`, `form-data@4.0.6`, `ws@8.21.0` / `ws@7.5.11`
+- Root `code-server`: `compression@1.8.2`, `js-yaml@4.3.2`, `qs@6.16.0`, plus `fast-uri@3.1.8` / `ws@8.21.0` / `brace-expansion` major-line floors for Dependency Review
+- `lib/vscode` / `remote` / `extensions/notebook-renderers`: `undici@7.29.1`, with `js-yaml@4.3.2` / `qs@6.16.0` / `compression@1.8.2` / `fast-uri@3.1.8` on vscode where needed
+- `test`: `js-yaml@3.15.2` (Jest 3.x line)
+- Also retained on vscode/remote: `ip-address@10.3.1`, `tar@7.5.21`, `shell-quote@1.9.0`, `axios@1.20.0`, `form-data@4`/`form-data@3` major-line floors (`4.0.6`/`3.0.5`), `ws@8.21.0` / `ws@7.5.11`
 - `microsoft-authentication`: `@nevware21/ts-utils@0.14.0`, `form-data@3.0.5`
 - `custom-packages`: `picomatch@4.0.5`
+
 
 ## Notes for v4.122.1
 - Upstream ships `@vscode/ripgrep-universal` (static bins). Hermetic builds install the

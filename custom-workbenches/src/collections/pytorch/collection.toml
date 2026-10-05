@@ -1,0 +1,15 @@
+[collection]
+id = "pytorch"
+name = "PyTorch"
+description = "PyTorch stack for custom GPU workbenches."
+index_hint = "aipcc"
+recommended_accelerator = "cuda"
+conflicts_with = ["trustyai"]
+packages = [
+    "torch",
+    "torchvision",
+]
+constraints = [
+    "numpy>=2.0",
+    "pandas>=2.2",
+]

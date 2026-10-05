@@ -63,7 +63,7 @@ Rows before 2026-07-28 are from the same prototype session (see [BUGS.md](BUGS.m
 
 ### Run detail (2026-07-28, full history, no failure classification)
 
-```
+```text
 Collecting odh (arewm-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek)...
   live PipelineRuns: 10
   KubeArchive: 18/18 component(s) with archived builds
@@ -92,7 +92,7 @@ Wrote data.json (4096187 bytes, 182 latest + 5019 history)
 
 Adds `failure_class` / `failed_tasks` via parallel TaskRun lists for failed **live** PipelineRuns and failed **latest-per-cell** merged rows only (not all ~5k history bars).
 
-```
+```text
 Collecting odh (arewm-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek)...
   live PipelineRuns: 5
   KubeArchive: 18/18 component(s) with archived builds

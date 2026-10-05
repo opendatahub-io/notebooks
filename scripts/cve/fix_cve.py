@@ -3,6 +3,7 @@
 
 Usage:
     python scripts/cve/fix_cve.py RHOAIENG-91786 --dry-run
+    python scripts/cve/fix_cve.py RHAI-3507 --dry-run
     python scripts/cve/fix_cve.py CVE-2026-78676 --branch rhoai-3.5 --dry-run
     python scripts/cve/fix_cve.py --count 1 --dry-run
 """
@@ -45,12 +46,15 @@ def _resolve_groups(
             match = re.search(r"\[(rhoai-\d+\.\d+)]", issue["fields"]["summary"])
             if match:
                 branch = match.group(1)
+            key = args.issue_key
             return [
                 CVEGroup(
                     cve_id=cve_id,
                     branch=branch,
-                    rhoaieng_keys=[args.issue_key],
-                    summaries={args.issue_key: issue["fields"]["summary"]},
+                    rhoaieng_keys=[key] if key.startswith("RHOAIENG-") else [],
+                    rhai_keys=[key] if key.startswith("RHAI-") else [],
+                    rhaieng_keys=[key] if key.startswith("RHAIENG-") else [],
+                    summaries={key: issue["fields"]["summary"]},
                 )
             ]
         return [group_from_issue(client, issue)]
@@ -81,7 +85,11 @@ def _anchor_issue(client: JiraClient | None, group, args: argparse.Namespace) ->
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("issue_key", nargs="?", help="CVE id, RHAIENG key, or RHOAIENG key")
+    parser.add_argument(
+        "issue_key",
+        nargs="?",
+        help="CVE id, RHOAIENG/RHAI ProdSec key, or legacy RHAIENG parent key",
+    )
     parser.add_argument("--branch", help="Restrict CVE input to a single release branch")
     parser.add_argument("--count", type=int, default=1, help="Number of groups when discovering queue")
     parser.add_argument("--max-results", type=int, default=500, help="Max Jira issues to scan")

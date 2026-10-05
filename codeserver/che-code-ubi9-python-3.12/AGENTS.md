@@ -52,8 +52,8 @@ As of che-code 3.30, this is VS Code **1.116.0**.
    If the output lists platform names (`linux-x64`, `darwin-arm64`, etc.)
    instead of `['universal']`, the extension has native components. **Only
    universal extensions** can be baked into this multiarch image. Platform-
-   specific extensions must be left for users to install at runtime from the
-   gallery (che-code defaults to Open VSX).
+   specific extensions that are not extension-pack members must be left for
+   users to install at runtime from the gallery (che-code defaults to Open VSX).
 
 4. **Download the new `.vsix`:**
 
@@ -81,14 +81,15 @@ As of che-code 3.30, this is VS Code **1.116.0**.
 
 - **debugpy** (`ms-python.debugpy`): platform-specific (native debugger
   binaries). Published for linux-x64, linux-arm64, darwin-*, win32-* but
-  **not** linux-ppc64le or linux-s390x. Users who need the Python debugger
-  on amd64/arm64 can install it from the gallery at runtime.
+  **not** linux-ppc64le or linux-s390x. On amd64/arm64, the Python VSIX
+  installs this pack member during the image build. Do not install or update
+  it separately at runtime.
 
-- **Extension pack members**: `ms-toolsai.jupyter` declares an
-  `extensionPack` with 4 members (renderers, keymap, cell-tags, slideshow).
-  `ms-python.python` declares a pack with 3 members (pylance, debugpy,
-  vscode-python-envs). When updating the main extension, check if the pack
-  composition changed and update the members accordingly.
+- **Extension pack members**: Installing the main Python and Jupyter VSIXes
+  installs their pack members. Che-Code then classifies those members as built-in
+  and rejects attempts to install or update them individually. Do not add a
+  second install step for pack members. When updating the main extensions, check
+  whether their pack composition changed.
 
 ### Updating the che-code base image
 
