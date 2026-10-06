@@ -265,6 +265,15 @@ jobs:
           import requests
           from testcontainers.core.container import DockerContainer
 
+          def tail_logs(c, n=2000):
+              try:
+                  logs = c.get_logs()
+                  if not isinstance(logs, str):
+                      logs = logs.decode(errors="replace")
+                  return logs[-n:]
+              except Exception:
+                  return "<logs unavailable>"
+
           image = os.environ["IMAGE_NAME"]
           print("smoke image:", image)
           with DockerContainer(image).with_exposed_ports(8888) as c:
@@ -279,9 +288,18 @@ jobs:
                       break
                   except Exception as e:
                       last = e
+                      # Fail fast and say why when the container itself
+                      # exited: otherwise polling a dead container burns
+                      # the whole 600 s budget with no diagnostic.
+                      try:
+                          state = c.status
+                      except Exception:
+                          state = None
+                      if state in ("exited", "dead"):
+                          raise SystemExit("container exited early (state=%s, last error=%r)\n--- container logs (tail) ---\n%s" % (state, last, tail_logs(c)))
                       time.sleep(5)
               else:
-                  raise SystemExit("jupyter never became ready: %r" % (last,))
+                  raise SystemExit("jupyter never became ready: %r\n--- container logs (tail) ---\n%s" % (last, tail_logs(c)))
               print("VERDICT: built image serves jupyter on", os.uname().machine)
           '
 
