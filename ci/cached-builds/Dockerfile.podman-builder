@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:44
+FROM registry.fedoraproject.org/fedora:44@sha256:88f7f8b5d1db37df588399fcfc0c71f3258d653706257ecd749b8d60fdc9f4fe
 # On IBM s390x LXD runners, AppArmor blocks socket() for /usr/bin/podman
 # and /usr/bin/buildah by binary path. Copying to a different name bypasses
 # the rule. On ppc64le this is harmless (no AppArmor restriction).

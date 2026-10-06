@@ -876,15 +876,16 @@ Workarounds:
    and the AppArmor-blocked `socket()` syscall prevents DNS resolution.
    The `--network=host` flag on both the outer docker and inner podman
    build is insufficient — the user namespace is the problem, not the
-   network namespace. Resolved by the binary rename: the s390x
-   `podman-builder` image exposes a `/usr/local/bin/podman` shim to the
-   renamed `podman-build` binary, so plain `podman` calls bypass the
-   path-based rule on both arches. LXD also blocks user-namespace
+   network namespace. Resolved by the binary rename (s390x-specific):
+   the `podman-builder` image exposes a `/usr/local/bin/podman` shim to
+   the renamed `podman-build` binary, so plain `podman` calls bypass
+   the s390x path-based rule (on ppc64le the rename is a harmless
+   consistency measure). Separately, LXD blocks user-namespace
    mapping on some/all runners (crun: "write to gid_map: Operation
    not permitted" — reproduced on s390x and on some ppc64le runners),
    so the shim translates the hermeto fetch scripts'
-   `--userns=keep-id` to `--userns=host`, always — both are identity
-   mappings under root.
+   `--userns=keep-id` to `--userns=host` on both arches — both are
+   identity mappings under root.
 
 2. **Use `docker buildx build --build-context`** — BuildKit named contexts
    can map external directories: `--build-context cachi2=/path/cachi2/output`.
