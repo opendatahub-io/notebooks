@@ -97,6 +97,14 @@ jobs:
       PODMAN_BUILDER_IMAGE: "ibm-ci/podman-builder:latest"
       SMOKE_MODE: ${{ contains(matrix.target, 'jupyter') && 'workbench' || 'runtime' }}
     steps:
+      - name: "Prefer HTTP/1.1 for git (IBM runner egress drops HTTP/2 streams)"
+        run: |
+          set -Eeuxo pipefail
+          # The shared IBM runners' outbound path to github.com drops
+          # HTTP/2 streams on large transfers (curl 92: "HTTP/2 stream
+          # ... CANCEL", early EOF on the codeserver submodule clone;
+          # codeload 403s on action downloads). HTTP/1.1 survives it.
+          git config --global http.version HTTP/1.1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           # Mirrors the standard build TEMPLATE: full history (shallow
