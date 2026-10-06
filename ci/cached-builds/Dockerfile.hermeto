@@ -1,0 +1,12 @@
+FROM registry.fedoraproject.org/fedora:44@sha256:88f7f8b5d1db37df588399fcfc0c71f3258d653706257ecd749b8d60fdc9f4fe
+# golang: hermeto's go-module fetch (mongocli for jupyter-datascience)
+# shells out to a system Go toolchain. mongocli v2.0.7 requires go >= 1.25.1;
+# fedora 44 provides 1.26.x for all arches (the official hermeto image
+# carries an alpine Go SDK that has no ppc64le/s390x builds).
+RUN dnf install -y --quiet python3 python3-pip python3-createrepo_c createrepo_c git-core golang && \
+    pip install --no-cache-dir --quiet --root-user-action=ignore \
+      # v0.51.0 pinned to the tag's commit (a git ref like 0.51.0 is mutable)
+      "hermeto @ git+https://github.com/hermetoproject/hermeto@6beec18d5717476b1dbdbdf4196bd5a90949d864" && \
+    dnf clean all && \
+    createrepo_c --version && hermeto --version && go version
+ENTRYPOINT ["hermeto"]
