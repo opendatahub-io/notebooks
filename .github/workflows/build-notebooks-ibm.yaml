@@ -1,0 +1,358 @@
+---
+# Build all IBM-compatible CPU notebook images on the IBM actionspz
+# self-hosted runners (ubuntu-24.04-ppc64le, ubuntu-24.04-s390x).
+#
+# Separate, IBM-only workflow: it never runs on GitHub-hosted runners and
+# never builds non-IBM platforms. The build path was validated claim by
+# claim in the trial (PR #4714): a privileged Fedora 44 container with
+# podman 5.x runs inside the runner's Docker CE ("podman-in-docker, the
+# konflux way"), so the podman-only features the repo relies on (cachi2
+# --volume mounts, docker-archive saves) keep working on these runners.
+#
+# Target scope: the IBM-compatible CPU set, defined by PPC64LE_COMPATIBLE
+# and S390X_COMPATIBLE in ci/cached-builds/gen_gha_matrix_jobs.py (the same
+# lists that drive the standard build matrix). Add a target to those lists
+# to build it here. GPU/ROCm images are out of scope.
+#
+# Test scope: smoke only. The repo's container pytest suite is not
+# installable on these arches under the [tool.uv] no-build=true wheel-only
+# policy (markupsafe/pyzmq/pyyaml wheel gaps); full-suite validation is
+# tracked in issue #4715.
+name: Build & Test on IBM Runners (ppc64le, s390x)
+
+"on":
+  pull_request:
+    paths:
+      - '.github/workflows/build-notebooks-ibm.yaml'
+      - '.github/actionlint.yaml'
+      - 'ci/cached-builds/**'
+      - 'scripts/lockfile-generators/**'
+      - 'Makefile'
+      - 'jupyter/**'
+      - 'runtimes/**'
+      - 'versions_config.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: true
+
+# No inherited token scope: the build job runs on persistent self-hosted
+# IBM runners with --privileged containers and executes PR-controlled code
+# (make, Dockerfiles, lockfile scripts). Each job declares the least
+# privilege it needs.
+permissions: {}
+
+jobs:
+  gen:
+    name: Generate IBM job matrix
+    # IBM's actionspz runners are approved for opendatahub-io/notebooks
+    # only. This file is synced to the other notebooks repos (e.g.
+    # red-hat-data-services), so gate on the repository: the build job
+    # needs gen, so it is skipped along with it.
+    if: github.repository == 'opendatahub-io/notebooks'
+    permissions:
+      contents: read
+    runs-on: ubuntu-26.04
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+      has_jobs: ${{ steps.gen.outputs.has_jobs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Generate and filter to IBM platforms
+        id: gen
+        run: |
+          set -Eeuxo pipefail
+          # No --from-ref: this workflow builds the whole IBM-compatible set
+          # on every trigger, not just PR-changed targets. The generator also
+          # emits amd64/arm64 entries; keep only the IBM platforms.
+          python3 ci/cached-builds/gen_gha_matrix_jobs.py \
+            --arm64-images exclude \
+            --ppc64le-images include \
+            --s390x-images include > /tmp/ibm-matrix-all.txt
+          python3 -c 'import json, re, sys; txt = open(sys.argv[1]).read(); m = re.search(r"^matrix=(\{.*\})", txt, re.M); d = json.loads(m.group(1)); ibm = [e for e in d["include"] if e["platform"] in ("linux/ppc64le", "linux/s390x")]; out = "matrix=" + json.dumps({"include": ibm}, separators=(",", ":")) + "\nhas_jobs=" + json.dumps(len(ibm) > 0) + "\n"; open(sys.argv[2], "w").write(out)' /tmp/ibm-matrix-all.txt /tmp/ibm-matrix-filtered.txt
+          cat /tmp/ibm-matrix-filtered.txt
+          cat /tmp/ibm-matrix-filtered.txt >> "$GITHUB_OUTPUT"
+
+  build:
+    name: "${{ matrix.target }} · ${{ matrix.platform }} [ibm]"
+    needs: gen
+    permissions:
+      contents: read
+    if: needs.gen.outputs.has_jobs == 'true'
+    runs-on: ${{ matrix.platform == 'linux/ppc64le' && 'ubuntu-24.04-ppc64le' || 'ubuntu-24.04-s390x' }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.gen.outputs.matrix) }}
+    env:
+      BUILD_ARCH: ${{ matrix.platform }}
+      MAKE_TARGET: ${{ matrix.target }}
+      # Local-only image naming (PUSH_IMAGES=no); the registry prefix is part
+      # of the image name only, nothing is published.
+      IMAGE_REGISTRY: "ghcr.io/opendatahub-io/notebooks/workbench-images"
+      PODMAN_BUILDER_IMAGE: "ibm-ci/podman-builder:latest"
+      SMOKE_MODE: ${{ contains(matrix.target, 'jupyter') && 'workbench' || 'runtime' }}
+    steps:
+      - name: "Prefer HTTP/1.1 for git (IBM runner egress drops HTTP/2 streams)"
+        run: |
+          set -Eeuxo pipefail
+          # The shared IBM runners' outbound path to github.com drops
+          # HTTP/2 streams on large transfers (curl 92: "HTTP/2 stream
+          # ... CANCEL", early EOF on the codeserver submodule clone;
+          # codeload 403s on action downloads). HTTP/1.1 survives it.
+          git config --global http.version HTTP/1.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # Mirrors the standard build TEMPLATE: full history (shallow
+          # clone + hermeto's symlink-preserving source copy breaks tag
+          # fetches on the superproject), recursive submodules (the
+          # mongocli-builder stage of jupyter-datascience builds from the
+          # root prefetch-input/mongocli submodule), LFS for codeserver
+          # targets.
+          fetch-depth: 0
+          lfs: ${{ contains(matrix.target, 'codeserver') }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: System info
+        run: |
+          set -Eeuxo pipefail
+          uname -a
+          cat /etc/os-release
+          df -h
+          free -h
+          nproc
+          systemd-detect-virt 2>&1 || true
+
+      - name: Build podman-builder image (Fedora 44, podman 5.x)
+        run: |
+          set -Eeuxo pipefail
+          docker build -t "${PODMAN_BUILDER_IMAGE}" -f ci/cached-builds/Dockerfile.podman-builder ci/cached-builds/
+          docker run --rm --privileged "${PODMAN_BUILDER_IMAGE}" bash -c '
+            set -Eeuxo pipefail
+            /usr/bin/podman --version
+            /usr/bin/podman-build --version
+            /usr/bin/buildah-build --version
+            podman --version
+            buildah --version
+          '
+
+      - name: s390x AppArmor negative control (regression watch)
+        if: ${{ matrix.platform == 'linux/s390x' }}
+        continue-on-error: true
+        run: |
+          set -x
+          # Doc (May 2026) reported /usr/bin/podman blocked by an AppArmor
+          # path-based socket() rule on s390x; it did not reproduce on the
+          # 1.3-release runner image (trial). Watch for a regression.
+          docker run --rm --privileged --network=host "${PODMAN_BUILDER_IMAGE}" bash -c '
+            if /usr/bin/podman pull quay.io/centos/centos:stream9-minimal 2>&1; then
+              echo "plain /usr/bin/podman pull SUCCEEDED on s390x - rename workaround is a fallback only"
+            else
+              echo "plain /usr/bin/podman pull FAILED on s390x - AppArmor restriction back, rename workaround active"
+            fi
+          ' || true
+
+      - name: "Go toolchain (setup-go needs architecture: ppc64le)"
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: "stable"
+          architecture: ${{ matrix.platform == 'linux/ppc64le' && 'ppc64le' || '' }}
+          cache-dependency-path: scripts/buildinputs/go.mod
+
+      - name: Compile bin/buildinputs (host; reused via workspace mount)
+        run: |
+          set -Eeuxo pipefail
+          make bin/buildinputs
+
+      - name: Resolve component dir
+        run: |
+          set -Eeuxo pipefail
+          # make --just-print emits machine-parsed lines at parse time
+          # ($(info) in the Makefile). Pure make+text tools: the IBM
+          # runners' system python is older than the repo's PEP 758
+          # syntax, so the repo's python helpers cannot be imported
+          # here. bin/buildinputs must exist (built above): non-CI
+          # make loads it as a Makefile prerequisite.
+          OUT=$(make "${MAKE_TARGET}" --just-print 2>/tmp/make-dry.err) || { cat /tmp/make-dry.err >&2; exit 1; }
+          COMPONENT_DIR=$(printf '%s\n' "$OUT" | grep -F '#*# Image build directory: <' | head -1 | cut -d'<' -f2 | cut -d'>' -f1)
+          [ -n "${COMPONENT_DIR}" ] || { echo "ERROR: could not resolve build directory for ${MAKE_TARGET}" >&2; exit 1; }
+          [ -d "${COMPONENT_DIR}" ] || { echo "ERROR: build directory ${COMPONENT_DIR} does not exist" >&2; exit 1; }
+          echo "COMPONENT_DIR=${COMPONENT_DIR}" >> "${GITHUB_ENV}"
+
+      - name: "Prefetch hermetic build dependencies (podman-in-docker, native hermeto)"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p /tmp/podman-storage
+          # download-pip-packages.py falls back to the *executing* python for
+          # marker evaluation (RELEASE_PYTHON_VERSION env). Inside the builder
+          # container that is Fedora 44's python3.14, which wrongly excludes
+          # py3.12-only packages (greenlet & co). Pass the target's python,
+          # derived from the component dir name (e.g. ubi9-python-3.12).
+          RELEASE_PYTHON_VERSION="$(basename "${COMPONENT_DIR}" | sed 's/.*python-//')"
+          [ -n "${RELEASE_PYTHON_VERSION}" ] || { echo "ERROR: cannot derive target python version from ${COMPONENT_DIR}" >&2; exit 1; }
+          echo "Target python for pip marker evaluation: ${RELEASE_PYTHON_VERSION}"
+          docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" \
+            -v /tmp/podman-storage:/var/lib/containers:z \
+            -w /workspace \
+            -e MAKE_TARGET="${MAKE_TARGET}" \
+            -e BUILD_ARCH="${BUILD_ARCH}" \
+            -e COMPONENT_DIR="${COMPONENT_DIR}" \
+            -e RELEASE_PYTHON_VERSION="${RELEASE_PYTHON_VERSION}" \
+            -e HERMETO_IMAGE="ibm-ci/hermeto:0.51.0" \
+            "${PODMAN_BUILDER_IMAGE}" \
+            bash -c '
+              set -Eeuxo pipefail
+              # The pinned ghcr hermeto image has no ppc64le/s390x manifests,
+              # so build it natively and point the lockfile scripts at it.
+              podman build -t ibm-ci/hermeto:0.51.0 -f ci/cached-builds/Dockerfile.hermeto ci/cached-builds/
+              scripts/lockfile-generators/prefetch-all.sh --component-dir "${COMPONENT_DIR}"
+            '
+          test -d cachi2/output
+          find cachi2/output -maxdepth 3 -type d | head -20
+
+      - name: "Build image (podman-in-docker, konflux way: cachi2 --volume mounts)"
+        id: make-build
+        run: |
+          set -Eeuxo pipefail
+          IMAGE_TAG="ibm_$(echo "${GITHUB_SHA}" | cut -c1-7)_$(echo "${BUILD_ARCH}" | tr '/' '_')"
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "${GITHUB_ENV}"
+          echo "IMAGE_NAME=${IMAGE_REGISTRY}:${MAKE_TARGET}-${IMAGE_TAG}" >> "${GITHUB_ENV}"
+          mkdir -p /tmp/podman-storage
+          docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" \
+            -v /tmp/podman-storage:/var/lib/containers:z \
+            -w /workspace \
+            -e IMAGE_REGISTRY="${IMAGE_REGISTRY}" \
+            -e IMAGE_TAG="${IMAGE_TAG}" \
+            -e MAKE_TARGET="${MAKE_TARGET}" \
+            -e PRODUCT=odh \
+            -e PUSH_IMAGES=no \
+            -e BUILD_ARCH="${BUILD_ARCH}" \
+            -e CONTAINER_BUILD_CACHE_ARGS="--no-cache --network=host" \
+            "${PODMAN_BUILDER_IMAGE}" \
+            bash -c '
+              set -Eeuxo pipefail
+              export PYTHONPATH=/workspace
+              make "${MAKE_TARGET}"
+              podman save --format docker-archive -o /workspace/ibm-image.tar \
+                "${IMAGE_REGISTRY}:${MAKE_TARGET}-${IMAGE_TAG}"
+            '
+
+      - name: Load built image into Docker
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          docker load -i ibm-image.tar
+          rm -f ibm-image.tar
+          docker images --digests | head -20
+
+      - name: Install smoke dependencies (pure python; system python is fine)
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          python3 -m pip install --user --break-system-packages --quiet testcontainers docker requests
+
+      - name: "Smoke: workbench serves Jupyter (HTTP 8888)"
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' && env.SMOKE_MODE == 'workbench' }}
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/docker.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: |
+          set -Eeuxo pipefail
+          python3 -c '
+          import os
+          import time
+
+          import requests
+          from testcontainers.core.container import DockerContainer
+
+          def tail_logs(c, n=2000):
+              try:
+                  logs = c.get_logs()
+                  # testcontainers >= 4.15 returns (stdout, stderr) bytes
+                  if isinstance(logs, tuple):
+                      logs = b"\n".join(logs)
+                  if isinstance(logs, bytes):
+                      logs = logs.decode(errors="replace")
+                  return logs[-n:]
+              except Exception:
+                  return "<logs unavailable>"
+
+          image = os.environ["IMAGE_NAME"]
+          print("smoke image:", image)
+          with DockerContainer(image).with_exposed_ports(8888) as c:
+              url = "http://" + c.get_container_host_ip() + ":" + str(c.get_exposed_port(8888)) + "/"
+              deadline = time.time() + 600
+              last = None
+              while time.time() < deadline:
+                  try:
+                      r = requests.get(url, timeout=10)
+                      print("GET", url, "->", r.status_code, "len", len(r.content))
+                      assert 200 <= r.status_code < 400
+                      break
+                  except Exception as e:
+                      last = e
+                      # Fail fast and say why when the container itself
+                      # exited: otherwise polling a dead container burns
+                      # the whole 600 s budget with no diagnostic.
+                      try:
+                          state = c.status
+                      except Exception:
+                          state = None
+                      if state in ("exited", "dead"):
+                          raise SystemExit("container exited early (state=%s, last error=%r)\n--- container logs (tail) ---\n%s" % (state, last, tail_logs(c)))
+                      time.sleep(5)
+              else:
+                  raise SystemExit("jupyter never became ready: %r\n--- container logs (tail) ---\n%s" % (last, tail_logs(c)))
+              print("VERDICT: built image serves jupyter on", os.uname().machine)
+          '
+
+      - name: "Smoke: runtime image imports its runtime (exits 0; full suite in #4715)"
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' && env.SMOKE_MODE == 'runtime' }}
+        continue-on-error: true
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/docker.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: |
+          set -Eeuxo pipefail
+          python3 -c '
+          import os
+          import time
+
+          from testcontainers.core.container import DockerContainer
+
+          image = os.environ["IMAGE_NAME"]
+          print("smoke image:", image)
+          # Runtime images ship no CMD: ODH launches the pipeline runtime
+          # with an explicit command. The runtime is kfp (2.17.0) with an
+          # Elyra bootstrapper, not a pip package named elyra. Mirror
+          # tests/containers/docker_utils.running_container: start with
+          # sleep infinity, then exec the check with the default python3
+          # on the image PATH. kfp + zmq cover the runtime core and a
+          # native extension (zmq matters on s390x, per the repo test).
+          with DockerContainer(image).with_command(["/bin/sh", "-c", "sleep infinity"]) as c:
+              exit_code, out = c.exec(["python3", "-c", "from importlib.metadata import version; print(\"kfp version:\", version(\"kfp\")); import kfp; print(\"import kfp: OK\"); import zmq; z = zmq.Context(); s = z.socket(zmq.PAIR); s.close(0); z.term(); print(\"import zmq: OK\")"])
+              text = out.decode() if isinstance(out, (bytes, bytearray)) else str(out)
+              print(text[-2000:])
+              if exit_code == 0 and "kfp version:" in text and "import zmq: OK" in text:
+                  print("VERDICT: runtime image imports kfp and zmq on", os.uname().machine)
+              else:
+                  raise SystemExit("runtime import probe failed (exit=%s) - recorded, build still validated" % exit_code)
+          '
+
+      - name: Failure breadcrumbs
+        if: ${{ failure() }}
+        run: |
+          set -x
+          df -h || true
+          docker images || true
+          docker ps -a || true
+          find cachi2/output -maxdepth 2 -type d 2>/dev/null | head -10 || true
