@@ -18,7 +18,7 @@ USER 0
 
 # Install useful OS packages
 # hadolint ignore=DL3041
-RUN --mount=type=bind,source=base-images/utils,target=/utils,rw \
+RUN --mount=type=bind,source=base-images/utils,target=/utils \
     ls -lrt /utils/dnf-helper.sh && bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
 USER 1001
