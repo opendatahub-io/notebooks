@@ -143,9 +143,11 @@ podman 4.x) or switch to Docker.
   syntax extensively. HEREDOC support requires buildah >= 1.35 / podman
   >= 5.0. Ubuntu 24.04 patched it out of their buildah 1.33 package
   ([buildah#5474](https://github.com/containers/buildah/issues/5474)).
-- **s390x**: podman is completely broken for any network operation
-  (both Go-level pulls and glibc tools inside `RUN` steps). See the
-  detailed analysis below.
+- **s390x**: the runner's distro podman is completely broken for any
+  network operation (both Go-level pulls and glibc tools inside `RUN`
+  steps). This is a pre-workaround observation about the `/usr/bin/podman`
+  path; see the detailed analysis below and how the final design
+  bypasses it (CI container engine matrix).
 
 See <https://github.com/IBM/actionspz/issues/63#issuecomment-3654738467> for
 the original investigation.
@@ -196,14 +198,17 @@ container engine support varies by architecture:
 |---|---|---|
 | amd64 / arm64 | Podman | Default, via Homebrew |
 | ppc64le (IBM Power) | Podman (in Docker) | Podman-in-docker via `docker run --privileged` with Fedora 44 |
-| s390x (IBM Z) | **Docker only** | Podman is completely broken for any network operation |
+| s390x (IBM Z) | Podman (in Docker) | Same podman-in-docker flow as ppc64le; the AppArmor path rule is bypassed by the renamed binary in the podman-builder image |
 
 ### Why podman fails on s390x (but works on ppc64le)
 
 Podman on s390x cannot perform **any** network operation — not image
 pulls, and not `RUN` steps inside `podman build` that need DNS. This
 applies even inside a `docker run --privileged --network=host` container
-with all capabilities.
+with all capabilities. This section analyzes the distro's
+`/usr/bin/podman` path; the final design bypasses the underlying
+AppArmor path rule with the renamed binary from the podman-builder
+image (see the CI container engine matrix above).
 
 **Podman pull fails** (Go resolver):
 
@@ -257,9 +262,13 @@ environment. The `--network=host` flag is insufficient to fix this.
 | `docker run --privileged --network=host` (outer) | FAILED |
 | `podman build --network=host` (inner) | FAILED |
 
-**Conclusion:** Podman on s390x is only usable for offline operations
-(`podman load`, `podman build --pull=never` with offline `RUN` steps).
-Any operation requiring network access must use Docker.
+**Conclusion (for the distro podman path):** Podman on s390x is only
+usable for offline operations (`podman load`, `podman build
+--pull=never` with offline `RUN` steps). Any operation requiring
+network access must use Docker — or a podman binary whose path is not
+subject to the AppArmor rule. The final design does the latter: the
+podman-builder image runs the renamed `podman-build` binary via a
+`/usr/local/bin/podman` shim.
 
 ### Source code analysis: why does rootful podman break DNS?
 

@@ -268,7 +268,10 @@ jobs:
           def tail_logs(c, n=2000):
               try:
                   logs = c.get_logs()
-                  if not isinstance(logs, str):
+                  # testcontainers >= 4.15 returns (stdout, stderr) bytes
+                  if isinstance(logs, tuple):
+                      logs = b"\n".join(logs)
+                  if isinstance(logs, bytes):
                       logs = logs.decode(errors="replace")
                   return logs[-n:]
               except Exception:
