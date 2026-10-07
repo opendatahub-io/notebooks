@@ -46,6 +46,10 @@ PPC64LE_COMPATIBLE = {
     "spyre-jupyter-pytorch-ubi9-python-3.12"
 }
 
+PPC64LE_ONLY = {
+    "spyre-jupyter-pytorch-ubi9-python-3.12",
+}
+
 S390X_COMPATIBLE = {
     "runtime-minimal-ubi9-python-3.12",
     "jupyter-minimal-ubi9-python-3.12",
@@ -147,7 +151,9 @@ def assign_platforms(
 ) -> list[tuple[str, str]]:
     targets_with_platform: list[tuple[str, str]] = []
     for target in targets:
-        if s390x_images != S390xImages.ONLY or arm64_images != Arm64Images.ONLY:
+        if target not in PPC64LE_ONLY and (
+            s390x_images != S390xImages.ONLY or arm64_images != Arm64Images.ONLY
+        ):
             targets_with_platform.append((target, "linux/amd64"))
         if arm64_images != Arm64Images.EXCLUDE and s390x_images != S390xImages.ONLY:
             if target in ARM64_COMPATIBLE:
@@ -277,6 +283,16 @@ if __name__ == "__main__":
 
 
 class TestSelf(unittest.TestCase):
+
+    def test_assign_platforms_for_ppc64le_only_target(self):
+        target = "spyre-jupyter-pytorch-ubi9-python-3.12"
+        assert assign_platforms(
+            [target],
+            arm64_images=Arm64Images.INCLUDE,
+            ppc64le_images=Ppc64leImages.INCLUDE,
+            s390x_images=S390xImages.INCLUDE,
+        ) == [(target, "linux/ppc64le")]
+
     def test_target_needs_subscription(self):
         assert target_needs_subscription("jupyter-baseline-ubi9-python-3.12") is False
         assert target_needs_subscription("codeserver-baseline-ubi9-python-3.12") is False
