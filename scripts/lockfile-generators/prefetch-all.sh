@@ -49,6 +49,7 @@ VARIANT="odh"       # "odh" = upstream (CentOS Stream), "rhds" = downstream (RHE
 FLAVOR="cpu"        # selects which pylock/requirements files to use (cpu, cuda, rocm)
 ACTIVATION_KEY=""
 ORG=""
+FLAVOR_EXPLICIT=0   # 1 when --flavor was passed explicitly; 0 = auto-detect from build-args/
 
 show_help() {
   cat << 'HELPEOF'
@@ -60,7 +61,7 @@ Options:
   --component-dir DIR     Component directory (required)
                           e.g. codeserver/ubi9-python-3.12
   --rhds                  Use downstream (RHDS) lockfiles instead of upstream (ODH)
-  --flavor NAME           Lock file flavor (default: cpu)
+  --flavor NAME           Lock file flavor (default: auto-detected from build-args/, falls back to cpu)
   --activation-key KEY    Red Hat activation key for RHEL RPMs (optional)
   --org ORG               Red Hat organization ID for RHEL RPMs (optional)
   -h, --help              Show this help
@@ -119,7 +120,7 @@ while [[ $# -gt 0 ]]; do
                          COMPONENT_DIR="$2"; shift 2 ;;
     --rhds)              VARIANT="rhds"; shift ;;
     --flavor)            [[ $# -ge 2 ]] || error_exit "--flavor requires a value"
-                         FLAVOR="$2"; shift 2 ;;
+                         FLAVOR="$2"; FLAVOR_EXPLICIT=1; shift 2 ;;
     --activation-key)    [[ $# -ge 2 ]] || error_exit "--activation-key requires a value"
                          ACTIVATION_KEY="$2"; shift 2 ;;
     --org)               [[ $# -ge 2 ]] || error_exit "--org requires a value"
@@ -131,6 +132,26 @@ done
 
 [[ -z "$COMPONENT_DIR" ]] && error_exit "--component-dir is required."
 [[ -d "$COMPONENT_DIR" ]] || error_exit "Component directory not found: $COMPONENT_DIR"
+
+# --- Flavor auto-detection ---
+# When --flavor is not supplied, infer the flavor from the non-konflux *.conf
+# files in build-args/.  Each file is named <flavor>.conf (e.g. cpu.conf,
+# cuda.conf, spyre.conf).  If exactly one unique flavor is present, use it.
+# When there are multiple flavors (e.g. minimal has cpu/cuda/rocm) the caller
+# must pass --flavor explicitly; fall back to the "cpu" default and warn.
+if [[ "$FLAVOR_EXPLICIT" -eq 0 ]] && [[ -d "$COMPONENT_DIR/build-args" ]]; then
+  mapfile -t _detected_flavors < <(
+    find "$COMPONENT_DIR/build-args" -maxdepth 1 -name '*.conf' \
+      ! -name 'konflux.*' \
+      -exec basename {} .conf \; | sort -u
+  )
+  if [[ "${#_detected_flavors[@]}" -eq 1 ]]; then
+    FLAVOR="${_detected_flavors[0]}"
+    echo "Note: --flavor not specified; auto-detected '${FLAVOR}' from ${COMPONENT_DIR}/build-args/"
+  elif [[ "${#_detected_flavors[@]}" -gt 1 ]]; then
+    echo "Note: --flavor not specified and multiple flavors found in ${COMPONENT_DIR}/build-args/ (${_detected_flavors[*]}); using default 'cpu'. Pass --flavor to select one."
+  fi
+fi
 
 # CLI args take priority; fall back to env vars so GHA can pass secrets
 # without exposing them on the command line.  GitHub Actions masks env var
