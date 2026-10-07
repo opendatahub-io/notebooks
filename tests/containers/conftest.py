@@ -44,6 +44,15 @@ def classify_workbench(label_name: str) -> WorkbenchType:
     return WorkbenchType.OTHER
 
 
+def is_stub_onboarding_image(image: str) -> bool:
+    """True for Konflux onboarding stubs (hello-world), not real workbench/runtime images.
+
+    ``jupyter-universal`` ships a minimal Dockerfile only to exercise the build
+    pipeline; container and browser tests do not apply.
+    """
+    return "jupyter-universal" in image
+
+
 SECURITY_OPTION_ROOTLESS = "name=rootless"
 TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE"
 
@@ -191,7 +200,10 @@ def tf() -> Generator[TestFrame[Any]]:
 # indirect parametrization https://stackoverflow.com/questions/18011902/how-to-pass-a-parameter-to-a-fixture-function-in-pytest
 @pytest.fixture(scope="session")
 def image(request):
-    yield request.param
+    image_name = request.param
+    if is_stub_onboarding_image(image_name):
+        pytest.skip(f"Image {image_name} is a stub onboarding image; skipping container tests")
+    yield image_name
 
 
 @pytest.fixture(scope="session")
