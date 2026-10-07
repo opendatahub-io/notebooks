@@ -987,10 +987,16 @@ def get_accelerator_version_for_directory(directory: pathlib.Path, accelerator_n
         flags=re.IGNORECASE,
     ):
         return None
+<<<<<<< HEAD
     match = re.search(rf"{re.escape(flavor)}(\d+\.\d+)-torch", base_image, flags=re.IGNORECASE)
     if match:
         return match.group(1)
     match = re.search(rf"{re.escape(flavor)}-v?(\d+\.\d+)", base_image, flags=re.IGNORECASE) 074ce745c (Fixed code review comments by coderabbit)
+=======
+    if flavor == "spyre":
+        return None  # Spyre base image tag does not encode an accelerator version
+    match = re.search(rf"{re.escape(flavor)}-v?(\d+\.\d+)", base_image, flags=re.IGNORECASE)
+>>>>>>> e8a694542 (Fixed coderabbit comments)
     if not match:
         raise ValueError(f"Cannot extract {accelerator_name} version from {conf_file}: BASE_IMAGE={base_image}")
     return match.group(1)

@@ -42,7 +42,7 @@ if answer_end_index < answer_start_index:
 
 predict_answer_tokens = inputs.input_ids[0, answer_start_index : answer_end_index + 1]
 answer = tokenizer.decode(predict_answer_tokens, skip_special_tokens=True)
-assert answer is "muppet", f"{answer}: doesn't match the expected results"
+assert answer.strip() == "muppet", f"{answer}: doesn't match the expected results"
 print("-" * 50)
 print(f'Answer: "{answer}"')
 print("=" * 50)
