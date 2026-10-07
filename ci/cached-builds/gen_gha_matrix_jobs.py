@@ -43,7 +43,7 @@ ARM64_COMPATIBLE = {
 PPC64LE_COMPATIBLE = {
     "jupyter-minimal-ubi9-python-3.12",
     "jupyter-datascience-ubi9-python-3.12",
-    "jupyter-pytorch-spyre-ubi9-python-3.12"
+    "spyre-jupyter-pytorch-ubi9-python-3.12"
 }
 
 S390X_COMPATIBLE = {
