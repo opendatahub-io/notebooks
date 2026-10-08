@@ -11,7 +11,7 @@ jobs:
   semgrep-tls:
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep@sha256:fbba1f23d2ef94630c828e8692758f8bc6353a8089841a396a5c041451966ffb  # 1.168.0
+      image: semgrep/semgrep@sha256:cab19964e6c93019934252a9cd591d9b27df1e5b5d1734b26f4069ae51c295f8  # 1.168.0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
