@@ -472,11 +472,9 @@ jobs:
       # opendatahub-io/notebooks#3965: podman storage is configured to have sufficient disk space
       # Build the same image as .github/workflows/build-browser-tests.yaml so browser
       # Playwright runs use baked-in deps (pnpm + Playwright) from tests/browser/Dockerfile.
-      # jupyter-universal is a Konflux onboarding stub (hello-world Dockerfile), not a
-      # JupyterLab workbench. Skip browser and container smoke tests for that target.
       - name: Build browser tests image
         id: browser-tests-image
-        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && (contains(inputs.target, 'codeserver') || (contains(inputs.target, 'jupyter') && !contains(inputs.target, 'runtime') && !contains(inputs.target, 'jupyter-universal'))) && steps.make-target.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && (contains(inputs.target, 'codeserver') || (contains(inputs.target, 'jupyter') && !contains(inputs.target, 'runtime'))) && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
           IMAGE="localhost/workbench-images-tests:ci"
@@ -502,7 +500,7 @@ jobs:
           grep-pattern: ${{ contains(inputs.target, 'che-code') && '@checode' || '@codeserver' }}
 
       - name: Run JupyterLab Playwright tests
-        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && contains(inputs.target, 'jupyter') && !contains(inputs.target, 'runtime') && !contains(inputs.target, 'jupyter-universal') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && contains(inputs.target, 'jupyter') && !contains(inputs.target, 'runtime') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
         uses: ./.github/actions/playwright-test
         with:
           test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
@@ -520,7 +518,7 @@ jobs:
 
       - name: Run Testcontainers container tests (in PyTest)
         id: pytest-testcontainers
-        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && steps.make-target.outcome == 'success' && !contains(inputs.target, 'jupyter-universal') }}
+        if: ${{ !cancelled() && steps.rhoai_build.outputs.skip != 'true' && steps.make-target.outcome == 'success' }}
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"

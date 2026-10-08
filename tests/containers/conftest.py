@@ -47,10 +47,9 @@ def classify_workbench(label_name: str) -> WorkbenchType:
 def is_stub_onboarding_image(image: str) -> bool:
     """True for Konflux onboarding stubs (hello-world), not real workbench/runtime images.
 
-    ``jupyter-universal`` ships a minimal Dockerfile only to exercise the build
-    pipeline; container and browser tests do not apply.
+    Kept for callers that skip stub images; no current make targets qualify.
     """
-    return "jupyter-universal" in image
+    return False
 
 
 SECURITY_OPTION_ROOTLESS = "name=rootless"

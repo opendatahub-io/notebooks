@@ -1,5 +1,8 @@
-# Hermetic universal: lean jupyter deps locked from PyPI
-# (public-index layout: root pylock.toml + requirements.cpu.txt).
+# Hermetic universal workbench + Elyra pipeline runtime (dual-mode entrypoint).
+# Hybrid locks (PRODUCT selects requirements via PYLOCK_FLAVOR):
+#   ODH:   root pylock.toml + requirements.cpu.txt (public PyPI)
+#   RHOAI: uv.lock.d/pylock.rhoai.toml + requirements.rhoai.txt (RH index, no PyPI)
+# Lean JupyterLab + Elyra/Kale; no datascience/AI framework stacks.
 
 [project]
 name = "jupyter-universal-notebook"
@@ -15,8 +18,10 @@ dependencies = [
     "wheel",
     "setuptools",
 
-    "odh-notebooks-meta-jupyterlab-deps",
-    # PDF export (nbconvert); RHAIENG-5765 / AIPCC-7795
+    # JupyterLab core — PyPI lacks ppc64le/s390x wheels for many native deps.
+    # Allowlist x86_64 + aarch64 so new arches do not inherit the Jupyter stack.
+    "odh-notebooks-meta-jupyterlab-deps; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    # PDF export: ODH may install EPEL pandoc RPM; RHOAI uses this wheel (no EPEL).
     "pandoc-rhai",
 
     # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
@@ -25,17 +30,17 @@ dependencies = [
 ]
 
 [tool.uv]
-# RHAIENG-5451 / RHAIENG-7088: fail at lock-generation time (not inside the
-# Konflux build) if a package version lacks wheels for any architecture this
-# image ships. See opendatahub-io/notebooks#4422 for the dynamic alternative.
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
+
+# Four arch-specific environments so uv export emits ``== x86_64 or == aarch64``
+# allowlist markers on gated deps instead of ``!= ppc64le`` denylist markers.
 required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
     "sys_platform == 'linux' and platform_machine == 'aarch64'",
     "sys_platform == 'linux' and platform_machine == 'ppc64le'",
     "sys_platform == 'linux' and platform_machine == 's390x'",
 ]
-# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
-exclude-dependencies = ["py-spy"]
 
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
@@ -44,14 +49,18 @@ environments = [
 override-dependencies = [
     # odh-elyra pins jupyter-resource-usage<1.2.dev0, but 1.1.1 needs psutil<6 while
     # ipython 9.14+ on the RH index needs psutil>=7. Index ships 1.2.1.
-    "jupyter-resource-usage>=1.2.1,<1.3",
+    # Keep the same arch markers as the direct dep: an ungated override pulls
+    # jupyter-server → argon2-cffi-bindings onto ppc64le/s390x, which Konflux
+    # cannot install from PyPI (no manylinux wheel; hermetic builds cannot compile).
+    "jupyter-resource-usage>=1.2.1,<1.3; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
     # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
     # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
     "urllib3>=2.7.0",
-    # AIPCC-13675: UPB segfault on s390x affects protobuf 6.33.5-6.33.6; fixed in 7.x.
-    # kfp 2.17.0's protobuf<7.0 is a conservative pin (gencode 6.31.1; APIs exist in 7.x).
-    # 7.x series only.
-    "protobuf>=7.36.1,<8",
+    # GHSA-7gcm-g887-7qv7 / CVE-2026-0994 / PYSEC-2026-1805 (RHAIENG-6304):
+    # JSON recursion-depth bypass; fixed in protobuf 6.33.5.
+    # AIPCC images stay on protobuf==6.31.1 (AIPCC-13675: UPB segfault on s390x
+    # for 6.33.0–7.34.x). This image installs protobuf only on x86_64/aarch64.
+    "protobuf>=6.33.5,<7.0; sys_platform == 'linux' and (sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64'))",
 ]
 
 [tool.uv.sources]

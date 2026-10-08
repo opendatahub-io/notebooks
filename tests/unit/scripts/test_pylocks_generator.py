@@ -616,6 +616,22 @@ def test_effective_index_mode_honors_explicit_mode(tmp_path: Path) -> None:
     )
 
 
+def test_jupyter_universal_is_hybrid_public_rh_project() -> None:
+    project_dir = pg.ROOT_DIR / "jupyter" / "universal" / "ubi9-python-3.12"
+    assert pg.is_hybrid_public_rh_project(project_dir), "universal must be hybrid public+RH"
+
+
+def test_hybrid_rh_output_flavor_reads_konflux_pylock_flavor(tmp_path: Path) -> None:
+    project_dir = tmp_path / "jupyter" / "universal" / "ubi9-python-3.12"
+    conf_dir = project_dir / "build-args"
+    conf_dir.mkdir(parents=True)
+    (conf_dir / "konflux.cpu.conf").write_text(
+        "BASE_IMAGE=quay.io/example/cpu\nPYLOCK_FLAVOR=rhoai\nPRODUCT=rhoai\n",
+        encoding="utf-8",
+    )
+    assert pg.hybrid_rh_output_flavor(project_dir, "cpu") == "rhoai"
+
+
 def _public_index_project(tmp_path: Path) -> Path:
     project_dir = tmp_path / "jupyter" / "baseline" / "ubi9-python-3.12"
     project_dir.mkdir(parents=True)

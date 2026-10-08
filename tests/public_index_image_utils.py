@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import os
 import re
 
 TAG_ENCODED_IMAGE_REPOSITORIES = {"workbench-images"}
-PUBLIC_INDEX_IMAGE_NAME_PATTERN = re.compile(r"^(codeserver|jupyter|runtime)-baseline-ubi9-python-\d+\.\d+$")
-PUBLIC_INDEX_IMAGE_TAG_PATTERN = re.compile(r"^(codeserver|jupyter|runtime)-baseline-ubi9-python-\d+\.\d+(?:[-_].*|$)")
+PUBLIC_INDEX_IMAGE_NAME_PATTERN = re.compile(
+    r"^(?:(?:codeserver|jupyter|runtime)-baseline|jupyter-universal)-ubi9-python-\d+\.\d+$"
+)
+PUBLIC_INDEX_IMAGE_TAG_PATTERN = re.compile(
+    r"^(?:(?:codeserver|jupyter|runtime)-baseline|jupyter-universal)-ubi9-python-\d+\.\d+(?:[-_].*|$)"
+)
+# Hybrid: ODH public-index + RHOAI RH-index. Match make-target and published names.
+_HYBRID_UNIVERSAL_RE = re.compile(r"jupyter-universal|workbench-jupyter-universal", re.IGNORECASE)
 
 
 def _image_name_and_tag(image: str) -> tuple[str, str | None]:
@@ -16,8 +23,27 @@ def _image_name_and_tag(image: str) -> tuple[str, str | None]:
     return image_name, image_tag
 
 
+def _looks_like_rhoai_universal(image: str) -> bool:
+    """RHOAI universal builds use rhel9 labels / rhoai registry, not the ODH public contract.
+
+    Do not treat CI tags like ``…_rhoai_linux_amd64`` as RHOAI product — that suffix
+    appears on ODH public-index builds too.
+    """
+    if not _HYBRID_UNIVERSAL_RE.search(image):
+        return False
+    lowered = image.lower()
+    if "/rhoai/" in lowered or "rhel9" in lowered:
+        return True
+    return os.environ.get("PRODUCT", "odh") == "rhoai"
+
+
 def is_public_index_image(image: str) -> bool:
-    """Return True if the image uses the phase-1 public-index / PyPI-backed contract."""
+    """Return True if the image uses the phase-1 public-index / PyPI-backed contract.
+
+    ``jupyter-universal`` is hybrid: ODH → public-index, RHOAI → RH-index (no PyPI).
+    """
+    if _looks_like_rhoai_universal(image):
+        return False
     image_name, image_tag = _image_name_and_tag(image)
     if PUBLIC_INDEX_IMAGE_NAME_PATTERN.fullmatch(image_name):
         return True

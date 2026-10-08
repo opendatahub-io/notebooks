@@ -19,6 +19,7 @@ Features:
 
 Index Modes:
   auto (default) -- Uses rh-index if uv.lock.d/ exists, public-index otherwise.
+                    Hybrid projects (see HYBRID_PUBLIC_RH_PROJECTS) always refresh both.
   rh-index       -- Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml.
   public-index   -- Uses public PyPI index and updates pylock.toml in place,
                     then converts it to requirements.cpu.txt.
@@ -69,6 +70,8 @@ Notes:
   - If the script fails for a directory, it lists the failed directories at the end.
   - Public index mode does not create uv.lock.d directories and keeps the old format.
   - Public index mode also writes requirements.cpu.txt from the root pylock.toml.
+  - Hybrid projects keep root pylock.toml (ODH/public) plus uv.lock.d/pylock.<PYLOCK_FLAVOR>.toml
+    (RHOAI/RH-index), with requirements selected by PRODUCT via build-args PYLOCK_FLAVOR.
   - Python version extraction depends on directory naming convention; invalid formats are skipped.
 """
 
@@ -141,8 +144,18 @@ AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME = ".aipcc-alignment.constraints.txt"
 BASELINE_AIPCC_ALIGNMENT_PAIRS: dict[Path, Path] = {
     Path("codeserver-baseline/ubi9-python-3.12"): Path("codeserver/ubi9-python-3.12"),
     Path("jupyter/baseline/ubi9-python-3.12"): Path("jupyter/datascience/ubi9-python-3.12"),
+    Path("jupyter/universal/ubi9-python-3.12"): Path("jupyter/datascience/ubi9-python-3.12"),
     Path("runtimes/baseline/ubi9-python-3.12"): Path("runtimes/datascience/ubi9-python-3.12"),
 }
+
+# Dual supply-chain images: ODH public-index (root pylock.toml) + RHOAI RH-index
+# (uv.lock.d/pylock.<konflux PYLOCK_FLAVOR>.toml). Index resolution still uses
+# build-args/konflux.<dockerfile-flavor>.conf (cpu/cuda/rocm).
+HYBRID_PUBLIC_RH_PROJECTS: frozenset[Path] = frozenset(
+    {
+        Path("jupyter/universal/ubi9-python-3.12"),
+    }
+)
 
 # Name aliases when package names differ between source (AIPCC) and target (baseline) indexes.
 # key=baseline package name, value=source package name.
@@ -385,8 +398,37 @@ def resolve_pr_scoped_target_dirs(
     return sorted(touched)
 
 
+def project_rel_to_root(project_dir: Path) -> Path | None:
+    """Return project_dir relative to ROOT_DIR, or None if outside the repo."""
+    try:
+        return project_dir.resolve().relative_to(ROOT_DIR.resolve())
+    except ValueError:
+        return None
+
+
+def is_hybrid_public_rh_project(project_dir: Path) -> bool:
+    """True when the project maintains both public-index and RH-index locks."""
+    rel = project_rel_to_root(project_dir)
+    return rel is not None and rel in HYBRID_PUBLIC_RH_PROJECTS
+
+
+def hybrid_rh_output_flavor(project_dir: Path, dockerfile_flavor: str = "cpu") -> str:
+    """RH lock/requirements flavor name from konflux.<dockerfile_flavor>.conf PYLOCK_FLAVOR."""
+    conf = get_rh_index_conf_file(project_dir, dockerfile_flavor)
+    if conf.is_file():
+        flavor = read_conf_value(conf, "PYLOCK_FLAVOR")
+        if flavor:
+            return flavor
+    return "rhoai"
+
+
 def effective_index_mode(project_dir: Path, index_mode: IndexMode) -> IndexMode:
-    """Resolve auto mode from lock layout: uv.lock.d/ → rh-index, else public-index."""
+    """Resolve auto mode from lock layout: uv.lock.d/ → rh-index, else public-index.
+
+    Hybrid projects keep both layouts; callers must run public and RH refresh for ``auto``.
+    This helper still reports ``rh-index`` when ``uv.lock.d/`` exists so non-hybrid
+    behavior is unchanged; use :func:`is_hybrid_public_rh_project` to branch.
+    """
     if index_mode == IndexMode.auto:
         return IndexMode.rh_index if (project_dir / "uv.lock.d").is_dir() else IndexMode.public_index
     return index_mode
@@ -1187,8 +1229,13 @@ def generate_requirements_txt(
     log: LogBuffer,
     *,
     public_index: bool = False,
+    index_flavor: str | None = None,
 ) -> bool:
-    """Convert pylock → requirements.<flavor>.txt via helper script."""
+    """Convert pylock → requirements.<flavor>.txt via helper script.
+
+    ``index_flavor`` selects ``build-args/konflux.<index_flavor>.conf`` for the RH
+    index URL when it differs from the output ``flavor`` (hybrid RHOAI locks).
+    """
     requirements_path = project_dir / f"requirements.{flavor}.txt"
     if public_index:
         pylock_path = project_dir / "pylock.toml"
@@ -1202,7 +1249,8 @@ def generate_requirements_txt(
         ]
     else:
         pylock_path = project_dir / "uv.lock.d" / f"pylock.{flavor}.toml"
-        resolved = resolve_rh_index_config(project_dir, flavor, log)
+        conf_flavor = index_flavor or flavor
+        resolved = resolve_rh_index_config(project_dir, conf_flavor, log)
         cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
         if resolved is None:
             log.warning(f"Falling back to --default-index recorded in {pylock_path} for requirements generation.")
@@ -1253,12 +1301,26 @@ def process_directory(
         log.print(f"  • {f.upper()}")
     log.print("")
 
+    hybrid = is_hybrid_public_rh_project(tdir)
     effective_mode = effective_index_mode(tdir, index_mode)
-    log.info(f"Effective mode for this directory: {effective_mode.value}")
+    if hybrid and index_mode == IndexMode.auto:
+        log.info("Effective mode for this directory: hybrid (public-index + rh-index)")
+    else:
+        log.info(f"Effective mode for this directory: {effective_mode.value}")
 
     dir_success = True
 
-    if effective_mode == IndexMode.public_index:
+    run_public = effective_mode == IndexMode.public_index or (hybrid and index_mode == IndexMode.auto)
+    run_rh = effective_mode == IndexMode.rh_index or (hybrid and index_mode == IndexMode.auto)
+    # Explicit public-index on a hybrid dir must not wipe RH locks; only skip RH refresh.
+    if hybrid and index_mode == IndexMode.public_index:
+        run_public = True
+        run_rh = False
+    if hybrid and index_mode == IndexMode.rh_index:
+        run_public = False
+        run_rh = True
+
+    if run_public:
         extra_constraints = generate_baseline_alignment_constraints(tdir, log) if not requirements_only else None
         if requirements_only:
             pylock_path = tdir / "pylock.toml"
@@ -1273,7 +1335,7 @@ def process_directory(
                     tdir,
                     "cpu",
                     [PUBLIC_INDEX],
-                    effective_mode,
+                    IndexMode.public_index,
                     python_version,
                     upgrade,
                     ci_check,
@@ -1287,28 +1349,34 @@ def process_directory(
             finally:
                 if extra_constraints is not None:
                     extra_constraints.unlink(missing_ok=True)
-    else:
-        for flavor in ("cpu", "cuda", "rocm"):
-            if flavor not in flavors:
+
+    if run_rh:
+        for dockerfile_flavor in ("cpu", "cuda", "rocm"):
+            if dockerfile_flavor not in flavors:
                 continue
+            output_flavor = (
+                hybrid_rh_output_flavor(tdir, dockerfile_flavor) if hybrid else dockerfile_flavor
+            )
             if requirements_only:
-                pylock_path = tdir / "uv.lock.d" / f"pylock.{flavor}.toml"
+                pylock_path = tdir / "uv.lock.d" / f"pylock.{output_flavor}.toml"
                 if not pylock_path.is_file():
-                    log.warning(f"No {pylock_path} found, skipping {flavor}.")
+                    log.warning(f"No {pylock_path} found, skipping {output_flavor}.")
                     dir_success = False
                     continue
-                if not generate_requirements_txt(tdir, flavor, log):
+                if not generate_requirements_txt(
+                    tdir, output_flavor, log, index_flavor=dockerfile_flavor if hybrid else None
+                ):
                     dir_success = False
                 continue
-            flags = get_index_flags(tdir, flavor, log)
+            flags = get_index_flags(tdir, dockerfile_flavor, log)
             if flags is None:
                 dir_success = False
                 continue
             if not run_lock(
                 tdir,
-                flavor,
+                output_flavor,
                 flags,
-                effective_mode,
+                IndexMode.rh_index,
                 python_version,
                 upgrade,
                 ci_check,
@@ -1316,7 +1384,9 @@ def process_directory(
                 log,
             ):
                 dir_success = False
-            elif not generate_requirements_txt(tdir, flavor, log):
+            elif not generate_requirements_txt(
+                tdir, output_flavor, log, index_flavor=dockerfile_flavor if hybrid else None
+            ):
                 dir_success = False
 
     return tdir, dir_success, log

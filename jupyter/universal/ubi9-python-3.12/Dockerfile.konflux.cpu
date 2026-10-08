@@ -39,6 +39,10 @@ USER 1001
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
 
+# PRODUCT selects Python index: odh → PyPI; rhoai → AIPCC base / INDEX_URL (no PyPI).
+ARG PRODUCT=odh
+ARG INDEX_URL=
+
 WORKDIR /opt/app-root/bin
 
 # hadolint ignore=DL3002
@@ -48,15 +52,60 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# Bust layer cache when prefetched RPM set changes
+# Product-specific Python index via pip.conf/uv.toml (no unconditional PyPI ENV —
+# RHOAI must not expose public-PyPI fallback; ODH rewrites configs to pypi.org).
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "${PRODUCT}" = "rhoai" ]; then
+  if [ -n "${INDEX_URL}" ]; then
+    if [ -f /opt/app-root/pip.conf ]; then
+      sed -i "s|^index-url = .*|index-url = ${INDEX_URL}|" /opt/app-root/pip.conf
+    fi
+    if [ -f /opt/app-root/uv.toml ]; then
+      sed -i "s|^index-url = .*|index-url = \"${INDEX_URL}\"|" /opt/app-root/uv.toml
+    fi
+  fi
+  # RHOAI must not fall back to public PyPI (ABI / supply-chain contract).
+  for cfg in /opt/app-root/pip.conf /opt/app-root/uv.toml; do
+    if [ -f "${cfg}" ] && grep -Eq 'pypi\.org|files\.pythonhosted\.org' "${cfg}"; then
+      echo "ERROR: RHOAI build must not use public PyPI (${cfg})" >&2
+      exit 1
+    fi
+  done
+else
+  # ODH: public PyPI
+  if [ -f /opt/app-root/pip.conf ]; then
+    sed -i 's|^index-url = .*|index-url = https://pypi.org/simple|' /opt/app-root/pip.conf
+  fi
+  if [ -f /opt/app-root/uv.toml ]; then
+    sed -i 's|^index-url = .*|index-url = "https://pypi.org/simple"|' /opt/app-root/uv.toml
+  fi
+fi
+EOF
+
+# Bust layer cache when prefetched RPM set changes (ODH + RHDS hermetic RPM inputs).
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 # hadolint ignore=DL3041
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+# Prefer hermeto-only yum repos. Local AIPCC/RHOAI builds can leave a live
+# subscription-manager redhat.repo beside hermeto.repo (CDN AppStream mixed
+# with CentOS Stream), which upgrades mesa against an older libomp/llvm stack.
+rm -f /etc/yum.repos.d/redhat.repo
+# ODH (c9s) and RHOAI (AIPCC/RHEL) bases ship different package sets. Hermeto
+# may expose both CentOS Stream and RHEL candidates (e.g. mesa-libGL 26 vs 25).
+# Only install missing RPMs so dnf does not upgrade an AIPCC mesa/libomp/llvm
+# stack against a newer Stream candidate (same idea as runtimes/*/s390x).
 BASE_PKGS=(perl-interpreter mesa-libGL skopeo compat-openssl11 openshift-clients)
-dnf install -y "${BASE_PKGS[@]}"
+INSTALL_PKGS=()
+for pkg in "${BASE_PKGS[@]}"; do
+  rpm -q "${pkg}" >/dev/null 2>&1 || INSTALL_PKGS+=("${pkg}")
+done
+if ((${#INSTALL_PKGS[@]} > 0)); then
+  dnf install -y "${INSTALL_PKGS[@]}"
+fi
 dnf clean all
 rm -rf /var/cache/yum
 EOF
@@ -87,7 +136,11 @@ COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 ### BEGIN Dependencies for PDF export
-RUN ./utils/install_pdf_deps.sh
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+rm -f /etc/yum.repos.d/redhat.repo
+./utils/install_pdf_deps.sh
+EOF
 
 ### END Dependencies for PDF export
 
@@ -115,9 +168,9 @@ ARG RELEASE
 LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       com.redhat.component="${LABEL_COMPONENT}" \
       io.k8s.display-name="${LABEL_COMPONENT}" \
-      summary="Jupyter data science notebook image for ODH notebooks" \
-      description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-      io.k8s.description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      summary="Universal JupyterLab workbench and pipeline runtime" \
+      description="Dual-purpose image: interactive JupyterLab workbench (when NOTEBOOK_ARGS is set) or Elyra/AI Pipelines runtime (when the command is overridden). Python 3.12 on UBI9/EL9 for ODH notebooks." \
+      io.k8s.description="Universal JupyterLab workbench and pipeline runtime" \
       com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
       version="${RELEASE}"
 
@@ -131,7 +184,17 @@ COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
-    bash /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf
+    /bin/bash <<'EOF'
+set -Eeuxo pipefail
+rm -f /etc/yum.repos.d/redhat.repo
+# pandoc RPM is EPEL-only (ODH hermeto). RHOAI/RHDS has no pandoc RPM —
+# PDF export uses the pandoc-rhai wheel from requirements (same as datascience).
+PKGS=(jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf)
+if dnf -q repoquery --available pandoc 2>/dev/null | grep -q .; then
+  PKGS+=(pandoc)
+fi
+bash /utils/dnf-helper.sh install "${PKGS[@]}"
+EOF
 
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
@@ -139,6 +202,8 @@ COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 # Python install as 1001:0 with umask 0002; site-packages fixup via ensure-openshift-site-packages.sh
 COPY ${UNIVERSAL_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${UNIVERSAL_SOURCE_CODE}/setup-elyra.sh ${UNIVERSAL_SOURCE_CODE}/setup-kale.sh ${UNIVERSAL_SOURCE_CODE}/utils ./utils/
+COPY --chown=1001:0 prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/app-root/bin/utils/bootstrapper.py
+COPY --chown=1001:0 --chmod=0755 ${UNIVERSAL_SOURCE_CODE}/entrypoint-universal.sh /opt/app-root/bin/entrypoint-universal.sh
 
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
@@ -172,8 +237,13 @@ chmod g+w /opt/app-root/etc/jupyter/labconfig
 /usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
-ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/ \
+    ELYRA_INSTALL_PACKAGES="false"
 
 USER 1001
 
 WORKDIR /opt/app-root/src
+
+# Dual-mode: NOTEBOOK_ARGS → workbench; command override / "runtime" → pipeline bootstrapper
+ENTRYPOINT ["/opt/app-root/bin/entrypoint-universal.sh"]
+CMD ["/opt/app-root/bin/start-notebook.sh"]

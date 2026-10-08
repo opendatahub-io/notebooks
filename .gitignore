@@ -1,6 +1,12 @@
 # Konflux caching
 cachi2/
 
+# Local RHSM entitlement / consumer PEMs (never commit)
+/entitlement/
+/consumer/
+# Local CA bundles extracted for CDN TLS debugging
+/.local-ca/
+
 # Ephemeral AIPCC alignment constraints (must stay repo-relative for pylock headers)
 **/.aipcc-alignment.constraints.txt
 

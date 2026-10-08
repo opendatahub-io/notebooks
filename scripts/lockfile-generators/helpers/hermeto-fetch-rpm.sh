@@ -27,6 +27,10 @@ PREFETCH_DIR=""
 CERT_DIR=""
 ACTIVATION_KEY=""
 ORG=""
+# Optional: limit download to one RPM arch (e.g. aarch64). Useful when the
+# entitlement lacks ppc64le/s390x layered repos but the local build only
+# needs the host/BUILD_ARCH.
+RPM_ARCH_FILTER=""
 
 show_help() {
   cat << 'EOF'
@@ -39,11 +43,14 @@ Options:
   --cert-dir DIR         Directory with pre-extracted entitlement PEM files
   --activation-key KEY   Red Hat activation key for RHEL cert extraction
   --org ORG              Red Hat organization ID for RHEL cert extraction
+  --arch ARCH            Only download this RPM arch (aarch64, x86_64, ...)
   --help                 Show this help
 
 Environment variables (fallback when CLI args are not provided):
   SUBSCRIPTION_ACTIVATION_KEY   Same as --activation-key
   SUBSCRIPTION_ORG              Same as --org
+  BUILD_ARCH                    Used to derive --arch when unset
+                                (linux/arm64 → aarch64, linux/amd64 → x86_64)
 EOF
 }
 
@@ -63,6 +70,8 @@ while [[ $# -gt 0 ]]; do
                        ACTIVATION_KEY="$2"; shift 2 ;;
     --org)             [[ $# -ge 2 ]] || error_exit "--org requires a value"
                        ORG="$2"; shift 2 ;;
+    --arch)            [[ $# -ge 2 ]] || error_exit "--arch requires a value"
+                       RPM_ARCH_FILTER="$2"; shift 2 ;;
     -h|--help)         show_help; exit 0 ;;
     *)                 error_exit "Unknown argument: '$1'" ;;
   esac
@@ -70,6 +79,41 @@ done
 
 [[ -z "$PREFETCH_DIR" ]] && error_exit "--prefetch-dir is required."
 [[ -f "$PREFETCH_DIR/rpms.lock.yaml" ]] || error_exit "rpms.lock.yaml not found in $PREFETCH_DIR"
+
+if [[ -z "$RPM_ARCH_FILTER" ]] && [[ -n "${BUILD_ARCH:-}" ]]; then
+  case "${BUILD_ARCH##*/}" in
+    amd64|x86_64) RPM_ARCH_FILTER="x86_64" ;;
+    arm64|aarch64) RPM_ARCH_FILTER="aarch64" ;;
+    ppc64le) RPM_ARCH_FILTER="ppc64le" ;;
+    s390x) RPM_ARCH_FILTER="s390x" ;;
+  esac
+fi
+
+# When filtering by arch, hermeto still needs a full source tree (artifacts,
+# etc.). Build a temp prefetch dir with a filtered rpms.lock.yaml.
+FILTERED_PREFETCH=""
+if [[ -n "$RPM_ARCH_FILTER" ]]; then
+  echo "--- Filtering rpms.lock.yaml to arch=${RPM_ARCH_FILTER} ---"
+  FILTERED_PREFETCH=$(mktemp -d)
+  # Copy lockfile siblings hermeto may need; keep tree shallow.
+  cp -a "$PREFETCH_DIR/." "$FILTERED_PREFETCH/"
+  python3 - "$FILTERED_PREFETCH/rpms.lock.yaml" "$RPM_ARCH_FILTER" <<'PY'
+import sys
+from pathlib import Path
+import yaml
+
+lock_path = Path(sys.argv[1])
+want = sys.argv[2]
+data = yaml.safe_load(lock_path.read_text())
+arches = [a for a in data.get("arches", []) if a.get("arch") == want]
+if not arches:
+    raise SystemExit(f"No arch '{want}' in {lock_path}")
+data["arches"] = arches
+lock_path.write_text(yaml.safe_dump(data, sort_keys=False))
+print(f"  kept {len(arches[0].get('packages') or [])} packages for {want}")
+PY
+  PREFETCH_DIR="$FILTERED_PREFETCH"
+fi
 
 # CLI args take priority; fall back to env vars so GHA can pass secrets
 # without exposing them on the command line (GitHub Actions masks env vars
@@ -83,6 +127,25 @@ ORG="${ORG:-${SUBSCRIPTION_ORG:-}}"
 # no need to register again.
 if [[ -z "$CERT_DIR" ]] && ls entitlement/*.pem &>/dev/null; then
   CERT_DIR="entitlement"
+fi
+
+# macOS podman machine often keeps entitlements only inside the VM
+# (/etc/pki/entitlement via mounts.conf). Hermeto runs with a host-side
+# bind mount of that staging dir, so sync PEMs to ./entitlement when missing.
+# Without redhat-uep.pem as ca_bundle, cdn.redhat.com fails with
+# SSLCertVerificationError (Entitlement Master CA is not in public trust stores).
+if [[ -z "$CERT_DIR" ]] && command -v podman >/dev/null 2>&1; then
+  if podman machine ssh 'ls /etc/pki/entitlement/*.pem' &>/dev/null; then
+    echo "--- Syncing entitlement certs from podman machine ---"
+    mkdir -p entitlement
+    # shellcheck disable=SC2016
+    podman machine ssh 'sudo tar -C /etc/pki/entitlement -cf - .' \
+      | tar -C entitlement -xf -
+    chmod 600 entitlement/*.pem 2>/dev/null || true
+    if ls entitlement/*.pem &>/dev/null; then
+      CERT_DIR="entitlement"
+    fi
+  fi
 fi
 
 # HERMETO_JSON is the fetch-deps input spec.  For public repos it's just
@@ -207,12 +270,25 @@ fi
 # prefetch steps already placed in cachi2/output/deps/.
 # =========================================================================
 HERMETO_STAGING=$(mktemp -d)
-trap 'cleanup_staging "$HERMETO_STAGING" "${CDN_CERT_DIR:-}"' EXIT
+trap '
+  _status=$?
+  if [[ -n "${FILTERED_PREFETCH:-}" ]]; then
+    rm -rf -- "$FILTERED_PREFETCH" || true
+  fi
+  (exit "${_status}")
+  cleanup_staging "$HERMETO_STAGING" "${CDN_CERT_DIR:-}"
+' EXIT
 
 echo "--- Downloading RPMs via hermeto ---"
+# PREFETCH_DIR may be relative (repo path) or absolute (arch-filtered temp dir).
+if [[ "$PREFETCH_DIR" = /* ]]; then
+  PREFETCH_SRC="$PREFETCH_DIR"
+else
+  PREFETCH_SRC="$(pwd)/$PREFETCH_DIR"
+fi
 podman run --rm \
   --userns=keep-id \
-  -v "$(pwd)/$PREFETCH_DIR:/source:z" \
+  -v "$PREFETCH_SRC:/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   ${CDN_CERT_DIR:+-v "$CDN_CERT_DIR:/certs:ro,z"} \
   "$HERMETO_IMAGE" \

@@ -29,14 +29,14 @@ if [ "${PRODUCT:-odh}" = 'rhoai' ]; then
     _MANIFESTS_VARIANT="rhoai"
     # This value needs to be updated everytime we deliberately change number of the
     # images we want to have in the `params.env` or `params-latest.env` file.
-    EXPECTED_COMMIT_NUM_RECORDS=44
-    EXPECTED_PARAMS_NUM_RECORDS=58
+    EXPECTED_COMMIT_NUM_RECORDS=45
+    EXPECTED_PARAMS_NUM_RECORDS=59
 else
     _MANIFESTS_VARIANT="odh"
     # This value needs to be updated everytime we deliberately change number of the
     # images we want to have in the `params.env` or `params-latest.env` file.
-    EXPECTED_COMMIT_NUM_RECORDS=23
-    EXPECTED_PARAMS_NUM_RECORDS=30
+    EXPECTED_COMMIT_NUM_RECORDS=24
+    EXPECTED_PARAMS_NUM_RECORDS=31
 fi
 
 COMMIT_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit-latest.env"
