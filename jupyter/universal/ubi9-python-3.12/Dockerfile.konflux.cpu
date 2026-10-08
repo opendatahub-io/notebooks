@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM ${BASE_IMAGE} AS cpu-base
 
 CMD ["echo", "Hello, World!"]
