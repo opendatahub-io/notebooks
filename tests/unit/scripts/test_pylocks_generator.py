@@ -355,6 +355,7 @@ def test_get_index_flags_falls_back_to_test_index(
 def test_run_lock_logs_index_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project_dir = tmp_path / "project"
     project_dir.mkdir()
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\nversion = "0.1.0"\n', encoding="utf-8")
 
     log = pg.LogBuffer()
     completed = pg.subprocess.CompletedProcess(args=["uv"], returncode=0, stdout="", stderr="")
@@ -452,6 +453,7 @@ def _run_lock_with_fake_subprocess(
     backoff sleep is neutralized so the test runs instantly.
     """
     project_dir.mkdir(parents=True, exist_ok=True)
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\nversion = "0.1.0"\n', encoding="utf-8")
     monkeypatch.setattr("time.sleep", lambda _s: None)
     calls = {"n": 0}
 
@@ -510,6 +512,7 @@ def test_run_lock_times_out_and_exhausts_retries(tmp_path: Path, monkeypatch: py
     """A persistent subprocess timeout is transient: retried until the budget is exhausted."""
     project_dir = tmp_path / "p"
     project_dir.mkdir()
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\nversion = "0.1.0"\n', encoding="utf-8")
     monkeypatch.setattr("time.sleep", lambda _s: None)
     calls = {"n": 0}
 

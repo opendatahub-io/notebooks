@@ -45,6 +45,11 @@ jobs:
           fail-on-severity: high
           # No SPDX allowlist yet; vulnerability checks only.
           license-check: false
+          # GHSA-6966-vjj6-99xv: jupyterlab XSS — fixed in 4.5.11 / 4.6.4 (and
+          # notebook 7.6.3). RHOAI 3.6 cpu-ubi9 RH index currently ships only
+          # 4.5.10 / 4.6.3 / notebook 7.6.2. ODH public lock already has
+          # jupyterlab 4.5.11. Remove when RH publishes patched wheels.
+          allow-ghsas: GHSA-6966-vjj6-99xv
 
       - name: Dependency Review (dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -52,5 +57,6 @@ jobs:
         with:
           fail-on-severity: high
           license-check: false
+          allow-ghsas: GHSA-6966-vjj6-99xv
           base-ref: ${{ inputs.base-ref }}
           head-ref: ${{ inputs.head-ref || github.sha }}

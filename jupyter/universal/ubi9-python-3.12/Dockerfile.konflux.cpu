@@ -54,6 +54,14 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # Product-specific Python index via pip.conf/uv.toml (no unconditional PyPI ENV —
 # RHOAI must not expose public-PyPI fallback; ODH rewrites configs to pypi.org).
+# Index env defaults to PyPI (ODH). RHOAI build-args override to the RH index URL
+# so inherited AIPCC env vars are not left pointing at a mixed contract.
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG UV_INDEX_URL=https://pypi.org/simple
+ARG UV_DEFAULT_INDEX=https://pypi.org/simple
+ENV PIP_INDEX_URL=${PIP_INDEX_URL} \
+    UV_INDEX_URL=${UV_INDEX_URL} \
+    UV_DEFAULT_INDEX=${UV_DEFAULT_INDEX}
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${PRODUCT}" = "rhoai" ]; then

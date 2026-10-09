@@ -106,11 +106,12 @@ PYLOCK_TO_REQUIREMENTS = ROOT_DIR / "scripts" / "lockfile-generators" / "helpers
 PUBLIC_INDEX = "--default-index=https://pypi.org/simple"
 MAIN_DIRS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline")
 # Shared lock inputs: a PR touching any of these regenerates all image project locks.
+# Generator/resolver script edits alone do not force a full regen (that re-resolves
+# every image under CI exclude-newer and fails on unrelated RH-index gaps). Lock
+# renewal + lock-chain file changes cover generator drift.
 GLOBAL_LOCK_INPUTS: tuple[Path, ...] = (
     Path("dependencies/constraints.txt"),
     Path("dependencies/overrides.txt"),
-    Path("scripts/pylocks_generator.py"),
-    Path("scripts/index_url_resolver.py"),
 )
 UV_MIN_VERSION = (0, 4, 0)
 
