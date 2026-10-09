@@ -421,6 +421,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                 expected_img_size=2312
             fi
             ;;
+        odh-workbench-jupyter-universal-cpu-py312-ubi9-n)
+            expected_name="opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=2200
+            ;;
         odh-workbench-jupyter-trustyai-cpu-py312-ubi9-2025-2)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9"
@@ -808,6 +814,15 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9"
                             expected_img_size=2312
+                        fi
+                        ;;
+                    odh-workbench-jupyter-universal-cpu-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-universal-cpu-py312-rhel9"
+                            expected_img_size=2200
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9"
+                            expected_img_size=2200
                         fi
                         ;;
                     odh-workbench-codeserver-datascience-cpu-py312-ubi9)

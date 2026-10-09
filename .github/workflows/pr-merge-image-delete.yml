@@ -68,6 +68,8 @@ jobs:
           skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-datascience-ubi9-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-pytorch-ubi9-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-trustyai-ubi9-python-3.12-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-universal-ubi9-python-3.12-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-baseline-ubi9-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-minimal-ubi9-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-datascience-ubi9-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-tensorflow-ubi9-python-3.12-pr-${{ env.PR }}
