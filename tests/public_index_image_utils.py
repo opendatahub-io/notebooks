@@ -24,15 +24,19 @@ def _image_name_and_tag(image: str) -> tuple[str, str | None]:
 
 
 def _looks_like_rhoai_universal(image: str) -> bool:
-    """RHOAI universal builds use rhel9 labels / rhoai registry, not the ODH public contract.
+    """RHOAI universal builds use RH-index, not the ODH public-index contract.
 
-    Do not treat CI tags like ``…_rhoai_linux_amd64`` as RHOAI product — that suffix
-    appears on ODH public-index builds too.
+    Detect published names (``/rhoai/``, ``rhel9``) and GHA ``workbench-images``
+    tags that encode the product matrix as ``_rhoai_`` (hybrid only — baseline
+    images keep PyPI on both matrix legs and never reach this helper).
     """
     if not _HYBRID_UNIVERSAL_RE.search(image):
         return False
     lowered = image.lower()
     if "/rhoai/" in lowered or "rhel9" in lowered:
+        return True
+    # GHA tag: …-4741_merge_<sha>_rhoai_linux_amd64
+    if "_rhoai_" in lowered:
         return True
     return os.environ.get("PRODUCT", "odh") == "rhoai"
 

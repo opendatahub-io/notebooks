@@ -52,25 +52,26 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# Product-specific Python index via pip.conf/uv.toml (no unconditional PyPI ENV —
-# RHOAI must not expose public-PyPI fallback; ODH rewrites configs to pypi.org).
-# Index env defaults to PyPI (ODH). RHOAI build-args override to the RH index URL
-# so inherited AIPCC env vars are not left pointing at a mixed contract.
-ARG PIP_INDEX_URL=https://pypi.org/simple
-ARG UV_INDEX_URL=https://pypi.org/simple
-ARG UV_DEFAULT_INDEX=https://pypi.org/simple
-ENV PIP_INDEX_URL=${PIP_INDEX_URL} \
-    UV_INDEX_URL=${UV_INDEX_URL} \
-    UV_DEFAULT_INDEX=${UV_DEFAULT_INDEX}
+# Product-specific Python index via pip.conf/uv.toml.
+# RUNTIME_INDEX_URL must not share a name with parent-image ENV (PIP_INDEX_URL /
+# UV_INDEX_URL): Docker lets inherited ENV shadow same-named ARG defaults, so
+# ODH builds would keep the AIPCC/c9s RH index. A fresh ARG name avoids that.
+# ODH → default PyPI; RHOAI → konflux.cpu.conf passes the RH index URL.
+ARG RUNTIME_INDEX_URL=https://pypi.org/simple
+ENV PIP_INDEX_URL=${RUNTIME_INDEX_URL} \
+    UV_INDEX_URL=${RUNTIME_INDEX_URL} \
+    UV_DEFAULT_INDEX=${RUNTIME_INDEX_URL}
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+# Prefer RUNTIME_INDEX_URL; fall back to legacy INDEX_URL build-arg.
+_INDEX="${RUNTIME_INDEX_URL:-${INDEX_URL:-}}"
 if [ "${PRODUCT}" = "rhoai" ]; then
-  if [ -n "${INDEX_URL}" ]; then
+  if [ -n "${_INDEX}" ]; then
     if [ -f /opt/app-root/pip.conf ]; then
-      sed -i "s|^index-url = .*|index-url = ${INDEX_URL}|" /opt/app-root/pip.conf
+      sed -i "s|^index-url = .*|index-url = ${_INDEX}|" /opt/app-root/pip.conf
     fi
     if [ -f /opt/app-root/uv.toml ]; then
-      sed -i "s|^index-url = .*|index-url = \"${INDEX_URL}\"|" /opt/app-root/uv.toml
+      sed -i "s|^index-url = .*|index-url = \"${_INDEX}\"|" /opt/app-root/uv.toml
     fi
   fi
   # RHOAI must not fall back to public PyPI (ABI / supply-chain contract).
@@ -144,11 +145,7 @@ COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 ### BEGIN Dependencies for PDF export
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-rm -f /etc/yum.repos.d/redhat.repo
-./utils/install_pdf_deps.sh
-EOF
+RUN ./utils/install_pdf_deps.sh
 
 ### END Dependencies for PDF export
 
