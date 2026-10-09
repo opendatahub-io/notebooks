@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import re
 import subprocess
 import textwrap
 from pathlib import Path
@@ -31,10 +32,10 @@ def completed_process(
 
 DEFAULT_GPU_MINIMAL_ACC_VERSION = {"cuda": "25.0", "rocm": "8.0"}
 TEST_IMAGE_DIGEST = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-RHDS_CPU_EA2_IMAGE = "quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771"
-RHDS_CPU_OS_REPO = "quay.io/aipcc/base-images/cpu-el9.6"
-RHDS_CUDA_EA2_IMAGE = "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771"
-RHDS_ROCM_EA2_IMAGE = "quay.io/aipcc/base-images/rocm-7.1-el9.6:3.5.0-ea.2-1777919771"
+RHDS_CPU_EA2_IMAGE = "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771"
+RHDS_CPU_OS_REPO = "quay.io/aipcc/base-images/cpu-torch2.13-el9.6"
+RHDS_CUDA_EA2_IMAGE = "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771"
+RHDS_ROCM_EA2_IMAGE = "quay.io/aipcc/base-images/rocm7.14-torch2.12-el9.6:1777919771"
 
 
 def pin_image_for_test(tagged_image: str) -> str:
@@ -45,6 +46,21 @@ def pin_image_for_test(tagged_image: str) -> str:
 
 def pinned_base_image(tagged_image: str) -> str:
     return f"BASE_IMAGE={pin_image_for_test(tagged_image)}"
+
+
+def default_channel_torch(updater) -> object:
+    return updater.ChannelTorchVersions(cpu="2.13", cuda="2.13", rocm="2.12")
+
+
+def make_release(updater, **kwargs: object) -> object:
+    defaults = {
+        "full_version": "3.6.0",
+        "rhds_os_base": "el9.8",
+        "python_version": "3.12",
+        "channel_torch_version": default_channel_torch(updater),
+    }
+    defaults.update(kwargs)
+    return updater.ReleaseConfig(**defaults)
 
 
 def stub_image_digest_pinning(monkeypatch: pytest.MonkeyPatch, updater) -> None:
@@ -99,16 +115,59 @@ def stub_published_rhds_gpu_stable_tags(
     )
 
 
+def _legacy_tags_to_channel_builds(updater, tags: tuple[str, ...]) -> tuple[str, ...]:
+    builds: list[str] = []
+    for tag in tags:
+        if updater.RHDS_CHANNEL_TAG_RE.fullmatch(tag):
+            builds.append(tag)
+            continue
+        match = updater.RHDS_TAG_RE.fullmatch(tag)
+        if match is not None:
+            builds.append(match.group("build"))
+    return tuple(builds)
+
+
+def _legacy_repo_to_channel_repo(updater, legacy_repo: str) -> str | None:
+    cpu_match = re.match(r"^quay\.io/aipcc/base-images/cpu-(el[\d.]+)$", legacy_repo)
+    if cpu_match:
+        return updater.build_rhds_pinned_repository(
+            "cpu",
+            "3.6.0",
+            make_release(updater, rhds_os_base=cpu_match.group(1)),
+        )
+    gpu_match = re.match(
+        r"^quay\.io/aipcc/base-images/(cuda|rocm)-(\d+\.\d+)-(el[\d.]+)$",
+        legacy_repo,
+    )
+    if gpu_match:
+        accelerator, acc_version, os_base = gpu_match.group(1), gpu_match.group(2), gpu_match.group(3)
+        return updater.build_rhds_pinned_repository(
+            accelerator,
+            acc_version,
+            make_release(updater, rhds_os_base=os_base),
+        )
+    return None
+
+
 def stub_rhds_repository_tags(
     monkeypatch: pytest.MonkeyPatch,
     updater,
     tags_by_repository: dict[str, tuple[str, ...]],
 ) -> None:
-    monkeypatch.setattr(
-        updater,
-        "list_rhds_repository_tags",
-        lambda repository, tag_cache=None: tags_by_repository.get(repository, ()),
-    )
+    def list_tags(repository: str, tag_cache=None) -> tuple[str, ...]:
+        tags = tags_by_repository.get(repository)
+        if tags is None:
+            for legacy_repo, legacy_tags in tags_by_repository.items():
+                if _legacy_repo_to_channel_repo(updater, legacy_repo) == repository:
+                    tags = legacy_tags
+                    break
+        if tags is None:
+            return ()
+        if updater.is_channel_repository(repository):
+            return _legacy_tags_to_channel_builds(updater, tags)
+        return tags
+
+    monkeypatch.setattr(updater, "list_rhds_repository_tags", list_tags)
 
 
 def stub_empty_rhds_tag_listing(monkeypatch: pytest.MonkeyPatch, updater) -> None:
@@ -207,6 +266,10 @@ def write_versions_config(
           full_version: "{full_version}"
           rhds_os_base: "{rhds_os_base}"
           python_version: "{python_version}"
+          channel_torch_version:
+            cpu: "2.13"
+            cuda: "2.13"
+            rocm: "2.12"
 
         artifacts:
           base_image:
@@ -299,6 +362,10 @@ def test_load_versions_config_rejects_unexpected_keys(tmp_path: Path) -> None:
               full_version: "3.5.0"
               rhds_os_base: "el9.6"
               python_version: "3.12"
+              channel_torch_version:
+                cpu: "2.13"
+                cuda: "2.13"
+                rocm: "2.12"
 
             artifacts:
               base_image:
@@ -331,6 +398,10 @@ def test_load_versions_config_rejects_missing_required_keys(tmp_path: Path) -> N
             release:
               full_version: "3.5.0"
               python_version: "3.12"
+              channel_torch_version:
+                cpu: "2.13"
+                cuda: "2.13"
+                rocm: "2.12"
 
             artifacts:
               base_image:
@@ -410,7 +481,7 @@ def test_load_versions_config_rejects_schema_version_two(tmp_path: Path) -> None
 
 def test_resolve_version_uses_full_version_placeholder() -> None:
     updater = load_updater()
-    release = updater.ReleaseConfig(full_version="3.6.0", rhds_os_base="el9.6", python_version="3.12")
+    release = make_release(updater, rhds_os_base="el9.6")
 
     assert updater.resolve_version("<full_version>", release) == "3.6.0"
 
@@ -445,6 +516,10 @@ def test_load_versions_config_rejects_non_scalar_cpu_version(tmp_path: Path) -> 
               full_version: "3.5.0"
               rhds_os_base: "el9.6"
               python_version: "3.12"
+              channel_torch_version:
+                cpu: "2.13"
+                cuda: "2.13"
+                rocm: "2.12"
 
             artifacts:
               base_image:
@@ -855,21 +930,21 @@ def test_select_latest_matching_rhds_tag_prefers_highest_build_in_same_family() 
 
 def test_build_rhds_pinned_repository_cpu_includes_os_base() -> None:
     updater = load_updater()
-    release = updater.ReleaseConfig(full_version="3.6.0", rhds_os_base="el9.8", python_version="3.12")
+    release = make_release(updater)
 
-    assert updater.build_rhds_pinned_repository("cpu", "3.6.0", release) == "quay.io/aipcc/base-images/cpu-el9.8"
+    assert updater.build_rhds_pinned_repository("cpu", "3.6.0", release) == "quay.io/aipcc/base-images/cpu-torch2.13-el9.8"
 
 
 def test_build_rhds_pinned_repository_cuda_keeps_acc_version_and_os_base() -> None:
     updater = load_updater()
-    release = updater.ReleaseConfig(full_version="3.6.0", rhds_os_base="el9.8", python_version="3.12")
+    release = make_release(updater)
 
-    assert updater.build_rhds_pinned_repository("cuda", "13.0", release) == "quay.io/aipcc/base-images/cuda-13.0-el9.8"
+    assert updater.build_rhds_pinned_repository("cuda", "13.0", release) == "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.8"
 
 
 def test_build_rhds_pinned_tag_targets_ga_family_on_rollback() -> None:
     updater = load_updater()
-    release = updater.ReleaseConfig(full_version="3.4.0", rhds_os_base="el9.6", python_version="3.12")
+    release = make_release(updater, full_version="3.4.0", rhds_os_base="el9.6")
 
     tag = updater.build_rhds_pinned_tag("3.5.0-ea.2-1777919771", release.full_version)
 
@@ -878,23 +953,22 @@ def test_build_rhds_pinned_tag_targets_ga_family_on_rollback() -> None:
 
 def test_resolve_latest_published_rhds_image_uses_skopeo_tags(monkeypatch: pytest.MonkeyPatch) -> None:
     updater = load_updater()
+    repository = updater.build_rhds_pinned_repository("cuda", "25.0", make_release(updater))
 
     monkeypatch.setattr(
         updater.subprocess,
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
-                '["3.6.0-ea.1-1777919000","3.6.0-ea.1-1777919999","3.6.0-ea.2-1777920000"]}'
+                f'{{"Repository":"{repository}","Tags":'
+                '["1777919000","1777919999","1777920000"]}'
             )
         ),
     )
 
-    latest = updater.resolve_latest_published_rhds_image(
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000"
-    )
+    latest = updater.resolve_latest_published_rhds_image(f"{repository}:1777000000")
 
-    assert latest == "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.2-1777920000"
+    assert latest == f"{repository}:1777920000"
 
 
 def test_resolve_latest_published_rhds_image_progresses_ea1_to_ea2_without_ga(
@@ -907,17 +981,17 @@ def test_resolve_latest_published_rhds_image_progresses_ea1_to_ea2_without_ga(
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
-                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999"]}'
             )
         ),
     )
 
     latest = updater.resolve_latest_published_rhds_image(
-        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771"
+        "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771"
     )
 
-    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919999"
+    assert latest == "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919999"
 
 
 def test_resolve_latest_published_rhds_image_keeps_ea1_when_only_ea1_patches_exist(
@@ -930,17 +1004,17 @@ def test_resolve_latest_published_rhds_image_keeps_ea1_when_only_ea1_patches_exi
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
-                '["3.5.0-ea.1-1777919000","3.5.0-ea.1-1777919999"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999"]}'
             )
         ),
     )
 
     latest = updater.resolve_latest_published_rhds_image(
-        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771"
+        "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771"
     )
 
-    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919999"
+    assert latest == "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919999"
 
 
 def test_resolve_latest_published_rhds_image_never_regresses_ea2_to_ea1(
@@ -953,17 +1027,17 @@ def test_resolve_latest_published_rhds_image_never_regresses_ea2_to_ea1(
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
-                '["3.5.0-ea.1-1777919999","3.5.0-ea.2-1777919000"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6","Tags":'
+                '["1777919999","1777919000"]}'
             )
         ),
     )
 
     latest = updater.resolve_latest_published_rhds_image(
-        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771"
+        "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771"
     )
 
-    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919000"
+    assert latest == "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919999"
 
 
 def test_resolve_latest_published_rhds_image_prefers_ga_over_ea_for_same_release(
@@ -976,17 +1050,17 @@ def test_resolve_latest_published_rhds_image_prefers_ga_over_ea_for_same_release
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
-                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1780972037","3.5.0-1781269637"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6","Tags":'
+                '["1777919000","1780972037","1781269637"]}'
             )
         ),
     )
 
     latest = updater.resolve_latest_published_rhds_image(
-        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1780972037"
+        "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1780972037"
     )
 
-    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-1781269637"
+    assert latest == "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1781269637"
 
 
 def test_resolve_latest_published_rhds_image_keeps_ea_family_when_ga_missing(
@@ -999,17 +1073,17 @@ def test_resolve_latest_published_rhds_image_keeps_ea_family_when_ga_missing(
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
-                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999"]}'
             )
         ),
     )
 
     latest = updater.resolve_latest_published_rhds_image(
-        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771"
+        "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771"
     )
 
-    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919999"
+    assert latest == "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919999"
 
 
 def test_resolve_latest_published_rhds_image_rollback_from_ea2_targets_ga(
@@ -1022,15 +1096,15 @@ def test_resolve_latest_published_rhds_image_rollback_from_ea2_targets_ga(
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cpu-el9.6","Tags":'
-                '["3.4.0-ea.1-1777919000","3.4.0-ea.2-1777919999","3.4.0-1777921111"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cpu-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999","1777921111"]}'
             )
         ),
     )
 
-    latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1777919771")
+    latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771")
 
-    assert latest == "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1777921111"
+    assert latest == "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777921111"
 
 
 def test_resolve_latest_published_rhds_image_rollback_from_ga_targets_latest_ga(
@@ -1043,14 +1117,14 @@ def test_resolve_latest_published_rhds_image_rollback_from_ga_targets_latest_ga(
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cpu-el9.6","Tags":["3.4.0-1777919000","3.4.0-1777921111"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cpu-torch2.13-el9.6","Tags":["1777919000","1777921111"]}'
             )
         ),
     )
 
-    latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1777919771")
+    latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771")
 
-    assert latest == "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1777921111"
+    assert latest == "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777921111"
 
 
 def test_resolve_latest_published_rhds_image_rollback_falls_back_to_highest_phase(
@@ -1063,15 +1137,15 @@ def test_resolve_latest_published_rhds_image_rollback_falls_back_to_highest_phas
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cpu-el9.6","Tags":'
-                '["3.4.0-ea.1-1777919000","3.4.0-ea.2-1777919999","3.5.0-1777921111"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cpu-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999","1777921111"]}'
             )
         ),
     )
 
-    latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu-el9.6:3.4.0-0")
+    latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0")
 
-    assert latest == "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-ea.2-1777919999"
+    assert latest == "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777921111"
 
 
 def test_resolve_latest_published_rhds_image_rollback_raises_when_release_is_unpublished(
@@ -1083,12 +1157,12 @@ def test_resolve_latest_published_rhds_image_rollback_raises_when_release_is_unp
         updater.subprocess,
         "run",
         lambda *args, **kwargs: completed_process(
-            stdout='{"Repository":"quay.io/aipcc/base-images/cpu-el9.6","Tags":["3.5.0-ea.2-1777919999"]}'
+            stdout='{"Repository":"quay.io/aipcc/base-images/cpu-torch2.13-el9.6","Tags":[]}'
         ),
     )
 
-    with pytest.raises(ValueError, match=r"release '3.4.0'"):
-        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu-el9.6:3.4.0-0")
+    with pytest.raises(ValueError, match="No published RHDS channel tags"):
+        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0")
 
 
 def test_resolve_latest_published_rhds_image_raises_on_skopeo_failure(
@@ -1103,7 +1177,7 @@ def test_resolve_latest_published_rhds_image_raises_on_skopeo_failure(
     )
 
     with pytest.raises(ValueError, match="skopeo list-tags failed"):
-        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000")
+        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777000000")
 
 
 def test_resolve_latest_published_rhds_image_raises_when_skopeo_missing(
@@ -1117,7 +1191,7 @@ def test_resolve_latest_published_rhds_image_raises_when_skopeo_missing(
     monkeypatch.setattr(updater.subprocess, "run", raise_missing)
 
     with pytest.raises(ValueError, match="skopeo is required"):
-        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000")
+        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777000000")
 
 
 def test_resolve_latest_published_rhds_image_raises_when_skopeo_list_tags_times_out(
@@ -1131,7 +1205,7 @@ def test_resolve_latest_published_rhds_image_raises_when_skopeo_list_tags_times_
     monkeypatch.setattr(updater.subprocess, "run", raise_timeout)
 
     with pytest.raises(ValueError, match="skopeo list-tags timed out"):
-        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000")
+        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777000000")
 
 
 def test_plan_updates_caches_rhds_tag_listing_per_repository(
@@ -1143,7 +1217,7 @@ def test_plan_updates_caches_rhds_tag_listing_per_repository(
 
     first = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     second = tmp_path / "runtimes" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    base_image = "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-1777919771"
+    base_image = "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771"
     write_conf(first, f"BASE_IMAGE={base_image}")
     write_conf(second, f"BASE_IMAGE={base_image}")
 
@@ -1151,13 +1225,13 @@ def test_plan_updates_caches_rhds_tag_listing_per_repository(
 
     def fake_run(cmd, **kwargs):
         calls.append(cmd[-1])
-        return completed_process(stdout='{"Tags":["3.6.0-ea.1-1777919999"]}')
+        return completed_process(stdout='{"Tags":["1777919999"]}')
 
     monkeypatch.setattr(updater.subprocess, "run", fake_run)
 
     updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert calls == ["docker://quay.io/aipcc/base-images/cpu-el9.6"]
+    assert calls == ["docker://quay.io/aipcc/base-images/cpu-torch2.13-el9.6"]
 
 
 def test_plan_updates_infers_bundle_phase_for_stable_to_fast_target(
@@ -1176,9 +1250,9 @@ def test_plan_updates_infers_bundle_phase_for_stable_to_fast_target(
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        if image == "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-0":
-            return "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780000000"
-        return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000001"
+        if image == "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0":
+            return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
+        return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
@@ -1186,11 +1260,11 @@ def test_plan_updates_infers_bundle_phase_for_stable_to_fast_target(
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
     assert seen == [
-        "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-0",
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919771",
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0",
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771",
     ]
-    assert rendered[target_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780000000")
-    assert rendered[peer_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000001")
+    assert rendered[target_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000")
+    assert rendered[peer_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001")
 
 
 def test_plan_updates_infers_ga_phase_for_stable_to_fast_target(
@@ -1203,15 +1277,15 @@ def test_plan_updates_infers_ga_phase_for_stable_to_fast_target(
     target_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     peer_conf = tmp_path / "jupyter" / "pytorch" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     write_conf(target_conf, f"BASE_IMAGE={rhds_gpu_stable_image('cuda')}")
-    write_conf(peer_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-1777919771")
+    write_conf(peer_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771")
 
     seen: list[str] = []
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        if image.endswith(":3.5.0-0"):
-            return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-1780000000"
-        return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-1780000001"
+        if image.endswith(":0"):
+            return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000000"
+        return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
@@ -1219,11 +1293,11 @@ def test_plan_updates_infers_ga_phase_for_stable_to_fast_target(
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
     assert seen == [
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-0",
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-1777919771",
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:0",
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771",
     ]
-    assert rendered[target_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-1780000000")
-    assert rendered[peer_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-1780000001")
+    assert rendered[target_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000000")
+    assert rendered[peer_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001")
 
 
 def test_plan_updates_falls_back_to_ea1_without_any_bundle_fast_style_peers(
@@ -1242,7 +1316,7 @@ def test_plan_updates_falls_back_to_ea1_without_any_bundle_fast_style_peers(
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        return "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-1780000000"
+        return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
@@ -1250,11 +1324,11 @@ def test_plan_updates_falls_back_to_ea1_without_any_bundle_fast_style_peers(
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
     assert seen == [
-        "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-0",
-        "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-0",
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0",
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0",
     ]
-    assert rendered[first_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-1780000000")
-    assert rendered[second_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-1780000000")
+    assert rendered[first_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000")
+    assert rendered[second_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000")
 
 
 def test_plan_updates_uses_highest_observed_bundle_phase_for_existing_fast_targets(
@@ -1266,20 +1340,20 @@ def test_plan_updates_uses_highest_observed_bundle_phase_for_existing_fast_targe
 
     cpu_conf = tmp_path / "runtimes" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     cuda_conf = tmp_path / "jupyter" / "pytorch" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.1-1780600064")
-    write_conf(cuda_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771")
+    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780600064")
+    write_conf(cuda_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771")
     rocm_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.rocm.conf"
-    write_conf(rocm_conf, "BASE_IMAGE=quay.io/aipcc/base-images/rocm-8.0-el9.6:3.5.0-ea.2-1777919771")
+    write_conf(rocm_conf, "BASE_IMAGE=quay.io/aipcc/base-images/rocm8.0-torch2.12-el9.6:1777919771")
 
     seen: list[str] = []
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        if image == "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780600064":
-            return "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780609999"
-        if image == "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919771":
-            return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000001"
-        return "quay.io/aipcc/base-images/rocm-8.0-el9.6:3.5.0-ea.2-1780000002"
+        if image == "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780600064":
+            return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780609999"
+        if image == "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771":
+            return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001"
+        return "quay.io/aipcc/base-images/rocm8.0-torch2.12-el9.6:1780000002"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
@@ -1287,13 +1361,13 @@ def test_plan_updates_uses_highest_observed_bundle_phase_for_existing_fast_targe
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
     assert seen == [
-        "quay.io/aipcc/base-images/rocm-8.0-el9.6:3.5.0-ea.2-1777919771",
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919771",
-        "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780600064",
+        "quay.io/aipcc/base-images/rocm8.0-torch2.12-el9.6:1777919771",
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771",
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780600064",
     ]
-    assert rendered[rocm_conf] == pinned_base_image("quay.io/aipcc/base-images/rocm-8.0-el9.6:3.5.0-ea.2-1780000002")
-    assert rendered[cuda_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000001")
-    assert rendered[cpu_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780609999")
+    assert rendered[rocm_conf] == pinned_base_image("quay.io/aipcc/base-images/rocm8.0-torch2.12-el9.6:1780000002")
+    assert rendered[cuda_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001")
+    assert rendered[cpu_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780609999")
 
 
 def test_plan_updates_uses_forward_discovery_not_bundle_phase_for_lagging_target(
@@ -1305,12 +1379,12 @@ def test_plan_updates_uses_forward_discovery_not_bundle_phase_for_lagging_target
 
     cpu_conf = tmp_path / "runtimes" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     cuda_conf = tmp_path / "jupyter" / "pytorch" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.4.0-ea.2-1780600064")
+    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780600064")
     write_conf(cuda_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     def fake_list_tags(repository: str, tag_cache=None) -> tuple[str, ...]:
-        if repository == "quay.io/aipcc/base-images/cpu-el9.6":
-            return ("3.5.0-ea.1-1777919000",)
+        if repository == "quay.io/aipcc/base-images/cpu-torch2.13-el9.6":
+            return ("1777919000",)
         return ()
 
     monkeypatch.setattr(updater, "list_rhds_repository_tags", fake_list_tags)
@@ -1319,19 +1393,18 @@ def test_plan_updates_uses_forward_discovery_not_bundle_phase_for_lagging_target
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        if image == "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-1780600064":
-            return "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-1780609999"
-        return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000001"
+        if image.startswith("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:"):
+            return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780609999"
+        return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
-    assert "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-1780600064" in seen
-    assert "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780600064" not in seen
-    assert rendered[cpu_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.1-1780609999")
-    assert rendered[cuda_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000001")
+    assert any(image.startswith("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:") for image in seen)
+    assert rendered[cpu_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780609999")
+    assert rendered[cuda_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001")
 
 
 def test_plan_updates_starts_new_release_at_ea1_when_peers_are_older_release(
@@ -1350,9 +1423,9 @@ def test_plan_updates_starts_new_release_at_ea1_when_peers_are_older_release(
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        if image == "quay.io/aipcc/base-images/cpu-el9.6:3.6.0-ea.1-0":
-            return "quay.io/aipcc/base-images/cpu-el9.6:3.6.0-ea.1-1780000000"
-        return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1780000001"
+        if image == "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0":
+            return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
+        return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
     stub_empty_rhds_tag_listing(monkeypatch, updater)
@@ -1361,11 +1434,11 @@ def test_plan_updates_starts_new_release_at_ea1_when_peers_are_older_release(
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
     assert seen == [
-        "quay.io/aipcc/base-images/cpu-el9.6:3.6.0-ea.1-0",
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777919771",
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0",
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771",
     ]
-    assert rendered[target_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.6.0-ea.1-1780000000")
-    assert rendered[peer_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1780000001")
+    assert rendered[target_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000")
+    assert rendered[peer_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001")
 
 
 def test_plan_updates_uses_published_ga_for_new_release_when_available(
@@ -1376,15 +1449,15 @@ def test_plan_updates_uses_published_ga_for_new_release_when_available(
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771")
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771")
 
     monkeypatch.setattr(
         updater.subprocess,
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
-                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999","3.5.0-1777921111"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999","1777921111"]}'
             )
         ),
     )
@@ -1392,7 +1465,7 @@ def test_plan_updates_uses_published_ga_for_new_release_when_available(
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
     assert updates[0].updated_text.strip() == pinned_base_image(
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-1777921111"
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777921111"
     )
 
 
@@ -1404,15 +1477,15 @@ def test_plan_updates_uses_highest_published_phase_for_new_release_when_ga_missi
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771")
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771")
 
     monkeypatch.setattr(
         updater.subprocess,
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
-                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999"]}'
             )
         ),
     )
@@ -1420,7 +1493,7 @@ def test_plan_updates_uses_highest_published_phase_for_new_release_when_ga_missi
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
     assert updates[0].updated_text.strip() == pinned_base_image(
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919999"
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919999"
     )
 
 
@@ -1439,8 +1512,8 @@ def test_plan_updates_stable_to_fast_forward_uses_highest_published_phase_for_ne
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cpu-el9.6","Tags":'
-                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cpu-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999"]}'
             )
         ),
     )
@@ -1448,7 +1521,7 @@ def test_plan_updates_stable_to_fast_forward_uses_highest_published_phase_for_ne
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
     assert updates[0].updated_text.strip() == pinned_base_image(
-        "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1777919999"
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919999"
     )
 
 
@@ -1460,17 +1533,17 @@ def test_plan_updates_new_release_without_published_tags_keeps_strict_failure(
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771")
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771")
 
     monkeypatch.setattr(
         updater.subprocess,
         "run",
         lambda *args, **kwargs: completed_process(
-            stdout='{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":["3.4.0-ea.2-1777919771"]}'
+            stdout='{"Repository":"quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6","Tags":[]}'
         ),
     )
 
-    with pytest.raises(ValueError, match="No matching published RHDS tag found"):
+    with pytest.raises(ValueError, match="No published RHDS channel tags"):
         updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
 
@@ -1482,22 +1555,22 @@ def test_plan_updates_builds_fast_rhds_candidate_before_latest_resolution(
     write_versions_config(tmp_path / "versions_config.yml")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771")
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771")
 
     seen: list[str] = []
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999"
+        return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777929999"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
     stub_empty_rhds_tag_listing(monkeypatch, updater)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert seen == ["quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777919771"]
+    assert seen == ["quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771"]
     assert updates[0].updated_text.strip() == pinned_base_image(
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999"
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777929999"
     )
 
 
@@ -1515,14 +1588,14 @@ def test_plan_updates_rollback_targets_ga_family_for_older_release(
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        return "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780000000"
+        return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert seen == ["quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1777919771"]
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780000000")
+    assert seen == ["quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771"]
+    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000")
 
 
 def test_plan_updates_uses_hard_coded_rhds_cpu_version_for_fast_channel(
@@ -1548,14 +1621,14 @@ def test_plan_updates_uses_hard_coded_rhds_cpu_version_for_fast_channel(
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        return "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780000000"
+        return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert seen == ["quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1777919771"]
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780000000")
+    assert seen == ["quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771"]
+    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000")
 
 
 def test_plan_updates_rollback_ignores_newer_fast_peers(
@@ -1567,16 +1640,16 @@ def test_plan_updates_rollback_ignores_newer_fast_peers(
 
     cpu_conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     cuda_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1780600064")
+    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780600064")
     write_conf(cuda_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     seen: list[str] = []
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        if image == "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780600064":
-            return "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780609999"
-        return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.4.0-1780000001"
+        if image == "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780600064":
+            return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780609999"
+        return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
@@ -1584,11 +1657,11 @@ def test_plan_updates_rollback_ignores_newer_fast_peers(
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
     assert seen == [
-        "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780600064",
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.4.0-1777919771",
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780600064",
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771",
     ]
-    assert rendered[cpu_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780609999")
-    assert rendered[cuda_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.4.0-1780000001")
+    assert rendered[cpu_conf] == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780609999")
+    assert rendered[cuda_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000001")
 
 
 def test_plan_updates_rollback_falls_back_to_highest_published_phase_when_ga_missing(
@@ -1606,8 +1679,8 @@ def test_plan_updates_rollback_falls_back_to_highest_published_phase_when_ga_mis
         "run",
         lambda *args, **kwargs: completed_process(
             stdout=(
-                '{"Repository":"quay.io/aipcc/base-images/cpu-el9.6","Tags":'
-                '["3.4.0-ea.1-1777919000","3.4.0-ea.2-1777919999","3.5.0-ea.2-1777921111"]}'
+                '{"Repository":"quay.io/aipcc/base-images/cpu-torch2.13-el9.6","Tags":'
+                '["1777919000","1777919999","1777921111"]}'
             )
         ),
     )
@@ -1615,7 +1688,7 @@ def test_plan_updates_rollback_falls_back_to_highest_published_phase_when_ga_mis
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
     assert updates[0].updated_text.strip() == pinned_base_image(
-        "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-ea.2-1777919999"
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777921111"
     )
 
 
@@ -1633,14 +1706,14 @@ def test_plan_updates_rollback_from_stable_target_uses_ga_seed(
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        return "quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780000000"
+        return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert seen == ["quay.io/aipcc/base-images/cpu-el9.6:3.4.0-0"]
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cpu-el9.6:3.4.0-1780000000")
+    assert seen == ["quay.io/aipcc/base-images/cpu-torch2.13-el9.6:0"]
+    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000")
 
 
 def test_plan_updates_allows_independent_mixed_rhds_channels(
@@ -1668,7 +1741,7 @@ def test_plan_updates_allows_independent_mixed_rhds_channels(
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        return "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780000000"
+        return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
     stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
@@ -1677,9 +1750,9 @@ def test_plan_updates_allows_independent_mixed_rhds_channels(
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
     rendered = {update.target.path.name: update.updated_text.strip() for update in updates}
 
-    assert seen == ["quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1777919771"]
+    assert seen == ["quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771"]
     assert rendered["konflux.cpu.conf"] == pinned_base_image(
-        "quay.io/aipcc/base-images/cpu-el9.6:3.5.0-ea.2-1780000000"
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
     )
     assert rendered["konflux.cuda.conf"] == pinned_base_image(rhds_gpu_stable_image("cuda"))
 
@@ -1714,7 +1787,7 @@ def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
-    assert seen == ["quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919771"]
+    assert seen == ["quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771"]
     assert rendered[minimal_conf] == pinned_base_image(rhds_gpu_stable_image("cuda"))
     assert rendered[pytorch_conf] == pinned_base_image(
         "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000000"
@@ -2006,7 +2079,7 @@ def test_plan_updates_rewrites_release_to_minor_version(
         conf,
         textwrap.dedent(
             """\
-            BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771
+            BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771
             PYLOCK_FLAVOR=cuda
             RELEASE=3.5
             """
@@ -2016,14 +2089,14 @@ def test_plan_updates_rewrites_release_to_minor_version(
     monkeypatch.setattr(
         updater,
         "resolve_latest_published_rhds_image",
-        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999",
+        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777929999",
     )
     stub_empty_rhds_tag_listing(monkeypatch, updater)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
     assert updates[0].updated_text.splitlines() == [
-        pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999"),
+        pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777929999"),
         "PYLOCK_FLAVOR=cuda",
         "RELEASE=3.6",
     ]
@@ -2039,7 +2112,7 @@ def test_main_updates_base_image_and_release_lines(tmp_path: Path, monkeypatch: 
         textwrap.dedent(
             """\
             INDEX_URL=unchanged
-            BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771
+            BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771
             PYLOCK_FLAVOR=cuda
             RELEASE=3.5
             """
@@ -2049,14 +2122,14 @@ def test_main_updates_base_image_and_release_lines(tmp_path: Path, monkeypatch: 
     monkeypatch.setattr(
         updater,
         "resolve_latest_published_rhds_image",
-        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999",
+        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777929999",
     )
     stub_empty_rhds_tag_listing(monkeypatch, updater)
 
     assert updater.main(["--root", str(tmp_path), "--config", str(tmp_path / "versions_config.yml")]) == 0
     assert conf.read_text(encoding="utf-8").splitlines() == [
         "INDEX_URL=unchanged",
-        pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999"),
+        pinned_base_image("quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777929999"),
         "PYLOCK_FLAVOR=cuda",
         "RELEASE=3.6",
     ]
@@ -2121,13 +2194,13 @@ def test_main_dry_run_does_not_write_files(tmp_path: Path, monkeypatch: pytest.M
     write_versions_config(tmp_path / "versions_config.yml")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    original = "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771\n"
+    original = "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771\n"
     write_conf(conf, original.rstrip())
 
     monkeypatch.setattr(
         updater,
         "resolve_latest_published_rhds_image",
-        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999",
+        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777929999",
     )
     stub_empty_rhds_tag_listing(monkeypatch, updater)
 
@@ -2143,18 +2216,18 @@ def test_main_check_returns_nonzero_when_files_need_updates(
     write_versions_config(tmp_path / "versions_config.yml")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771")
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771")
 
     monkeypatch.setattr(
         updater,
         "resolve_latest_published_rhds_image",
-        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999",
+        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777929999",
     )
     stub_empty_rhds_tag_listing(monkeypatch, updater)
 
     assert updater.main(["--root", str(tmp_path), "--config", str(tmp_path / "versions_config.yml"), "--check"]) == 1
     assert conf.read_text(encoding="utf-8").strip() == (
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771"
+        "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.6:1777919771"
     )
 
 

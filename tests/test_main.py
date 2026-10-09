@@ -982,6 +982,9 @@ def get_accelerator_version_for_directory(directory: pathlib.Path, accelerator_n
         flags=re.IGNORECASE,
     ):
         return None
+    match = re.search(rf"{re.escape(flavor)}(\d+\.\d+)-torch", base_image, flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
     match = re.search(rf"{re.escape(flavor)}-v?(\d+\.\d+)", base_image, flags=re.IGNORECASE)
     if not match:
         raise ValueError(f"Cannot extract {accelerator_name} version from {conf_file}: BASE_IMAGE={base_image}")

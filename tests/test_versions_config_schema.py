@@ -32,6 +32,11 @@ def _minimal_valid_config() -> dict:
             "full_version": "3.5.0",
             "rhds_os_base": "el9.6",
             "python_version": "3.12",
+            "channel_torch_version": {
+                "cpu": "2.13",
+                "cuda": "2.13",
+                "rocm": "2.12",
+            },
         },
         "artifacts": {
             "base_image": {
