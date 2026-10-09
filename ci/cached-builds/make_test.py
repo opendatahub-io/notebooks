@@ -147,7 +147,7 @@ def _make_just_print(target: str) -> str:
 
 
 # Heavy images (e.g. datascience, trustyai) need more time to become Ready on constrained nodes.
-_HEAVY_TARGETS = ("jupyter-datascience", "jupyter-trustyai")
+_HEAVY_TARGETS = ("jupyter-datascience", "jupyter-trustyai", "jupyter-universal")
 
 
 # TODO(jdanek) this is a dumb impl, needs to be improved

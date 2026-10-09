@@ -298,6 +298,16 @@ odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n:
   variants:
     - odh
     - rhoai
+odh-workbench-jupyter-universal-cpu-py312-ubi9-n:
+  name: opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 2200
+    rhoai: 2200
+  variants:
+    - odh
+    - rhoai
 odh-workbench-jupyter-trustyai-cpu-py312-ubi9-2025-2:
   name:
     odh: odh-notebook-jupyter-trustyai-ubi9-python-3.12

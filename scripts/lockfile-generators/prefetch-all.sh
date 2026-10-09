@@ -43,6 +43,9 @@ set -euo pipefail
 # Prerequisites: wget, python3 (with pyyaml), jq, podman, uv
 
 SCRIPTS_PATH="scripts/lockfile-generators"
+# Optional gitignored .local-ca/ PEMs for local RHOAI CDN / index TLS
+# shellcheck source=helpers/local-ca-env.sh
+source "$(dirname "$0")/helpers/local-ca-env.sh"
 
 COMPONENT_DIR=""
 VARIANT="odh"       # "odh" = upstream (CentOS Stream), "rhds" = downstream (RHEL)
@@ -236,9 +239,20 @@ fi
 PYPROJECT="$COMPONENT_DIR/pyproject.toml"
 if [[ -f "$PYPROJECT" ]]; then
   echo "=== [2/5] Pip wheels ==="
-  REQUIREMENTS_FILE="$COMPONENT_DIR/requirements.${FLAVOR}.txt"
+  # Hybrid images (e.g. jupyter/universal) ship requirements.rhoai.txt for
+  # PRODUCT=rhoai. When prefetching --rhds, prefer that file over
+  # requirements.cpu.txt so hermetic wheels match PYLOCK_FLAVOR=rhoai pins
+  # (PyPI and RHAI versions diverge, e.g. google-api-core 2.41 vs 2.38).
+  PIP_FLAVOR="$FLAVOR"
+  if [[ "$VARIANT" == "rhds" ]] && [[ -f "$COMPONENT_DIR/requirements.rhoai.txt" ]]; then
+    PIP_FLAVOR="rhoai"
+  fi
+  REQUIREMENTS_FILE="$COMPONENT_DIR/requirements.${PIP_FLAVOR}.txt"
   if [[ ! -f "$REQUIREMENTS_FILE" ]]; then
-    error_exit "requirements.${FLAVOR}.txt not found in $COMPONENT_DIR. prefetch-all.sh does not generate pip lockfiles — run 'make refresh-lock-files DIR=$COMPONENT_DIR' (or scripts/lockfile-generators/create-requirements-lockfile.sh), commit the result, then re-run prefetch."
+    error_exit "requirements.${PIP_FLAVOR}.txt not found in $COMPONENT_DIR. prefetch-all.sh does not generate pip lockfiles — run 'make refresh-lock-files DIR=$COMPONENT_DIR' (or scripts/lockfile-generators/create-requirements-lockfile.sh), commit the result, then re-run prefetch."
+  fi
+  if [[ "$PIP_FLAVOR" != "$FLAVOR" ]]; then
+    echo "  Using requirements.${PIP_FLAVOR}.txt (rhds hybrid; --flavor was ${FLAVOR})"
   fi
 
   # Derive target arch from BUILD_ARCH (GHA cross-build via QEMU) or host
@@ -328,6 +342,9 @@ if [[ -f "$RPM_INPUT" ]]; then
   echo "=== [4/5] RPMs ==="
   if [[ -f "$RPM_LOCKFILE" ]]; then
     echo "  rpms.lock.yaml exists — downloading RPMs only (skipping lockfile regeneration)"
+    # BUILD_ARCH (if set) limits hermeto to one RPM arch so missing
+    # entitlement coverage on unused arches (e.g. ppc64le) does not fail
+    # a single-arch local build.
     "$SCRIPTS_PATH/helpers/hermeto-fetch-rpm.sh" --prefetch-dir "$VARIANT_DIR"
   else
     echo "  rpms.lock.yaml not found — generating lockfile and downloading"

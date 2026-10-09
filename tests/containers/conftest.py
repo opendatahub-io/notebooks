@@ -47,10 +47,9 @@ def classify_workbench(label_name: str) -> WorkbenchType:
 def is_stub_onboarding_image(image: str) -> bool:
     """True for Konflux onboarding stubs (hello-world), not real workbench/runtime images.
 
-    ``jupyter-universal`` ships a minimal Dockerfile only to exercise the build
-    pipeline; container and browser tests do not apply.
+    Kept for callers that skip stub images; no current make targets qualify.
     """
-    return "jupyter-universal" in image
+    return False
 
 
 SECURITY_OPTION_ROOTLESS = "name=rootless"
@@ -254,10 +253,14 @@ def rocm_image(image: str):
 
 
 @pytest.fixture(scope="session")
-def jupyterlab_image(image: str) -> Image:
+def jupyterlab_image(image: str, container_arch: str) -> Image:
     image_metadata = skip_if_not_workbench_image(image)
-    if "-jupyter-" not in image_metadata.labels["name"]:
+    name = image_metadata.labels["name"]
+    if "-jupyter-" not in name:
         pytest.skip(f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
+    # Universal omits the JupyterLab stack on ppc64le/s390x (Path B allowlist).
+    if "-universal-" in name and container_arch in ("ppc64le", "s390x"):
+        pytest.skip(f"Universal image omits JupyterLab stack on {container_arch}")
 
     return image_metadata
 
@@ -265,12 +268,12 @@ def jupyterlab_image(image: str) -> Image:
 @pytest.fixture(scope="session")
 def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
     name = jupyterlab_image.labels["name"]
-    # baseline is a lean JupyterLab workbench (Elyra/Kale/PDF) without the
+    # Lean JupyterLab workbenches (minimal/baseline/universal) without the
     # datascience / DB-connector Python stack covered by these tests.
-    if "-minimal-" in name or "-baseline-" in name:
+    if "-minimal-" in name or "-baseline-" in name or "-universal-" in name:
         pytest.skip(
             f"Image {jupyterlab_image.name} is not datascience image because it has "
-            f"'-minimal-' or '-baseline-' in {name=}"
+            f"'-minimal-', '-baseline-', or '-universal-' in {name=}"
         )
 
     return jupyterlab_image
@@ -292,10 +295,10 @@ def datascience_image(image: str) -> Image:
     name = image_metadata.labels["name"]
     if image_metadata.workbench_type is WorkbenchType.CHE_CODE:
         pytest.skip(f"Image {image} is a Che Code workbench without the datascience Python stack")
-    if "-minimal-" in name or "-baseline-" in name:
+    if "-minimal-" in name or "-baseline-" in name or "-universal-" in name:
         pytest.skip(
             f"Image {image_metadata.name} is not datascience image because it has "
-            f"'-minimal-' or '-baseline-' in {name=}"
+            f"'-minimal-', '-baseline-', or '-universal-' in {name=}"
         )
 
     return image_metadata

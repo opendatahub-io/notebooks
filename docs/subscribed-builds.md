@@ -165,6 +165,65 @@ The entitlement certificates are not being mounted into the build container, or 
 2. Verify mounts work: run the verify command from Step 2
 3. Build with `--no-cache` to avoid cached layers from failed attempts
 
+### SSL `CERTIFICATE_VERIFY_FAILED` / self-signed chain on `cdn.redhat.com`
+
+```text
+SSLCertVerificationError: ... self-signed certificate in certificate chain
+Unsuccessful download: https://cdn.redhat.com/content/eus/rhel9/...
+```
+
+This is usually **missing RHSM CA trust**, not a broken corporate proxy bypass.
+`cdn.redhat.com` (especially on Red Hat VPN) presents a chain rooted at Red Hat
+**Entitlement Master CA**. That CA is not in public trust stores (`/etc/ssl/cert.pem`);
+it ships as `/etc/rhsm/ca/redhat-uep.pem` in UBI/RHEL.
+
+Hermeto only gets that CA when entitlement client certs are configured
+(`entitlement/*.pem` on the host, or auto-synced from the podman machine). Without
+them, prefetch fails TLS before it can even return HTTP 403.
+
+Fix:
+
+1. Ensure host `entitlement/*.pem` exists (Step 1), **or** keep certs in the
+   podman machine at `/etc/pki/entitlement` — `hermeto-fetch-rpm.sh` syncs them
+   to `./entitlement` automatically on macOS.
+2. Re-run RHDS prefetch:
+   `./scripts/lockfile-generators/prefetch-all.sh --component-dir <dir> --flavor cpu --rhds`
+3. Sanity-check CDN auth (expect HTTP 200):
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  --cacert <(podman run --rm registry.access.redhat.com/ubi9/ubi cat /etc/rhsm/ca/redhat-uep.pem) \
+  --cert entitlement/<id>.pem --key entitlement/<id>-key.pem \
+  'https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/repodata/repomd.xml'
+```
+
+### Optional local CA bundle (`.local-ca/`, never commit)
+
+For host-side lock refresh / prefetch TLS (CDN or `packages.redhat.com`), keep
+Red Hat CA PEMs in a **gitignored** `.local-ca/` directory at the repo root:
+
+```bash
+mkdir -p .local-ca
+podman run --rm registry.access.redhat.com/ubi9/ubi \
+  cat /etc/rhsm/ca/redhat-uep.pem > .local-ca/redhat-uep.pem
+```
+
+`packages.redhat.com` is signed by Red Hat **RHCSv2** (not a public DigiCert
+root). If lock refresh fails with:
+
+```text
+No production or -test RH index is available for .../konflux.cpu.conf:
+https://packages.redhat.com/api/pypi/public-rhai/rhoai/...
+```
+
+source the helper (or just re-run `gmake refresh-lock-files`): it fetches the
+RHCSv2 intermediate and builds `.local-ca/combined-ca-bundle.pem` (certifi +
+RHCSv2 + RHSM PEMs), then sets `SSL_CERT_FILE` / `UV_SYSTEM_CERTS`.
+
+Do **not** set `SSL_CERT_FILE` to the RHSM-only `cdn-ca-bundle.pem` alone — that
+replaces the public trust store and breaks the index probe. Do **not** commit
+`.local-ca/` — `.gitignore` already excludes it.
+
 ### QEMU segfault on macOS
 
 See [macos-podman-rosetta.md](macos-podman-rosetta.md) to enable Rosetta.

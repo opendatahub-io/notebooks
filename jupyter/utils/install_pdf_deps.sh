@@ -11,6 +11,10 @@ if [[ "$(uname -m)" == "s390x" || "$(uname -m)" == "ppc64le" ]]; then
     exit 0
 fi
 
+# Prefer hermeto-only yum repos. Local AIPCC/RHOAI builds can leave a live
+# subscription-manager redhat.repo beside hermeto.repo.
+rm -f /etc/yum.repos.d/redhat.repo
+
 # https://github.com/rh-aiservices-bu/workbench-images/blob/main/snippets/ides/1-jupyter/os/os-packages.txt
 PACKAGES=(
 texlive-adjustbox
