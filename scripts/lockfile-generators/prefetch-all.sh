@@ -43,6 +43,9 @@ set -euo pipefail
 # Prerequisites: wget, python3 (with pyyaml), jq, podman, uv
 
 SCRIPTS_PATH="scripts/lockfile-generators"
+# Optional gitignored .local-ca/ PEMs for local RHOAI CDN / index TLS
+# shellcheck source=helpers/local-ca-env.sh
+source "$(dirname "$0")/helpers/local-ca-env.sh"
 
 COMPONENT_DIR=""
 VARIANT="odh"       # "odh" = upstream (CentOS Stream), "rhds" = downstream (RHEL)

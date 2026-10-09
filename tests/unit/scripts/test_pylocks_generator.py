@@ -1132,6 +1132,60 @@ dependencies = ["uv"]
     assert not (baseline_dir / ".aipcc-alignment.constraints.txt").exists(), "no leftover constraints file expected"
 
 
+def test_inject_project_dependencies_appends_before_closing_bracket() -> None:
+    original = """
+[project]
+name = "hybrid-test"
+version = "0.1.0"
+dependencies = [
+    "uv",
+    "wheel",
+]
+
+[tool.uv]
+exclude-dependencies = ["py-spy"]
+""".strip()
+    patched = pg._inject_project_dependencies(
+        original + "\n",
+        ["pandoc-rhai; sys_platform == 'linux'"],
+    )
+    assert '    "pandoc-rhai; sys_platform == \'linux\'",' in patched
+    assert patched.index("pandoc-rhai") < patched.index("\n]")
+    # Idempotent
+    assert pg._inject_project_dependencies(patched, ["pandoc-rhai; sys_platform == 'linux'"]) == patched
+
+
+def test_hybrid_rh_extra_dependencies_for_universal(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    rel = Path("jupyter/universal/ubi9-python-3.12")
+    project = tmp_path / rel
+    project.mkdir(parents=True)
+    monkeypatch.setattr(pg, "ROOT_DIR", tmp_path)
+    monkeypatch.setattr(
+        pg,
+        "HYBRID_RH_EXTRA_DEPENDENCIES",
+        {rel: ("pandoc-rhai; sys_platform == 'linux'",)},
+    )
+    extras = pg.hybrid_rh_extra_dependencies(project)
+    assert extras == ["pandoc-rhai; sys_platform == 'linux'"]
+    assert pg.hybrid_rh_extra_dependencies(tmp_path / "jupyter/other") == []
+
+
+def test_local_ca_env_updates_prefers_combined_bundle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pg, "ROOT_DIR", tmp_path)
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+    ca_dir = tmp_path / ".local-ca"
+    ca_dir.mkdir()
+    (ca_dir / "cdn-ca-bundle.pem").write_text("cdn\n", encoding="utf-8")
+    (ca_dir / "combined-ca-bundle.pem").write_text("combined\n", encoding="utf-8")
+    env = pg.local_ca_env_updates()
+    assert env["SSL_CERT_FILE"] == str(ca_dir / "combined-ca-bundle.pem")
+    assert env["UV_SYSTEM_CERTS"] == "1"
+    monkeypatch.setenv("SSL_CERT_FILE", "/already/set.pem")
+    assert pg.local_ca_env_updates() == {}
+
+
 @pytest.mark.parametrize(
     "global_input",
     ["dependencies/constraints.txt", "dependencies/overrides.txt"],

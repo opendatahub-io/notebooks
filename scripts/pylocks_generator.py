@@ -157,6 +157,15 @@ HYBRID_PUBLIC_RH_PROJECTS: frozenset[Path] = frozenset(
     }
 )
 
+# Extra direct deps injected only while generating the RH-index lock for hybrid
+# projects. Keep RHAI-only packages (e.g. pandoc-rhai) out of pyproject.toml so
+# the public-index (PyPI) lock stays resolvable.
+HYBRID_RH_EXTRA_DEPENDENCIES: dict[Path, tuple[str, ...]] = {
+    Path("jupyter/universal/ubi9-python-3.12"): (
+        "pandoc-rhai; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+    ),
+}
+
 # Name aliases when package names differ between source (AIPCC) and target (baseline) indexes.
 # key=baseline package name, value=source package name.
 BASELINE_AIPCC_ALIGNMENT_SOURCE_ALIASES: dict[str, str] = {
@@ -898,6 +907,96 @@ def _inject_tool_uv_constraint_dependencies(pyproject_text: str, constraints: li
     return rebuilt
 
 
+def _inject_project_dependencies(pyproject_text: str, extra_deps: list[str]) -> str:
+    """Append ``extra_deps`` to ``[project].dependencies`` (idempotent by exact string)."""
+    if not extra_deps:
+        return pyproject_text
+    document = tomllib.loads(pyproject_text)
+    existing = list(document.get("project", {}).get("dependencies", []))
+    to_add = [dep for dep in extra_deps if dep not in existing]
+    if not to_add:
+        return pyproject_text
+
+    lines = pyproject_text.splitlines()
+    trailing_newline = pyproject_text.endswith("\n")
+    in_project = False
+    in_deps = False
+    deps_indent = "    "
+    insert_at: int | None = None
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == "[project]":
+            in_project = True
+            in_deps = False
+            continue
+        if in_project and stripped.startswith("[") and stripped != "[project]":
+            break
+        if in_project and stripped.startswith("dependencies"):
+            in_deps = True
+            if stripped.endswith("["):
+                continue
+            # dependencies = [ "a", "b" ] single-line — rewrite as multi-line
+            if stripped.endswith("]"):
+                combined = existing + to_add
+                formatted = ["dependencies = ["]
+                for dep in combined:
+                    formatted.append(f'{deps_indent}"{dep}",')
+                formatted.append("]")
+                lines[idx : idx + 1] = formatted
+                rebuilt = "\n".join(lines)
+                if trailing_newline:
+                    rebuilt += "\n"
+                return rebuilt
+            continue
+        if in_deps:
+            if stripped == "]":
+                insert_at = idx
+                break
+            if stripped and not stripped.startswith("#"):
+                # Capture indent from an existing entry when present.
+                deps_indent = line[: len(line) - len(line.lstrip())] or deps_indent
+    if insert_at is None:
+        return pyproject_text
+    injection = [f'{deps_indent}"{dep}",' for dep in to_add]
+    lines[insert_at:insert_at] = injection
+    rebuilt = "\n".join(lines)
+    if trailing_newline:
+        rebuilt += "\n"
+    return rebuilt
+
+
+def hybrid_rh_extra_dependencies(project_dir: Path) -> list[str]:
+    """RH-only direct deps for a hybrid project (empty when not hybrid / not listed)."""
+    try:
+        rel = project_dir.resolve().relative_to(ROOT_DIR.resolve())
+    except ValueError:
+        return []
+    return list(HYBRID_RH_EXTRA_DEPENDENCIES.get(rel, ()))
+
+
+def local_ca_env_updates() -> dict[str, str]:
+    """Env vars for host-side uv/pip when ``.local-ca/`` PEMs exist (never committed).
+
+    Prefer ``combined-ca-bundle.pem`` (certifi + RHCSv2 + RHSM CAs). Using the
+    RHSM-only ``cdn-ca-bundle.pem`` as ``SSL_CERT_FILE`` alone breaks probes to
+    ``packages.redhat.com`` (Red Hat Hosted Pulp / RHCSv2 issuer).
+    """
+    if os.environ.get("SSL_CERT_FILE"):
+        return {}
+    local_ca = ROOT_DIR / ".local-ca"
+    for name in ("combined-ca-bundle.pem", "cdn-ca-bundle.pem", "redhat-uep.pem"):
+        candidate = local_ca / name
+        if candidate.is_file():
+            path = str(candidate)
+            return {
+                "SSL_CERT_FILE": path,
+                "REQUESTS_CA_BUNDLE": path,
+                "CURL_CA_BUNDLE": path,
+                "UV_SYSTEM_CERTS": os.environ.get("UV_SYSTEM_CERTS", "1"),
+            }
+    return {}
+
+
 def _run_subprocess(
     cmd: list[str],
     *,
@@ -907,6 +1006,7 @@ def _run_subprocess(
     quiet: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
+    compile_env.update(local_ca_env_updates())
     try:
         result = subprocess.run(
             cmd,
@@ -1108,119 +1208,136 @@ def run_lock(
     desc = f"{flavor.upper()} lock file"
     log.print(f"➡️ Generating {flavor.upper()} lock file...")
 
-    # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
-    # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
-    # now filters wheels by requires-python and marker disjointness even in --universal mode.
-    # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
-    #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
-    # Let's use --universal temporarily, and in the future we can switch to using uv.lock
-    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or symlink `ln -s uv.lock.d/uv.${flavor}.lock uv.lock`
-    # Note: currently generating uv.lock.d/pylock.${flavor}.toml; future rename to uv.${flavor}.lock is planned
-    # See also --universal discussion with Gerard
-    #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
-    cmd: list[str] = [
-        str(UV),
-        "pip",
-        "compile",
-        "pyproject.toml",
-        "--output-file",
-        output,
-        "--format",
-        "pylock.toml",
-        "--generate-hashes",
-        "--emit-index-url",
-        f"--python-version={python_version}",
-        "--universal",
-        "--no-annotate",
-        "--quiet",
-    ]
-
-    for pkg in NO_EMIT_PACKAGES:
-        cmd.extend(["--no-emit-package", pkg])
-
-    if upgrade:
-        cmd.append("--upgrade")
-
-    # Use relative paths to avoid absolute paths in pylock.toml headers
-    relative_constraints = os.path.relpath(CONSTRAINTS_FILE, project_dir)
-    relative_overrides = os.path.relpath(OVERRIDES_FILE, project_dir)
-    cmd.extend(["--constraints", relative_constraints, "--override", relative_overrides])
-    if extra_constraints is not None:
-        cmd.extend(["--constraints", os.path.relpath(extra_constraints, project_dir)])
-
-    lock_path = project_dir / output
-    exclude_newer = resolve_exclude_newer(lock_path, ci_check=ci_check, live_timestamp=live_timestamp)
-    cmd.append(f"--exclude-newer={exclude_newer}")
-
-    cmd.extend(index_flags)
-    default_index = next(
-        (flag.removeprefix("--default-index=") for flag in index_flags if flag.startswith("--default-index=")),
-        None,
-    )
-    if default_index is not None:
-        log.print(f"  🌐 Lock INDEX_URL: {default_index}")
-    extra_idx = lock_extra_index_flags_from_env()
-    if extra_idx:
-        cmd.extend(extra_idx)
-        log.print("  📎 Extra lock indexes from UV_LOCK_EXTRA_INDEX_URL / PIP_LOCK_EXTRA_INDEX_URL")
-
-    cmd.append(f"--custom-compile-command={compile_command_for_lock_header(cmd)}")
-
-    compile_env = {k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")}
-
-    def _compile_once() -> subprocess.CompletedProcess[str]:
-        """Run one uv pip compile; raise TransientLockError on a transient failure."""
-        try:
-            result = subprocess.run(
-                cmd,
-                cwd=project_dir,
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=600,
-                env=compile_env,
-            )
-        except subprocess.TimeoutExpired as exc:
-            log.warning(f"Timed out generating {desc} in {project_dir}")
-            raise TransientLockError("uv pip compile timed out") from exc
-
-        # A deterministic failure (resolution error, missing package) is returned
-        # as-is so stamina does not retry it; only transient index errors raise.
-        if result.returncode != 0 and _is_transient_lock_error(result.stderr or ""):
-            log.warning(f"Transient index error generating {desc} in {project_dir}; stamina will retry")
-            raise TransientLockError("transient uv pip compile failure", stderr=result.stderr or "")
-        return result
-
-    retried_compile = stamina.retry(
-        on=TransientLockError,
-        attempts=LOCK_RETRY_MAX_ATTEMPTS,
-        timeout=None,
-        wait_initial=LOCK_RETRY_BACKOFF_BASE_SECONDS,
-        wait_max=LOCK_RETRY_BACKOFF_MAX_SECONDS,
-        wait_jitter=LOCK_RETRY_BACKOFF_JITTER_SECONDS,
-        wait_exp_base=2,
-    )(_compile_once)
+    pyproject_path = project_dir / "pyproject.toml"
+    original_pyproject = pyproject_path.read_text(encoding="utf-8")
+    rh_extra = hybrid_rh_extra_dependencies(project_dir) if mode == IndexMode.rh_index else []
+    if rh_extra:
+        log.print(f"  🧩 Injecting hybrid RH-only deps: {', '.join(rh_extra)}")
+        pyproject_path.write_text(
+            _inject_project_dependencies(original_pyproject, rh_extra),
+            encoding="utf-8",
+        )
 
     try:
-        result = retried_compile()
-    except TransientLockError as exc:
-        if exc.stderr:
-            log.print(exc.stderr)
-        log.warning(f"Failed to generate {desc} in {project_dir} (exhausted {LOCK_RETRY_MAX_ATTEMPTS} attempts)")
-        (project_dir / output).unlink(missing_ok=True)
-        return False
+        # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
+        # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
+        # now filters wheels by requires-python and marker disjointness even in --universal mode.
+        # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
+        #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
+        # Let's use --universal temporarily, and in the future we can switch to using uv.lock
+        #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or symlink `ln -s uv.lock.d/uv.${flavor}.lock uv.lock`
+        # Note: currently generating uv.lock.d/pylock.${flavor}.toml; future rename to uv.${flavor}.lock is planned
+        # See also --universal discussion with Gerard
+        #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
+        cmd: list[str] = [
+            str(UV),
+            "pip",
+            "compile",
+            "pyproject.toml",
+            "--output-file",
+            output,
+            "--format",
+            "pylock.toml",
+            "--generate-hashes",
+            "--emit-index-url",
+            f"--python-version={python_version}",
+            "--universal",
+            "--no-annotate",
+            "--quiet",
+        ]
 
-    if result.stdout:
-        log.print(result.stdout)
-    if result.stderr:
-        log.print(result.stderr)
-    if result.returncode != 0:
-        log.warning(f"Failed to generate {desc} in {project_dir}")
-        (project_dir / output).unlink(missing_ok=True)
-        return False
+        for pkg in NO_EMIT_PACKAGES:
+            cmd.extend(["--no-emit-package", pkg])
 
-    log.ok(f"{desc} generated successfully.")
-    return True
+        if upgrade:
+            cmd.append("--upgrade")
+
+        # Use relative paths to avoid absolute paths in pylock.toml headers
+        relative_constraints = os.path.relpath(CONSTRAINTS_FILE, project_dir)
+        relative_overrides = os.path.relpath(OVERRIDES_FILE, project_dir)
+        cmd.extend(["--constraints", relative_constraints, "--override", relative_overrides])
+        if extra_constraints is not None:
+            cmd.extend(["--constraints", os.path.relpath(extra_constraints, project_dir)])
+
+        lock_path = project_dir / output
+        exclude_newer = resolve_exclude_newer(lock_path, ci_check=ci_check, live_timestamp=live_timestamp)
+        cmd.append(f"--exclude-newer={exclude_newer}")
+
+        cmd.extend(index_flags)
+        default_index = next(
+            (flag.removeprefix("--default-index=") for flag in index_flags if flag.startswith("--default-index=")),
+            None,
+        )
+        if default_index is not None:
+            log.print(f"  🌐 Lock INDEX_URL: {default_index}")
+        extra_idx = lock_extra_index_flags_from_env()
+        if extra_idx:
+            cmd.extend(extra_idx)
+            log.print("  📎 Extra lock indexes from UV_LOCK_EXTRA_INDEX_URL / PIP_LOCK_EXTRA_INDEX_URL")
+
+        cmd.append(f"--custom-compile-command={compile_command_for_lock_header(cmd)}")
+
+        compile_env = {
+            k: v for k, v in os.environ.items() if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")
+        }
+        compile_env.update(local_ca_env_updates())
+
+        def _compile_once() -> subprocess.CompletedProcess[str]:
+            """Run one uv pip compile; raise TransientLockError on a transient failure."""
+            try:
+                result = subprocess.run(
+                    cmd,
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=600,
+                    env=compile_env,
+                )
+            except subprocess.TimeoutExpired as exc:
+                log.warning(f"Timed out generating {desc} in {project_dir}")
+                raise TransientLockError("uv pip compile timed out") from exc
+
+            # A deterministic failure (resolution error, missing package) is returned
+            # as-is so stamina does not retry it; only transient index errors raise.
+            if result.returncode != 0 and _is_transient_lock_error(result.stderr or ""):
+                log.warning(f"Transient index error generating {desc} in {project_dir}; stamina will retry")
+                raise TransientLockError("transient uv pip compile failure", stderr=result.stderr or "")
+            return result
+
+        retried_compile = stamina.retry(
+            on=TransientLockError,
+            attempts=LOCK_RETRY_MAX_ATTEMPTS,
+            timeout=None,
+            wait_initial=LOCK_RETRY_BACKOFF_BASE_SECONDS,
+            wait_max=LOCK_RETRY_BACKOFF_MAX_SECONDS,
+            wait_jitter=LOCK_RETRY_BACKOFF_JITTER_SECONDS,
+            wait_exp_base=2,
+        )(_compile_once)
+
+        try:
+            result = retried_compile()
+        except TransientLockError as exc:
+            if exc.stderr:
+                log.print(exc.stderr)
+            log.warning(f"Failed to generate {desc} in {project_dir} (exhausted {LOCK_RETRY_MAX_ATTEMPTS} attempts)")
+            (project_dir / output).unlink(missing_ok=True)
+            return False
+
+        if result.stdout:
+            log.print(result.stdout)
+        if result.stderr:
+            log.print(result.stderr)
+        if result.returncode != 0:
+            log.warning(f"Failed to generate {desc} in {project_dir}")
+            (project_dir / output).unlink(missing_ok=True)
+            return False
+
+        log.ok(f"{desc} generated successfully.")
+        return True
+    finally:
+        if rh_extra:
+            pyproject_path.write_text(original_pyproject, encoding="utf-8")
 
 
 def generate_requirements_txt(

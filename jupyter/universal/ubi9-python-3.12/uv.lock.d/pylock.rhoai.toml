@@ -716,6 +716,15 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6/cpu-ubi9/packaging-26.3-1-py3-none-any.whl", upload-time = 2026-09-16T12:23:14Z, size = 131584, hashes = { sha256 = "deb834ee2fe51e528b40cca13dd998c438ba0f0ba890d86c7ef1918afe4a9dbb" } }]
 
 [[packages]]
+name = "pandoc-rhai"
+version = "3.9.0.2+rhaiv.1"
+marker = "(python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux')"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6/cpu-ubi9/pandoc_rhai-3.9.0.2+rhaiv.1-3-py3-none-linux_aarch64.whl", upload-time = 2026-09-16T12:23:14Z, size = 77522557, hashes = { sha256 = "5d462b652bf0beb76435dc6e07dbb6583efbdfba15e8491a4071687ca18f5570" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.6/cpu-ubi9/pandoc_rhai-3.9.0.2+rhaiv.1-3-py3-none-linux_x86_64.whl", upload-time = 2026-09-16T12:23:14Z, size = 65861420, hashes = { sha256 = "7105d071e62a82d25178de6a7ad04b913033902aa03b7b50eaa467dc808eda1d" } },
+]
+
+[[packages]]
 name = "pandocfilters"
 version = "1.5.1"
 marker = "(python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and implementation_name == 'cpython' and platform_machine == 'x86_64' and sys_platform == 'linux')"

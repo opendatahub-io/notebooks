@@ -197,6 +197,33 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   'https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/repodata/repomd.xml'
 ```
 
+### Optional local CA bundle (`.local-ca/`, never commit)
+
+For host-side lock refresh / prefetch TLS (CDN or `packages.redhat.com`), keep
+Red Hat CA PEMs in a **gitignored** `.local-ca/` directory at the repo root:
+
+```bash
+mkdir -p .local-ca
+podman run --rm registry.access.redhat.com/ubi9/ubi \
+  cat /etc/rhsm/ca/redhat-uep.pem > .local-ca/redhat-uep.pem
+```
+
+`packages.redhat.com` is signed by Red Hat **RHCSv2** (not a public DigiCert
+root). If lock refresh fails with:
+
+```text
+No production or -test RH index is available for .../konflux.cpu.conf:
+https://packages.redhat.com/api/pypi/public-rhai/rhoai/...
+```
+
+source the helper (or just re-run `gmake refresh-lock-files`): it fetches the
+RHCSv2 intermediate and builds `.local-ca/combined-ca-bundle.pem` (certifi +
+RHCSv2 + RHSM PEMs), then sets `SSL_CERT_FILE` / `UV_SYSTEM_CERTS`.
+
+Do **not** set `SSL_CERT_FILE` to the RHSM-only `cdn-ca-bundle.pem` alone — that
+replaces the public trust store and breaks the index probe. Do **not** commit
+`.local-ca/` — `.gitignore` already excludes it.
+
 ### QEMU segfault on macOS
 
 See [macos-podman-rosetta.md](macos-podman-rosetta.md) to enable Rosetta.

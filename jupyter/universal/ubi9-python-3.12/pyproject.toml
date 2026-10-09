@@ -21,8 +21,9 @@ dependencies = [
     # JupyterLab core — PyPI lacks ppc64le/s390x wheels for many native deps.
     # Allowlist x86_64 + aarch64 so new arches do not inherit the Jupyter stack.
     "odh-notebooks-meta-jupyterlab-deps; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
-    # PDF export: ODH may install EPEL pandoc RPM; RHOAI uses this wheel (no EPEL).
-    "pandoc-rhai",
+    # PDF export: ODH installs EPEL pandoc RPM in the Dockerfile. RHOAI has no
+    # pandoc RPM — pandoc-rhai is injected only into the RH-index lock
+    # (see HYBRID_RH_EXTRA_DEPENDENCIES in scripts/pylocks_generator.py).
 
     # JupyterLab datascience extensions (Elyra, Kale, widgets) without the
     # heavy workbench/db-connector Python stack.

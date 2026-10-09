@@ -491,6 +491,7 @@ refresh-lock-files:
 	@echo "    (orchestrator: uv run; pip compile inside pylocks_generator: ./uv → dependencies/uv-image-lock-version)"
 	@echo "==================================================================="
 	@cd $(ROOT_DIR) && \
+		. scripts/lockfile-generators/helpers/local-ca-env.sh && \
 		export UV_LOCK_EXTRA_INDEX_URL="$(UV_EXTRA_INDEX_URL)" && \
 		export PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" && \
 		unset UV_EXTRA_INDEX_URL PIP_EXTRA_INDEX_URL && \

@@ -22,6 +22,11 @@ set -euo pipefail
 UBI9_IMAGE="registry.access.redhat.com/ubi9/ubi"
 # shellcheck source-path=SCRIPTDIR
 source "$(dirname "$0")/hermeto-common.sh"
+# Repo root (…/notebooks): helpers/ → lockfile-generators/ → scripts/ → root
+REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+# Optional gitignored CA PEMs for local CDN / packages.redhat.com TLS
+# shellcheck source=local-ca-env.sh
+source "$(dirname "$0")/local-ca-env.sh"
 
 PREFETCH_DIR=""
 CERT_DIR=""
@@ -171,11 +176,20 @@ if [[ -n "$CERT_DIR" ]] && [[ -d "$CERT_DIR" ]]; then
   mkdir -p "$CDN_CERT_DIR/etc/pki/entitlement" "$CDN_CERT_DIR/etc/rhsm/ca"
   cp "$CERT_DIR"/*.pem "$CDN_CERT_DIR/etc/pki/entitlement/" 2>/dev/null || true
 
-  # UBI9 ships /etc/rhsm/ca/redhat-uep.pem (the RHSM CA) even without
-  # registration, so we can extract it with a simple `cat`.
-  podman run --rm "$UBI9_IMAGE" \
-    cat /etc/rhsm/ca/redhat-uep.pem \
-    > "$CDN_CERT_DIR/etc/rhsm/ca/redhat-uep.pem" 2>/dev/null || true
+  # Prefer host .local-ca/ (gitignored) when present so local RHOAI prefetch
+  # works without a UBI pull; otherwise extract RHSM CA from UBI9.
+  if [[ -f "${REPO_ROOT}/.local-ca/redhat-uep.pem" ]]; then
+    cp "${REPO_ROOT}/.local-ca/redhat-uep.pem" \
+      "$CDN_CERT_DIR/etc/rhsm/ca/redhat-uep.pem"
+  elif [[ -f "${REPO_ROOT}/.local-ca/cdn-ca-bundle.pem" ]]; then
+    cp "${REPO_ROOT}/.local-ca/cdn-ca-bundle.pem" \
+      "$CDN_CERT_DIR/etc/rhsm/ca/redhat-uep.pem"
+  else
+    # UBI9 ships /etc/rhsm/ca/redhat-uep.pem even without registration.
+    podman run --rm "$UBI9_IMAGE" \
+      cat /etc/rhsm/ca/redhat-uep.pem \
+      > "$CDN_CERT_DIR/etc/rhsm/ca/redhat-uep.pem" 2>/dev/null || true
+  fi
 
 # =========================================================================
 # Cert path 2: register with subscription-manager in a disposable container.
