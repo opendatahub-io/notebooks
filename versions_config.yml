@@ -16,6 +16,10 @@ release:
   full_version: "3.6.0"
   rhds_os_base: "el9.8"
   python_version: "3.12"
+  channel_torch_version:
+    cpu: "2.13"
+    cuda: "2.13"
+    rocm: "2.12"
 
 artifacts:
   base_image:

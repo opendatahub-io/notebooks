@@ -25,6 +25,13 @@ from typing import Any
 
 import yaml
 
+from scripts.aipcc_channel_images import (
+    RHDS_CHANNEL_TAG_RE,
+    build_channel_repository,
+    is_channel_repository,
+    select_latest_channel_tag,
+)
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG_PATH = ROOT_DIR / "versions_config.yml"
 MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline")
@@ -88,6 +95,11 @@ ROOT_SCHEMA = {
         "full_version": None,
         "rhds_os_base": None,
         "python_version": None,
+        "channel_torch_version": {
+            "cpu": None,
+            "cuda": None,
+            "rocm": None,
+        },
     },
     "artifacts": {
         "base_image": BASE_IMAGE_SCHEMA,
@@ -115,10 +127,18 @@ _STABLE_ACC_VERSION_INSPECT_FAILED = object()
 
 
 @dataclass(frozen=True)
+class ChannelTorchVersions:
+    cpu: str
+    cuda: str
+    rocm: str
+
+
+@dataclass(frozen=True)
 class ReleaseConfig:
     full_version: str
     rhds_os_base: str
     python_version: str
+    channel_torch_version: ChannelTorchVersions
 
 
 @dataclass(frozen=True)
@@ -584,10 +604,18 @@ def load_versions_config(path: Path) -> VersionsConfig:
         raise ValueError(f"Unsupported schema_version in {path}: {data['schema_version']!r}")
 
     release_data = data["release"]
+    torch_data = release_data["channel_torch_version"]
+    if not isinstance(torch_data, dict):
+        raise ValueError("release.channel_torch_version must be a mapping")
     release = ReleaseConfig(
         full_version=scalar_to_string(release_data["full_version"]),
         rhds_os_base=scalar_to_string(release_data["rhds_os_base"]),
         python_version=scalar_to_string(release_data["python_version"]),
+        channel_torch_version=ChannelTorchVersions(
+            cpu=scalar_to_string(torch_data["cpu"]),
+            cuda=scalar_to_string(torch_data["cuda"]),
+            rocm=scalar_to_string(torch_data["rocm"]),
+        ),
     )
     parse_release_version(release.full_version)
     if not release.rhds_os_base:
@@ -1145,6 +1173,9 @@ def resolve_latest_published_rhds_image(
     tag_cache: dict[str, tuple[str, ...]] | None = None,
 ) -> str:
     repository, candidate_tag = split_image_ref(candidate_image)
+    if is_channel_repository(repository):
+        return resolve_latest_published_rhds_channel_image(candidate_image, tag_cache)
+
     tags = list(list_rhds_repository_tags(repository, tag_cache))
     candidate_match = RHDS_TAG_RE.fullmatch(candidate_tag)
     if candidate_match is None:
@@ -1161,11 +1192,38 @@ def resolve_latest_published_rhds_image(
     return f"{repository}:{latest_tag}"
 
 
-def build_rhds_pinned_repository(accelerator: str, version: str, release: ReleaseConfig) -> str:
+def resolve_latest_published_rhds_channel_image(
+    candidate_image: str,
+    tag_cache: dict[str, tuple[str, ...]] | None = None,
+) -> str:
+    repository, candidate_tag = split_image_ref(candidate_image)
+    tags = tuple(list_rhds_repository_tags(repository, tag_cache))
+    latest_tag = select_latest_channel_tag(tags, candidate_tag)
+    if latest_tag is None:
+        raise ValueError(f"No published RHDS channel tags found for {repository}")
+    return f"{repository}:{latest_tag}"
+
+
+def rhds_torch_version_for_accelerator(release: ReleaseConfig, accelerator: str) -> str:
+    versions = release.channel_torch_version
     if accelerator == "cpu":
-        return f"quay.io/aipcc/base-images/cpu-{release.rhds_os_base}"
-    normalized_version = normalize_stream_version(version)
-    return f"quay.io/aipcc/base-images/{accelerator}-{normalized_version}-{release.rhds_os_base}"
+        return versions.cpu
+    if accelerator == "cuda":
+        return versions.cuda
+    if accelerator == "rocm":
+        return versions.rocm
+    raise ValueError(f"Unsupported accelerator '{accelerator}'")
+
+
+def build_rhds_pinned_repository(accelerator: str, version: str, release: ReleaseConfig) -> str:
+    torch_version = rhds_torch_version_for_accelerator(release, accelerator)
+    acc_version = None if accelerator == "cpu" else version
+    return build_channel_repository(
+        accelerator,
+        acc_version,
+        torch_version,
+        release.rhds_os_base,
+    )
 
 
 def build_rhds_gpu_stable_repository(
@@ -1426,6 +1484,10 @@ def resolve_rhds_base_image(
         digest_cache=digest_cache,
         digest_to_tag_by_repository=digest_to_tag_by_repository,
     )
+
+    if is_channel_repository(repository):
+        candidate_tag = current_tag if current_tag is not None and RHDS_CHANNEL_TAG_RE.fullmatch(current_tag) else "0"
+        return resolve_latest_published_rhds_image(f"{repository}:{candidate_tag}", tag_cache)
 
     if current_tag is None:
         candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, bundle_seed_phase)}"
