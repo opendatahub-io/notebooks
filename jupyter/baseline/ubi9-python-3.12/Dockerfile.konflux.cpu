@@ -146,6 +146,9 @@ COPY ${BASELINE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.tx
 COPY --chown=1001:0 ${BASELINE_SOURCE_CODE}/setup-elyra.sh ${BASELINE_SOURCE_CODE}/setup-kale.sh ${BASELINE_SOURCE_CODE}/utils ./utils/
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
+# Create JupyterLab venv directory for dual venv architecture (RHAIENG-7524)
+RUN mkdir -p /opt/jupyterlab && chown 1001:0 /opt/jupyterlab && chmod 2775 /opt/jupyterlab
+
 # Install uv from the hermeto/cachi2 pip cache (offline) before the main
 # package install. Online `pip install uv` would break hermetic Konflux builds.
 # UV_VERSION is derived from this image's requirements.cpu.txt by
@@ -168,37 +171,65 @@ RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 umask 0002
 
-# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index).
-# /cachi2/output/deps/pip/ contains AIPCC wheels (and uv itself).
-echo "Installing software and packages"
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
-    --strict --no-deps --no-config --no-progress \
-    --compile-bytecode --index-strategy=unsafe-best-match \
-    --find-links /cachi2/output/deps/pip \
-    --requirements=./requirements.txt
-
+# --- Dual venv architecture (RHAIENG-7524) ---
 # JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist; no
-# PyPI wheels for argon2-cffi-bindings and other native deps). Skip Jupyter
-# post-install on ppc64le/s390x — kernel.json and labextension do not exist.
+# PyPI wheels for argon2-cffi-bindings and other native deps). Skip dual venv
+# on ppc64le/s390x — those arches get base packages only, no JupyterLab.
 if [[ "$(uname -m)" != "s390x" && "$(uname -m)" != "ppc64le" ]]; then
+    # Create JupyterLab venv
+    python3 -m venv /opt/jupyterlab
+
+    echo "Installing all packages into JupyterLab venv (/opt/jupyterlab)"
+    UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+        --python /opt/jupyterlab/bin/python --no-index \
+        --strict --no-deps --no-config --no-progress \
+        --compile-bytecode --index-strategy=unsafe-best-match \
+        --find-links /cachi2/output/deps/pip \
+        --requirements=./requirements.txt
+
+    echo "Installing ipykernel into user venv (/opt/app-root)"
+    UV_NO_CACHE=true UV_LINK_MODE=copy uv pip install \
+        --no-index --no-config --no-progress \
+        --compile-bytecode --index-strategy=unsafe-best-match \
+        --no-verify-hashes \
+        --find-links /cachi2/output/deps/pip \
+        ipykernel
+
+    # Register kernel from user venv — argv points to /opt/app-root/bin/python
+    /opt/app-root/bin/python -m ipykernel install --sys-prefix --name python3 \
+        --display-name "$(python --version | cut -d '.' -f-2)"
+
+    # Symlink jupyter command from JupyterLab venv into user venv bin (on PATH)
+    ln -sf /opt/jupyterlab/bin/jupyter /opt/app-root/bin/jupyter
+
     mkdir -p /opt/app-root/runtimes
     mkdir -p /opt/app-root/pipeline-runtimes
-    rm -f /opt/app-root/share/jupyter/metadata/runtime-images/*.json
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" \
-        /opt/app-root/share/jupyter/kernels/python3/kernel.json
-    # copy jupyter configuration (install -m 0664 for OpenShift gid 0 g+w)
+    # Ensure metadata dir exists for setup-elyra.sh runtime copies
+    mkdir -p /opt/app-root/share/jupyter/metadata/runtime-images
+    rm -f /opt/jupyterlab/share/jupyter/metadata/runtime-images/*.json
+    # copy jupyter configuration to JupyterLab venv (install -m 0664 for OpenShift gid 0 g+w)
     install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
-      /opt/app-root/etc/jupyter/jupyter_server_config.py
-    jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-    chmod g+w /opt/app-root/etc/jupyter/labconfig
-    /opt/app-root/bin/utils/addons/apply.sh
+      /opt/jupyterlab/etc/jupyter/jupyter_server_config.py
+    /opt/jupyterlab/bin/jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+    chmod g+w /opt/jupyterlab/etc/jupyter/labconfig
+    JUPYTER_ADDONS_INDEX_FILE=/opt/jupyterlab/share/jupyter/lab/static/index.html \
+      /opt/app-root/bin/utils/addons/apply.sh
+    /usr/local/bin/ensure-openshift-site-packages.sh /opt/jupyterlab/lib/python3.12/site-packages
 else
-    echo "JupyterLab stack is not installed on $(uname -m); skipping Jupyter post-install."
+    # ppc64le/s390x: no JupyterLab, no dual venv — install base packages into user venv
+    echo "JupyterLab stack is not installed on $(uname -m); installing base packages only."
+    UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
+        --strict --no-deps --no-config --no-progress \
+        --compile-bytecode --index-strategy=unsafe-best-match \
+        --find-links /cachi2/output/deps/pip \
+        --requirements=./requirements.txt
 fi
 /usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+# JupyterLab discovers kernels from user venv via JUPYTER_PATH (dual venv: RHAIENG-7524)
+ENV JUPYTER_PATH=/opt/app-root/share/jupyter
 
 USER 1001
 

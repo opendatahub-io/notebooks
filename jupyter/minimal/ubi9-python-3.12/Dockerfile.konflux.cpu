@@ -78,35 +78,67 @@ COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
 
+# Create JupyterLab venv directory for dual venv architecture (RHAIENG-7524)
+RUN mkdir -p /opt/jupyterlab && chown 1001:0 /opt/jupyterlab && chmod 2775 /opt/jupyterlab
+
 USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 umask 0002
 
-echo "Installing software and packages"
-# Install Python packages from lockfile (Cachi2 prefetched pip deps; --no-deps per pylock.toml)
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
+# --- Dual venv architecture (RHAIENG-7524) ---
+# JupyterLab venv (/opt/jupyterlab): JupyterLab + all dependencies
+# User venv (/opt/app-root): ipykernel only — the user's default environment
+
+# Create JupyterLab venv
+python3 -m venv /opt/jupyterlab
+
+echo "Installing all packages into JupyterLab venv (/opt/jupyterlab)"
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+    --python /opt/jupyterlab/bin/python --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
     --no-verify-hashes \
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
 
+echo "Installing ipykernel into user venv (/opt/app-root)"
+UV_NO_CACHE=true UV_LINK_MODE=copy uv pip install \
+    --no-index --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    ipykernel
+
+# pandoc-rhai installs pandoc into the JupyterLab venv; symlink it onto PATH
+# so nbconvert PDF export can find it at runtime.
+ln -sf /opt/jupyterlab/bin/pandoc /opt/app-root/bin/pandoc
 pandoc --version
 
-# Disable announcement plugin of jupyterlab
-jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-chmod g+w /opt/app-root/etc/jupyter/labconfig
-# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
-sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
-# copy jupyter configuration (install -m 0664 for OpenShift gid 0 g+w)
+# Register kernel from user venv — argv points to /opt/app-root/bin/python
+/opt/app-root/bin/python -m ipykernel install --sys-prefix --name python3 \
+    --display-name "$(python --version | cut -d '.' -f-2)"
+
+# Symlink jupyter command from JupyterLab venv into user venv bin (on PATH)
+ln -sf /opt/jupyterlab/bin/jupyter /opt/app-root/bin/jupyter
+
+# Disable announcement plugin of jupyterlab (from JupyterLab venv)
+/opt/jupyterlab/bin/jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+chmod g+w /opt/jupyterlab/etc/jupyter/labconfig
+# copy jupyter configuration to JupyterLab venv (install -m 0664 for OpenShift gid 0 g+w)
 install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
-  /opt/app-root/etc/jupyter/jupyter_server_config.py
-# Apply JupyterLab addons
-/opt/app-root/bin/utils/addons/apply.sh
+  /opt/jupyterlab/etc/jupyter/jupyter_server_config.py
+# Apply JupyterLab addons to JupyterLab venv's static files
+JUPYTER_ADDONS_INDEX_FILE=/opt/jupyterlab/share/jupyter/lab/static/index.html \
+  /opt/app-root/bin/utils/addons/apply.sh
+# Fix permissions for both venvs
 /usr/local/bin/ensure-openshift-site-packages.sh
+/usr/local/bin/ensure-openshift-site-packages.sh /opt/jupyterlab/lib/python3.12/site-packages
 EOF
+
+# JupyterLab discovers kernels from user venv via JUPYTER_PATH (dual venv: RHAIENG-7524)
+ENV JUPYTER_PATH=/opt/app-root/share/jupyter
 
 USER 1001
 
