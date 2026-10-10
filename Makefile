@@ -227,6 +227,10 @@ cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
+.PHONY: spyre-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+spyre-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/pytorch-spyre/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.spyre)
+
 .PHONY: jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
 jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/trustyai/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
@@ -658,6 +662,7 @@ all-images: \
 	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	spyre-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	che-code-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \

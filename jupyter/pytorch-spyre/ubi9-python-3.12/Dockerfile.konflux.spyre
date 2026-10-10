@@ -1,0 +1,143 @@
+ARG TARGETARCH
+
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
+####################
+# spyre-base       #
+####################
+FROM ${BASE_IMAGE} AS spyre-base
+
+ARG PYTORCH_SPYRE_SOURCE_CODE=jupyter/pytorch-spyre/ubi9-python-3.12
+
+WORKDIR /opt/app-root/bin
+
+USER 0
+
+# Install useful OS packages
+# hadolint ignore=DL3041
+RUN --mount=type=bind,source=base-images/utils,target=/utils \
+    ls -lrt /utils/dnf-helper.sh && bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+
+USER 1001
+
+############################
+# spyre-jupyter-minimal    #
+############################
+FROM spyre-base AS spyre-jupyter-minimal
+
+ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
+ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
+ARG PYTORCH_SPYRE_SOURCE_CODE=jupyter/pytorch-spyre/ubi9-python-3.12
+
+USER 0
+
+WORKDIR /opt/app-root/bin
+
+COPY --chown=1001:0 ${JUPYTER_REUSABLE_UTILS} utils/
+
+COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+
+### BEGIN Dependencies for PDF export
+RUN ./utils/install_pdf_deps.sh
+### END Dependencies for PDF export
+
+USER 1001
+
+WORKDIR /opt/app-root/src
+
+ENTRYPOINT ["start-notebook.sh"]
+
+###############################
+# spyre-jupyter-datascience   #
+###############################
+FROM spyre-jupyter-minimal AS spyre-jupyter-datascience
+
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+ARG PYTORCH_SPYRE_SOURCE_CODE=jupyter/pytorch-spyre/ubi9-python-3.12
+
+USER root
+
+WORKDIR /opt/app-root/bin
+
+# Install useful OS packages
+RUN --mount=type=bind,source=base-images/utils,target=/utils,rw \
+    bash /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
+
+COPY --chown=1001:0 ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/setup-kale.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+
+USER 1001
+
+WORKDIR /opt/app-root/src
+
+##############################
+# spyre-jupyter-pytorch      #
+##############################
+FROM spyre-jupyter-datascience AS spyre-jupyter-pytorch
+
+ARG PYTORCH_SPYRE_SOURCE_CODE=jupyter/pytorch-spyre/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
+
+WORKDIR /opt/app-root/bin
+
+USER root
+
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+ARG RELEASE
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
+      summary="Jupyter Spyre pytorch notebook image for ODH notebooks" \
+      description="Jupyter Spyre pytorch notebook image with base Python 3.12 builder image based on Spyre for ODH notebooks" \
+      io.k8s.description="Jupyter Spyre pytorch notebook image with base Python 3.12 builder image based on Spyre for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      version="${RELEASE}"
+
+# pylock.toml documents the graph; requirements.spyre.txt drives Cachi2 prefetch and hermetic uv install
+COPY ${PYTORCH_SPYRE_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+COPY ${PYTORCH_SPYRE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+
+COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
+
+USER 1001:0
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+umask 0002
+
+echo "Installing software and packages"
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
+    --strict --no-deps --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --require-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
+
+# setup path for runtime configuration
+mkdir -p /opt/app-root/runtimes
+mkdir -p /opt/app-root/pipeline-runtimes
+# Remove default Elyra runtime-images if present
+if ls /opt/app-root/share/jupyter/metadata/runtime-images/*.json 2>/dev/null; then
+    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json
+fi
+
+# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
+sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+# copy jupyter configuration (install -m 0664 for OpenShift gid 0 g+w)
+install -D -m 0664 /opt/app-root/bin/utils/jupyter_server_config.py \
+  /opt/app-root/etc/jupyter/jupyter_server_config.py
+# Disable announcement plugin of jupyterlab
+jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+chmod g+w /opt/app-root/etc/jupyter/labconfig
+# Apply JupyterLab addons
+/opt/app-root/bin/utils/addons/apply.sh
+/usr/local/bin/ensure-openshift-site-packages.sh
+EOF
+
+USER 1001
+
+WORKDIR /opt/app-root/src

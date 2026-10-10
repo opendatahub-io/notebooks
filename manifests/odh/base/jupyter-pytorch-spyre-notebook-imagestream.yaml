@@ -1,0 +1,43 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/pytorch-spyre/ubi9-python-3.12"
+    opendatahub.io/notebook-image-name: "Jupyter | PyTorch | Spyre | Python 3.12"
+    opendatahub.io/notebook-image-desc: "Jupyter notebook image with PyTorch libraries and Spyre accelerator support to start experimenting with advanced AI/ML notebooks on IBM Spyre hardware."
+    opendatahub.io/notebook-image-order: "14"
+    opendatahub.io/recommended-accelerators: '["spyre"]'
+  name: jupyter-pytorch-spyre-notebook
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    # N Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Spyre", "version": "latest"},
+            {"name": "Python", "version": "v3.12"},
+            {"name": "PyTorch", "version": "2.11"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"},
+            {"name": "PyTorch", "version": "2.11"},
+            {"name": "Numpy", "version": "2.5"},
+            {"name": "Transformers", "version": "5.17"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-pytorch-spyre-py312-ubi9
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-pytorch-spyre-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-pytorch-spyre-py312-ubi9-n_PLACEHOLDER
+      name: "3.6"
+      referencePolicy:
+        type: Source

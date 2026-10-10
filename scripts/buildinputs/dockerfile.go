@@ -23,6 +23,9 @@ import (
 func getDockerfileDeps(dockerfile string, targetArch string, buildArgs map[string]string) []string {
 	ctx := context.Background()
 	data := noErr2(os.ReadFile(dockerfile))
+        // Provide a non-nil empty CapSet so that RUN --mount=type=bind instructions
+        // do not trigger a nil-pointer dereference in buildkit's convert_runmount.go.
+        caps := pb.Caps.CapSet(pb.Caps.All())
 
 	result, err := dockerfile2llb.Dockerfile2LLB(ctx, data, dockerfile2llb.ConvertOpt{
 		// building an image requires fetching the metadata for its parent
@@ -33,6 +36,7 @@ func getDockerfileDeps(dockerfile string, targetArch string, buildArgs map[strin
 			dir:      "/",
 			platform: "linux/" + targetArch,
 		},
+		LLBCaps: &caps,
 		Config: dockerui.Config{
 			BuildArgs:      buildArgs,
 			BuildPlatforms: []ocispecs.Platform{{OS: "linux", Architecture: targetArch}},
