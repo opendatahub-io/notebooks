@@ -241,6 +241,9 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
         logging.info(file)
         with subtests.test(msg="checking pyproject.toml", pipfile=file):
             directory = file.parent  # "ubi9-python-3.11"
+            # Skip odh manifests with spyre pyproject.toml
+            if "odh" in str(manifests_directory) and "spyre" in str(file.parent):
+                continue
             if not is_image_directory(directory):
                 pytest.skip(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
             _ubi, _lang, python = directory.name.split("-")
@@ -459,6 +462,9 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         directory = file.parent  # "ubi9-python-3.11"
+        # Skip odh manifests with spyre pyproject.toml
+        if "odh" in str(manifests_directory) and "spyre" in str(file.parent):
+            continue
         if not is_image_directory(directory):
             logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
             continue
@@ -542,7 +548,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest.Subtests):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         directory = file.parent  # "ubi9-python-3.11"
-
         if not is_image_directory(directory) and not is_dependencies_directory(file):
             logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image or dependencies directory")
             continue
