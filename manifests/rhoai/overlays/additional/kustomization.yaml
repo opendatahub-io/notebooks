@@ -5,6 +5,9 @@ kind: Kustomization
 resources:
   - ../../base
 
+# Baseline images require a separate admin opt-in: apply ./baseline explicitly.
+# Keep that overlay out of this resource list and rhoai/base.
+
 labels:
   - includeSelectors: true
     pairs:

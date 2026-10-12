@@ -6,8 +6,10 @@ Apply local ImageStream manifest edits to a dev/test cluster using
 only the `--platform` flag and default namespaces differ.
 
 **Not for production.** This bypasses the operator’s normal release path. It replaces the recently deprecated `devFlags` provided by the operator.
-Changes may be
-overwritten on operator upgrade or workbenches reconcile.
+
+On **RHOAI 3.6+**, `workbenches-operator` reconciles notebook ImageStreams from its bundled manifests. `apply` therefore **scales that deployment to 0** after snapshotting (default) so your edits are not immediately reverted. Run `revert` when finished to restore the baseline and **resume** `workbenches-operator`. Use `--no-pause-workbenches-operator` only if you accept reconcile overwriting manual applies.
+
+Changes may still be overwritten on operator upgrade or if you resume reconciliation before `revert`.
 
 For how manifests are normally consumed, see [manifests/README.md](../manifests/README.md).
 
@@ -111,8 +113,9 @@ Open the dashboard route → **Workbenches** and confirm images/tags. Hard-refre
 | | **ODH** (`--platform odh`) | **RHOAI** (`--platform rhoai`, default) |
 |---|---------------------------|----------------------------------------|
 | Local manifests | `manifests/odh/base/` | `manifests/rhoai/base/` |
-| Operator namespace | `opendatahub-operator` | `redhat-ods-operator` |
-| Operator pod label | `name=opendatahub-operator` | `name=rhods-operator` |
+| Platform operator namespace | `opendatahub-operator` | `redhat-ods-operator` |
+| Notebook manifest bundle pod | `workbenches-operator` in applications NS (preferred on 3.6+) | same |
+| Legacy platform operator pod label | `name=opendatahub-operator` | `name=rhods-operator` |
 | Applications / dashboard NS | `opendatahub` | `redhat-ods-applications` |
 | Dashboard deployment | `odh-dashboard` | `rhods-dashboard` |
 | Default workbench NS | `opendatahub` | `rhods-notebooks` (if set in DSC) |
@@ -133,7 +136,9 @@ to apply to the applications namespace and the DSC `workbenchNamespace`.
 | Symptom | Action |
 |---------|--------|
 | `Workbenches must be Managed` | Set `managementState: Managed` on DSC workbenches |
-| `No operator pod` | Omit `--operator-ns` (auto-discovered). RHOAI default: `redhat-ods-operator`; ODH: `opendatahub-operator` |
+| `No notebook manifest bundle` / `No operator pod` | Ensure `workbenches-operator` is running in the applications namespace. On RHOAI 3.6+, notebook manifests are no longer in `rhods-operator`. Omit `--operator-ns` unless you need legacy platform-operator fallback. |
+| `tar` not found in operator pod | Expected on `workbenches-operator` (minimal image). The script tries `oc cp`, then streams the tree in one `oc exec` (find + base64). Look for `Streaming manifest tree` / `Copied N manifest file(s)` in the log. |
+| Manifest applied but UI unchanged | On 3.6+, `workbenches-operator` may have reconciled the ImageStream. Re-run `apply` (pauses the operator by default) or check `oc get imagestream <name> -o yaml`. Run `revert` to resume the operator. |
 | Dashboard shows old images | Use `--target applications`; hard-refresh browser |
 | `No revert snapshot` | Run `apply` first (snapshots automatically) |
 | ImageStreams still visible after revert | Pre-existing cluster ImageStreams are expected |

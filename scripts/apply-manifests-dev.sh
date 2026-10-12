@@ -26,6 +26,7 @@ APPLICATIONS_NS=""
 DRY_RUN=false
 CLEAN_TEST=false
 RESTART_DASHBOARD=true
+PAUSE_WORKBENCHES_OPERATOR=true
 
 MANIFESTS_DIR=""
 MANIFESTS_VARIANT=""
@@ -50,17 +51,19 @@ Options:
   --platform PLATFORM   odh (upstream) or rhoai (default: rhoai)
   --target TARGET       applications (default), workbench, or both
   --revert-dir DIR      Snapshot directory (default: /tmp/<platform>-manifests-revert)
-  --operator-ns NS      Override operator namespace (auto-discovered if wrong or omitted)
+  --operator-ns NS      Legacy platform operator namespace for fallback discovery
   --applications-ns NS  Override dashboard/applications namespace
   --dry-run             Client-side dry-run only (apply/revert)
   --no-restart-dashboard  Skip dashboard rollout after apply
+  --no-pause-workbenches-operator  Do not scale down workbenches-operator (RHOAI 3.6+ may reconcile away edits)
   --clean-test          On revert, delete ImageStreams added by the last apply
   -h, --help            Show this help
 
 Platform defaults:
   odh   operator: opendatahub-operator (pod label name=opendatahub-operator)
         applications: opendatahub, manifests: manifests/odh/base, dashboard: odh-dashboard
-  rhoai operator: redhat-ods-operator (pod label name=rhods-operator)
+  rhoai platform operator: redhat-ods-operator (pod label name=rhods-operator)
+        notebook manifests: workbenches-operator in redhat-ods-applications (RHOAI 3.6+)
         applications: redhat-ods-applications, manifests: manifests/rhoai/base, dashboard: rhods-dashboard
 EOF
 }
@@ -188,6 +191,10 @@ parse_args() {
         RESTART_DASHBOARD=false
         shift
         ;;
+      --no-pause-workbenches-operator)
+        PAUSE_WORKBENCHES_OPERATOR=false
+        shift
+        ;;
       --clean-test)
         CLEAN_TEST=true
         shift
@@ -234,6 +241,10 @@ parse_args() {
         ;;
       --no-restart-dashboard)
         RESTART_DASHBOARD=false
+        shift
+        ;;
+      --no-pause-workbenches-operator)
+        PAUSE_WORKBENCHES_OPERATOR=false
         shift
         ;;
       --clean-test)
@@ -307,6 +318,98 @@ check_build_prerequisites() {
   [[ -d "${MANIFESTS_DIR}" ]] || die "Manifest directory not found: ${MANIFESTS_DIR}"
 }
 
+readonly WORKBENCHES_OPERATOR_POD_LABEL="app.kubernetes.io/name=workbenches-operator"
+readonly WORKBENCHES_OPERATOR_DEPLOY="workbenches-operator"
+
+workbenches_operator_replicas_file() {
+  printf '%s/workbenches-operator-replicas.txt' "${REVERT_DIR}"
+}
+
+workbenches_operator_paused_marker() {
+  printf '%s/workbenches-operator-paused.txt' "${REVERT_DIR}"
+}
+
+workbenches_operator_deployment_exists() {
+  oc get deployment "${WORKBENCHES_OPERATOR_DEPLOY}" -n "${APPLICATIONS_NS}" >/dev/null 2>&1
+}
+
+workbenches_operator_replicas() {
+  oc get deployment "${WORKBENCHES_OPERATOR_DEPLOY}" -n "${APPLICATIONS_NS}" \
+    -o jsonpath='{.spec.replicas}' 2>/dev/null || true
+}
+
+wait_for_workbenches_operator_rollout() {
+  oc rollout status "deployment/${WORKBENCHES_OPERATOR_DEPLOY}" -n "${APPLICATIONS_NS}" --timeout=180s \
+    >/dev/null 2>&1 || true
+}
+
+ensure_workbenches_operator_for_bundle_read() {
+  [[ "${PAUSE_WORKBENCHES_OPERATOR}" == true ]] || return 0
+  workbenches_operator_deployment_exists || return 0
+  [[ "$(workbenches_operator_replicas)" == "0" ]] || return 0
+  [[ -f "$(workbenches_operator_paused_marker)" ]] \
+    || die "${WORKBENCHES_OPERATOR_DEPLOY} is scaled to 0; run revert to resume or scale it up manually"
+
+  log "${WORKBENCHES_OPERATOR_DEPLOY} is paused; scaling up temporarily to read manifest bundle"
+  oc scale "deployment/${WORKBENCHES_OPERATOR_DEPLOY}" -n "${APPLICATIONS_NS}" --replicas=1
+  wait_for_workbenches_operator_rollout
+  RESOLVED_OPERATOR_POD=""
+}
+
+pause_workbenches_operator() {
+  [[ "${PAUSE_WORKBENCHES_OPERATOR}" == true ]] || return 0
+  [[ "${DRY_RUN}" == true ]] && return 0
+  workbenches_operator_deployment_exists || {
+    log "WARNING: ${WORKBENCHES_OPERATOR_DEPLOY} not found in ${APPLICATIONS_NS}; cannot pause reconciliation"
+    return 0
+  }
+
+  local replicas_file current saved
+  replicas_file="$(workbenches_operator_replicas_file)"
+  current="$(workbenches_operator_replicas)"
+  mkdir -p "${REVERT_DIR}"
+
+  if [[ ! -f "${replicas_file}" && -n "${current}" && "${current}" != "0" ]]; then
+    printf '%s\n' "${current}" > "${replicas_file}"
+  fi
+
+  saved="$(tr -d '[:space:]' < "${replicas_file}" 2>/dev/null || true)"
+  [[ -n "${saved}" ]] || saved="1"
+
+  if [[ "${current}" == "0" ]]; then
+    return 0
+  fi
+
+  log "Pausing ${WORKBENCHES_OPERATOR_DEPLOY} (scale ${current} -> 0) so ImageStream edits are not reconciled away"
+  oc scale "deployment/${WORKBENCHES_OPERATOR_DEPLOY}" -n "${APPLICATIONS_NS}" --replicas=0
+  wait_for_workbenches_operator_rollout
+  if [[ "$(workbenches_operator_replicas)" != "0" ]]; then
+    die "Failed to pause ${WORKBENCHES_OPERATOR_DEPLOY} in ${APPLICATIONS_NS} (platform may have reset replicas)"
+  fi
+  date -u +"%Y-%m-%dT%H:%M:%SZ" > "$(workbenches_operator_paused_marker)"
+  log "Run revert when finished testing to restore the operator baseline and resume ${WORKBENCHES_OPERATOR_DEPLOY} (scale -> ${saved})"
+}
+
+resume_workbenches_operator() {
+  [[ "${PAUSE_WORKBENCHES_OPERATOR}" == true ]] || return 0
+  [[ "${DRY_RUN}" == true ]] && return 0
+  workbenches_operator_deployment_exists || return 0
+  [[ -f "$(workbenches_operator_paused_marker)" ]] || return 0
+
+  local replicas_file replicas
+  replicas_file="$(workbenches_operator_replicas_file)"
+  replicas="1"
+  if [[ -f "${replicas_file}" ]]; then
+    replicas="$(tr -d '[:space:]' < "${replicas_file}")"
+  fi
+  [[ -n "${replicas}" && "${replicas}" != "0" ]] || replicas=1
+
+  log "Resuming ${WORKBENCHES_OPERATOR_DEPLOY} (scale -> ${replicas})"
+  oc scale "deployment/${WORKBENCHES_OPERATOR_DEPLOY}" -n "${APPLICATIONS_NS}" --replicas="${replicas}"
+  wait_for_workbenches_operator_rollout
+  rm -f "$(workbenches_operator_paused_marker)"
+}
+
 operator_pod_labels_for_platform() {
   case "${PLATFORM}" in
     rhoai) printf '%s\n' "name=rhods-operator" "name=opendatahub-operator" ;;
@@ -329,43 +432,104 @@ operator_candidate_namespaces() {
   esac
 }
 
-resolve_operator() {
-  local ns label pod
-  local -a tried=()
-  local explicit_ns=""
-  if [[ "${OPERATOR_NS_EXPLICIT}" == true ]]; then
-    explicit_ns="${OPERATOR_NS}"
+running_pods_for_label() {
+  local ns="$1"
+  local label="$2"
+  oc get po -l "${label}" -n "${ns}" \
+    -o jsonpath='{range .items[?(@.status.phase=="Running")]}{.metadata.name}{"\n"}{end}' 2>/dev/null
+}
+
+find_manifest_bundle_pod_for_label() {
+  local ns="$1"
+  local label="$2"
+  local pod
+
+  while IFS= read -r pod; do
+    [[ -n "${pod}" ]] || continue
+    if pod_has_notebook_manifest_bundle "${ns}" "${pod}"; then
+      printf '%s' "${pod}"
+      return 0
+    fi
+  done < <(running_pods_for_label "${ns}" "${label}")
+  return 1
+}
+
+pod_has_notebook_manifest_bundle() {
+  local ns="$1"
+  local pod="$2"
+  oc exec -n "${ns}" "${pod}" -- \
+    test -f "${OPERATOR_MANIFESTS_PATH}/params-latest.env" >/dev/null 2>&1
+}
+
+try_manifest_bundle_pod() {
+  local ns="$1"
+  local label="$2"
+  local pod
+
+  [[ -n "${ns}" && -n "${label}" ]] || return 1
+  pod="$(find_manifest_bundle_pod_for_label "${ns}" "${label}")" || return 1
+  [[ -n "${pod}" ]] || return 1
+
+  OPERATOR_NS="${ns}"
+  OPERATOR_POD_LABEL="${label}"
+  RESOLVED_OPERATOR_POD="${pod}"
+  return 0
+}
+
+manifest_bundle_pod_candidates() {
+  local ns label
+
+  printf '%s\t%s\n' "${APPLICATIONS_NS}" "${WORKBENCHES_OPERATOR_POD_LABEL}"
+
+  if [[ "${OPERATOR_NS_EXPLICIT}" == true && -n "${OPERATOR_NS}" ]]; then
+    if [[ "${OPERATOR_NS}" != "${APPLICATIONS_NS}" ]]; then
+      printf '%s\t%s\n' "${OPERATOR_NS}" "${WORKBENCHES_OPERATOR_POD_LABEL}"
+    fi
+    while IFS= read -r label; do
+      [[ -n "${label}" ]] || continue
+      printf '%s\t%s\n' "${OPERATOR_NS}" "${label}"
+    done < <(operator_pod_labels_for_platform)
+    return
   fi
 
   while IFS= read -r ns; do
     [[ -n "${ns}" ]] || continue
     while IFS= read -r label; do
       [[ -n "${label}" ]] || continue
-      tried+=("${ns} (${label})")
-      pod="$(oc get po -l "${label}" -n "${ns}" \
-        -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' 2>/dev/null | awk '{print $1}')"
-      if [[ -n "${pod}" ]]; then
-        OPERATOR_NS="${ns}"
-        OPERATOR_POD_LABEL="${label}"
-        RESOLVED_OPERATOR_POD="${pod}"
-        if [[ -n "${explicit_ns}" && "${explicit_ns}" != "${ns}" ]]; then
-          log "Operator not in ${explicit_ns}; using ${OPERATOR_NS}/${RESOLVED_OPERATOR_POD} (${OPERATOR_POD_LABEL})"
-        else
-          log "Using operator pod ${OPERATOR_NS}/${RESOLVED_OPERATOR_POD} (${OPERATOR_POD_LABEL})"
-        fi
-        return 0
-      fi
+      printf '%s\t%s\n' "${ns}" "${label}"
     done < <(operator_pod_labels_for_platform)
   done < <(operator_candidate_namespaces)
+}
+
+resolve_operator() {
+  local ns label
+  local -a tried=()
+  local explicit_ns=""
+  if [[ "${OPERATOR_NS_EXPLICIT}" == true ]]; then
+    explicit_ns="${OPERATOR_NS}"
+  fi
+
+  while IFS=$'\t' read -r ns label; do
+    [[ -n "${ns}" && -n "${label}" ]] || continue
+    tried+=("${ns} (${label})")
+    if try_manifest_bundle_pod "${ns}" "${label}"; then
+      if [[ -n "${explicit_ns}" && "${explicit_ns}" != "${ns}" ]]; then
+        log "Notebook manifests not in ${explicit_ns}; using ${OPERATOR_NS}/${RESOLVED_OPERATOR_POD} (${OPERATOR_POD_LABEL})"
+      else
+        log "Using notebook manifest bundle pod ${OPERATOR_NS}/${RESOLVED_OPERATOR_POD} (${OPERATOR_POD_LABEL})"
+      fi
+      return 0
+    fi
+  done < <(manifest_bundle_pod_candidates)
 
   if [[ -n "${explicit_ns}" ]]; then
-    log "No running operator pod in ${explicit_ns}; searching other namespaces..."
+    log "No notebook manifest bundle in ${explicit_ns}; searching other namespaces..."
     OPERATOR_NS_EXPLICIT=false
     resolve_operator
     return $?
   fi
 
-  die "Could not find a running operator pod. Tried: ${tried[*]}"
+  die "Could not find a pod with ${OPERATOR_MANIFESTS_PATH}/params-latest.env. Tried: ${tried[*]}"
 }
 
 ensure_operator_resolved() {
@@ -408,15 +572,152 @@ target_namespaces() {
   esac
 }
 
+pod_has_tar() {
+  local pod="$1"
+  oc exec -n "${OPERATOR_NS}" "${pod}" -- tar --version >/dev/null 2>&1 \
+    || oc exec -n "${OPERATOR_NS}" "${pod}" -- sh -c 'command -v tar >/dev/null 2>&1' >/dev/null 2>&1
+}
+
+decode_base64_to_file() {
+  local src="$1"
+  local dest="$2"
+  if base64 -d < "${src}" > "${dest}" 2>/dev/null; then
+    return 0
+  fi
+  if base64 -D < "${src}" > "${dest}" 2>/dev/null; then
+    return 0
+  fi
+  openssl base64 -d -A -in "${src}" -out "${dest}"
+}
+
+# Reject paths that could escape local_path (streamed copy has no tar/oc cp sanitization).
+safe_manifest_bundle_relpath() {
+  local rel="$1"
+  if [[ -z "${rel}" || "${rel}" == /* ]]; then
+    return 1
+  fi
+  if [[ "/${rel}/" == */../* ]]; then
+    return 1
+  fi
+  return 0
+}
+
+# One oc exec round trip (find + base64). Per-file oc exec cat can take many minutes.
+copy_remote_tree_from_pod_stream() {
+  local pod="$1"
+  local remote_path="$2"
+  local local_path="$3"
+  local payload b64_chunk line rel dest file_count
+
+  mkdir -p "${local_path}"
+  payload="$(mktemp)"
+  b64_chunk="$(mktemp)"
+  file_count=0
+  dest=""
+
+  log "Streaming manifest tree from ${OPERATOR_NS}/${pod}:${remote_path} (single oc exec)..."
+
+  if ! oc exec -n "${OPERATOR_NS}" "${pod}" -- sh -c "
+    set -eu
+    root='${remote_path}'
+    [ -d \"\${root}\" ] || exit 1
+    if ! command -v base64 >/dev/null 2>&1; then
+      echo 'base64 not found in pod' >&2
+      exit 1
+    fi
+    find \"\${root}\" -type f | LC_ALL=C sort | while IFS= read -r path; do
+      rel=\${path#\"\${root}/\"}
+      if [ \"\${rel}\" = \"\${path}\" ]; then
+        rel=\${path#\"\${root}\"}
+        rel=\${rel#/}
+      fi
+      printf 'FILE:%s\n' \"\${rel}\"
+      base64 \"\${path}\"
+      printf 'ENDFILE\n'
+    done
+  " > "${payload}"; then
+    rm -f "${payload}" "${b64_chunk}"
+    die "Failed to stream manifest bundle from ${OPERATOR_NS}/${pod}"
+  fi
+
+  if [[ ! -s "${payload}" ]]; then
+    rm -f "${payload}" "${b64_chunk}"
+    die "Empty manifest bundle at ${remote_path} in ${OPERATOR_NS}/${pod}"
+  fi
+
+  : > "${b64_chunk}"
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" == FILE:* ]]; then
+      if [[ -n "${dest}" ]]; then
+        decode_base64_to_file "${b64_chunk}" "${dest}"
+        file_count=$((file_count + 1))
+      fi
+      : > "${b64_chunk}"
+      rel="${line#FILE:}"
+      if ! safe_manifest_bundle_relpath "${rel}"; then
+        rm -f "${payload}" "${b64_chunk}"
+        die "Refusing unsafe path from ${OPERATOR_NS}/${pod}: ${rel}"
+      fi
+      dest="${local_path}/${rel}"
+      mkdir -p "$(dirname "${dest}")"
+    elif [[ "${line}" == ENDFILE ]]; then
+      if [[ -n "${dest}" ]]; then
+        decode_base64_to_file "${b64_chunk}" "${dest}"
+        file_count=$((file_count + 1))
+        dest=""
+        : > "${b64_chunk}"
+      fi
+    else
+      printf '%s\n' "${line}" >> "${b64_chunk}"
+    fi
+  done < "${payload}"
+
+  if [[ -n "${dest}" ]]; then
+    decode_base64_to_file "${b64_chunk}" "${dest}"
+    file_count=$((file_count + 1))
+  fi
+
+  rm -f "${payload}" "${b64_chunk}"
+
+  if [[ "${file_count}" -eq 0 ]]; then
+    die "No files copied from ${remote_path} in ${OPERATOR_NS}/${pod}"
+  fi
+  log "Copied ${file_count} manifest file(s) from pod"
+}
+
+copy_manifest_bundle_base_from_pod() {
+  local pod="$1"
+  local local_base="${REVERT_DIR}/base"
+  local remote_base="${OPERATOR_MANIFESTS_PATH}"
+  local remote_cp_src
+
+  rm -rf "${local_base}"
+
+  if pod_has_tar "${pod}"; then
+    log "Copying manifest bundle with tar from ${OPERATOR_NS}/${pod}"
+    oc exec -n "${OPERATOR_NS}" "${pod}" -- \
+      tar cf - -C "${OPERATOR_MANIFESTS_TAR_DIR}" base \
+      | tar xf - -C "${REVERT_DIR}"
+    return 0
+  fi
+
+  remote_cp_src="${OPERATOR_NS}/${pod}:${remote_base}"
+  if command -v oc >/dev/null 2>&1 \
+    && oc cp "${remote_cp_src}" "${local_base}" >/dev/null 2>&1; then
+    log "Copied manifest bundle from ${OPERATOR_NS}/${pod}"
+    return 0
+  fi
+
+  copy_remote_tree_from_pod_stream "${pod}" "${remote_base}" "${local_base}"
+}
+
 snapshot_baseline() {
   local pod="$1"
   mkdir -p "${REVERT_DIR}"
   save_revert_metadata
   log "Platform: ${PLATFORM} — snapshotting operator baseline to ${REVERT_DIR}/base"
 
-  oc exec -n "${OPERATOR_NS}" "${pod}" -- \
-    tar cf - -C "${OPERATOR_MANIFESTS_TAR_DIR}" base \
-    | tar xf - -C "${REVERT_DIR}"
+  copy_manifest_bundle_base_from_pod "${pod}"
 
   kustomize_build "${REVERT_DIR}/base" > "${REVERT_DIR}/rendered-before.yaml"
   imagestream_names_from_build "${REVERT_DIR}/base" > "${REVERT_DIR}/baseline-imagestream-names.txt"
@@ -479,6 +780,7 @@ apply_to_namespace() {
 
 cmd_snapshot() {
   check_build_prerequisites
+  ensure_workbenches_operator_for_bundle_read
   ensure_operator_resolved
   snapshot_baseline "${RESOLVED_OPERATOR_POD}"
 }
@@ -486,6 +788,7 @@ cmd_snapshot() {
 cmd_preview() {
   check_build_prerequisites
   local workdir
+  ensure_workbenches_operator_for_bundle_read
   ensure_operator_resolved
   workdir="$(build_workdir "${RESOLVED_OPERATOR_POD}")"
 
@@ -500,11 +803,13 @@ cmd_preview() {
 cmd_apply() {
   check_build_prerequisites
   local workdir rendered
+  ensure_workbenches_operator_for_bundle_read
   ensure_operator_resolved
   workdir="$(build_workdir "${RESOLVED_OPERATOR_POD}")"
   rendered="$(mktemp)"
 
   snapshot_baseline "${RESOLVED_OPERATOR_POD}"
+  pause_workbenches_operator
 
   kustomize_build "${workdir}" > "${rendered}"
   imagestream_names_from_build "${workdir}" > "${REVERT_DIR}/applied-imagestream-names.txt"
@@ -564,6 +869,8 @@ cmd_revert() {
   [[ -f "${REVERT_DIR}/rendered-before.yaml" ]] \
     || die "No revert snapshot at ${REVERT_DIR}/rendered-before.yaml — run apply or snapshot first"
 
+  pause_workbenches_operator
+
   local ns ns_file wb_ns
   ns_file="${REVERT_DIR}/applied-namespaces.txt"
   [[ -f "${ns_file}" ]] || ns_file="${REVERT_DIR}/snapshot-namespaces.txt"
@@ -599,6 +906,8 @@ cmd_revert() {
     log "Removing ImageStreams not in operator baseline"
     delete_test_added_imagestreams
   fi
+
+  resume_workbenches_operator
 
   log "Revert complete. ImageStreams from before your test may still exist — that is expected."
 }
