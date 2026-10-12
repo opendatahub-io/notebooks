@@ -135,7 +135,7 @@ to apply to the applications namespace and the DSC `workbenchNamespace`.
 |---------|--------|
 | `Workbenches must be Managed` | Set `managementState: Managed` on DSC workbenches |
 | `No notebook manifest bundle` / `No operator pod` | Ensure `workbenches-operator` is running in the applications namespace. On RHOAI 3.6+, notebook manifests are no longer in `rhods-operator`. Omit `--operator-ns` unless you need legacy platform-operator fallback. |
-| `tar` not found in operator pod | Expected on `workbenches-operator` (minimal image). The script falls back to copying manifest files with `oc exec cat`. |
+| `tar` not found in operator pod | Expected on `workbenches-operator` (minimal image). The script falls back to recursively copying the bundle with `oc exec` (`test`/`ls`/`cat`). A failed remote listing aborts instead of reusing a stale snapshot. |
 | Dashboard shows old images | Use `--target applications`; hard-refresh browser |
 | `No revert snapshot` | Run `apply` first (snapshots automatically) |
 | ImageStreams still visible after revert | Pre-existing cluster ImageStreams are expected |

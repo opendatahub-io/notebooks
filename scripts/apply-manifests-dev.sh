@@ -332,11 +332,26 @@ operator_candidate_namespaces() {
   esac
 }
 
-running_pod_for_label() {
+running_pods_for_label() {
   local ns="$1"
   local label="$2"
   oc get po -l "${label}" -n "${ns}" \
-    -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' 2>/dev/null | awk '{print $1}'
+    -o jsonpath='{range .items[?(@.status.phase=="Running")]}{.metadata.name}{"\n"}{end}' 2>/dev/null
+}
+
+find_manifest_bundle_pod_for_label() {
+  local ns="$1"
+  local label="$2"
+  local pod
+
+  while IFS= read -r pod; do
+    [[ -n "${pod}" ]] || continue
+    if pod_has_notebook_manifest_bundle "${ns}" "${pod}"; then
+      printf '%s' "${pod}"
+      return 0
+    fi
+  done < <(running_pods_for_label "${ns}" "${label}")
+  return 1
 }
 
 pod_has_notebook_manifest_bundle() {
@@ -352,9 +367,8 @@ try_manifest_bundle_pod() {
   local pod
 
   [[ -n "${ns}" && -n "${label}" ]] || return 1
-  pod="$(running_pod_for_label "${ns}" "${label}")"
+  pod="$(find_manifest_bundle_pod_for_label "${ns}" "${label}")" || return 1
   [[ -n "${pod}" ]] || return 1
-  pod_has_notebook_manifest_bundle "${ns}" "${pod}" || return 1
 
   OPERATOR_NS="${ns}"
   OPERATOR_POD_LABEL="${label}"
@@ -458,15 +472,54 @@ target_namespaces() {
   esac
 }
 
+pod_has_tar() {
+  local pod="$1"
+  oc exec -n "${OPERATOR_NS}" "${pod}" -- tar --version >/dev/null 2>&1 \
+    || oc exec -n "${OPERATOR_NS}" "${pod}" -- sh -c 'command -v tar >/dev/null 2>&1' >/dev/null 2>&1
+}
+
+copy_remote_tree_from_pod() {
+  local pod="$1"
+  local remote_path="$2"
+  local local_path="$3"
+  local listing name
+
+  if oc exec -n "${OPERATOR_NS}" "${pod}" -- test -d "${remote_path}" >/dev/null 2>&1; then
+    mkdir -p "${local_path}"
+    listing="$(mktemp)"
+    if ! oc exec -n "${OPERATOR_NS}" "${pod}" -- ls -1 "${remote_path}" > "${listing}"; then
+      rm -f "${listing}"
+      die "Failed to list ${remote_path} in ${OPERATOR_NS}/${pod}"
+    fi
+    if [[ ! -s "${listing}" ]]; then
+      rm -f "${listing}"
+      die "Empty directory ${remote_path} in ${OPERATOR_NS}/${pod}"
+    fi
+    while IFS= read -r name; do
+      [[ -n "${name}" ]] || continue
+      copy_remote_tree_from_pod "${pod}" "${remote_path}/${name}" "${local_path}/${name}"
+    done < "${listing}"
+    rm -f "${listing}"
+    return 0
+  fi
+
+  if oc exec -n "${OPERATOR_NS}" "${pod}" -- test -f "${remote_path}" >/dev/null 2>&1; then
+    mkdir -p "$(dirname "${local_path}")"
+    oc exec -n "${OPERATOR_NS}" "${pod}" -- cat "${remote_path}" > "${local_path}"
+    return 0
+  fi
+
+  die "Remote path is not a file or directory: ${remote_path} in ${OPERATOR_NS}/${pod}"
+}
+
 copy_manifest_bundle_base_from_pod() {
   local pod="$1"
   local local_base="${REVERT_DIR}/base"
   local remote_base="${OPERATOR_MANIFESTS_PATH}"
-  local name
 
-  mkdir -p "${local_base}"
+  rm -rf "${local_base}"
 
-  if oc exec -n "${OPERATOR_NS}" "${pod}" -- command -v tar >/dev/null 2>&1; then
+  if pod_has_tar "${pod}"; then
     oc exec -n "${OPERATOR_NS}" "${pod}" -- \
       tar cf - -C "${OPERATOR_MANIFESTS_TAR_DIR}" base \
       | tar xf - -C "${REVERT_DIR}"
@@ -474,13 +527,7 @@ copy_manifest_bundle_base_from_pod() {
   fi
 
   log "Pod ${OPERATOR_NS}/${pod} has no tar; copying ${remote_base} with oc exec cat"
-  while IFS= read -r name; do
-    [[ -n "${name}" ]] || continue
-    if [[ "${name}" == */* ]]; then
-      die "Nested manifest path ${remote_base}/${name} is not supported without tar in the pod"
-    fi
-    oc exec -n "${OPERATOR_NS}" "${pod}" -- cat "${remote_base}/${name}" > "${local_base}/${name}"
-  done < <(oc exec -n "${OPERATOR_NS}" "${pod}" -- ls -1 "${remote_base}")
+  copy_remote_tree_from_pod "${pod}" "${remote_base}" "${local_base}"
 }
 
 snapshot_baseline() {
