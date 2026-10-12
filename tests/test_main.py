@@ -982,7 +982,8 @@ def get_accelerator_version_for_directory(directory: pathlib.Path, accelerator_n
         flags=re.IGNORECASE,
     ):
         return None
-    match = re.search(rf"{re.escape(flavor)}-v?(\d+\.\d+)", base_image, flags=re.IGNORECASE)
+    # Legacy: cuda-13.0-el9.8 / cuda-v13.0-… ; à-la-carte: cuda13.0-torch2.13-el9.8
+    match = re.search(rf"{re.escape(flavor)}-?v?(\d+\.\d+)", base_image, flags=re.IGNORECASE)
     if not match:
         raise ValueError(f"Cannot extract {accelerator_name} version from {conf_file}: BASE_IMAGE={base_image}")
     return match.group(1)
@@ -995,6 +996,41 @@ def test_get_accelerator_version_for_directory_returns_none_for_gpu_stable_tag(t
     conf_file.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cuda-stable:3.5.0-1780598175\n")
 
     assert get_accelerator_version_for_directory(directory, "CUDA") is None
+
+
+@pytest.mark.parametrize(
+    ("base_image", "accelerator_name", "expected"),
+    [
+        (
+            "quay.io/aipcc/base-images/cuda-13.0-el9.8:3.6.0-1791476877",
+            "CUDA",
+            "13.0",
+        ),
+        (
+            "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.8:1791476595@sha256:deadbeef",
+            "CUDA",
+            "13.0",
+        ),
+        (
+            "quay.io/aipcc/base-images/rocm7.14-torch2.12-el9.8:1791395349",
+            "ROCm",
+            "7.14",
+        ),
+    ],
+)
+def test_get_accelerator_version_for_directory_supports_legacy_and_torch_channel(
+    tmp_path: pathlib.Path,
+    base_image: str,
+    accelerator_name: str,
+    expected: str,
+) -> None:
+    flavor = accelerator_name.lower()
+    directory = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12"
+    conf_file = directory / "build-args" / f"konflux.{flavor}.conf"
+    conf_file.parent.mkdir(parents=True)
+    conf_file.write_text(f"BASE_IMAGE={base_image}\n")
+
+    assert get_accelerator_version_for_directory(directory, accelerator_name) == expected
 
 
 def _check_all_accelerator_variants(

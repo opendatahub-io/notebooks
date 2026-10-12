@@ -563,3 +563,153 @@ def test_parse_release_and_accelerator_from_url_rejects_malformed_path() -> None
     malformed_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/simple/"
     with pytest.raises(resolver.IndexResolutionError, match="Cannot extract release/accelerator"):
         resolver.parse_release_and_accelerator_from_url(malformed_url)
+
+
+def channel_index_url(*, channel: str, test: bool = False) -> str:
+    suffix = f"{channel}-test" if test else channel
+    return f"https://packages.redhat.com/api/pypi/public-rhai/{suffix}/simple/"
+
+
+def test_skopeo_image_reference_strips_tag_when_digest_present() -> None:
+    pinned = (
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.8:1791476146"
+        "@sha256:a494828d82444d3873bf0540bed2ad3f69f1c05e078c76dd418c8574618f3eec"
+    )
+    assert resolver.skopeo_image_reference(pinned) == (
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.8"
+        "@sha256:a494828d82444d3873bf0540bed2ad3f69f1c05e078c76dd418c8574618f3eec"
+    )
+
+
+def test_skopeo_image_reference_keeps_tag_only() -> None:
+    assert (
+        resolver.skopeo_image_reference("quay.io/aipcc/base-images/cpu-torch2.13-el9.8:1791476146")
+        == "quay.io/aipcc/base-images/cpu-torch2.13-el9.8:1791476146"
+    )
+
+
+def test_build_test_variant_url_from_channel_production() -> None:
+    prod = channel_index_url(channel="cpu-torch2.13-el9.8")
+    expected = channel_index_url(channel="cpu-torch2.13-el9.8", test=True)
+    assert resolver.build_test_variant_url(prod) == expected
+
+
+def test_build_test_variant_url_returns_none_for_channel_test_url() -> None:
+    test = channel_index_url(channel="cuda13.0-torch2.13-el9.8", test=True)
+    assert resolver.build_test_variant_url(test) is None
+
+
+@pytest.mark.parametrize(
+    ("image_name", "expected"),
+    [
+        ("cpu-torch2.13-el9.8", "cpu"),
+        ("cuda12.9-torch2.13-el9.8", "cuda12.9"),
+        ("cuda13.0-torch2.13-el9.8", "cuda13.0"),
+        ("rocm7.14-torch2.12-el9.8", "rocm7.14"),
+        ("spyre-torch2.11-el9.8", "spyre"),
+    ],
+)
+def test_parse_accelerator_accepts_torch_channel_repos(image_name: str, expected: str) -> None:
+    assert resolver.parse_accelerator(image_name, Path("konflux.cpu.conf")) == expected
+
+
+def test_parse_release_and_accelerator_from_channel_url() -> None:
+    url = channel_index_url(channel="cuda13.0-torch2.13-el9.8", test=True)
+    release, accelerator = resolver.parse_release_and_accelerator_from_url(url)
+    assert release == "cuda13.0-torch2.13-el9.8"
+    assert accelerator == "cuda13.0"
+
+
+def test_resolve_rhoai_channel_index_from_label(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            (
+                "BASE_IMAGE=quay.io/aipcc/base-images/cpu-torch2.13-el9.8:1791476146"
+                "@sha256:a494828d82444d3873bf0540bed2ad3f69f1c05e078c76dd418c8574618f3eec"
+            ),
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+            "RELEASE=3.6",
+        ],
+    )
+    label_url = channel_index_url(channel="cpu-torch2.13-el9.8", test=True)
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(label_url))
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == label_url
+    assert resolved.release == "cpu-torch2.13-el9.8"
+    assert resolved.accelerator == "cpu"
+
+
+def test_resolve_channel_falls_back_to_test_when_prod_unavailable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cuda.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.8:1791476595",
+            "PYLOCK_FLAVOR=cuda",
+            "PRODUCT=rhoai",
+        ],
+    )
+    prod = channel_index_url(channel="cuda13.0-torch2.13-el9.8")
+    test = channel_index_url(channel="cuda13.0-torch2.13-el9.8", test=True)
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(prod))
+
+    checked: list[str] = []
+
+    def fake_exists(url: str) -> bool:
+        checked.append(url)
+        return url == test
+
+    monkeypatch.setattr(resolver, "index_url_exists", fake_exists)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == test
+    assert checked == [prod, test]
+
+
+def test_resolve_channel_from_image_ref_when_label_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.rocm.conf",
+        [
+            (
+                "BASE_IMAGE=quay.io/aipcc/base-images/rocm7.14-torch2.12-el9.8:1791395349"
+                "@sha256:f4d5e421ed54e4f1d1edd4b451387e720620119bdf9e52d74361decb7f25ef8a"
+            ),
+            "PYLOCK_FLAVOR=rocm",
+            "PRODUCT=rhoai",
+            "RELEASE=3.6",
+        ],
+    )
+    test = channel_index_url(channel="rocm7.14-torch2.12-el9.8", test=True)
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_inspect_fail_stub())
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == test)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == test
+    assert resolved.release == "rocm7.14-torch2.12-el9.8"
+    assert resolved.accelerator == "rocm7.14"
+
+
+def test_validate_label_index_url_accepts_channel_path() -> None:
+    base_image = "quay.io/aipcc/base-images/cpu-torch2.13-el9.8:1791476146"
+    resolver.validate_label_index_url(
+        channel_index_url(channel="cpu-torch2.13-el9.8", test=True),
+        base_image,
+    )

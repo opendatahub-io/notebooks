@@ -1,5 +1,18 @@
 # Base Image Version Update Configuration
 
+> [!WARNING]
+> **RHDS / RHOAI torch-channel pins are temporarily unmanaged by this sync.**
+> RHOAI `build-args/konflux.*.conf` files now pin à-la-carte AIPCC channel images
+> (for example `cpu-torch2.13-el9.8`, `cuda13.0-torch2.13-el9.8`,
+> `rocm7.14-torch2.12-el9.8`; see
+> [ADR-0016](architecture/decisions/0016-adopt-a-la-carte-content-delivery-for-aipcc-notebooks.md)).
+> `make sync-build-args-from-versions` still resolves the legacy
+> `cpu-el9.8` / `cuda-*-el9.8` / `rocm-*-el9.8` repository names and **must not be
+> run for RHDS** until that resolution is redesigned — it would overwrite the
+> torch-channel pins. Until then, bump RHOAI bases by editing `BASE_IMAGE` (or
+> via MintMaker) and run `make refresh-lock-files`. ODH (`origin: in-house` /
+> non-konflux) resolution is unchanged.
+
 ## Purpose
 
 This repository uses `versions_config.yml` as the single operator input for base

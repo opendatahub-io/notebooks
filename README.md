@@ -67,6 +67,15 @@ For details on the dual `uv` version policy (dev vs image locks), see the
 Use the root [`versions_config.yml`](versions_config.yml) file as the operator
 entry point for base image updates.
 
+> [!WARNING]
+> RHOAI (`konflux.*.conf`) pins now use AIPCC à-la-carte torch-channel repos
+> (e.g. `cpu-torch2.13-el9.8`). **Do not run**
+> `make sync-build-args-from-versions` for RHDS until that sync is redesigned —
+> it still emits legacy `cpu-el9.8` / `cuda-*-el9.8` / `rocm-*-el9.8` names and
+> would overwrite the channel pins. Bump RHOAI `BASE_IMAGE` manually (or via
+> MintMaker), then `make refresh-lock-files`. See
+> [`docs/base_image_versions_update_configuration.md`](docs/base_image_versions_update_configuration.md).
+
 The sync flow validates that config, rewrites managed `build-args/*.conf`
 `BASE_IMAGE` and `RELEASE` values, updates root `Makefile` `RELEASE` defaults,
 and resolves RHDS `channel: fast` tags from published Quay tags with `skopeo`.
@@ -75,7 +84,7 @@ For the full configuration contract, RHDS and ODH resolution rules, Mermaid flow
 diagram, and worked examples, see
 [`docs/base_image_versions_update_configuration.md`](docs/base_image_versions_update_configuration.md).
 
-Quick commands:
+Quick commands (ODH / legacy RHDS resolution only until the torch-channel redesign):
 
 ```shell
 make sync-build-args-from-versions
