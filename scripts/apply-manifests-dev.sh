@@ -50,7 +50,7 @@ Options:
   --platform PLATFORM   odh (upstream) or rhoai (default: rhoai)
   --target TARGET       applications (default), workbench, or both
   --revert-dir DIR      Snapshot directory (default: /tmp/<platform>-manifests-revert)
-  --operator-ns NS      Override operator namespace (auto-discovered if wrong or omitted)
+  --operator-ns NS      Legacy platform operator namespace for fallback discovery
   --applications-ns NS  Override dashboard/applications namespace
   --dry-run             Client-side dry-run only (apply/revert)
   --no-restart-dashboard  Skip dashboard rollout after apply
@@ -60,7 +60,8 @@ Options:
 Platform defaults:
   odh   operator: opendatahub-operator (pod label name=opendatahub-operator)
         applications: opendatahub, manifests: manifests/odh/base, dashboard: odh-dashboard
-  rhoai operator: redhat-ods-operator (pod label name=rhods-operator)
+  rhoai platform operator: redhat-ods-operator (pod label name=rhods-operator)
+        notebook manifests: workbenches-operator in redhat-ods-applications (RHOAI 3.6+)
         applications: redhat-ods-applications, manifests: manifests/rhoai/base, dashboard: rhods-dashboard
 EOF
 }
@@ -307,6 +308,8 @@ check_build_prerequisites() {
   [[ -d "${MANIFESTS_DIR}" ]] || die "Manifest directory not found: ${MANIFESTS_DIR}"
 }
 
+readonly WORKBENCHES_OPERATOR_POD_LABEL="app.kubernetes.io/name=workbenches-operator"
+
 operator_pod_labels_for_platform() {
   case "${PLATFORM}" in
     rhoai) printf '%s\n' "name=rhods-operator" "name=opendatahub-operator" ;;
@@ -329,43 +332,90 @@ operator_candidate_namespaces() {
   esac
 }
 
-resolve_operator() {
-  local ns label pod
-  local -a tried=()
-  local explicit_ns=""
-  if [[ "${OPERATOR_NS_EXPLICIT}" == true ]]; then
-    explicit_ns="${OPERATOR_NS}"
+running_pod_for_label() {
+  local ns="$1"
+  local label="$2"
+  oc get po -l "${label}" -n "${ns}" \
+    -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' 2>/dev/null | awk '{print $1}'
+}
+
+pod_has_notebook_manifest_bundle() {
+  local ns="$1"
+  local pod="$2"
+  oc exec -n "${ns}" "${pod}" -- \
+    test -f "${OPERATOR_MANIFESTS_PATH}/params-latest.env" >/dev/null 2>&1
+}
+
+try_manifest_bundle_pod() {
+  local ns="$1"
+  local label="$2"
+  local pod
+
+  [[ -n "${ns}" && -n "${label}" ]] || return 1
+  pod="$(running_pod_for_label "${ns}" "${label}")"
+  [[ -n "${pod}" ]] || return 1
+  pod_has_notebook_manifest_bundle "${ns}" "${pod}" || return 1
+
+  OPERATOR_NS="${ns}"
+  OPERATOR_POD_LABEL="${label}"
+  RESOLVED_OPERATOR_POD="${pod}"
+  return 0
+}
+
+manifest_bundle_pod_candidates() {
+  local ns label
+
+  printf '%s\t%s\n' "${APPLICATIONS_NS}" "${WORKBENCHES_OPERATOR_POD_LABEL}"
+
+  if [[ "${OPERATOR_NS_EXPLICIT}" == true && -n "${OPERATOR_NS}" ]]; then
+    if [[ "${OPERATOR_NS}" != "${APPLICATIONS_NS}" ]]; then
+      printf '%s\t%s\n' "${OPERATOR_NS}" "${WORKBENCHES_OPERATOR_POD_LABEL}"
+    fi
+    while IFS= read -r label; do
+      [[ -n "${label}" ]] || continue
+      printf '%s\t%s\n' "${OPERATOR_NS}" "${label}"
+    done < <(operator_pod_labels_for_platform)
+    return
   fi
 
   while IFS= read -r ns; do
     [[ -n "${ns}" ]] || continue
     while IFS= read -r label; do
       [[ -n "${label}" ]] || continue
-      tried+=("${ns} (${label})")
-      pod="$(oc get po -l "${label}" -n "${ns}" \
-        -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' 2>/dev/null | awk '{print $1}')"
-      if [[ -n "${pod}" ]]; then
-        OPERATOR_NS="${ns}"
-        OPERATOR_POD_LABEL="${label}"
-        RESOLVED_OPERATOR_POD="${pod}"
-        if [[ -n "${explicit_ns}" && "${explicit_ns}" != "${ns}" ]]; then
-          log "Operator not in ${explicit_ns}; using ${OPERATOR_NS}/${RESOLVED_OPERATOR_POD} (${OPERATOR_POD_LABEL})"
-        else
-          log "Using operator pod ${OPERATOR_NS}/${RESOLVED_OPERATOR_POD} (${OPERATOR_POD_LABEL})"
-        fi
-        return 0
-      fi
+      printf '%s\t%s\n' "${ns}" "${label}"
     done < <(operator_pod_labels_for_platform)
   done < <(operator_candidate_namespaces)
+}
+
+resolve_operator() {
+  local ns label
+  local -a tried=()
+  local explicit_ns=""
+  if [[ "${OPERATOR_NS_EXPLICIT}" == true ]]; then
+    explicit_ns="${OPERATOR_NS}"
+  fi
+
+  while IFS=$'\t' read -r ns label; do
+    [[ -n "${ns}" && -n "${label}" ]] || continue
+    tried+=("${ns} (${label})")
+    if try_manifest_bundle_pod "${ns}" "${label}"; then
+      if [[ -n "${explicit_ns}" && "${explicit_ns}" != "${ns}" ]]; then
+        log "Notebook manifests not in ${explicit_ns}; using ${OPERATOR_NS}/${RESOLVED_OPERATOR_POD} (${OPERATOR_POD_LABEL})"
+      else
+        log "Using notebook manifest bundle pod ${OPERATOR_NS}/${RESOLVED_OPERATOR_POD} (${OPERATOR_POD_LABEL})"
+      fi
+      return 0
+    fi
+  done < <(manifest_bundle_pod_candidates)
 
   if [[ -n "${explicit_ns}" ]]; then
-    log "No running operator pod in ${explicit_ns}; searching other namespaces..."
+    log "No notebook manifest bundle in ${explicit_ns}; searching other namespaces..."
     OPERATOR_NS_EXPLICIT=false
     resolve_operator
     return $?
   fi
 
-  die "Could not find a running operator pod. Tried: ${tried[*]}"
+  die "Could not find a pod with ${OPERATOR_MANIFESTS_PATH}/params-latest.env. Tried: ${tried[*]}"
 }
 
 ensure_operator_resolved() {
@@ -408,15 +458,38 @@ target_namespaces() {
   esac
 }
 
+copy_manifest_bundle_base_from_pod() {
+  local pod="$1"
+  local local_base="${REVERT_DIR}/base"
+  local remote_base="${OPERATOR_MANIFESTS_PATH}"
+  local name
+
+  mkdir -p "${local_base}"
+
+  if oc exec -n "${OPERATOR_NS}" "${pod}" -- command -v tar >/dev/null 2>&1; then
+    oc exec -n "${OPERATOR_NS}" "${pod}" -- \
+      tar cf - -C "${OPERATOR_MANIFESTS_TAR_DIR}" base \
+      | tar xf - -C "${REVERT_DIR}"
+    return 0
+  fi
+
+  log "Pod ${OPERATOR_NS}/${pod} has no tar; copying ${remote_base} with oc exec cat"
+  while IFS= read -r name; do
+    [[ -n "${name}" ]] || continue
+    if [[ "${name}" == */* ]]; then
+      die "Nested manifest path ${remote_base}/${name} is not supported without tar in the pod"
+    fi
+    oc exec -n "${OPERATOR_NS}" "${pod}" -- cat "${remote_base}/${name}" > "${local_base}/${name}"
+  done < <(oc exec -n "${OPERATOR_NS}" "${pod}" -- ls -1 "${remote_base}")
+}
+
 snapshot_baseline() {
   local pod="$1"
   mkdir -p "${REVERT_DIR}"
   save_revert_metadata
   log "Platform: ${PLATFORM} — snapshotting operator baseline to ${REVERT_DIR}/base"
 
-  oc exec -n "${OPERATOR_NS}" "${pod}" -- \
-    tar cf - -C "${OPERATOR_MANIFESTS_TAR_DIR}" base \
-    | tar xf - -C "${REVERT_DIR}"
+  copy_manifest_bundle_base_from_pod "${pod}"
 
   kustomize_build "${REVERT_DIR}/base" > "${REVERT_DIR}/rendered-before.yaml"
   imagestream_names_from_build "${REVERT_DIR}/base" > "${REVERT_DIR}/baseline-imagestream-names.txt"

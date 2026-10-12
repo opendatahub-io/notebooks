@@ -111,8 +111,9 @@ Open the dashboard route → **Workbenches** and confirm images/tags. Hard-refre
 | | **ODH** (`--platform odh`) | **RHOAI** (`--platform rhoai`, default) |
 |---|---------------------------|----------------------------------------|
 | Local manifests | `manifests/odh/base/` | `manifests/rhoai/base/` |
-| Operator namespace | `opendatahub-operator` | `redhat-ods-operator` |
-| Operator pod label | `name=opendatahub-operator` | `name=rhods-operator` |
+| Platform operator namespace | `opendatahub-operator` | `redhat-ods-operator` |
+| Notebook manifest bundle pod | `workbenches-operator` in applications NS (preferred on 3.6+) | same |
+| Legacy platform operator pod label | `name=opendatahub-operator` | `name=rhods-operator` |
 | Applications / dashboard NS | `opendatahub` | `redhat-ods-applications` |
 | Dashboard deployment | `odh-dashboard` | `rhods-dashboard` |
 | Default workbench NS | `opendatahub` | `rhods-notebooks` (if set in DSC) |
@@ -133,7 +134,8 @@ to apply to the applications namespace and the DSC `workbenchNamespace`.
 | Symptom | Action |
 |---------|--------|
 | `Workbenches must be Managed` | Set `managementState: Managed` on DSC workbenches |
-| `No operator pod` | Omit `--operator-ns` (auto-discovered). RHOAI default: `redhat-ods-operator`; ODH: `opendatahub-operator` |
+| `No notebook manifest bundle` / `No operator pod` | Ensure `workbenches-operator` is running in the applications namespace. On RHOAI 3.6+, notebook manifests are no longer in `rhods-operator`. Omit `--operator-ns` unless you need legacy platform-operator fallback. |
+| `tar` not found in operator pod | Expected on `workbenches-operator` (minimal image). The script falls back to copying manifest files with `oc exec cat`. |
 | Dashboard shows old images | Use `--target applications`; hard-refresh browser |
 | `No revert snapshot` | Run `apply` first (snapshots automatically) |
 | ImageStreams still visible after revert | Pre-existing cluster ImageStreams are expected |
