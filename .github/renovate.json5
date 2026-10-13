@@ -133,12 +133,13 @@
       // reconstruct the BASE_IMAGE=… line correctly.
       "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}",
       "datasourceTemplate": "docker",
-      // Stable tags become [major, minor, patch, timestamp].
-      // EA tags keep [major, minor, patch] and encode ea_version + timestamp in
-      // prerelease so Renovate compares EA sequence before timestamp, while
-      // still treating EA tags as unstable for ignoreUnstable gating.
-      // This RE2-safe form avoids duplicate named capture groups.
-      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?(?:-ea\\.(?<prerelease>\\d+-\\d+)|-(?<build>\\d+))$",
+      // Channel (à-la-carte) images use numeric publish IDs (e.g. 1791476595) as the
+      // sole tag; capture as <build> so bumps stay patch-like on release branches.
+      // Legacy RHAI semver tags remain supported on older pins until fully migrated:
+      //   stable: 3.6.0-1784563933  -> [major, minor, patch, build]
+      //   EA:     3.6.0-ea.2-…      -> prerelease for ignoreUnstable on upstream main
+      // RE2 alternation reuses <build> in both branches (no duplicate names per branch).
+      "versioningTemplate": "regex:^(?:(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?(?:-ea\\.(?<prerelease>\\d+-\\d+)|-(?<build>\\d+))|(?<build>\\d+))$",
     },
     {
       // ODH PRODUCT=odh pins (cpu.conf / cuda.conf / rocm.conf) use :latest@sha256.
@@ -212,7 +213,8 @@
       "separateMinorPatch": true,
     },
     {
-      // One PR for all quay.io/aipcc base images (cpu, cuda-*, rocm-*, …).
+      // One PR for all quay.io/aipcc base images (channel repos such as
+      // cpu-torch2.13-el9.8, cuda13.0-torch2.13-el9.8, rocm7.14-torch2.12-el9.8, …).
       "description": "Group konflux build-args across AIPCC base images",
       "matchManagers": ["custom.regex"],
       "matchDatasources": ["docker"],
@@ -250,8 +252,8 @@
     },
     {
       // Block major/minor upgrades by default on all branches.
-      // Patch-like updates within the same base version stay allowed, including
-      // timestamp bumps, EA sequence bumps, and EA -> stable promotions.
+      // Patch-like updates stay allowed, including channel publish-ID bumps,
+      // legacy timestamp suffix bumps (3.x.y-<id>), EA sequence bumps, and EA -> stable.
       "description": "Block major/minor base image version upgrades (default)",
       "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["major", "minor"],
@@ -284,7 +286,8 @@
     },
     {
       // Renovate forbids combining matchUpdateTypes + ignoreUnstable in one rule,
-      // so unstable (EA prerelease) opt-in lives in its own rule.
+      // so legacy EA prerelease opt-in lives in its own rule (channel numeric tags
+      // are not EA semver and are unaffected).
       "description": "Allow unstable (EA) base image tags on upstream main",
       "matchManagers": ["custom.regex"],
       "matchBaseBranches": ["main"],
