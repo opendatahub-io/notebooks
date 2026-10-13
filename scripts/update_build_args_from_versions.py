@@ -4,9 +4,9 @@
 
 This flow validates the root config, scans managed image-tree ``build-args``
 files, rewrites managed ``BASE_IMAGE`` and ``RELEASE`` assignments plus the
-root ``Makefile`` release defaults, resolves newer RHDS ``channel: fast``
-releases to the highest already-published phase per target repository, uses
-``skopeo`` to select the latest build in the chosen release-and-phase family,
+root ``Makefile`` release defaults, resolves RHDS ``channel: stable`` à-la-carte channel repositories to the latest
+published numeric tag, and legacy ``channel: fast`` families to the highest
+already-published phase per target repository, uses ``skopeo`` to select tags,
 and pins each resolved ``BASE_IMAGE`` to an immutable
 ``repository:tag@sha256:…`` reference.
 """
@@ -63,6 +63,7 @@ GPU_FLAVOR_PATHS = {
     },
 }
 CPU_BASE_IMAGE_SCHEMA = {
+    "channel_torch_version": None,
     "rhds": POLICY_SCHEMA,
     "odh": POLICY_SCHEMA,
 }
@@ -95,11 +96,6 @@ ROOT_SCHEMA = {
         "full_version": None,
         "rhds_os_base": None,
         "python_version": None,
-        "channel_torch_version": {
-            "cpu": None,
-            "cuda": None,
-            "rocm": None,
-        },
     },
     "artifacts": {
         "base_image": BASE_IMAGE_SCHEMA,
@@ -127,18 +123,10 @@ _STABLE_ACC_VERSION_INSPECT_FAILED = object()
 
 
 @dataclass(frozen=True)
-class ChannelTorchVersions:
-    cpu: str
-    cuda: str
-    rocm: str
-
-
-@dataclass(frozen=True)
 class ReleaseConfig:
     full_version: str
     rhds_os_base: str
     python_version: str
-    channel_torch_version: ChannelTorchVersions
 
 
 @dataclass(frozen=True)
@@ -185,6 +173,19 @@ class VersionsConfig:
         if flavor is None:
             raise ValueError(f"Flavor is required for accelerator '{accelerator}'")
         return self.gpu_acc_versions[accelerator, flavor]
+
+    def channel_torch_version(self, accelerator: str, flavor: str | None = None) -> str:
+        if accelerator == "cpu":
+            return validate_channel_torch_version(
+                self.base_image["cpu"]["channel_torch_version"],
+                "root.artifacts.base_image.cpu.channel_torch_version",
+            )
+        if flavor is None:
+            raise ValueError(f"Flavor is required for accelerator '{accelerator}'")
+        return validate_channel_torch_version(
+            self.base_image[accelerator][flavor]["channel_torch_version"],
+            f"root.artifacts.base_image.{accelerator}.{flavor}.channel_torch_version",
+        )
 
 
 @dataclass(frozen=True)
@@ -318,6 +319,13 @@ def normalize_python_version(version: str) -> str:
     return version
 
 
+def validate_channel_torch_version(value: object, context: str) -> str:
+    resolved = scalar_to_string(value)
+    if MIDSTREAM_VERSION_RE.fullmatch(resolved) is None:
+        raise ValueError(f"{context} must be a major.minor torch stream, got '{resolved}'")
+    return resolved
+
+
 def compact_python_version(version: str) -> str:
     return normalize_python_version(version).replace(".", "")
 
@@ -449,7 +457,14 @@ def normalize_gpu_flavor_config(
 ) -> tuple[dict[str, Any], str]:
     context = f"root.artifacts.base_image.{accelerator}.{flavor}"
     mapping = validate_expected_mapping_keys(
-        flavor_policy, {"acc_version", "rhds", "odh"}, context, required_keys={"rhds", "odh"}
+        flavor_policy,
+        {"acc_version", "channel_torch_version", "rhds", "odh"},
+        context,
+        required_keys={"channel_torch_version", "rhds", "odh"},
+    )
+    channel_torch_version = validate_channel_torch_version(
+        mapping["channel_torch_version"],
+        f"{context}.channel_torch_version",
     )
 
     rhds_policy = mapping["rhds"]
@@ -493,7 +508,11 @@ def normalize_gpu_flavor_config(
         normalized_versions = {normalize_stream_version(version) for version in shared_versions}
         if len(normalized_versions) != 1:
             raise ValueError(f"Legacy rhds and odh acc_version values must match at {context}")
-        return {"rhds": normalized_rhds, "odh": normalized_odh}, shared_versions[0]
+        return {
+            "rhds": normalized_rhds,
+            "odh": normalized_odh,
+            "channel_torch_version": channel_torch_version,
+        }, shared_versions[0]
 
     shared_version = validate_version_value(shared_raw, release, f"{context}.acc_version", "acc_version")
     shared_version_normalized = normalize_stream_version(shared_version)
@@ -532,7 +551,11 @@ def normalize_gpu_flavor_config(
         context=f"{context}.odh",
         release=release,
     )
-    return {"rhds": normalized_rhds, "odh": normalized_odh}, shared_version
+    return {
+        "rhds": normalized_rhds,
+        "odh": normalized_odh,
+        "channel_torch_version": channel_torch_version,
+    }, shared_version
 
 
 def normalize_base_image_config(
@@ -543,6 +566,10 @@ def normalize_base_image_config(
     mapping = validate_expected_mapping_keys(base_image, set(BASE_IMAGE_SCHEMA), root_context)
 
     validate_mapping_schema(mapping["cpu"], CPU_BASE_IMAGE_SCHEMA, f"{root_context}.cpu")
+    validate_channel_torch_version(
+        mapping["cpu"]["channel_torch_version"],
+        f"{root_context}.cpu.channel_torch_version",
+    )
     validate_mapping_schema(
         mapping["baseline_cpu"],
         BASELINE_CPU_BASE_IMAGE_SCHEMA,
@@ -604,18 +631,10 @@ def load_versions_config(path: Path) -> VersionsConfig:
         raise ValueError(f"Unsupported schema_version in {path}: {data['schema_version']!r}")
 
     release_data = data["release"]
-    torch_data = release_data["channel_torch_version"]
-    if not isinstance(torch_data, dict):
-        raise ValueError("release.channel_torch_version must be a mapping")
     release = ReleaseConfig(
         full_version=scalar_to_string(release_data["full_version"]),
         rhds_os_base=scalar_to_string(release_data["rhds_os_base"]),
         python_version=scalar_to_string(release_data["python_version"]),
-        channel_torch_version=ChannelTorchVersions(
-            cpu=scalar_to_string(torch_data["cpu"]),
-            cuda=scalar_to_string(torch_data["cuda"]),
-            rocm=scalar_to_string(torch_data["rocm"]),
-        ),
     )
     parse_release_version(release.full_version)
     if not release.rhds_os_base:
@@ -1204,19 +1223,12 @@ def resolve_latest_published_rhds_channel_image(
     return f"{repository}:{latest_tag}"
 
 
-def rhds_torch_version_for_accelerator(release: ReleaseConfig, accelerator: str) -> str:
-    versions = release.channel_torch_version
-    if accelerator == "cpu":
-        return versions.cpu
-    if accelerator == "cuda":
-        return versions.cuda
-    if accelerator == "rocm":
-        return versions.rocm
-    raise ValueError(f"Unsupported accelerator '{accelerator}'")
-
-
-def build_rhds_pinned_repository(accelerator: str, version: str, release: ReleaseConfig) -> str:
-    torch_version = rhds_torch_version_for_accelerator(release, accelerator)
+def build_rhds_pinned_repository(
+    accelerator: str,
+    version: str,
+    torch_version: str,
+    release: ReleaseConfig,
+) -> str:
     acc_version = None if accelerator == "cpu" else version
     return build_channel_repository(
         accelerator,
@@ -1332,6 +1344,7 @@ def build_rhds_pinned_tag(
 def build_rhds_pinned_image(
     accelerator: str,
     version: str,
+    torch_version: str,
     current_base_image: str,
     target_release_version: str,
     release: ReleaseConfig,
@@ -1351,7 +1364,7 @@ def build_rhds_pinned_image(
     )
     if current_tag is None:
         raise ValueError(f"Cannot determine RHDS tag for digested image {current_base_image}")
-    repository = build_rhds_pinned_repository(accelerator, version, release)
+    repository = build_rhds_pinned_repository(accelerator, version, torch_version, release)
     return f"{repository}:{build_rhds_pinned_tag(current_tag, target_release_version, use_bundle_phase=use_bundle_phase, bundle_phase=bundle_phase, forward_phase=forward_phase)}"
 
 
@@ -1431,7 +1444,7 @@ def resolve_rhel_python_base_image(
 
 def resolve_rhds_base_image(
     state: TargetState,
-    release: ReleaseConfig,
+    config: VersionsConfig,
     tag_cache: dict[str, tuple[str, ...]],
     stable_acc_version_cache: dict[tuple[str, str], str | object | None],
     rhds_bundle_phase_known: bool,
@@ -1444,22 +1457,50 @@ def resolve_rhds_base_image(
     target = state.target
     policy = state.policy
     current_base_image = state.current_base_image
+    release = config.release
+    channel_torch_version = config.channel_torch_version(target.accelerator, target.flavor)
 
     if policy.mode == "rhel":
         return resolve_rhel_python_base_image(release, tag_cache)
+
+    stream_version = policy.version
+    if stream_version is None:
+        if target.accelerator == "cpu":
+            stream_version = release.full_version
+        elif state.shared_acc_version is None:
+            raise ValueError(f"Missing configured shared acc_version for RHDS {target.accelerator} in {target.path}")
+        else:
+            stream_version = state.shared_acc_version
+
+    repository = build_rhds_pinned_repository(
+        target.accelerator,
+        stream_version,
+        channel_torch_version,
+        release,
+    )
+    current_tag = image_tag_from_reference(
+        current_base_image,
+        source_tag_by_digest=source_tag_by_digest,
+        digest_cache=digest_cache,
+        digest_to_tag_by_repository=digest_to_tag_by_repository,
+    )
+
+    if is_channel_repository(repository):
+        candidate_tag = current_tag if current_tag is not None and RHDS_CHANNEL_TAG_RE.fullmatch(current_tag) else "0"
+        return resolve_latest_published_rhds_image(f"{repository}:{candidate_tag}", tag_cache)
 
     if policy.mode == "stable":
         if target.accelerator == "cpu":
             return f"quay.io/aipcc/base-image-cpu-stable-ubi9:{release_minor_version(release.full_version)}"
         if state.shared_acc_version is None:
             raise ValueError(f"Missing configured shared acc_version for RHDS stable {target.accelerator}")
-        repository = build_rhds_gpu_stable_repository(
+        legacy_stable_repository = build_rhds_gpu_stable_repository(
             target.accelerator,
             release,
             stable_repo_overrides,
         )
         return resolve_matching_published_rhds_stable_image(
-            repository,
+            legacy_stable_repository,
             release.full_version,
             target.accelerator,
             state.shared_acc_version,
@@ -1477,18 +1518,6 @@ def resolve_rhds_base_image(
         use_release_bundle_phase=use_release_bundle_phase,
         rhds_bundle_phase=rhds_bundle_phase,
     )
-    repository = build_rhds_pinned_repository(target.accelerator, policy.version, release)
-    current_tag = image_tag_from_reference(
-        current_base_image,
-        source_tag_by_digest=source_tag_by_digest,
-        digest_cache=digest_cache,
-        digest_to_tag_by_repository=digest_to_tag_by_repository,
-    )
-
-    if is_channel_repository(repository):
-        candidate_tag = current_tag if current_tag is not None and RHDS_CHANNEL_TAG_RE.fullmatch(current_tag) else "0"
-        return resolve_latest_published_rhds_image(f"{repository}:{candidate_tag}", tag_cache)
-
     if current_tag is None:
         candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, bundle_seed_phase)}"
     elif treat_as_rhds_stable_tag(current_base_image, current_tag):
@@ -1539,6 +1568,7 @@ def resolve_rhds_base_image(
         candidate = build_rhds_pinned_image(
             target.accelerator,
             policy.version,
+            channel_torch_version,
             current_base_image,
             target_release_version,
             release,
@@ -1567,7 +1597,7 @@ def resolve_odh_base_image(state: TargetState, release: ReleaseConfig) -> str:
 
 def build_target_base_image(
     state: TargetState,
-    release: ReleaseConfig,
+    config: VersionsConfig,
     tag_cache: dict[str, tuple[str, ...]],
     stable_acc_version_cache: dict[tuple[str, str], str | object | None],
     rhds_bundle_phase_known: bool,
@@ -1581,7 +1611,7 @@ def build_target_base_image(
         case "rhds":
             return resolve_rhds_base_image(
                 state,
-                release,
+                config,
                 tag_cache,
                 stable_acc_version_cache,
                 rhds_bundle_phase_known,
@@ -1592,7 +1622,7 @@ def build_target_base_image(
                 digest_to_tag_by_repository,
             )
         case "odh":
-            return resolve_odh_base_image(state, release)
+            return resolve_odh_base_image(state, config.release)
         case _:
             raise ValueError(f"Unsupported distribution in {state.target.path}: {state.target.distribution}")
 
@@ -1722,7 +1752,7 @@ def plan_updates(
         resolved_base_image = resolve_image_digest(
             build_target_base_image(
                 state,
-                config.release,
+                config,
                 tag_cache,
                 stable_acc_version_cache,
                 rhds_bundle_phase_known,

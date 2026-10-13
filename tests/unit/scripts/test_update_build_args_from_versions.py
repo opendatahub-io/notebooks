@@ -48,16 +48,11 @@ def pinned_base_image(tagged_image: str) -> str:
     return f"BASE_IMAGE={pin_image_for_test(tagged_image)}"
 
 
-def default_channel_torch(updater) -> object:
-    return updater.ChannelTorchVersions(cpu="2.13", cuda="2.13", rocm="2.12")
-
-
 def make_release(updater, **kwargs: object) -> object:
     defaults = {
         "full_version": "3.6.0",
         "rhds_os_base": "el9.8",
         "python_version": "3.12",
-        "channel_torch_version": default_channel_torch(updater),
     }
     defaults.update(kwargs)
     return updater.ReleaseConfig(**defaults)
@@ -133,6 +128,7 @@ def _legacy_repo_to_channel_repo(updater, legacy_repo: str) -> str | None:
         return updater.build_rhds_pinned_repository(
             "cpu",
             "3.6.0",
+            "2.13",
             make_release(updater, rhds_os_base=cpu_match.group(1)),
         )
     gpu_match = re.match(
@@ -141,9 +137,11 @@ def _legacy_repo_to_channel_repo(updater, legacy_repo: str) -> str | None:
     )
     if gpu_match:
         accelerator, acc_version, os_base = gpu_match.group(1), gpu_match.group(2), gpu_match.group(3)
+        torch_version = "2.12" if accelerator == "rocm" else "2.13"
         return updater.build_rhds_pinned_repository(
             accelerator,
             acc_version,
+            torch_version,
             make_release(updater, rhds_os_base=os_base),
         )
     return None
@@ -191,30 +189,37 @@ def write_conf(path: Path, *lines: str) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def default_channel_torch_version(accelerator: str) -> str:
+    return "2.12" if accelerator == "rocm" else "2.13"
+
+
 def gpu_minimal_policy_block(
     accelerator: str,
     *,
     acc_version: str | None = None,
-    rhds_channel: str = "fast",
+    channel_torch_version: str | None = None,
+    rhds_channel: str = "stable",
     odh_origin: str = "in-house",
     shared_acc_version: bool = False,
 ) -> str:
     resolved_acc_version = acc_version or DEFAULT_GPU_MINIMAL_ACC_VERSION[accelerator]
-    if shared_acc_version:
+    resolved_torch = channel_torch_version or default_channel_torch_version(accelerator)
+    if shared_acc_version or rhds_channel == "stable":
         return (
             "      minimal:\n"
             f'        acc_version: "{resolved_acc_version}"\n'
+            f'        channel_torch_version: "{resolved_torch}"\n'
             "        rhds:\n"
             f"          channel: {rhds_channel}\n"
             "        odh:\n"
             f"          origin: {odh_origin}"
         )
-    rhds_acc_version = "" if rhds_channel == "stable" else f'          acc_version: "{resolved_acc_version}"\n'
     return (
         "      minimal:\n"
+        f'        channel_torch_version: "{resolved_torch}"\n'
         "        rhds:\n"
         f"          channel: {rhds_channel}\n"
-        f"{rhds_acc_version}"
+        f'          acc_version: "{resolved_acc_version}"\n'
         "        odh:\n"
         f"          origin: {odh_origin}\n"
         f'          acc_version: "{resolved_acc_version}"'
@@ -227,26 +232,22 @@ def write_gpu_minimal_versions_config(
     accelerator: str,
     full_version: str = "3.5.0",
     acc_version: str | None = None,
-    rhds_channel: str = "fast",
+    rhds_channel: str = "stable",
     odh_origin: str = "in-house",
     shared_acc_version: bool = False,
 ) -> None:
-    write_versions_config(
-        path,
-        full_version=full_version,
-        replacements=[
-            (
-                gpu_minimal_policy_block(accelerator),
-                gpu_minimal_policy_block(
-                    accelerator,
-                    acc_version=acc_version,
-                    rhds_channel=rhds_channel,
-                    odh_origin=odh_origin,
-                    shared_acc_version=shared_acc_version,
-                ),
-            )
-        ],
+    default_block = gpu_minimal_policy_block(accelerator)
+    updated_block = gpu_minimal_policy_block(
+        accelerator,
+        acc_version=acc_version,
+        rhds_channel=rhds_channel,
+        odh_origin=odh_origin,
+        shared_acc_version=shared_acc_version,
     )
+    replacements = None
+    if default_block != updated_block:
+        replacements = [(default_block, updated_block)]
+    write_versions_config(path, full_version=full_version, replacements=replacements)
 
 
 def write_versions_config(
@@ -266,17 +267,13 @@ def write_versions_config(
           full_version: "{full_version}"
           rhds_os_base: "{rhds_os_base}"
           python_version: "{python_version}"
-          channel_torch_version:
-            cpu: "2.13"
-            cuda: "2.13"
-            rocm: "2.12"
 
         artifacts:
           base_image:
             cpu:
+              channel_torch_version: "2.13"
               rhds:
-                channel: fast
-                version: "<full_version>"
+                channel: stable
               odh:
                 origin: in-house
                 version: "latest"
@@ -288,56 +285,56 @@ def write_versions_config(
 
             cuda:
               minimal:
+                acc_version: "25.0"
+                channel_torch_version: "2.13"
                 rhds:
-                  channel: fast
-                  acc_version: "25.0"
+                  channel: stable
                 odh:
                   origin: in-house
-                  acc_version: "25.0"
               pytorch:
+                acc_version: "25.0"
+                channel_torch_version: "2.13"
                 rhds:
-                  channel: fast
-                  acc_version: "25.0"
+                  channel: stable
                 odh:
                   origin: in-house
-                  acc_version: "25.0"
               pytorch-llmcompressor:
+                acc_version: "25.0"
+                channel_torch_version: "2.13"
                 rhds:
-                  channel: fast
-                  acc_version: "25.0"
+                  channel: stable
                 odh:
                   origin: in-house
-                  acc_version: "25.0"
               tensorflow:
+                acc_version: "24.9"
+                channel_torch_version: "2.13"
                 rhds:
-                  channel: fast
-                  acc_version: "24.9"
+                  channel: stable
                 odh:
                   origin: in-house
-                  acc_version: "24.9"
 
             rocm:
               minimal:
+                acc_version: "8.0"
+                channel_torch_version: "2.12"
                 rhds:
-                  channel: fast
-                  acc_version: "8.0"
+                  channel: stable
                 odh:
                   origin: in-house
-                  acc_version: "8.0"
               pytorch:
+                acc_version: "8.0"
+                channel_torch_version: "2.12"
                 rhds:
-                  channel: fast
-                  acc_version: "8.0"
+                  channel: stable
                 odh:
                   origin: in-house
-                  acc_version: "8.0"
               tensorflow:
+                acc_version: "8.0"
+                channel_torch_version: "2.12"
                 rhds:
-                  channel: fast
-                  acc_version: "8.0"
+                  channel: stable
                 odh:
                   origin: in-house
-                  acc_version: "8.0"
         """
     )
 
@@ -362,16 +359,13 @@ def test_load_versions_config_rejects_unexpected_keys(tmp_path: Path) -> None:
               full_version: "3.5.0"
               rhds_os_base: "el9.6"
               python_version: "3.12"
-              channel_torch_version:
-                cpu: "2.13"
-                cuda: "2.13"
-                rocm: "2.12"
 
             artifacts:
               base_image:
                 cpu:
+                  channel_torch_version: "2.13"
                   rhds:
-                    channel: fast
+                    channel: stable
                     version: "<full_version>"
                   odh:
                     origin: in-house
@@ -398,16 +392,13 @@ def test_load_versions_config_rejects_missing_required_keys(tmp_path: Path) -> N
             release:
               full_version: "3.5.0"
               python_version: "3.12"
-              channel_torch_version:
-                cpu: "2.13"
-                cuda: "2.13"
-                rocm: "2.12"
 
             artifacts:
               base_image:
                 cpu:
+                  channel_torch_version: "2.13"
                   rhds:
-                    channel: fast
+                    channel: stable
                     version: "<full_version>"
                   odh:
                     origin: in-house
@@ -435,20 +426,13 @@ def test_load_versions_config_accepts_schema_version_one(tmp_path: Path) -> None
 def test_load_versions_config_accepts_shared_gpu_acc_version_layout(tmp_path: Path) -> None:
     updater = load_updater()
     config = tmp_path / "versions_config.yml"
-    write_versions_config(
-        config,
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        acc_version: "25.0"\n        rhds:\n          channel: fast\n        odh:\n          origin: in-house',
-            )
-        ],
-    )
+    write_versions_config(config)
 
     loaded = updater.load_versions_config(config)
 
-    assert loaded.policy("cuda", "rhds", "minimal").mode == "fast"
-    assert loaded.policy("cuda", "rhds", "minimal").version == "25.0"
+    assert loaded.policy("cuda", "rhds", "minimal").mode == "stable"
+    assert loaded.policy("cuda", "rhds", "minimal").version is None
+    assert loaded.shared_acc_version("cuda", "minimal") == "25.0"
     assert loaded.policy("cuda", "odh", "minimal").mode == "in-house"
     assert loaded.policy("cuda", "odh", "minimal").version == "25.0"
 
@@ -456,15 +440,30 @@ def test_load_versions_config_accepts_shared_gpu_acc_version_layout(tmp_path: Pa
 def test_load_versions_config_rejects_mismatched_legacy_gpu_acc_versions(tmp_path: Path) -> None:
     updater = load_updater()
     config = tmp_path / "versions_config.yml"
-    write_versions_config(
-        config,
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "24.9"',
-            )
-        ],
+    write_versions_config(config)
+    text = config.read_text(encoding="utf-8").replace(
+        (
+            "      minimal:\n"
+            '        acc_version: "25.0"\n'
+            '        channel_torch_version: "2.13"\n'
+            "        rhds:\n"
+            "          channel: stable\n"
+            "        odh:\n"
+            "          origin: in-house"
+        ),
+        (
+            "      minimal:\n"
+            '        channel_torch_version: "2.13"\n'
+            "        rhds:\n"
+            "          channel: fast\n"
+            '          acc_version: "25.0"\n'
+            "        odh:\n"
+            "          origin: in-house\n"
+            '          acc_version: "24.9"'
+        ),
+        1,
     )
+    config.write_text(text, encoding="utf-8")
 
     with pytest.raises(ValueError, match="must match"):
         updater.load_versions_config(config)
@@ -516,16 +515,13 @@ def test_load_versions_config_rejects_non_scalar_cpu_version(tmp_path: Path) -> 
               full_version: "3.5.0"
               rhds_os_base: "el9.6"
               python_version: "3.12"
-              channel_torch_version:
-                cpu: "2.13"
-                cuda: "2.13"
-                rocm: "2.12"
 
             artifacts:
               base_image:
                 cpu:
+                  channel_torch_version: "2.13"
                   rhds:
-                    channel: fast
+                    channel: stable
                     version:
                       major: 3
                   odh:
@@ -537,51 +533,58 @@ def test_load_versions_config_rejects_non_scalar_cpu_version(tmp_path: Path) -> 
                     version: "latest"
                 cuda:
                   minimal:
+                    channel_torch_version: "2.13"
                     rhds:
-                      channel: fast
+                      channel: stable
                       acc_version: "25.0"
                     odh:
                       origin: in-house
                       acc_version: "25.0"
                   pytorch:
+                    channel_torch_version: "2.13"
                     rhds:
-                      channel: fast
+                      channel: stable
                       acc_version: "25.0"
                     odh:
                       origin: in-house
                       acc_version: "25.0"
                   pytorch-llmcompressor:
+                    channel_torch_version: "2.13"
                     rhds:
-                      channel: fast
+                      channel: stable
                       acc_version: "25.0"
                     odh:
                       origin: in-house
                       acc_version: "25.0"
                   tensorflow:
+                    channel_torch_version: "2.13"
                     rhds:
-                      channel: fast
+                      channel: stable
                       acc_version: "24.9"
                     odh:
                       origin: in-house
                       acc_version: "24.9"
                 rocm:
                   minimal:
+                    channel_torch_version: "2.12"
                     rhds:
-                      channel: fast
+                      channel: stable
                       acc_version: "8.0"
                     odh:
                       origin: in-house
                       acc_version: "8.0"
                   pytorch:
+                    channel_torch_version: "2.12"
                     rhds:
-                      channel: fast
+                      channel: stable
                       acc_version: "8.0"
                     odh:
                       origin: in-house
                       acc_version: "8.0"
                   tensorflow:
+                    channel_torch_version: "2.12"
                     rhds:
-                      channel: fast
+                      channel: stable
                       acc_version: "8.0"
                     odh:
                       origin: in-house
@@ -602,8 +605,8 @@ def test_load_versions_config_rejects_invalid_rhds_channel(tmp_path: Path) -> No
         config,
         replacements=[
             (
-                '      rhds:\n        channel: fast\n        version: "<full_version>"',
-                '      rhds:\n        channel: default\n        version: "<full_version>"',
+                "      rhds:\n        channel: stable",
+                "      rhds:\n        channel: default",
             )
         ],
     )
@@ -619,7 +622,7 @@ def test_load_versions_config_rejects_missing_cpu_version_for_fast(tmp_path: Pat
         config,
         replacements=[
             (
-                '      rhds:\n        channel: fast\n        version: "<full_version>"',
+                "      rhds:\n        channel: stable",
                 "      rhds:\n        channel: fast",
             )
         ],
@@ -636,8 +639,8 @@ def test_load_versions_config_rejects_cpu_acc_version_key(tmp_path: Path) -> Non
         config,
         replacements=[
             (
-                '      rhds:\n        channel: fast\n        version: "<full_version>"',
-                '      rhds:\n        channel: fast\n        acc_version: "<full_version>"',
+                "      rhds:\n        channel: stable",
+                '      rhds:\n        channel: stable\n        acc_version: "<full_version>"',
             )
         ],
     )
@@ -653,13 +656,25 @@ def test_load_versions_config_rejects_acc_version_for_stable(tmp_path: Path) -> 
         config,
         replacements=[
             (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        rhds:\n          channel: stable\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
+                "      minimal:\n"
+                '        acc_version: "25.0"\n'
+                '        channel_torch_version: "2.13"\n'
+                "        rhds:\n"
+                "          channel: stable\n"
+                "        odh:\n"
+                "          origin: in-house",
+                "      minimal:\n"
+                '        channel_torch_version: "2.13"\n'
+                "        rhds:\n"
+                "          channel: stable\n"
+                '          acc_version: "25.0"\n'
+                "        odh:\n"
+                "          origin: in-house",
             )
         ],
     )
 
-    with pytest.raises(ValueError, match="stable"):
+    with pytest.raises(ValueError, match="must not define acc_version"):
         updater.load_versions_config(config)
 
 
@@ -704,8 +719,20 @@ def test_load_versions_config_rejects_non_numeric_cuda_in_house_acc_version(tmp_
         config,
         replacements=[
             (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "latest"',
+                "      minimal:\n"
+                '        acc_version: "25.0"\n'
+                '        channel_torch_version: "2.13"\n'
+                "        rhds:\n"
+                "          channel: stable\n"
+                "        odh:\n"
+                "          origin: in-house",
+                "      minimal:\n"
+                '        channel_torch_version: "2.13"\n'
+                "        rhds:\n"
+                "          channel: stable\n"
+                "        odh:\n"
+                "          origin: in-house\n"
+                '          acc_version: "latest"',
             )
         ],
     )
@@ -932,14 +959,20 @@ def test_build_rhds_pinned_repository_cpu_includes_os_base() -> None:
     updater = load_updater()
     release = make_release(updater)
 
-    assert updater.build_rhds_pinned_repository("cpu", "3.6.0", release) == "quay.io/aipcc/base-images/cpu-torch2.13-el9.8"
+    assert (
+        updater.build_rhds_pinned_repository("cpu", "3.6.0", "2.13", release)
+        == "quay.io/aipcc/base-images/cpu-torch2.13-el9.8"
+    )
 
 
 def test_build_rhds_pinned_repository_cuda_keeps_acc_version_and_os_base() -> None:
     updater = load_updater()
     release = make_release(updater)
 
-    assert updater.build_rhds_pinned_repository("cuda", "13.0", release) == "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.8"
+    assert (
+        updater.build_rhds_pinned_repository("cuda", "13.0", "2.13", release)
+        == "quay.io/aipcc/base-images/cuda13.0-torch2.13-el9.8"
+    )
 
 
 def test_build_rhds_pinned_tag_targets_ga_family_on_rollback() -> None:
@@ -953,7 +986,7 @@ def test_build_rhds_pinned_tag_targets_ga_family_on_rollback() -> None:
 
 def test_resolve_latest_published_rhds_image_uses_skopeo_tags(monkeypatch: pytest.MonkeyPatch) -> None:
     updater = load_updater()
-    repository = updater.build_rhds_pinned_repository("cuda", "25.0", make_release(updater))
+    repository = updater.build_rhds_pinned_repository("cuda", "25.0", "2.13", make_release(updater))
 
     monkeypatch.setattr(
         updater.subprocess,
@@ -1608,7 +1641,7 @@ def test_plan_updates_uses_hard_coded_rhds_cpu_version_for_fast_channel(
         full_version="3.5.0",
         replacements=[
             (
-                '      rhds:\n        channel: fast\n        version: "<full_version>"',
+                "      rhds:\n        channel: stable",
                 '      rhds:\n        channel: fast\n        version: "3.4.0"',
             )
         ],
@@ -1721,16 +1754,7 @@ def test_plan_updates_allows_independent_mixed_rhds_channels(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     updater = load_updater()
-    write_versions_config(
-        tmp_path / "versions_config.yml",
-        full_version="3.5.0",
-        replacements=[
-            (
-                gpu_minimal_policy_block("cuda"),
-                gpu_minimal_policy_block("cuda", rhds_channel="stable"),
-            )
-        ],
-    )
+    write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     cpu_conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     cuda_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
@@ -1741,20 +1765,25 @@ def test_plan_updates_allows_independent_mixed_rhds_channels(
 
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
+        if "cpu-torch" in image:
+            return "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
+        return "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000000"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
-    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
-    stub_matching_rhds_stable_acc_version(monkeypatch, updater)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
     rendered = {update.target.path.name: update.updated_text.strip() for update in updates}
 
-    assert seen == ["quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771"]
+    assert seen == [
+        "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1777919771",
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771",
+    ]
     assert rendered["konflux.cpu.conf"] == pinned_base_image(
         "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
     )
-    assert rendered["konflux.cuda.conf"] == pinned_base_image(rhds_gpu_stable_image("cuda"))
+    assert rendered["konflux.cuda.conf"] == pinned_base_image(
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000000"
+    )
 
 
 def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
@@ -1776,22 +1805,23 @@ def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
 
     seen: list[str] = []
 
+    channel_image = "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1780000000"
+
     def fake_resolve(image: str, tag_cache=None) -> str:
         seen.append(image)
-        return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000000"
+        return channel_image
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
-    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
-    stub_matching_rhds_stable_acc_version(monkeypatch, updater)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
-    assert seen == ["quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771"]
-    assert rendered[minimal_conf] == pinned_base_image(rhds_gpu_stable_image("cuda"))
-    assert rendered[pytorch_conf] == pinned_base_image(
-        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000000"
-    )
+    assert seen == [
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771",
+        "quay.io/aipcc/base-images/cuda25.0-torch2.13-el9.6:1777919771",
+    ]
+    assert rendered[minimal_conf] == pinned_base_image(channel_image)
+    assert rendered[pytorch_conf] == pinned_base_image(channel_image)
 
 
 @pytest.mark.parametrize(
@@ -1820,32 +1850,44 @@ def test_plan_updates_uses_rhds_gpu_stable_repo(
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / f"konflux.{accelerator}.conf"
     write_conf(conf, f"BASE_IMAGE={current_image}")
 
-    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
-    stub_matching_rhds_stable_acc_version(monkeypatch, updater)
+    channel_repo = updater.build_rhds_pinned_repository(
+        accelerator,
+        acc_version,
+        default_channel_torch_version(accelerator),
+        make_release(updater, full_version="3.5.0", rhds_os_base="el9.6"),
+    )
+    channel_image = f"{channel_repo}:1780000000"
+
+    monkeypatch.setattr(
+        updater,
+        "resolve_latest_published_rhds_image",
+        lambda image, tag_cache=None: channel_image,
+    )
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image(rhds_gpu_stable_image(accelerator))
+    assert updates[0].updated_text.strip() == pinned_base_image(channel_image)
 
 
-def test_plan_updates_uses_rhds_cpu_stable_repo(tmp_path: Path) -> None:
+def test_plan_updates_uses_rhds_cpu_stable_repo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     updater = load_updater()
-    write_versions_config(
-        tmp_path / "versions_config.yml",
-        full_version="3.5.0",
-        replacements=[
-            (
-                '      rhds:\n        channel: fast\n        version: "<full_version>"',
-                "      rhds:\n        channel: stable",
-            )
-        ],
-    )
+    write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     write_conf(conf, f"BASE_IMAGE={RHDS_CPU_EA2_IMAGE}")
 
+    channel_image = "quay.io/aipcc/base-images/cpu-torch2.13-el9.6:1780000000"
+    monkeypatch.setattr(
+        updater,
+        "resolve_latest_published_rhds_image",
+        lambda image, tag_cache=None: channel_image,
+    )
+
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-image-cpu-stable-ubi9:3.5")
+    assert updates[0].updated_text.strip() == pinned_base_image(channel_image)
 
 
 def test_plan_updates_uses_odh_midstream_rocm_repo(tmp_path: Path) -> None:
@@ -1885,28 +1927,22 @@ def test_plan_updates_picks_rhds_stable_tag_matching_shared_acc_version_over_new
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     write_conf(conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
-    stub_rhds_repository_tags(
-        monkeypatch,
-        updater,
-        {
-            "quay.io/aipcc/base-images/cuda-stable": (
-                "3.5.0-1780598175",
-                "3.5.0-1780598176",
-            )
-        },
+    channel_repo = updater.build_rhds_pinned_repository(
+        "cuda",
+        "24.9",
+        "2.13",
+        make_release(updater, full_version="3.5.0", rhds_os_base="el9.6"),
     )
+    channel_image = f"{channel_repo}:1780598175"
     monkeypatch.setattr(
         updater,
-        "inspect_rhds_stable_acc_version",
-        lambda image, accelerator: {
-            rhds_gpu_stable_image("cuda", build="1780598175"): "24.9",
-            rhds_gpu_stable_image("cuda", build="1780598176"): "25.0",
-        }[image],
+        "resolve_latest_published_rhds_image",
+        lambda image, tag_cache=None: channel_image,
     )
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image(rhds_gpu_stable_image("cuda", build="1780598175"))
+    assert updates[0].updated_text.strip() == pinned_base_image(channel_image)
 
 
 def test_inspect_image_config_warns_in_red_on_skopeo_failure(
@@ -1947,19 +1983,16 @@ def test_plan_updates_raises_in_red_when_rhds_stable_candidates_cannot_be_inspec
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     write_conf(conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
-    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
-    monkeypatch.setattr(
-        updater.subprocess,
-        "run",
-        lambda *args, **kwargs: completed_process(returncode=1, stderr="fatal auth error"),
+    channel_repo = updater.build_rhds_pinned_repository(
+        "cuda",
+        "25.0",
+        "2.13",
+        make_release(updater, full_version="3.5.0", rhds_os_base="el9.6"),
     )
+    stub_rhds_repository_tags(monkeypatch, updater, {channel_repo: ()})
 
-    with caplog.at_level("WARNING"), pytest.raises(ValueError, match=r"matches configured shared acc_version 25\.0"):
+    with pytest.raises(ValueError, match="No published RHDS channel tags"):
         updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
-
-    assert len(caplog.records) == 1
-    assert caplog.records[-1].msg.startswith(f"{updater.ANSI_RED}WARNING:")
-    assert "fatal auth error" in caplog.text
 
 
 def test_plan_updates_raises_when_rhds_stable_acc_version_cannot_be_determined(
@@ -1979,10 +2012,15 @@ def test_plan_updates_raises_when_rhds_stable_acc_version_cannot_be_determined(
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     write_conf(conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
-    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
-    monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: None)
+    channel_repo = updater.build_rhds_pinned_repository(
+        "cuda",
+        "25.0",
+        "2.13",
+        make_release(updater, full_version="3.5.0", rhds_os_base="el9.6"),
+    )
+    stub_rhds_repository_tags(monkeypatch, updater, {channel_repo: ()})
 
-    with pytest.raises(ValueError, match=r"matches configured shared acc_version 25\.0"):
+    with pytest.raises(ValueError, match="No published RHDS channel tags"):
         updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
 
@@ -2003,17 +2041,16 @@ def test_plan_updates_raises_when_no_rhds_stable_image_matches_shared_acc_versio
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     write_conf(conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
-    stub_rhds_repository_tags(
-        monkeypatch,
-        updater,
-        {"quay.io/aipcc/base-images/cuda-stable": ("3.5.0-1780598175",)},
+    channel_repo = updater.build_rhds_pinned_repository(
+        "cuda",
+        "25.0",
+        "2.13",
+        make_release(updater, full_version="3.5.0", rhds_os_base="el9.6"),
     )
-    monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: "24.9")
+    stub_rhds_repository_tags(monkeypatch, updater, {channel_repo: ()})
 
-    with pytest.raises(ValueError, match=r"matches configured shared acc_version 25\.0") as exc_info:
+    with pytest.raises(ValueError, match="No published RHDS channel tags"):
         updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
-
-    assert "older acc_version 24.9" in str(exc_info.value)
 
 
 def test_plan_updates_uses_odh_midstream_cpu_repo(tmp_path: Path) -> None:
@@ -2246,45 +2283,30 @@ def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
+    channel_image = "quay.io/aipcc/base-images/cuda12.9-torch2.13-el9.6:1777919771"
     write_conf(
         conf,
         textwrap.dedent(
-            """\
+            f"""\
             INDEX_URL=unchanged
-            BASE_IMAGE=quay.io/aipcc/base-images/cuda-12.9-el9.6:3.5.0-ea.2-1777919771
+            BASE_IMAGE={channel_image}
             PYLOCK_FLAVOR=cuda
             RELEASE=3.5
             """
         ).rstrip(),
     )
 
-    seen: list[str] = []
-
-    def fake_list(repository: str, tag_cache=None) -> tuple[str, ...]:
-        seen.append(repository)
-        if repository == "quay.io/example/testing/cuda-stable":
-            return ("3.5.0-9999999999",)
-        return ()
-
-    monkeypatch.setattr(updater, "list_rhds_repository_tags", fake_list)
-    monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: "12.9")
-
-    assert (
-        updater.main(
-            [
-                "--root",
-                str(tmp_path),
-                "--config",
-                str(tmp_path / "versions_config.yml"),
-                "--rhds-stable-repo-override=cuda=quay.io/example/testing/cuda-stable",
-            ]
-        )
-        == 0
+    monkeypatch.setattr(
+        updater,
+        "resolve_latest_published_rhds_image",
+        lambda image, tag_cache=None: "quay.io/aipcc/base-images/cuda12.9-torch2.13-el9.6:1780000000",
     )
-    assert seen == ["quay.io/example/testing/cuda-stable"]
+    stub_empty_rhds_tag_listing(monkeypatch, updater)
+
+    assert updater.main(["--root", str(tmp_path), "--config", str(tmp_path / "versions_config.yml")]) == 0
     assert conf.read_text(encoding="utf-8").splitlines() == [
         "INDEX_URL=unchanged",
-        pinned_base_image("quay.io/example/testing/cuda-stable:3.5.0-9999999999"),
+        pinned_base_image("quay.io/aipcc/base-images/cuda12.9-torch2.13-el9.6:1780000000"),
         "PYLOCK_FLAVOR=cuda",
         "RELEASE=3.5",
     ]

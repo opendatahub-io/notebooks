@@ -20,7 +20,8 @@ from tests import PROJECT_ROOT
 
 _GPU_FLAVOR = {
     "acc_version": "13.0",
-    "rhds": {"channel": "fast"},
+    "channel_torch_version": "2.13",
+    "rhds": {"channel": "stable"},
     "odh": {"origin": "in-house"},
 }
 
@@ -32,16 +33,12 @@ def _minimal_valid_config() -> dict:
             "full_version": "3.5.0",
             "rhds_os_base": "el9.6",
             "python_version": "3.12",
-            "channel_torch_version": {
-                "cpu": "2.13",
-                "cuda": "2.13",
-                "rocm": "2.12",
-            },
         },
         "artifacts": {
             "base_image": {
                 "cpu": {
-                    "rhds": {"channel": "fast", "version": "3.5.0"},
+                    "channel_torch_version": "2.13",
+                    "rhds": {"channel": "stable"},
                     "odh": {"origin": "in-house", "version": "latest"},
                 },
                 "baseline_cpu": {
@@ -53,7 +50,8 @@ def _minimal_valid_config() -> dict:
                 "rocm": {
                     "minimal": {
                         "acc_version": "7.14",
-                        "rhds": {"channel": "fast"},
+                        "channel_torch_version": "2.12",
+                        "rhds": {"channel": "stable"},
                         "odh": {"origin": "in-house"},
                     },
                 },
