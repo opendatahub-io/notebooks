@@ -26,6 +26,8 @@ spec:
     value: quay.io/rhoai/pull-request-pipelines:odh-workbench-jupyter-universal-cpu-py312-{{revision}}
   - name: dockerfile
     value: Dockerfile.konflux.cpu
+  - name: build-args-file
+    value: jupyter/universal/ubi9-python-3.12/build-args/konflux.cpu.conf
   - name: path-context
     value: jupyter/universal/ubi9-python-3.12
   - name: image-expires-after
