@@ -11,7 +11,7 @@ folder (for example `../my-pytorch-cuda/`).
 | `collections/` | TrustyAI, LLM Compressor, PyTorch package sets + constraints |
 | `bin/entrypoint.sh` | Jupyter by default; `runtime` → Elyra bootstrapper |
 | `lib/` | Wizard helpers (not copied into customer images) |
-| `defaults/` | Base image and index URL catalogs |
+| `defaults/` | Base image and channel index URL catalogs (`bases.env`, `channels.env`) |
 
 Do **not** run `make build RECIPE=src`.
 

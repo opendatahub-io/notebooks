@@ -82,6 +82,20 @@ class StrictModel(BaseModel):
     model_config = STRICT_CONFIG
 
 
+ChannelTorchVersion = Annotated[
+    str,
+    StringConstraints(pattern=STREAM_VERSION_PATTERN),
+    Field(
+        title="Channel torch version",
+        description=(
+            "Torch major.minor stream for à-la-carte RHDS channel repository naming "
+            "together with acc_version on GPU flavors."
+        ),
+        examples=["2.13"],
+    ),
+]
+
+
 class Release(StrictModel):
     """Release metadata shared across RHDS and ODH base-image resolution."""
 
@@ -129,6 +143,7 @@ class OdhCpuPolicy(StrictModel):
 class CpuArtifact(StrictModel):
     """Shared CPU base-image policy (not per image-name)."""
 
+    channel_torch_version: ChannelTorchVersion
     rhds: RhdsCpuPolicy
     odh: OdhCpuPolicy
 
@@ -170,6 +185,7 @@ class GpuFlavor(StrictModel):
     """Shared GPU flavor policy block."""
 
     acc_version: AccVersion
+    channel_torch_version: ChannelTorchVersion
     rhds: RhdsGpuPolicy
     odh: OdhGpuPolicy
 
@@ -239,7 +255,8 @@ def build_json_schema() -> dict[str, Any]:
         "artifacts": {
             "base_image": {
                 "cpu": {
-                    "rhds": {"channel": "fast", "version": "<full_version>"},
+                    "channel_torch_version": "2.13",
+                    "rhds": {"channel": "stable"},
                     "odh": {"origin": "in-house", "version": "latest"},
                 },
                 "baseline_cpu": {
@@ -248,14 +265,16 @@ def build_json_schema() -> dict[str, Any]:
                 "cuda": {
                     "minimal": {
                         "acc_version": "13.0",
-                        "rhds": {"channel": "fast"},
+                        "channel_torch_version": "2.13",
+                        "rhds": {"channel": "stable"},
                         "odh": {"origin": "in-house"},
                     }
                 },
                 "rocm": {
                     "minimal": {
                         "acc_version": "7.14",
-                        "rhds": {"channel": "fast"},
+                        "channel_torch_version": "2.12",
+                        "rhds": {"channel": "stable"},
                         "odh": {"origin": "in-house"},
                     }
                 },

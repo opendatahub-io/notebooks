@@ -152,7 +152,7 @@ generate_recipe() {
     aipcc)
       product="rhoai"
       case "${accel_key}" in
-        cpu) base_image="${aipcc_cpu_BASE_IMAGE:-quay.io/aipcc/base-images/cpu-el9.8:latest}" ;;
+        cpu) base_image="${aipcc_cpu_BASE_IMAGE}" ;;
         cuda_13_0) base_image="${aipcc_cuda_13_0_BASE_IMAGE}" ;;
         cuda_12_9) base_image="${aipcc_cuda_12_9_BASE_IMAGE}" ;;
         rocm_7_14) base_image="${aipcc_rocm_7_14_BASE_IMAGE}" ;;
@@ -165,7 +165,7 @@ generate_recipe() {
     pypi) index_url="${pypi_INDEX_URL}" ;;
     aipcc)
       case "${accel_key}" in
-        cpu) index_url="${aipcc_cpu_INDEX_URL:-https://packages.redhat.com/api/pypi/public-rhai/rhoai/cpu-ubi9/simple/}" ;;
+        cpu) index_url="${aipcc_cpu_INDEX_URL:-https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8/simple/}" ;;
         cuda_13_0) index_url="${aipcc_cuda_13_0_INDEX_URL}" ;;
         cuda_12_9) index_url="${aipcc_cuda_12_9_INDEX_URL}" ;;
         rocm_7_14) index_url="${aipcc_rocm_7_14_INDEX_URL}" ;;

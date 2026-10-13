@@ -324,6 +324,7 @@ export class StagedChanges {
 
   async commit(message: string): Promise<GitHistory> {
     const { git } = this.session.ui;
+    await expect(git.summary).toBeVisible({ timeout: 30_000 });
     await git.summary.fill(message);
     await expect(git.commit).toBeEnabled();
     await git.commit.click();

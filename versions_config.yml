@@ -20,9 +20,9 @@ release:
 artifacts:
   base_image:
     cpu:
+      channel_torch_version: "2.13"
       rhds:
-        channel: fast
-        version: "<full_version>"
+        channel: stable
       odh:
         origin: in-house
         version: "latest"
@@ -35,44 +35,51 @@ artifacts:
     cuda:
       minimal:
         acc_version: "13.0"
+        channel_torch_version: "2.13"
         rhds:
-          channel: fast
+          channel: stable
         odh:
           origin: in-house
       pytorch:
         acc_version: "13.0"
+        channel_torch_version: "2.13"
         rhds:
-          channel: fast
+          channel: stable
         odh:
           origin: in-house
       pytorch-llmcompressor:
         acc_version: "13.0"
+        channel_torch_version: "2.13"
         rhds:
-          channel: fast
+          channel: stable
         odh:
           origin: in-house
       tensorflow:
         acc_version: "12.9"
+        channel_torch_version: "2.13"
         rhds:
-          channel: fast
+          channel: stable
         odh:
           origin: in-house
     rocm:
       minimal:
         acc_version: "7.14"
+        channel_torch_version: "2.12"
         rhds:
-          channel: fast
+          channel: stable
         odh:
           origin: in-house
       pytorch:
         acc_version: "7.14"
+        channel_torch_version: "2.12"
         rhds:
-          channel: fast
+          channel: stable
         odh:
           origin: in-house
       tensorflow:
         acc_version: "7.14"
+        channel_torch_version: "2.12"
         rhds:
-          channel: fast
+          channel: stable
         odh:
           origin: in-house

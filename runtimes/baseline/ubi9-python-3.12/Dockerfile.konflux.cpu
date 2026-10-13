@@ -51,7 +51,7 @@ EOF
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 
 RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
-    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+    bash /utils/dnf-helper.sh install perl-interpreter mesa-libGL skopeo compat-openssl11 openshift-clients
 
 # ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
 RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
@@ -111,7 +111,7 @@ COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-package
 USER 1001:0
 
 ### BEGIN UV version
-ARG UV_VERSION=0.12.13
+ARG UV_VERSION=0.13.0
 
 ### END UV version
 RUN python3 -m pip install --no-cache-dir --no-index \

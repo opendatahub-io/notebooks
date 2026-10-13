@@ -15,10 +15,24 @@ from urllib.request import Request, urlopen
 
 import typer
 
-RHOAI_INDEX_ROOT = "https://packages.redhat.com/api/pypi/public-rhai/rhoai"
+from scripts.aipcc_channel_images import parse_channel_image_name
+
+RHAI_PYPI_API_ROOT = "https://packages.redhat.com/api/pypi/public-rhai"
+_RHAI_PYPI_PATH_PREFIX = "/api/pypi/public-rhai/"
 INDEX_CHECK_TIMEOUT_SECONDS = 5.0
 INDEX_URL_LABEL = "com.redhat.aiplatform.index_url"
 SKOPEO_TIMEOUT_SECONDS = 60
+
+_RHOAI_CHANNEL_INDEX_PATH_RE = re.compile(
+    r"/public-rhai/(?P<channel>[^/]+)/simple/?$",
+)
+# Accepts tag (:build), digest (@sha256:…), or tag+digest (:build@sha256:…).
+_BASE_IMAGE_RE = re.compile(
+    r"^quay\.io/aipcc/base-images/(?P<image>[^:@]+)(?::(?P<tag>[^@]+)(?:@sha256:[0-9a-f]+)?|@sha256:[0-9a-f]+)$",
+)
+_RELEASE_OVERRIDE_RE = re.compile(r"^(?P<minor>\d+\.\d+)(?:-EA(?P<ea>\d+))?$")
+
+app = typer.Typer(add_completion=False, no_args_is_help=True)
 
 
 class IndexResolutionError(ValueError):
@@ -35,25 +49,6 @@ class ResolvedIndexConfig:
     accelerator: str
     release: str
     index_url: str
-
-
-_RHOAI_INDEX_PATH_RE = re.compile(
-    r"/rhoai/(?P<release>[^/]+)/(?P<accelerator>[^/]+)-ubi9(?:-test)?/simple/?$",
-)
-# Accepts tag (:3.5.0-…), digest (@sha256:…), or tag+digest (:3.5.0-…@sha256:…).
-# Image name stops at : or @.
-_BASE_IMAGE_RE = re.compile(
-    r"^quay\.io/aipcc/base-images/(?P<image>[^:@]+)(?::(?P<tag>[^@]+)(?:@sha256:[0-9a-f]+)?|@sha256:[0-9a-f]+)$",
-)
-_RELEASE_OVERRIDE_RE = re.compile(r"^(?P<minor>\d+\.\d+)(?:-EA(?P<ea>\d+))?$")
-_ACCELERATOR_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"^cpu(?:-el\d+(?:\.\d+)?)?$"), "cpu"),
-    (re.compile(r"^cuda-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "cuda"),
-    (re.compile(r"^rocm-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "rocm"),
-)
-_TAG_RE = re.compile(r"^(?P<minor>\d+\.\d+)\.\d+(?:-ea\.(?P<ea>\d+))?(?:[-.].+)?$")
-
-app = typer.Typer(add_completion=False, no_args_is_help=True)
 
 
 def read_conf_file(conf_file: Path) -> dict[str, str]:
@@ -95,57 +90,51 @@ def is_unexpanded_label_index_url(index_url: str) -> bool:
     return "${" in index_url
 
 
+def normalize_skopeo_image_reference(base_image: str) -> str:
+    """Skopeo cannot inspect references that include both a tag and a digest."""
+    digest_match = re.search(r"@sha256:[0-9a-f]+", base_image)
+    if digest_match is None:
+        return base_image
+    prefix = base_image[: digest_match.start()]
+    digest = base_image[digest_match.start() :]
+    if ":" in prefix:
+        return f"{prefix.rsplit(':', 1)[0]}{digest}"
+    return base_image
+
+
 def parse_accelerator(image_name: str, conf_file: Path) -> str:
-    for pattern, prefix in _ACCELERATOR_PATTERNS:
-        match = pattern.fullmatch(image_name)
-        if not match:
-            continue
-        version = match.groupdict().get("version")
-        return prefix if version is None else f"{prefix}{version}"
-    raise IndexResolutionError(f"Unsupported BASE_IMAGE accelerator in {conf_file}: {image_name}")
+    if channel := parse_channel_image_name(image_name):
+        return channel
+    raise IndexResolutionError(f"Unsupported à-la-carte BASE_IMAGE in {conf_file}: {image_name}")
 
 
 def _format_release(minor: str, ea: str | None) -> str:
     return minor if ea is None else f"{minor}-EA{int(ea)}"
 
 
-def parse_release(tag: str, conf_file: Path) -> str:
-    match = _TAG_RE.fullmatch(tag)
-    if match is None:
-        raise IndexResolutionError(f"Unsupported BASE_IMAGE tag in {conf_file}: {tag}")
-    return _format_release(match.group("minor"), match.group("ea"))
-
-
 def parse_release_override(release: str, conf_file: Path) -> str:
-    """Normalize RELEASE from a build-args conf (used for digest-pinned BASE_IMAGE)."""
+    """Normalize RELEASE from a build-args conf (consuming product version)."""
     match = _RELEASE_OVERRIDE_RE.fullmatch(release)
     if match is None:
         raise IndexResolutionError(f"Unsupported RELEASE in {conf_file}: {release}")
     return _format_release(match.group("minor"), match.group("ea"))
 
 
-def build_rhoai_index_url(*, release: str, accelerator: str) -> str:
-    return f"{RHOAI_INDEX_ROOT}/{release}/{accelerator}-ubi9/simple/"
+def build_channel_index_url(channel: str, *, test: bool = False) -> str:
+    segment = f"{channel}-test" if test else channel
+    return f"{RHAI_PYPI_API_ROOT}/{segment}/simple/"
 
 
-def stable_rhoai_release(release: str) -> str:
-    """Drop EA suffix when resolving ROCm indexes from stable 3.5 profiles."""
-    return release.split("-EA", maxsplit=1)[0]
-
-
-def build_rhoai_test_index_url(*, release: str, accelerator: str) -> str:
-    return f"{RHOAI_INDEX_ROOT}/{release}/{accelerator}-ubi9-test/simple/"
-
-
-def index_url_candidates(*, release: str, accelerator: str) -> tuple[str, str]:
+def channel_index_url_candidates(channel: str) -> tuple[str, str]:
     return (
-        build_rhoai_index_url(release=release, accelerator=accelerator),
-        build_rhoai_test_index_url(release=release, accelerator=accelerator),
+        build_channel_index_url(channel, test=False),
+        build_channel_index_url(channel, test=True),
     )
 
 
 def inspect_base_image_index_url(base_image: str) -> str:
     """Extract the index URL from the base image's com.redhat.aiplatform.index_url label via skopeo."""
+    skopeo_ref = normalize_skopeo_image_reference(base_image)
     try:
         result = subprocess.run(
             [
@@ -158,7 +147,7 @@ def inspect_base_image_index_url(base_image: str) -> str:
                 "--override-os",
                 "linux",
                 "--config",
-                f"docker://{base_image}",
+                f"docker://{skopeo_ref}",
             ],
             capture_output=True,
             text=True,
@@ -197,38 +186,45 @@ def inspect_base_image_index_url(base_image: str) -> str:
 def validate_label_index_url(index_url: str, base_image: str) -> None:
     """Validate that a label-provided index URL is well-formed and points to the expected host."""
     parsed = urlparse(index_url)
-    expected_prefix = urlparse(RHOAI_INDEX_ROOT)
+    expected_prefix = urlparse(RHAI_PYPI_API_ROOT)
     if parsed.scheme != "https":
         raise IndexResolutionError(f"{INDEX_URL_LABEL} label in {base_image} has unsupported scheme: {index_url}")
     if parsed.netloc != expected_prefix.netloc:
         raise IndexResolutionError(f"{INDEX_URL_LABEL} label in {base_image} has unexpected host: {index_url}")
-    if not _RHOAI_INDEX_PATH_RE.search(parsed.path):
+    match = _RHOAI_CHANNEL_INDEX_PATH_RE.search(parsed.path)
+    if match is None:
         raise IndexResolutionError(f"{INDEX_URL_LABEL} label in {base_image} has unexpected path: {index_url}")
+    channel = match.group("channel")
+    if channel == "rhoai" or channel.startswith("rhoai/"):
+        raise IndexResolutionError(f"{INDEX_URL_LABEL} label in {base_image} has deprecated path: {index_url}")
 
 
 def build_test_variant_url(index_url: str) -> str | None:
-    """Derive the -test fallback URL from a production index URL.
-
-    Production: .../rhoai/{release}/{accelerator}-ubi9/simple/
-    Test:       .../rhoai/{release}/{accelerator}-ubi9-test/simple/
-    """
+    """Derive the -test fallback URL from a production channel index URL."""
     parsed = urlparse(index_url)
     path = parsed.path
-    if "-ubi9-test/simple" in path:
+    channel_match = _RHOAI_CHANNEL_INDEX_PATH_RE.search(path)
+    if channel_match is None:
         return None
-    replaced = re.sub(r"-ubi9/simple(/?)$", r"-ubi9-test/simple\1", path)
-    if replaced == path:
+    channel = channel_match.group("channel")
+    if channel.endswith("-test"):
         return None
-    return urlunparse(parsed._replace(path=replaced))
+    test_path = path.replace(f"/{channel}/simple", f"/{channel}-test/simple", 1)
+    if test_path == path:
+        return None
+    return urlunparse(parsed._replace(path=test_path))
 
 
-def parse_release_and_accelerator_from_url(index_url: str) -> tuple[str, str]:
-    """Extract release and accelerator from a validated RHOAI index URL path."""
+def parse_channel_from_index_url(index_url: str) -> str:
+    """Return the channel id from an à-la-carte index URL (production or -test)."""
     parsed = urlparse(index_url)
-    match = _RHOAI_INDEX_PATH_RE.search(parsed.path)
+    match = _RHOAI_CHANNEL_INDEX_PATH_RE.search(parsed.path)
     if match is None:
-        raise IndexResolutionError(f"Cannot extract release/accelerator from index URL: {index_url}")
-    return (match.group("release"), match.group("accelerator"))
+        raise IndexResolutionError(f"Cannot extract channel from index URL: {index_url}")
+    channel = match.group("channel")
+    if channel.endswith("-test"):
+        return channel.removesuffix("-test")
+    return channel
 
 
 def ensure_json_format_param(url: str) -> str:
@@ -241,12 +237,12 @@ def ensure_json_format_param(url: str) -> str:
 def validated_index_probe_url(index_url: str) -> str:
     probe_url = ensure_json_format_param(index_url)
     parsed = urlparse(probe_url)
-    expected_prefix = urlparse(RHOAI_INDEX_ROOT)
+    expected_prefix = urlparse(RHAI_PYPI_API_ROOT)
     if parsed.scheme != "https":
         raise IndexResolutionError(f"Unsupported index URL scheme for availability probe: {index_url}")
     if parsed.netloc != expected_prefix.netloc:
         raise IndexResolutionError(f"Unsupported index URL host for availability probe: {index_url}")
-    if not parsed.path.startswith(expected_prefix.path):
+    if not parsed.path.startswith(_RHAI_PYPI_PATH_PREFIX):
         raise IndexResolutionError(f"Unsupported index URL path for availability probe: {index_url}")
     return probe_url
 
@@ -285,6 +281,7 @@ def _resolve_from_label(
     *,
     flavor: str,
     product: str,
+    release_override: str | None = None,
 ) -> ResolvedIndexConfig | None:
     try:
         label_url = inspect_base_image_index_url(base_image)
@@ -294,8 +291,12 @@ def _resolve_from_label(
     except IndexResolutionError:
         return None
 
+    if not release_override:
+        return None
+
     selected_index_url = _select_index_url_from_label(label_url, conf_file)
-    release, accelerator = parse_release_and_accelerator_from_url(selected_index_url)
+    release = parse_release_override(release_override, conf_file)
+    channel = parse_channel_from_index_url(selected_index_url)
 
     return ResolvedIndexConfig(
         conf_file=conf_file,
@@ -303,7 +304,7 @@ def _resolve_from_label(
         index_profile="rhoai",
         flavor=flavor,
         base_image=base_image,
-        accelerator=accelerator,
+        accelerator=channel,
         release=release,
         index_url=selected_index_url,
     )
@@ -321,49 +322,29 @@ def _resolve_from_base_image_ref(
     if match is None:
         raise IndexResolutionError(f"Unsupported BASE_IMAGE format in {conf_file}: {base_image}")
 
-    accelerator = parse_accelerator(match.group("image"), conf_file)
-    tag = match.group("tag")
-    if tag is not None:
-        release = parse_release(tag, conf_file)
-    elif release_override:
-        release = parse_release_override(release_override, conf_file)
-    else:
+    image_name = match.group("image")
+    channel = parse_channel_image_name(image_name)
+    if channel is None:
+        raise IndexResolutionError(f"Unsupported à-la-carte BASE_IMAGE in {conf_file}: {image_name}")
+    if not release_override:
         raise IndexResolutionError(
-            f"Digest-pinned BASE_IMAGE in {conf_file} requires RELEASE for index resolution fallback: {base_image}"
+            f"Channel BASE_IMAGE in {conf_file} requires RELEASE for index resolution: {base_image}"
         )
-    release_candidates = [release]
-    if accelerator.startswith("rocm"):
-        stable = stable_rhoai_release(release)
-        if stable != release:
-            release_candidates.insert(0, stable)
-
-    selected_index_url: str | None = None
-    checked_urls: list[str] = []
-    for release_candidate in release_candidates:
-        production_url, test_url = index_url_candidates(
-            release=release_candidate,
-            accelerator=accelerator,
-        )
-        for candidate_url in (production_url, test_url):
-            checked_urls.append(candidate_url)
-            if index_url_exists(candidate_url):
-                selected_index_url = candidate_url
-                break
-        if selected_index_url is not None:
-            break
-
+    release = parse_release_override(release_override, conf_file)
+    production_url, test_url = channel_index_url_candidates(channel)
+    checked_urls = [production_url, test_url]
+    selected_index_url = next((url for url in checked_urls if index_url_exists(url)), None)
     if selected_index_url is None:
         raise IndexResolutionError(
             f"No production or -test RH index is available for {conf_file}: " + " / ".join(checked_urls)
         )
-
     return ResolvedIndexConfig(
         conf_file=conf_file,
         product=product,
         index_profile="rhoai",
         flavor=flavor,
         base_image=base_image,
-        accelerator=accelerator,
+        accelerator=channel,
         release=release,
         index_url=selected_index_url,
     )
@@ -389,12 +370,14 @@ def resolve_index_config(
         raise IndexResolutionError(f"BASE_IMAGE is missing in {conf_file}")
 
     flavor = resolve_flavor(conf_file, entries)
+    release_override = entries.get("RELEASE")
 
     if resolved := _resolve_from_label(
         base_image,
         conf_file,
         flavor=flavor,
         product=product,
+        release_override=release_override,
     ):
         return resolved
 
@@ -403,7 +386,7 @@ def resolve_index_config(
         conf_file,
         flavor=flavor,
         product=product,
-        release_override=entries.get("RELEASE"),
+        release_override=release_override,
     )
 
 

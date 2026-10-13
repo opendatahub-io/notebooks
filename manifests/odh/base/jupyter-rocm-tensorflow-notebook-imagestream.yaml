@@ -23,13 +23,13 @@ spec:
           [
             {"name": "ROCm", "version": "7.14"},
             {"name": "Python", "version": "v3.12"},
-            {"name": "TensorFlow-ROCm", "version": "2.20"}
+            {"name": "TensorFlow-ROCm", "version": "2.21"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
             {"name": "JupyterLab", "version": "4.5"},
-            {"name": "TensorFlow-ROCm", "version": "2.20"},
+            {"name": "TensorFlow-ROCm", "version": "2.21"},
             {"name": "Tensorboard", "version": "2.20"},
             {"name": "Boto3", "version": "1.43"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
@@ -46,7 +46,7 @@ spec:
             {"name": "Sklearn-onnx", "version": "1.20"},
             {"name": "Psycopg", "version": "3.3"},
             {"name": "MySQL Connector/Python", "version": "26.7"},
-            {"name": "MLflow", "version": "3.16"},
+            {"name": "MLflow", "version": "3.17"},
             {"name": "Feast", "version": "0.66"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9

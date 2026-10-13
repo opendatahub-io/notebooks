@@ -300,10 +300,11 @@ def test_get_index_flags_uses_konflux_conf(
     build_args = project_dir / "build-args"
     build_args.mkdir(parents=True)
     (build_args / "konflux.cpu.conf").write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488\nPYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\n",
+        "BASE_IMAGE=quay.io/aipcc/base-images/cpu-torch2.13-el9.8:1791476146\n"
+        "PYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\nRELEASE=3.6\n",
         encoding="utf-8",
     )
-    label_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    label_url = "https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8/simple/"
     monkeypatch.setattr(
         resolver,
         "inspect_base_image_index_url",
@@ -318,7 +319,7 @@ def test_get_index_flags_uses_konflux_conf(
     flags = pg.get_index_flags(project_dir, "cpu", pg.LogBuffer())
 
     assert flags == [
-        "--default-index=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/?format=json",
+        "--default-index=https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8/simple/?format=json",
     ]
 
 
@@ -330,10 +331,11 @@ def test_get_index_flags_falls_back_to_test_index(
     build_args = project_dir / "build-args"
     build_args.mkdir(parents=True)
     (build_args / "konflux.cpu.conf").write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488\nPYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\n",
+        "BASE_IMAGE=quay.io/aipcc/base-images/cpu-torch2.13-el9.8:1791476146\n"
+        "PYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\nRELEASE=3.6\n",
         encoding="utf-8",
     )
-    label_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    label_url = "https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8/simple/"
     monkeypatch.setattr(
         resolver,
         "inspect_base_image_index_url",
@@ -342,13 +344,13 @@ def test_get_index_flags_falls_back_to_test_index(
     monkeypatch.setattr(
         resolver,
         "index_url_exists",
-        lambda url: url.endswith("/cpu-ubi9-test/simple/"),
+        lambda url: url.endswith("/cpu-torch2.13-el9.8-test/simple/"),
     )
 
     flags = pg.get_index_flags(project_dir, "cpu", pg.LogBuffer())
 
     assert flags == [
-        "--default-index=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/?format=json",
+        "--default-index=https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8-test/simple/?format=json",
     ]
 
 

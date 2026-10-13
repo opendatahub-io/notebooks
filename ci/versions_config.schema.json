@@ -76,6 +76,15 @@
       "additionalProperties": false,
       "description": "Shared CPU base-image policy (not per image-name).",
       "properties": {
+        "channel_torch_version": {
+          "description": "Torch major.minor stream for \u00e0-la-carte RHDS channel repository naming together with acc_version on GPU flavors.",
+          "examples": [
+            "2.13"
+          ],
+          "pattern": "^[0-9]+\\.[0-9]+$",
+          "title": "Channel torch version",
+          "type": "string"
+        },
         "rhds": {
           "discriminator": {
             "mapping": {
@@ -99,6 +108,7 @@
         }
       },
       "required": [
+        "channel_torch_version",
         "rhds",
         "odh"
       ],
@@ -125,6 +135,15 @@
           "title": "Accelerator version",
           "type": "string"
         },
+        "channel_torch_version": {
+          "description": "Torch major.minor stream for \u00e0-la-carte RHDS channel repository naming together with acc_version on GPU flavors.",
+          "examples": [
+            "2.13"
+          ],
+          "pattern": "^[0-9]+\\.[0-9]+$",
+          "title": "Channel torch version",
+          "type": "string"
+        },
         "rhds": {
           "discriminator": {
             "mapping": {
@@ -149,6 +168,7 @@
       },
       "required": [
         "acc_version",
+        "channel_torch_version",
         "rhds",
         "odh"
       ],
@@ -362,9 +382,9 @@
       "artifacts": {
         "base_image": {
           "cpu": {
+            "channel_torch_version": "2.13",
             "rhds": {
-              "channel": "fast",
-              "version": "<full_version>"
+              "channel": "stable"
             },
             "odh": {
               "origin": "in-house",
@@ -380,8 +400,9 @@
           "cuda": {
             "minimal": {
               "acc_version": "13.0",
+              "channel_torch_version": "2.13",
               "rhds": {
-                "channel": "fast"
+                "channel": "stable"
               },
               "odh": {
                 "origin": "in-house"
@@ -391,8 +412,9 @@
           "rocm": {
             "minimal": {
               "acc_version": "7.14",
+              "channel_torch_version": "2.12",
               "rhds": {
-                "channel": "fast"
+                "channel": "stable"
               },
               "odh": {
                 "origin": "in-house"
