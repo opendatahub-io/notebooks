@@ -250,9 +250,11 @@ podman run --rm --entrypoint /opt/app-root/bin/entrypoint.sh \
   runtime --help || true
 ```
 
-**Base images:** AIPCC repos do not publish `:latest`. Pins live in
-`src/defaults/bases.env` (aligned with `jupyter/*/build-args/konflux.*.conf`).
-Refresh when those pins move.
+**Base images:** AIPCC channel repos (`cpu-torch2.13-el9.8`, `cuda13.0-torch2.13-el9.8`, …)
+do not publish `:latest`. Pins and channel `INDEX_URL`s live in `src/defaults/bases.env`
+and `src/defaults/channels.env` (aligned with `jupyter/*/build-args/konflux.*.conf` and
+`base-images/build-args/*.conf`). Refresh via `gmake sync-build-args-from-versions` on the
+notebooks repo, then copy updated pins into `custom-workbenches/src/defaults/`.
 
 **Subscription:** Quay pull access ≠ RHEL entitlements. If `dnf` fails with
 “Unable to read consumer identity” / “no enabled repositories”, re-do

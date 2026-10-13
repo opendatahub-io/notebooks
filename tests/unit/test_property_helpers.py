@@ -185,55 +185,34 @@ def test_sanitize_sarif_properties(data: dict[str, Any]) -> None:
 
 
 @st.composite
-def rhoai_accelerators(draw: st.DrawFn) -> str:
-    """Generate accelerator tokens shaped like parse_accelerator's output (e.g. cuda12.9)."""
-    kind = draw(st.sampled_from(["cpu", "cuda", "rocm"]))
-    if kind == "cpu":
-        return "cpu"
-    major = draw(st.integers(min_value=0, max_value=99))
-    minor = draw(st.integers(min_value=0, max_value=99))
-    return f"{kind}{major}.{minor}"
-
-
-@st.composite
-def rhoai_releases(draw: st.DrawFn) -> str:
-    """Generate release strings shaped like _format_release's output (e.g. 3.5-EA2)."""
-    major = draw(st.integers(min_value=0, max_value=99))
-    minor = draw(st.integers(min_value=0, max_value=99))
-    base = f"{major}.{minor}"
-    ea = draw(st.none() | st.integers(min_value=0, max_value=99))
-    return base if ea is None else f"{base}-EA{ea}"
+def channel_ids(draw: st.DrawFn) -> str:
+    kind = draw(st.sampled_from(["cuda", "rocm"]))
+    acc_major = draw(st.integers(min_value=0, max_value=99))
+    acc_minor = draw(st.integers(min_value=0, max_value=99))
+    torch_major = draw(st.integers(min_value=2, max_value=9))
+    torch_minor = draw(st.integers(min_value=0, max_value=99))
+    os_major = draw(st.integers(min_value=9, max_value=9))
+    os_minor = draw(st.integers(min_value=0, max_value=99))
+    return f"{kind}{acc_major}.{acc_minor}-torch{torch_major}.{torch_minor}-el{os_major}.{os_minor}"
 
 
 @_settings
-@given(release=rhoai_releases(), accelerator=rhoai_accelerators())
-def test_rhoai_index_url_round_trip(release: str, accelerator: str) -> None:
-    prod_url = index_url_resolver.build_rhoai_index_url(release=release, accelerator=accelerator)
-    test_url = index_url_resolver.build_rhoai_test_index_url(release=release, accelerator=accelerator)
+@given(channel=channel_ids())
+def test_channel_index_url_round_trip(channel: str) -> None:
+    prod_url = index_url_resolver.build_channel_index_url(channel, test=False)
+    test_url = index_url_resolver.build_channel_index_url(channel, test=True)
 
-    assert index_url_resolver.parse_release_and_accelerator_from_url(prod_url) == (release, accelerator)
-    assert index_url_resolver.parse_release_and_accelerator_from_url(test_url) == (release, accelerator)
-
-    # build_test_variant_url must agree with the dedicated test-URL builder.
+    assert index_url_resolver.parse_channel_from_index_url(prod_url) == channel
+    assert index_url_resolver.parse_channel_from_index_url(test_url) == channel
     assert index_url_resolver.build_test_variant_url(prod_url) == test_url
-    # A URL that's already a -test variant has no further variant to derive.
     assert index_url_resolver.build_test_variant_url(test_url) is None
 
 
-@_settings
-@given(release=rhoai_releases())
-def test_stable_rhoai_release_is_ea_free_prefix(release: str) -> None:
-    stable = index_url_resolver.stable_rhoai_release(release)
-    assert release.startswith(stable)
-    assert "-EA" not in stable
-
-
 @st.composite
-def rhoai_urls_with_query(draw: st.DrawFn) -> str:
-    """Generate a RHOAI index URL with an arbitrary, possibly format-bearing, query string."""
-    release = draw(rhoai_releases())
-    accelerator = draw(rhoai_accelerators())
-    base = index_url_resolver.build_rhoai_index_url(release=release, accelerator=accelerator)
+def channel_urls_with_query(draw: st.DrawFn) -> str:
+    """Generate a channel index URL with an arbitrary, possibly format-bearing, query string."""
+    channel = draw(channel_ids())
+    base = index_url_resolver.build_channel_index_url(channel, test=False)
     key_alphabet = st.characters(blacklist_characters="&=# \n", min_codepoint=33, max_codepoint=126)
     extra_params = draw(
         st.dictionaries(
@@ -248,7 +227,7 @@ def rhoai_urls_with_query(draw: st.DrawFn) -> str:
 
 
 @_settings
-@given(url=rhoai_urls_with_query())
+@given(url=channel_urls_with_query())
 def test_ensure_json_format_param_idempotent(url: str) -> None:
     once = index_url_resolver.ensure_json_format_param(url)
     twice = index_url_resolver.ensure_json_format_param(once)

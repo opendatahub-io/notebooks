@@ -59,7 +59,8 @@ export function jupyterLabSelectors(page: Page) {
       // Escape data as a CSS string, rather than interpreting filenames as selectors.
       changedFile: (name: string) => git.locator(`[title^=${JSON.stringify(`${name} •`)}]`).first(),
       stage: (row: Locator) => row.getByRole('button', { name: 'Stage this change', exact: true }),
-      summary: git.locator('.jp-git-CommitBox input[placeholder^="Summary"]').first(),
+      // jupyterlab-git 0.55+ uses a single "Commit message" field; 0.54 used "Summary".
+      summary: git.getByPlaceholder(/^(Summary|Commit message) \(/).first(),
       commit: git.getByRole('button', { name: /^Commit$/i }).first(),
       history: git.getByRole('heading', { name: 'History Section', exact: true }),
       commitEntry: (message: string) => git.getByRole('listitem').filter({ hasText: message }).first(),

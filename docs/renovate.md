@@ -23,7 +23,19 @@ Workbench and runtime images store their base image references in shell-variable
 - Konflux files: `(jupyter|codeserver|runtimes)/.+/build-args/konflux\..+\.conf$`
 - ODH files: `(jupyter|codeserver|runtimes)/.+/build-args/(cpu|cuda|rocm)\.conf$`
 
-Konflux versioning supports stable tags such as `3.4.0-1773428606` and EA tags such as `3.4.0-ea.<sequence>-<timestamp>`. ODH build-args use Docker versioning because they track `latest` plus a digest.
+Konflux pins target **AIPCC channel base images** under `quay.io/aipcc/base-images/` (for example `cpu-torch2.13-el9.8`, `cuda13.0-torch2.13-el9.8`). Tags are **numeric publish IDs** (for example `1791476595`), optionally followed by `@sha256:…` in the conf file. Renovate’s custom regex versioning treats those IDs as **build** metadata so publish-ID bumps classify as patch-like updates on RHDS release branches.
+
+Legacy RHAI semver tags remain supported in the same manager until all branches migrate:
+
+| Tag shape | Example | Notes |
+|-----------|---------|-------|
+| Channel publish ID | `1791476595` | Primary model ([ADR 0016](architecture/decisions/0016-adopt-a-la-carte-content-delivery-for-aipcc-notebooks.md)) |
+| Stable + timestamp | `3.6.0-1784563933` | Legacy `*-el9.8` / bundle repos |
+| EA | `3.6.0-ea.2-1789501857` | Unstable; `ignoreUnstable` gating on upstream `main` |
+
+ODH build-args use Docker versioning because they track `latest` plus a digest.
+
+Changing the Konflux `versioningTemplate` requires updating `KONFLUX_AIPCC_VERSIONING_TEMPLATE` in `scripts/ci/validate_renovate_config.py` and its tag fixture tests.
 
 ### Base image upgrade policy
 
@@ -32,6 +44,8 @@ Konflux versioning supports stable tags such as `3.4.0-1773428606` and EA tags s
 | `main` on `opendatahub-io/notebooks` | Allowed | Allowed |
 | `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`, `rhoai-3.5` on `red-hat-data-services/notebooks` | Blocked | Allowed |
 | Other branches, including RHDS `main` | Blocked | Allowed |
+
+Channel identity changes (for example adopting `cuda13.0-torch2.13` instead of `cuda13.0-torch2.12`) are **repository ref changes**, not tag bumps within the same image name; MintMaker will not move you to a new channel repo automatically—update `versions_config.yml` and konflux confs via the release tooling.
 
 ## Deprecated options and migrations
 
@@ -76,3 +90,4 @@ make validate-renovate-config
 - [Renovate configuration options](https://docs.renovatebot.com/configuration-options/)
 - [Konflux MintMaker docs](https://konflux.pages.redhat.com/docs/users/mintmaker/user.html)
 - [Upstream MintMaker config](https://github.com/konflux-ci/mintmaker/blob/main/config/renovate/renovate.json)
+- [ADR 0016: À-la-carte AIPCC content delivery](architecture/decisions/0016-adopt-a-la-carte-content-delivery-for-aipcc-notebooks.md)

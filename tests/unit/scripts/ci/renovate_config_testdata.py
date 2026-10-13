@@ -7,6 +7,9 @@ from scripts.ci.validate_renovate_config import (
     CENTOS_STREAM_RULE_DESCRIPTION,
     EXPECTED_COMMIT_MESSAGE_PREFIX,
     EXPECTED_PREFIX_MATCH_BASE,
+    KONFLUX_AIPCC_VERSIONING_TEMPLATE,
+    KONFLUX_BASE_MANAGER_DESCRIPTION,
+    KONFLUX_BASE_MANAGER_FILE_PATTERN,
     MINTMAKER_POLICIES,
     ODH_BASE_DISABLE_RULE_DESCRIPTION,
     ODH_BASE_ENABLE_RULE_DESCRIPTION,
@@ -60,6 +63,15 @@ def centos_stream_pin_rule() -> dict[str, Any]:
     }
 
 
+def konflux_base_image_custom_manager() -> dict[str, Any]:
+    return {
+        "customType": "regex",
+        "description": KONFLUX_BASE_MANAGER_DESCRIPTION,
+        "managerFilePatterns": [KONFLUX_BASE_MANAGER_FILE_PATTERN],
+        "versioningTemplate": KONFLUX_AIPCC_VERSIONING_TEMPLATE,
+    }
+
+
 def odh_base_image_custom_manager() -> dict[str, Any]:
     return {
         "customType": "regex",
@@ -104,7 +116,7 @@ def minimal_valid_config(*extra_rules: dict[str, Any]) -> dict[str, Any]:
     package_rules.extend(extra_rules)
     return {
         "enabledManagers": list(REQUIRED_ENABLED_MANAGERS),
-        "customManagers": [odh_base_image_custom_manager()],
+        "customManagers": [konflux_base_image_custom_manager(), odh_base_image_custom_manager()],
         "packageRules": package_rules,
     }
 

@@ -68,7 +68,9 @@ packages:
   - automake
   - libtool
 
-  # Node.js (module nodejs:22)
+  # Node.js (module nodejs:22). nodejs-packaging pulls redhat-rpm-config, which
+  # requires glibc-gconv-extra matching odh-base-image-cpu-py312-c9s (2.34-277.el9).
+  # If lock regen picks glibc 2.34-285, rpm-base dnf install of nodejs-devel fails.
   - nodejs-devel
   - nodejs-packaging
   - npm
@@ -141,7 +143,8 @@ packages:
   # image no longer ships them preinstalled (base refresh 2026-09), and they
   # are not in the base image's reachable dnf repos, so prefetch them.
   - patch
-  - perl
+  # perl-interpreter only: plain perl pulls perl-devel -> redhat-rpm-config -> glibc/gconv conflicts on c9s base.
+  - perl-interpreter
   - rsync
   - skopeo
   - tar

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +27,19 @@ CENTOS_STREAM_RULE_DESCRIPTION = "Pin CentOS Stream base to stream9 (c9s only; n
 CENTOS_STREAM_ALLOWED_VERSIONS = "/^stream9$/"
 ODH_BASE_DISABLE_RULE_DESCRIPTION = "Disable ODH quay.io/opendatahub BASE_IMAGE updates by default"
 ODH_BASE_ENABLE_RULE_DESCRIPTION = "ODH BASE_IMAGE digest updates on opendatahub-io/notebooks main only"
+KONFLUX_BASE_MANAGER_DESCRIPTION = "Update BASE_IMAGE in konflux build-args conf files"
+KONFLUX_BASE_MANAGER_FILE_PATTERN = "/(jupyter|codeserver|runtimes)/.+/build-args/konflux\\..+\\.conf$/"
+# Must stay in sync with .github/renovate.json5 (Konflux customManager versioningTemplate).
+KONFLUX_AIPCC_VERSIONING_TEMPLATE = (
+    "regex:^(?:(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?"
+    "(?:-ea\\.(?<prerelease>\\d+-\\d+)|-(?<build>\\d+))|(?<build>\\d+))$"
+)
+KONFLUX_AIPCC_VERSIONING_SAMPLE_TAGS = (
+    "1791476595",
+    "1791476146",
+    "3.6.0-1784563933",
+    "3.6.0-ea.2-1789501857",
+)
 ODH_BASE_MANAGER_DESCRIPTION = "Update BASE_IMAGE in ODH (non-konflux) build-args conf files"
 ODH_BASE_MANAGER_FILE_PATTERN = "/(jupyter|codeserver|runtimes)/.+/build-args/(cpu|cuda|rocm)\\.conf$/"
 ODH_BASE_PACKAGE_PATTERN = "/^quay\\.io\\/opendatahub\\//"
@@ -242,7 +256,59 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
         if centos_stream_pin.get("pinDigests") is not True:
             errors.append("CentOS Stream pin rule must set pinDigests: true")
 
-    errors.extend(validate_odh_base_image_policy(config.get("customManagers"), package_rules))
+    custom_managers = config.get("customManagers")
+    errors.extend(validate_konflux_base_image_policy(custom_managers))
+    errors.extend(validate_odh_base_image_policy(custom_managers, package_rules))
+
+    return errors
+
+
+def _konflux_aipcc_tag_matches_versioning(tag: str) -> bool:
+    """Approximate Renovate's RE2 template in Python (two branches, no duplicate group names)."""
+    legacy = re.compile(
+        r"^(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<patch>\d+))?(?:-ea\.(?P<prerelease>\d+-\d+)|-(?P<build>\d+))$"
+    )
+    channel_publish_id = re.compile(r"^(?P<build>\d+)$")
+    return legacy.fullmatch(tag) is not None or channel_publish_id.fullmatch(tag) is not None
+
+
+def validate_konflux_base_image_policy(custom_managers: object) -> list[str]:
+    errors: list[str] = []
+
+    if not isinstance(custom_managers, list):
+        errors.append("customManagers must be a list")
+        return errors
+
+    konflux_manager = next(
+        (
+            manager
+            for manager in custom_managers
+            if isinstance(manager, dict) and manager.get("description", "").startswith(KONFLUX_BASE_MANAGER_DESCRIPTION)
+        ),
+        None,
+    )
+    if konflux_manager is None:
+        errors.append(f"missing customManager: {KONFLUX_BASE_MANAGER_DESCRIPTION!r}")
+        return errors
+
+    patterns = konflux_manager.get("managerFilePatterns")
+    if patterns != [KONFLUX_BASE_MANAGER_FILE_PATTERN]:
+        errors.append(
+            "Konflux BASE_IMAGE customManager managerFilePatterns must be "
+            f"{[KONFLUX_BASE_MANAGER_FILE_PATTERN]!r}, got {patterns!r}"
+        )
+    if konflux_manager.get("versioningTemplate") != KONFLUX_AIPCC_VERSIONING_TEMPLATE:
+        errors.append(
+            "Konflux BASE_IMAGE customManager must use versioningTemplate "
+            f"{KONFLUX_AIPCC_VERSIONING_TEMPLATE!r}, got {konflux_manager.get('versioningTemplate')!r}"
+        )
+
+    if not KONFLUX_AIPCC_VERSIONING_TEMPLATE.startswith("regex:"):
+        errors.append("KONFLUX_AIPCC_VERSIONING_TEMPLATE must start with 'regex:'")
+
+    for tag in KONFLUX_AIPCC_VERSIONING_SAMPLE_TAGS:
+        if not _konflux_aipcc_tag_matches_versioning(tag):
+            errors.append(f"Konflux AIPCC versioning must accept sample tag {tag!r}")
 
     return errors
 

@@ -26,7 +26,8 @@ repository and branches—not only committing `renovate.json5` to the repo.
 The bot reads **`.github/renovate.json5`**. It extends MintMaker-oriented settings and
 enables managers for **Tekton** (`.tekton/**`), **Dockerfile** `FROM` updates,
 **custom regex** managers for `BASE_IMAGE=` in Konflux `build-args/konflux.*.conf`
-(AIPCC) and ODH `build-args/{cpu,cuda,rocm}.conf` (`quay.io/opendatahub/…:latest@sha256`,
+(AIPCC channel images under `quay.io/aipcc/base-images/` with numeric publish-ID tags;
+see [docs/renovate.md](../../renovate.md)) and ODH `build-args/{cpu,cuda,rocm}.conf` (`quay.io/opendatahub/…:latest@sha256`,
 enabled only on `opendatahub-io/notebooks` @ `main`), and **GitHub Actions** digest
 pinning (see [ADR 0008](0008-harden-github-actions-pin-sha-digests.md)).
 Python notebook lockfiles are **not** managed by Renovate; they are refreshed by

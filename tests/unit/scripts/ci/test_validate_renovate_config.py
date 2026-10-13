@@ -92,8 +92,19 @@ def test_minimal_valid_config_passes_validation() -> None:
         ),
         pytest.param(
             lambda config: {**config, "customManagers": []},
-            [f"missing customManager: {validator.ODH_BASE_MANAGER_DESCRIPTION!r}"],
-            id="missing-odh-base-manager",
+            [
+                f"missing customManager: {validator.KONFLUX_BASE_MANAGER_DESCRIPTION!r}",
+                f"missing customManager: {validator.ODH_BASE_MANAGER_DESCRIPTION!r}",
+            ],
+            id="missing-base-image-managers",
+        ),
+        pytest.param(
+            lambda config: {
+                **config,
+                "customManagers": [testdata.odh_base_image_custom_manager()],
+            },
+            [f"missing customManager: {validator.KONFLUX_BASE_MANAGER_DESCRIPTION!r}"],
+            id="missing-konflux-base-manager",
         ),
         pytest.param(
             lambda config: testdata.with_package_rules_removed(
