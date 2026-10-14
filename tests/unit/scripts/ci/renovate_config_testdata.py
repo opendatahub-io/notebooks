@@ -109,8 +109,6 @@ def odh_base_image_enable_rule() -> dict[str, Any]:
         "enabled": True,
         "groupName": ODH_BASE_GROUP_NAME,
         "groupSlug": ODH_BASE_GROUP_SLUG,
-        "separateMajorMinor": False,
-        "separateMinorPatch": False,
         "pinDigests": True,
     }
 

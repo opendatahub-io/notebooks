@@ -508,10 +508,13 @@ def validate_odh_base_image_policy(
                 f"ODH BASE_IMAGE enable rule groupSlug must be {ODH_BASE_GROUP_SLUG!r}, "
                 f"got {enable_rule.get('groupSlug')!r}"
             )
-        if enable_rule.get("separateMajorMinor") is not False:
-            errors.append("ODH BASE_IMAGE enable rule must set separateMajorMinor: false")
-        if enable_rule.get("separateMinorPatch") is not False:
-            errors.append("ODH BASE_IMAGE enable rule must set separateMinorPatch: false")
+        if enable_rule.get("matchUpdateTypes") and (
+            "separateMajorMinor" in enable_rule or "separateMinorPatch" in enable_rule
+        ):
+            errors.append(
+                "ODH BASE_IMAGE enable rule cannot combine matchUpdateTypes with "
+                "separateMajorMinor or separateMinorPatch (Renovate config validation)"
+            )
 
     tag_block_rule = next(
         (

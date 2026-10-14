@@ -250,8 +250,7 @@
       "enabled": true,
       "groupName": "odh BASE_IMAGES",
       "groupSlug": "odh-base-images",
-      "separateMajorMinor": false,
-      "separateMinorPatch": false,
+      // Renovate forbids matchUpdateTypes with separateMajorMinor/separateMinorPatch.
       "pinDigests": true,
       "recreateWhen": "always",
       "semanticCommits": "enabled",
