@@ -200,7 +200,12 @@ type RocmFlavors = dict[str, GpuFlavor]
 class BaseImageArtifacts(StrictModel):
     """Managed base-image policy tree."""
 
-    cpu: CpuArtifact = Field(description="Shared CPU policy for all managed CPU workbenches.")
+    cpu: CpuArtifact = Field(
+        description=(
+            "Shared CPU policy for managed non-baseline CPU workbenches/runtimes "
+            "(ODH cpu.conf + RHOAI konflux.cpu.conf), including jupyter/universal."
+        ),
+    )
     baseline_cpu: BaselineCpuArtifact = Field(
         description="CPU policy for baseline images (public-index, hermetic builds).",
     )

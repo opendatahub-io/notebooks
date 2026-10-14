@@ -115,13 +115,17 @@ define build_image
 # The repos.d mount overlays /etc/yum.repos.d/ with hermeto-generated repos,
 # making local builds behave like Konflux (repos already in place when the
 # Dockerfile runs). The mount hides the base image's default repos.
+#
+# Important: do not bind-mount the raw cachi2 repos.d/ read-write. On local
+# AIPCC/RHOAI builds, subscription-manager can write redhat.repo into that
+# mount (live CDN AppStream mixed with hermeto/CentOS Stream), which causes
+# mesa/libomp/llvm conflicts. Mount a hermeto-only copy read-only instead.
 # Konflux buildah-oci-ta task mounts YUM_REPOS_D_FETCHED at YUM_REPOS_D_TARGET (/etc/yum.repos.d).
 # See https://github.com/konflux-ci/build-definitions/blob/main/task/buildah-oci-ta/
 $(eval _DOCKERFILE_USES_PREFETCH := $(shell grep -q 'prefetch-input/' $(2) 2>/dev/null && echo yes))
 $(eval PREFETCH_INPUT_DIR := $(or $(wildcard $(BUILD_DIR)prefetch-input),$(if $(_DOCKERFILE_USES_PREFETCH),$(wildcard $(ROOT_DIR)prefetch-input),)))
-$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DIR)),\
-	--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
-	--volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
+$(eval _CACHI2_OUTPUT := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DIR)),$(ROOT_DIR)cachi2/output,))
+$(eval _YUM_REPOS_D_SRC := $(if $(_CACHI2_OUTPUT),$(_CACHI2_OUTPUT)/deps/rpm/$(RPM_ARCH)/repos.d,))
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
 	@if [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d cachi2/output ]; then \
@@ -132,8 +136,26 @@ $(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DI
 	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
 	  exit 1; \
 	fi
+	@set -euo pipefail; \
+	CACHI2_VOLUME=""; \
+	YUM_REPOS_CLEAN=""; \
+	cleanup() { \
+	  if [ -n "$${YUM_REPOS_CLEAN}" ]; then rm -rf "$${YUM_REPOS_CLEAN}"; fi; \
+	}; \
+	trap cleanup EXIT; \
+	if [ -n '$(_CACHI2_OUTPUT)' ]; then \
+	  rm -f '$(_YUM_REPOS_D_SRC)/redhat.repo'; \
+	  YUM_REPOS_CLEAN=$$(mktemp -d); \
+	  find '$(_YUM_REPOS_D_SRC)' -maxdepth 1 -type f -name '*.repo' ! -name 'redhat.repo' \
+	    -exec cp -a {} "$${YUM_REPOS_CLEAN}/" \; ; \
+	  if [ -z "$$(find "$${YUM_REPOS_CLEAN}" -maxdepth 1 -type f -name '*.repo' -print -quit)" ]; then \
+	    echo "No hermeto .repo files in $(_YUM_REPOS_D_SRC); re-run prefetch-all.sh"; \
+	    exit 1; \
+	  fi; \
+	  CACHI2_VOLUME="--volume $(_CACHI2_OUTPUT):/cachi2/output:Z --volume $${YUM_REPOS_CLEAN}:/etc/yum.repos.d/:ro,Z"; \
+	fi; \
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $${CACHI2_VOLUME} --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:

@@ -32,6 +32,7 @@ ARM64_COMPATIBLE = {
     "jupyter-datascience-ubi9-python-3.12",
     "jupyter-minimal-ubi9-python-3.12",
     "jupyter-trustyai-ubi9-python-3.12",
+    "jupyter-universal-ubi9-python-3.12",
     "runtime-baseline-ubi9-python-3.12",
     "runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12",
     "runtime-cuda-pytorch-ubi9-python-3.12",
@@ -40,15 +41,19 @@ ARM64_COMPATIBLE = {
     "runtime-minimal-ubi9-python-3.12",
 }
 
+# Universal is Path B: JupyterLab/Elyra/Kale install only on x86_64/aarch64.
+# Do not schedule workbench smoke/tests for it on ppc64le/s390x (no `jupyter` binary).
 PPC64LE_COMPATIBLE = {
     "jupyter-minimal-ubi9-python-3.12",
     "jupyter-datascience-ubi9-python-3.12",
+    "jupyter-universal-ubi9-python-3.12"
 }
 
 S390X_COMPATIBLE = {
     "runtime-minimal-ubi9-python-3.12",
     "jupyter-minimal-ubi9-python-3.12",
     "runtime-datascience-ubi9-python-3.12",
+    "jupyter-universal-ubi9-python-3.12"
     # add more here
 }
 
@@ -288,6 +293,7 @@ class TestSelf(unittest.TestCase):
         assert target_supports_rhoai_build("codeserver-baseline-ubi9-python-3.12") is False
         assert target_supports_rhoai_build("runtime-baseline-ubi9-python-3.12") is False
         assert target_supports_rhoai_build("jupyter-minimal-ubi9-python-3.12") is True
+        assert target_supports_rhoai_build("jupyter-universal-ubi9-python-3.12") is True
 
     def test_filter_rhel_targets_excludes_rhel_marked_targets(self):
         targets = [
@@ -341,6 +347,7 @@ class TestSelf(unittest.TestCase):
             "jupyter-datascience-ubi9-python-3.12",
             "jupyter-minimal-ubi9-python-3.12",
             "jupyter-trustyai-ubi9-python-3.12",
+            "jupyter-universal-ubi9-python-3.12",
             "rocm-jupyter-minimal-ubi9-python-3.12",
             "rocm-jupyter-pytorch-ubi9-python-3.12",
             "rocm-jupyter-tensorflow-ubi9-python-3.12",

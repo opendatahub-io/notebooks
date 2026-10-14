@@ -8,6 +8,7 @@ resources:
   - jupyter-pytorch-notebook-imagestream.yaml
   - jupyter-tensorflow-notebook-imagestream.yaml
   - jupyter-trustyai-notebook-imagestream.yaml
+  - jupyter-universal-notebook-imagestream.yaml
   - code-server-notebook-imagestream.yaml
   - jupyter-rocm-minimal-notebook-imagestream.yaml
   - jupyter-rocm-pytorch-notebook-imagestream.yaml
@@ -20,6 +21,7 @@ resources:
   - runtime-rocm-tensorflow-imagestream.yaml
   - runtime-tensorflow-imagestream.yaml
   - runtime-pytorch-llmcompressor-imagestream.yaml
+  - runtime-universal-imagestream.yaml
   - runtime-datascience-imagestream-2025-2.yaml
   - runtime-minimal-imagestream-2025-2.yaml
   - runtime-pytorch-imagestream-2025-2.yaml
@@ -435,6 +437,19 @@ replacements:
           group: image.openshift.io
           kind: ImageStream
           name: odh-trustyai-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-workbench-jupyter-universal-cpu-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-universal-notebook
           version: v1
   - source:
       fieldPath: data.odh-workbench-codeserver-datascience-cpu-py312-ubi9-n
@@ -1139,6 +1154,19 @@ replacements:
           name: odh-trustyai-notebook
           version: v1
   - source:
+      fieldPath: data.odh-workbench-jupyter-universal-cpu-py312-ubi9-commit-n
+      kind: ConfigMap
+      name: notebook-image-commithash
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-universal-notebook
+          version: v1
+  - source:
       fieldPath: data.odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-n
       kind: ConfigMap
       name: notebook-image-commithash
@@ -1631,4 +1659,17 @@ replacements:
           group: image.openshift.io
           kind: ImageStream
           name: runtime-tensorflow-2025-2
+          version: v1
+  - source:
+      fieldPath: data.odh-workbench-jupyter-universal-cpu-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-universal
           version: v1

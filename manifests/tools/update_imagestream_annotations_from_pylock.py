@@ -278,24 +278,55 @@ def _pylock_kind_from_tag(wb_resource_file: str, base_key: str) -> str:
     return "cpu"
 
 
-def pylock_candidate_rel_paths(notebook_dir: Path, kind: str) -> list[str]:
-    """Paths to try: pylock TOMLs, requirements files, then pipenv ``Pipfile.lock*``."""
+def pylock_candidate_rel_paths(
+    notebook_dir: Path, kind: str, *, variant: str | None = None
+) -> list[str]:
+    """Paths to try: pylock TOMLs, requirements files, then pipenv ``Pipfile.lock*``.
+
+    Hybrid universal: ODH prefers root ``pylock.toml``; RHOAI prefers
+    ``uv.lock.d/pylock.rhoai.toml`` / ``requirements.rhoai.txt``.
+    """
     rel_uv = notebook_dir / "uv.lock.d" / f"pylock.{kind}.toml"
+    rel_uv_rhoai = notebook_dir / "uv.lock.d" / "pylock.rhoai.toml"
     rel_legacy = notebook_dir / "pylock.toml"
     rel_req_kind = notebook_dir / f"requirements.{kind}.txt"
+    rel_req_rhoai = notebook_dir / "requirements.rhoai.txt"
     rel_req = notebook_dir / "requirements.txt"
     pipenv_flavor = notebook_dir / (
         "Pipfile.lock.cpu" if kind == "cpu" else "Pipfile.lock.gpu"
     )
     rel_pipenv = notebook_dir / "Pipfile.lock"
-    out: list[str] = [
-        str(rel_uv.relative_to(ROOT)),
-        str(rel_legacy.relative_to(ROOT)),
-        str(rel_req_kind.relative_to(ROOT)),
-        str(rel_req.relative_to(ROOT)),
-        str(pipenv_flavor.relative_to(ROOT)),
-        str(rel_pipenv.relative_to(ROOT)),
-    ]
+    hybrid = rel_legacy.is_file() and (notebook_dir / "uv.lock.d").is_dir()
+    if hybrid and variant == "rhoai":
+        out: list[str] = [
+            str(rel_uv_rhoai.relative_to(ROOT)),
+            str(rel_req_rhoai.relative_to(ROOT)),
+            str(rel_uv.relative_to(ROOT)),
+            str(rel_legacy.relative_to(ROOT)),
+            str(rel_req_kind.relative_to(ROOT)),
+            str(rel_req.relative_to(ROOT)),
+            str(pipenv_flavor.relative_to(ROOT)),
+            str(rel_pipenv.relative_to(ROOT)),
+        ]
+    elif hybrid and variant == "odh":
+        out = [
+            str(rel_legacy.relative_to(ROOT)),
+            str(rel_req_kind.relative_to(ROOT)),
+            str(rel_uv.relative_to(ROOT)),
+            str(rel_uv_rhoai.relative_to(ROOT)),
+            str(rel_req.relative_to(ROOT)),
+            str(pipenv_flavor.relative_to(ROOT)),
+            str(rel_pipenv.relative_to(ROOT)),
+        ]
+    else:
+        out = [
+            str(rel_uv.relative_to(ROOT)),
+            str(rel_legacy.relative_to(ROOT)),
+            str(rel_req_kind.relative_to(ROOT)),
+            str(rel_req.relative_to(ROOT)),
+            str(pipenv_flavor.relative_to(ROOT)),
+            str(rel_pipenv.relative_to(ROOT)),
+        ]
     seen: set[str] = set()
     deduped: list[str] = []
     for p in out:
@@ -623,7 +654,7 @@ def run_variant(variant: str, dry_run: bool) -> int:
                 )
                 continue
             kind = _pylock_kind_from_tag(wb.resource_file, base_key)
-            rel_paths = pylock_candidate_rel_paths(nb_dir, kind)
+            rel_paths = pylock_candidate_rel_paths(nb_dir, kind, variant=variant)
 
             shown: tuple[str, str] | None
             if suffix == "-n":
