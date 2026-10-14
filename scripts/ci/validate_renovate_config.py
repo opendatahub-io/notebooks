@@ -27,6 +27,10 @@ CENTOS_STREAM_RULE_DESCRIPTION = "Pin CentOS Stream base to stream9 (c9s only; n
 CENTOS_STREAM_ALLOWED_VERSIONS = "/^stream9$/"
 ODH_BASE_DISABLE_RULE_DESCRIPTION = "Disable ODH quay.io/opendatahub BASE_IMAGE updates by default"
 ODH_BASE_ENABLE_RULE_DESCRIPTION = "ODH BASE_IMAGE digest updates on opendatahub-io/notebooks main only"
+ODH_BASE_TAG_BUMP_BLOCK_RULE_DESCRIPTION = "ODH quay.io/opendatahub: digest-only (no image tag bumps)"
+ODH_BASE_GROUP_NAME = "odh BASE_IMAGES"
+ODH_BASE_GROUP_SLUG = "odh-base-images"
+UPSTREAM_MAIN_MAJOR_MINOR_RULE_DESCRIPTION = "Allow major/minor base image upgrades on upstream main"
 KONFLUX_BASE_MANAGER_DESCRIPTION = "Update BASE_IMAGE in konflux build-args conf files"
 KONFLUX_BASE_MANAGER_FILE_PATTERN = "/(jupyter|codeserver|runtimes)/.+/build-args/konflux\\..+\\.conf$/"
 # Must stay in sync with .github/renovate.json5 (Konflux customManager versioningTemplate).
@@ -488,6 +492,62 @@ def validate_odh_base_image_policy(
             errors.append(
                 "ODH BASE_IMAGE enable rule must not set allowedVersions "
                 "(blocks CUDA/ROCm versioned tags; digest updates use pinDigests)"
+            )
+        if enable_rule.get("matchUpdateTypes") != ["digest"]:
+            errors.append(
+                "ODH BASE_IMAGE enable rule matchUpdateTypes must be ['digest'], "
+                f"got {enable_rule.get('matchUpdateTypes')!r}"
+            )
+        if enable_rule.get("groupName") != ODH_BASE_GROUP_NAME:
+            errors.append(
+                f"ODH BASE_IMAGE enable rule groupName must be {ODH_BASE_GROUP_NAME!r}, "
+                f"got {enable_rule.get('groupName')!r}"
+            )
+        if enable_rule.get("groupSlug") != ODH_BASE_GROUP_SLUG:
+            errors.append(
+                f"ODH BASE_IMAGE enable rule groupSlug must be {ODH_BASE_GROUP_SLUG!r}, "
+                f"got {enable_rule.get('groupSlug')!r}"
+            )
+        if enable_rule.get("separateMajorMinor") is not False:
+            errors.append("ODH BASE_IMAGE enable rule must set separateMajorMinor: false")
+        if enable_rule.get("separateMinorPatch") is not False:
+            errors.append("ODH BASE_IMAGE enable rule must set separateMinorPatch: false")
+
+    tag_block_rule = next(
+        (
+            rule
+            for rule in package_rules
+            if isinstance(rule, dict)
+            and rule.get("description", "").startswith(ODH_BASE_TAG_BUMP_BLOCK_RULE_DESCRIPTION)
+        ),
+        None,
+    )
+    if tag_block_rule is None:
+        errors.append(f"missing packageRule: {ODH_BASE_TAG_BUMP_BLOCK_RULE_DESCRIPTION!r}")
+    else:
+        if tag_block_rule.get("enabled") is not False:
+            errors.append("ODH tag-bump block rule must set enabled: false")
+        if tag_block_rule.get("matchUpdateTypes") != ["major", "minor", "patch"]:
+            errors.append(
+                "ODH tag-bump block rule matchUpdateTypes must be ['major', 'minor', 'patch'], "
+                f"got {tag_block_rule.get('matchUpdateTypes')!r}"
+            )
+
+    upstream_major_minor = next(
+        (
+            rule
+            for rule in package_rules
+            if isinstance(rule, dict)
+            and rule.get("description", "").startswith(UPSTREAM_MAIN_MAJOR_MINOR_RULE_DESCRIPTION)
+        ),
+        None,
+    )
+    if upstream_major_minor is not None:
+        names = upstream_major_minor.get("matchPackageNames")
+        if names != ["!/^quay\\.io\\/opendatahub\\//"]:
+            errors.append(
+                "upstream main major/minor rule must exclude quay.io/opendatahub "
+                f"(matchPackageNames), got {names!r}"
             )
 
     return errors
