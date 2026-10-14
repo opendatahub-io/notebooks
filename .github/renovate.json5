@@ -238,19 +238,19 @@
     },
     {
       // One PR for all quay.io/opendatahub ODH base images (cpu/cuda/rocm conf pins).
-      // Tag bumps (v12.9 → v13.0, latest retag, etc.) belong in versions_config.yml +
-      // sync-build-args — Renovate only refreshes @sha256 for the pinned tag.
+      // Do not set matchUpdateTypes here — it leaves deps disabled at lookup (#4758 follow-up).
+      // Tag bumps are blocked by the digest-only rule below; only @sha256 refreshes run.
       "description": "ODH BASE_IMAGE digest updates on opendatahub-io/notebooks main only",
       "matchManagers": ["custom.regex"],
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/^quay\\.io\\/opendatahub\\//"],
       "matchRepositories": ["opendatahub-io/notebooks"],
       "matchBaseBranches": ["main"],
-      "matchUpdateTypes": ["digest"],
       "enabled": true,
       "groupName": "odh BASE_IMAGES",
       "groupSlug": "odh-base-images",
-      // Renovate forbids matchUpdateTypes with separateMajorMinor/separateMinorPatch.
+      "separateMajorMinor": false,
+      "separateMinorPatch": false,
       "pinDigests": true,
       "recreateWhen": "always",
       "semanticCommits": "enabled",
@@ -260,6 +260,8 @@
       "matchManagers": ["custom.regex"],
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/^quay\\.io\\/opendatahub\\//"],
+      "matchRepositories": ["opendatahub-io/notebooks"],
+      "matchBaseBranches": ["main"],
       "matchUpdateTypes": ["major", "minor", "patch"],
       "enabled": false,
     },

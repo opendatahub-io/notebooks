@@ -105,10 +105,11 @@ def odh_base_image_enable_rule() -> dict[str, Any]:
         "matchPackageNames": [ODH_BASE_PACKAGE_PATTERN],
         "matchRepositories": [ODH_REPO],
         "matchBaseBranches": ["main"],
-        "matchUpdateTypes": ["digest"],
         "enabled": True,
         "groupName": ODH_BASE_GROUP_NAME,
         "groupSlug": ODH_BASE_GROUP_SLUG,
+        "separateMajorMinor": False,
+        "separateMinorPatch": False,
         "pinDigests": True,
     }
 
@@ -119,6 +120,8 @@ def odh_base_image_tag_bump_block_rule() -> dict[str, Any]:
         "matchManagers": ["custom.regex"],
         "matchDatasources": ["docker"],
         "matchPackageNames": [ODH_BASE_PACKAGE_PATTERN],
+        "matchRepositories": [ODH_REPO],
+        "matchBaseBranches": ["main"],
         "matchUpdateTypes": ["major", "minor", "patch"],
         "enabled": False,
     }

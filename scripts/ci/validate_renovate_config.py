@@ -493,10 +493,10 @@ def validate_odh_base_image_policy(
                 "ODH BASE_IMAGE enable rule must not set allowedVersions "
                 "(blocks CUDA/ROCm versioned tags; digest updates use pinDigests)"
             )
-        if enable_rule.get("matchUpdateTypes") != ["digest"]:
+        if "matchUpdateTypes" in enable_rule:
             errors.append(
-                "ODH BASE_IMAGE enable rule matchUpdateTypes must be ['digest'], "
-                f"got {enable_rule.get('matchUpdateTypes')!r}"
+                "ODH BASE_IMAGE enable rule must not set matchUpdateTypes "
+                "(Renovate leaves quay.io/opendatahub deps disabled at lookup)"
             )
         if enable_rule.get("groupName") != ODH_BASE_GROUP_NAME:
             errors.append(
@@ -508,13 +508,10 @@ def validate_odh_base_image_policy(
                 f"ODH BASE_IMAGE enable rule groupSlug must be {ODH_BASE_GROUP_SLUG!r}, "
                 f"got {enable_rule.get('groupSlug')!r}"
             )
-        if enable_rule.get("matchUpdateTypes") and (
-            "separateMajorMinor" in enable_rule or "separateMinorPatch" in enable_rule
-        ):
-            errors.append(
-                "ODH BASE_IMAGE enable rule cannot combine matchUpdateTypes with "
-                "separateMajorMinor or separateMinorPatch (Renovate config validation)"
-            )
+        if enable_rule.get("separateMajorMinor") is not False:
+            errors.append("ODH BASE_IMAGE enable rule must set separateMajorMinor: false")
+        if enable_rule.get("separateMinorPatch") is not False:
+            errors.append("ODH BASE_IMAGE enable rule must set separateMinorPatch: false")
 
     tag_block_rule = next(
         (
@@ -534,6 +531,16 @@ def validate_odh_base_image_policy(
             errors.append(
                 "ODH tag-bump block rule matchUpdateTypes must be ['major', 'minor', 'patch'], "
                 f"got {tag_block_rule.get('matchUpdateTypes')!r}"
+            )
+        if tag_block_rule.get("matchRepositories") != [ODH_REPO]:
+            errors.append(
+                "ODH tag-bump block rule matchRepositories must be "
+                f"{[ODH_REPO]!r}, got {tag_block_rule.get('matchRepositories')!r}"
+            )
+        if tag_block_rule.get("matchBaseBranches") != ["main"]:
+            errors.append(
+                "ODH tag-bump block rule matchBaseBranches must be ['main'], "
+                f"got {tag_block_rule.get('matchBaseBranches')!r}"
             )
 
     upstream_major_minor = next(
