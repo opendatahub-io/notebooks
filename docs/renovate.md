@@ -33,7 +33,7 @@ Legacy RHAI semver tags remain supported in the same manager until all branches 
 | Stable + timestamp | `3.6.0-1784563933` | Legacy `*-el9.8` / bundle repos |
 | EA | `3.6.0-ea.2-1789501857` | Unstable; `ignoreUnstable` gating on upstream `main` |
 
-ODH build-args use Docker versioning because they track `latest` plus a digest.
+ODH build-args use Docker versioning for tags such as `latest`, `v12.9`, or `v7.14`, but Renovate is configured for **digest-only** updates on `quay.io/opendatahub/` pins (one grouped PR on `main`). Changing the image tag is done via `versions_config.yml` and `gmake sync-build-args-from-versions`, not Renovate.
 
 Changing the Konflux `versioningTemplate` requires updating `KONFLUX_AIPCC_VERSIONING_TEMPLATE` in `scripts/ci/validate_renovate_config.py` and its tag fixture tests.
 

@@ -8,11 +8,15 @@ from scripts.ci.validate_renovate_config import (
     EXPECTED_COMMIT_MESSAGE_PREFIX,
     EXPECTED_PREFIX_MATCH_BASE,
     KONFLUX_AIPCC_VERSIONING_TEMPLATE,
+    KONFLUX_BASE_IMAGE_MATCH_STRING_RENOVATE,
     KONFLUX_BASE_MANAGER_DESCRIPTION,
     KONFLUX_BASE_MANAGER_FILE_PATTERN,
     MINTMAKER_POLICIES,
     ODH_BASE_DISABLE_RULE_DESCRIPTION,
     ODH_BASE_ENABLE_RULE_DESCRIPTION,
+    ODH_BASE_GROUP_NAME,
+    ODH_BASE_GROUP_SLUG,
+    ODH_BASE_TAG_BUMP_BLOCK_RULE_DESCRIPTION,
     ODH_BASE_MANAGER_DESCRIPTION,
     ODH_BASE_MANAGER_FILE_PATTERN,
     ODH_BASE_PACKAGE_PATTERN,
@@ -68,6 +72,7 @@ def konflux_base_image_custom_manager() -> dict[str, Any]:
         "customType": "regex",
         "description": KONFLUX_BASE_MANAGER_DESCRIPTION,
         "managerFilePatterns": [KONFLUX_BASE_MANAGER_FILE_PATTERN],
+        "matchStrings": [KONFLUX_BASE_IMAGE_MATCH_STRING_RENOVATE],
         "versioningTemplate": KONFLUX_AIPCC_VERSIONING_TEMPLATE,
     }
 
@@ -77,6 +82,7 @@ def odh_base_image_custom_manager() -> dict[str, Any]:
         "customType": "regex",
         "description": ODH_BASE_MANAGER_DESCRIPTION,
         "managerFilePatterns": [ODH_BASE_MANAGER_FILE_PATTERN],
+        "matchStrings": [KONFLUX_BASE_IMAGE_MATCH_STRING_RENOVATE],
         "versioningTemplate": "docker",
     }
 
@@ -100,8 +106,24 @@ def odh_base_image_enable_rule() -> dict[str, Any]:
         "matchRepositories": [ODH_REPO],
         "matchBaseBranches": ["main"],
         "enabled": True,
+        "groupName": ODH_BASE_GROUP_NAME,
+        "groupSlug": ODH_BASE_GROUP_SLUG,
+        "separateMajorMinor": False,
+        "separateMinorPatch": False,
         "pinDigests": True,
-        "allowedVersions": "/^latest$/",
+    }
+
+
+def odh_base_image_tag_bump_block_rule() -> dict[str, Any]:
+    return {
+        "description": ODH_BASE_TAG_BUMP_BLOCK_RULE_DESCRIPTION,
+        "matchManagers": ["custom.regex"],
+        "matchDatasources": ["docker"],
+        "matchPackageNames": [ODH_BASE_PACKAGE_PATTERN],
+        "matchRepositories": [ODH_REPO],
+        "matchBaseBranches": ["main"],
+        "matchUpdateTypes": ["major", "minor", "patch"],
+        "enabled": False,
     }
 
 
@@ -113,6 +135,7 @@ def minimal_valid_config(*extra_rules: dict[str, Any]) -> dict[str, Any]:
     package_rules.append(centos_stream_pin_rule())
     package_rules.append(odh_base_image_disable_rule())
     package_rules.append(odh_base_image_enable_rule())
+    package_rules.append(odh_base_image_tag_bump_block_rule())
     package_rules.extend(extra_rules)
     return {
         "enabledManagers": list(REQUIRED_ENABLED_MANAGERS),

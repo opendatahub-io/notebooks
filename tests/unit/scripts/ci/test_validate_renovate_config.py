@@ -148,6 +148,15 @@ def test_validate_config_rejects_renovate_json_that_is_not_only_an_include(tmp_p
     assert errors == [validator.RENOVATE_JSON_SHAPE_ERROR], f"Expected renovate.json include error, got: {errors}"
 
 
+def test_konflux_versioning_rejects_duplicate_re2_capture_names() -> None:
+    broken = (
+        "regex:^(?:(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?"
+        "(?:-ea\\.(?<prerelease>\\d+-\\d+)|-(?<build>\\d+))|(?<build>\\d+))$"
+    )
+    body = broken.removeprefix("regex:")
+    assert validator._re2_duplicate_named_groups(body) == ["build"]
+
+
 def test_validate_config_rejects_long_renovate_json(tmp_path) -> None:
     lines = "\n".join(["{"] * validator.RENOVATE_JSON_MAX_LINES)
     (tmp_path / "renovate.json").write_text(lines + "\n", encoding="utf-8")
