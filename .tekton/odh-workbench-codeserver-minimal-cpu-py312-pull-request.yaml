@@ -19,7 +19,8 @@ metadata:
         ".tekton/odh-workbench-codeserver-minimal-cpu-py312-pull-request.yaml".pathChanged() ||
         "codeserver/**".pathChanged() ||
         "codeserver/ubi9-python-3.12/**".pathChanged() ||
-        "codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu".pathChanged()
+        "codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu".pathChanged() ||
+        "codeserver/ubi9-python-3.12/build-args/minimal.cpu.conf".pathChanged()
       ) && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -41,6 +42,8 @@ spec:
     value: Dockerfile.konflux.cpu
   - name: path-context
     value: codeserver/ubi9-python-3.12
+  - name: build-args-file
+    value: codeserver/ubi9-python-3.12/build-args/minimal.cpu.conf
   pipelineRef:
     resolver: git
     params:
