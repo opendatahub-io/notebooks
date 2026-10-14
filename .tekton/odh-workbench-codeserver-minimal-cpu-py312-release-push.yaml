@@ -28,7 +28,7 @@ spec:
   - name: dockerfile
     value: Dockerfile.konflux.cpu
   - name: path-context
-    value: codeserver-minimal/ubi9-python-3.12
+    value: codeserver/ubi9-python-3.12
   pipelineRef:
     resolver: git
     params:
