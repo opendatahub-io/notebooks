@@ -43,11 +43,11 @@ ARM64_COMPATIBLE = {
 PPC64LE_COMPATIBLE = {
     "jupyter-minimal-ubi9-python-3.12",
     "jupyter-datascience-ubi9-python-3.12",
-    "spyre-jupyter-pytorch-ubi9-python-3.12"
+    # "spyre-jupyter-pytorch-ubi9-python-3.12"  # DO NOT BUILD Spyre Based IMAGES IN UPSTREAM GHA CI
 }
 
 PPC64LE_ONLY = {
-    "spyre-jupyter-pytorch-ubi9-python-3.12",
+    # "spyre-jupyter-pytorch-ubi9-python-3.12",  # DO NOT BUILD Spyre Based IMAGES IN UPSTREAM GHA CI
 }
 
 S390X_COMPATIBLE = {
@@ -284,14 +284,14 @@ if __name__ == "__main__":
 
 class TestSelf(unittest.TestCase):
 
-    def test_assign_platforms_for_ppc64le_only_target(self):
-        target = "spyre-jupyter-pytorch-ubi9-python-3.12"
-        assert assign_platforms(
-            [target],
-            arm64_images=Arm64Images.INCLUDE,
-            ppc64le_images=Ppc64leImages.INCLUDE,
-            s390x_images=S390xImages.INCLUDE,
-        ) == [(target, "linux/ppc64le")]
+    # def test_assign_platforms_for_ppc64le_only_target(self):
+    #     target = "spyre-jupyter-pytorch-ubi9-python-3.12"
+    #     assert assign_platforms(
+    #         [target],
+    #         arm64_images=Arm64Images.INCLUDE,
+    #         ppc64le_images=Ppc64leImages.INCLUDE,
+    #         s390x_images=S390xImages.INCLUDE,
+    #     ) == [(target, "linux/ppc64le")]
 
     def test_target_needs_subscription(self):
         assert target_needs_subscription("jupyter-baseline-ubi9-python-3.12") is False
@@ -361,5 +361,5 @@ class TestSelf(unittest.TestCase):
             "rocm-jupyter-minimal-ubi9-python-3.12",
             "rocm-jupyter-pytorch-ubi9-python-3.12",
             "rocm-jupyter-tensorflow-ubi9-python-3.12",
-            "spyre-jupyter-pytorch-ubi9-python-3.12",
+            # "spyre-jupyter-pytorch-ubi9-python-3.12", # DO NOT BUILD Spyre Based IMAGES IN UPSTREAM GHA CI
         }

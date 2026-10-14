@@ -31,7 +31,6 @@ name: Build & Test on IBM Runners (ppc64le, s390x)
       - 'jupyter/**'
       - 'runtimes/**'
       - 'versions_config.yml'
-      - '!jupyter/**/*-spyre/**' # skip spyre images
   workflow_dispatch:
 
 concurrency:
