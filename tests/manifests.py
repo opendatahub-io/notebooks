@@ -26,6 +26,7 @@ JUPYTER_MINIMAL_NOTEBOOK_ID = "minimal"
 JUPYTER_BASELINE_NOTEBOOK_ID = "baseline"
 JUPYTER_DATASCIENCE_NOTEBOOK_ID = "datascience"
 JUPYTER_TRUSTYAI_NOTEBOOK_ID = "trustyai"
+JUPYTER_UNIVERSAL_NOTEBOOK_ID = "universal"
 JUPYTER_PYTORCH_NOTEBOOK_ID = "pytorch"
 JUPYTER_TENSORFLOW_NOTEBOOK_ID = "tensorflow"
 
@@ -181,8 +182,12 @@ def get_source_of_truth_filepath(
             if accelerator_flavor == "cuda":
                 filename = f"jupyter-{scope}-gpu-{file_suffix}"
 
-        elif scope in (JUPYTER_DATASCIENCE_NOTEBOOK_ID, JUPYTER_TRUSTYAI_NOTEBOOK_ID):
-            # Logic for datascience and trustyai
+        elif scope in (
+            JUPYTER_DATASCIENCE_NOTEBOOK_ID,
+            JUPYTER_TRUSTYAI_NOTEBOOK_ID,
+            JUPYTER_UNIVERSAL_NOTEBOOK_ID,
+        ):
+            # Logic for datascience, trustyai, and universal
             filename = f"jupyter-{scope}-{file_suffix}"
 
         elif scope == JUPYTER_BASELINE_NOTEBOOK_ID:
@@ -351,6 +356,9 @@ class TestManifests:
             "jupyter-trustyai-ubi9-python-3.12": MANIFESTS_ODH_DIR
             / "base"
             / "jupyter-trustyai-notebook-imagestream.yaml",
+            "jupyter-universal-ubi9-python-3.12": MANIFESTS_ODH_DIR
+            / "base"
+            / "jupyter-universal-notebook-imagestream.yaml",
             "codeserver-ubi9-python-3.12": MANIFESTS_ODH_DIR / "base" / "code-server-notebook-imagestream.yaml",
             "codeserver-baseline-c9s-python-3.12": MANIFESTS_ODH_DIR
             / "base"

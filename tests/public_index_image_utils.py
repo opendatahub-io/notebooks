@@ -3,8 +3,12 @@ from __future__ import annotations
 import re
 
 TAG_ENCODED_IMAGE_REPOSITORIES = {"workbench-images"}
-PUBLIC_INDEX_IMAGE_NAME_PATTERN = re.compile(r"^(codeserver|jupyter|runtime)-baseline-ubi9-python-\d+\.\d+$")
-PUBLIC_INDEX_IMAGE_TAG_PATTERN = re.compile(r"^(codeserver|jupyter|runtime)-baseline-ubi9-python-\d+\.\d+(?:[-_].*|$)")
+PUBLIC_INDEX_IMAGE_NAME_PATTERN = re.compile(
+    r"^(?:(?:codeserver|jupyter|runtime)-baseline)-ubi9-python-\d+\.\d+$"
+)
+PUBLIC_INDEX_IMAGE_TAG_PATTERN = re.compile(
+    r"^(?:(?:codeserver|jupyter|runtime)-baseline)-ubi9-python-\d+\.\d+(?:[-_].*|$)"
+)
 
 
 def _image_name_and_tag(image: str) -> tuple[str, str | None]:
@@ -17,7 +21,11 @@ def _image_name_and_tag(image: str) -> tuple[str, str | None]:
 
 
 def is_public_index_image(image: str) -> bool:
-    """Return True if the image uses the phase-1 public-index / PyPI-backed contract."""
+    """Return True if the image uses the phase-1 public-index / PyPI-backed contract.
+
+    ``jupyter-universal`` uses the RH-index for both ODH and RHOAI (like datascience);
+    only the OS/base image differs (CentOS Stream vs AIPCC).
+    """
     image_name, image_tag = _image_name_and_tag(image)
     if PUBLIC_INDEX_IMAGE_NAME_PATTERN.fullmatch(image_name):
         return True

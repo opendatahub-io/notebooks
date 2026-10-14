@@ -57,8 +57,8 @@ in root `pyproject.toml`). See [Dual `uv` versions](#dual-uv-versions) below.
 | Mode | When used | Index source | Lock output |
 |------|-----------|--------------|-------------|
 | `auto` | Default | `rh-index` when `uv.lock.d/` exists in the project; otherwise `public-index` | Per-mode layout below |
-| `rh-index` | RHOAI / AIPCC images with `build-args/konflux.<flavor>.conf` | Red Hat wheel indexes resolved from `build-args/` via `scripts/index_url_resolver.py` | `uv.lock.d/pylock.<flavor>.toml` and `requirements.<flavor>.txt` |
-| `public-index` | ODH baseline images (`jupyter/baseline`, `codeserver-baseline`, `runtimes/baseline`, and similar) | Public PyPI | Root `pylock.toml` and `requirements.cpu.txt` |
+| `rh-index` | RHOAI / AIPCC images with `build-args/konflux.<flavor>.conf` (also ODH midstream images that share the RH lock, e.g. `jupyter/universal`) | Red Hat wheel indexes resolved from `build-args/` via `scripts/index_url_resolver.py` | `uv.lock.d/pylock.<flavor>.toml` and `requirements.<flavor>.txt` |
+| `public-index` | ODH public-index images (`jupyter/baseline`, `codeserver-baseline`, `runtimes/baseline`, and similar) | Public PyPI | Root `pylock.toml` and `requirements.cpu.txt` |
 
 Direct script invocation (equivalent to the Makefile target):
 
@@ -92,6 +92,19 @@ jupyter/baseline/ubi9-python-3.12/
 ├── pyproject.toml
 ├── pylock.toml
 └── requirements.cpu.txt
+```
+
+**RH-index for both products** (`jupyter/universal` — same lock as datascience-style images;
+ODH uses CentOS Stream `odh-base-image`, RHOAI uses AIPCC `cpu-el9`). Build, dual-mode
+operation, and local validation:
+[`jupyter/universal/ubi9-python-3.12/README.md`](../jupyter/universal/ubi9-python-3.12/README.md).
+
+```text
+jupyter/universal/ubi9-python-3.12/
+├── pyproject.toml
+├── uv.lock.d/
+│   └── pylock.cpu.toml         # RH index (ODH + RHOAI)
+└── requirements.cpu.txt        # PYLOCK_FLAVOR=cpu
 ```
 
 RH-index mode runs `uv pip compile --universal` (multi-arch wheel selection).

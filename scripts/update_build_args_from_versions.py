@@ -658,6 +658,12 @@ def classify_conf_name(name: str) -> tuple[str, str] | None:
 
 
 def is_baseline_conf_path(relative_path: Path) -> bool:
+    """Return True when the conf belongs to an ODH-only baseline family.
+
+    Baseline paths use ``artifacts.base_image.baseline_cpu`` (no RHDS).
+    Non-baseline CPU trees — including ``jupyter/universal/`` — use the shared
+    ``artifacts.base_image.cpu`` policy (ODH ``cpu.conf`` + RHOAI ``konflux.cpu.conf``).
+    """
     parts = relative_path.parts
     if parts and parts[0] == "codeserver-baseline":
         return True

@@ -15,6 +15,30 @@ def test_jupyter_baseline_ubi9_python_is_public_index() -> None:
     )
 
 
+def test_jupyter_universal_is_not_public_index() -> None:
+    """Universal uses RH-index for both ODH and RHOAI (like datascience)."""
+    assert not is_public_index_image(
+        "quay.io/example/jupyter-universal-ubi9-python-3.12:on-pr-deadbeef",
+    )
+    assert not is_public_index_image(
+        "quay.io/opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9:latest",
+    )
+    assert not is_public_index_image(
+        "quay.io/opendatahub/odh-workbench-jupyter-universal-cpu-py312-c9s:odh-pr",
+    )
+    assert not is_public_index_image(
+        "quay.io/rhoai/odh-workbench-jupyter-universal-cpu-py312-rhel9:3.6",
+    )
+    assert not is_public_index_image(
+        "ghcr.io/opendatahub-io/notebooks/workbench-images:"
+        "jupyter-universal-ubi9-python-3.12-4741_merge_fcb9aca_odh_linux_amd64",
+    )
+    assert not is_public_index_image(
+        "ghcr.io/opendatahub-io/notebooks/workbench-images:"
+        "jupyter-universal-ubi9-python-3.12-4741_merge_fcb9aca_rhoai_linux_amd64",
+    )
+
+
 def test_runtime_baseline_ubi9_python_is_public_index() -> None:
     assert is_public_index_image(
         "quay.io/example/runtime-baseline-ubi9-python-3.12:on-pr-deadbeef",

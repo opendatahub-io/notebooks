@@ -89,7 +89,7 @@ class TestOfflineRouteParsers:
 
 
 @pytest.fixture(scope="session")
-def offline_jupyterlab_image(image: str) -> conftest.Image:
+def offline_jupyterlab_image(image: str, container_arch: str) -> conftest.Image:
     docker_client = testcontainers.core.docker_client.DockerClient()
     try:
         local_image = docker_client.client.images.get(image)
@@ -104,6 +104,7 @@ def offline_jupyterlab_image(image: str) -> conftest.Image:
     metadata = conftest.Image.from_docker(local_image, name=image)
     if metadata.workbench_type is not conftest.WorkbenchType.JUPYTER:
         pytest.skip(f"Image {image} is not a Jupyter workbench")
+    conftest.skip_if_path_b_omits_jupyterlab(metadata, container_arch)
     return metadata
 
 

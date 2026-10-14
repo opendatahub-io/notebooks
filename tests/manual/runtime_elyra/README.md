@@ -6,6 +6,7 @@
 
 - [Overview](#overview)
 - [Baseline runtime smoke test](#baseline-runtime-smoke-test)
+- [Universal Jupyter as runtime](#universal-jupyter-as-runtime)
 - [Elyra Testing](#elyra-testing)
 - [Setup AWS Credentials](#setup-aws-credentials)
 - [Pipeline setup](#pipeline-setup)
@@ -25,6 +26,18 @@ This ensures ML engineers can focus on AI model development with reliable and ef
 For **runtime-baseline** images (lean Elyra/Kale executor, no datascience stack), use the
 stdlib-only pipeline in [`baseline/`](baseline/README.md) instead of the iris sample below.
 The iris example requires pandas and scikit-learn and will fail on baseline runtimes.
+
+## Universal Jupyter as runtime
+
+**Universal Jupyter** is a dual-mode image: the same digest runs as an interactive workbench
+(`jupyter-universal-notebook`) and as an Elyra pipeline runtime (`runtime-universal` —
+**Runtime | Universal | CPU | Python 3.12 | Latest**). For pipeline validation, reuse the
+**stdlib-only** assets in [`baseline/`](baseline/README.md) — do not use the iris sample
+(pandas/sklearn).
+
+See [baseline/README.md — Universal Jupyter as runtime](baseline/README.md#universal-jupyter-as-runtime)
+for node Runtime Image selection and expected results. Image docs:
+[`jupyter/universal/ubi9-python-3.12/README.md`](../../../jupyter/universal/ubi9-python-3.12/README.md).
 
 ## Elyra Testing
 
