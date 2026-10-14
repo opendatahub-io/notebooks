@@ -8,6 +8,7 @@ from scripts.ci.validate_renovate_config import (
     EXPECTED_COMMIT_MESSAGE_PREFIX,
     EXPECTED_PREFIX_MATCH_BASE,
     KONFLUX_AIPCC_VERSIONING_TEMPLATE,
+    KONFLUX_BASE_IMAGE_MATCH_STRING_RENOVATE,
     KONFLUX_BASE_MANAGER_DESCRIPTION,
     KONFLUX_BASE_MANAGER_FILE_PATTERN,
     MINTMAKER_POLICIES,
@@ -68,6 +69,7 @@ def konflux_base_image_custom_manager() -> dict[str, Any]:
         "customType": "regex",
         "description": KONFLUX_BASE_MANAGER_DESCRIPTION,
         "managerFilePatterns": [KONFLUX_BASE_MANAGER_FILE_PATTERN],
+        "matchStrings": [KONFLUX_BASE_IMAGE_MATCH_STRING_RENOVATE],
         "versioningTemplate": KONFLUX_AIPCC_VERSIONING_TEMPLATE,
     }
 
@@ -77,6 +79,7 @@ def odh_base_image_custom_manager() -> dict[str, Any]:
         "customType": "regex",
         "description": ODH_BASE_MANAGER_DESCRIPTION,
         "managerFilePatterns": [ODH_BASE_MANAGER_FILE_PATTERN],
+        "matchStrings": [KONFLUX_BASE_IMAGE_MATCH_STRING_RENOVATE],
         "versioningTemplate": "docker",
     }
 
@@ -101,7 +104,6 @@ def odh_base_image_enable_rule() -> dict[str, Any]:
         "matchBaseBranches": ["main"],
         "enabled": True,
         "pinDigests": True,
-        "allowedVersions": "/^latest$/",
     }
 
 
