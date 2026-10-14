@@ -14,6 +14,9 @@ from scripts.ci.validate_renovate_config import (
     MINTMAKER_POLICIES,
     ODH_BASE_DISABLE_RULE_DESCRIPTION,
     ODH_BASE_ENABLE_RULE_DESCRIPTION,
+    ODH_BASE_GROUP_NAME,
+    ODH_BASE_GROUP_SLUG,
+    ODH_BASE_TAG_BUMP_BLOCK_RULE_DESCRIPTION,
     ODH_BASE_MANAGER_DESCRIPTION,
     ODH_BASE_MANAGER_FILE_PATTERN,
     ODH_BASE_PACKAGE_PATTERN,
@@ -102,8 +105,24 @@ def odh_base_image_enable_rule() -> dict[str, Any]:
         "matchPackageNames": [ODH_BASE_PACKAGE_PATTERN],
         "matchRepositories": [ODH_REPO],
         "matchBaseBranches": ["main"],
+        "matchUpdateTypes": ["digest"],
         "enabled": True,
+        "groupName": ODH_BASE_GROUP_NAME,
+        "groupSlug": ODH_BASE_GROUP_SLUG,
+        "separateMajorMinor": False,
+        "separateMinorPatch": False,
         "pinDigests": True,
+    }
+
+
+def odh_base_image_tag_bump_block_rule() -> dict[str, Any]:
+    return {
+        "description": ODH_BASE_TAG_BUMP_BLOCK_RULE_DESCRIPTION,
+        "matchManagers": ["custom.regex"],
+        "matchDatasources": ["docker"],
+        "matchPackageNames": [ODH_BASE_PACKAGE_PATTERN],
+        "matchUpdateTypes": ["major", "minor", "patch"],
+        "enabled": False,
     }
 
 
@@ -115,6 +134,7 @@ def minimal_valid_config(*extra_rules: dict[str, Any]) -> dict[str, Any]:
     package_rules.append(centos_stream_pin_rule())
     package_rules.append(odh_base_image_disable_rule())
     package_rules.append(odh_base_image_enable_rule())
+    package_rules.append(odh_base_image_tag_bump_block_rule())
     package_rules.extend(extra_rules)
     return {
         "enabledManagers": list(REQUIRED_ENABLED_MANAGERS),

@@ -237,17 +237,32 @@
       "enabled": false,
     },
     {
+      // One PR for all quay.io/opendatahub ODH base images (cpu/cuda/rocm conf pins).
+      // Tag bumps (v12.9 → v13.0, latest retag, etc.) belong in versions_config.yml +
+      // sync-build-args — Renovate only refreshes @sha256 for the pinned tag.
       "description": "ODH BASE_IMAGE digest updates on opendatahub-io/notebooks main only",
       "matchManagers": ["custom.regex"],
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/^quay\\.io\\/opendatahub\\//"],
       "matchRepositories": ["opendatahub-io/notebooks"],
       "matchBaseBranches": ["main"],
+      "matchUpdateTypes": ["digest"],
       "enabled": true,
-      "groupName": "odh BASE_IMAGE {{{depNameSanitized}}}",
+      "groupName": "odh BASE_IMAGES",
+      "groupSlug": "odh-base-images",
+      "separateMajorMinor": false,
+      "separateMinorPatch": false,
       "pinDigests": true,
       "recreateWhen": "always",
       "semanticCommits": "enabled",
+    },
+    {
+      "description": "ODH quay.io/opendatahub: digest-only (no image tag bumps)",
+      "matchManagers": ["custom.regex"],
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^quay\\.io\\/opendatahub\\//"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "enabled": false,
     },
     {
       // Block major/minor upgrades by default on all branches.
@@ -275,12 +290,13 @@
     //   - Local dry-runs (--platform=local) cannot evaluate matchBaseBranches;
     //     this is a known limitation of local mode.
     {
-      // Re-enables the major/minor updates that packageRules[4] blocks by default.
+      // Re-enables major/minor for Konflux AIPCC pins on upstream main only (not ODH quay tags).
       "description": "Allow major/minor base image upgrades on upstream main",
       "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["major", "minor"],
       "matchBaseBranches": ["main"],
       "matchRepositories": ["opendatahub-io/notebooks"],
+      "matchPackageNames": ["!/^quay\\.io\\/opendatahub\\//"],
       "enabled": true,
     },
     {
