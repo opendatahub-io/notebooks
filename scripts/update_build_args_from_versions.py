@@ -34,7 +34,7 @@ from scripts.aipcc_channel_images import (
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG_PATH = ROOT_DIR / "versions_config.yml"
-MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline")
+MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline", "codeserver-minimal")
 POLICY_SCHEMA = object()
 GPU_FLAVORS = {
     "cuda": ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow"),
@@ -648,6 +648,7 @@ def load_versions_config(path: Path) -> VersionsConfig:
 def classify_conf_name(name: str) -> tuple[str, str] | None:
     mapping = {
         "cpu.conf": ("cpu", "odh"),
+        "minimal.cpu.conf": ("cpu", "odh"),
         "cuda.conf": ("cuda", "odh"),
         "rocm.conf": ("rocm", "odh"),
         "konflux.cpu.conf": ("cpu", "rhds"),
@@ -658,6 +659,12 @@ def classify_conf_name(name: str) -> tuple[str, str] | None:
 
 
 def is_baseline_conf_path(relative_path: Path) -> bool:
+    """Return True when the conf belongs to an ODH-only baseline family.
+
+    Baseline paths use ``artifacts.base_image.baseline_cpu`` (no RHDS).
+    Non-baseline CPU trees — including ``jupyter/universal/`` — use the shared
+    ``artifacts.base_image.cpu`` policy (ODH ``cpu.conf`` + RHOAI ``konflux.cpu.conf``).
+    """
     parts = relative_path.parts
     if parts and parts[0] == "codeserver-baseline":
         return True

@@ -213,7 +213,7 @@ function _get_source_of_truth_filepath()
                 filename="jupyter-${notebook_id}-gpu-${file_suffix}"
             fi
             ;;
-        *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
+        *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id* | *$jupyter_universal_notebook_id*)
             filename="jupyter-${notebook_id}-${file_suffix}"
             ;;
         *llmcompressor*)
@@ -468,6 +468,9 @@ function _get_notebook_id() {
         *-${jupyter_trustyai_notebook_id}-*)
             notebook_id="${jupyter_trustyai_notebook_id}"
             ;;
+        *${jupyter_universal_notebook_id}-*)
+            notebook_id="${jupyter_universal_notebook_id}"
+            ;;
         *-llmc-*)
             notebook_id="pytorch+llmcompressor"
             ;;
@@ -517,6 +520,7 @@ jupyter_minimal_notebook_id='minimal'
 jupyter_baseline_notebook_id='baseline'
 jupyter_datascience_notebook_id='datascience'
 jupyter_trustyai_notebook_id='trustyai'
+jupyter_universal_notebook_id='universal'
 jupyter_pytorch_notebook_id='pytorch'
 jupyter_tensorflow_notebook_id='tensorflow'
 

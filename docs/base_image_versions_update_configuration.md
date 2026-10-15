@@ -138,6 +138,17 @@ Validation is strict. Unexpected keys, missing required keys, invalid channel or
 origin values, malformed versions, and invalid distribution-specific combinations
 fail before any file is rewritten.
 
+### Shared CPU policy (`cpu`)
+
+Non-baseline CPU workbenches and runtimes that ship both ODH (`cpu.conf`) and
+RHOAI (`konflux.cpu.conf`) build-args use `artifacts.base_image.cpu`. That
+includes `jupyter/minimal`, `jupyter/datascience`, `jupyter/trustyai`,
+**`jupyter/universal`**, `runtimes/*` (non-baseline), and `codeserver/`.
+
+Universal is dual-mode (workbench + Elyra runtime) but uses the **same** shared
+CPU bases as datascience-style images (CentOS Stream ODH base + AIPCC RHDS
+channel), not `baseline_cpu`.
+
 ### Baseline CPU policy (`baseline_cpu`)
 
 Baseline images (`jupyter/baseline/`, `runtimes/baseline/`, `codeserver-baseline/`)

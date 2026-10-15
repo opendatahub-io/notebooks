@@ -1,0 +1,22 @@
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+ARG PRODUCT
+ARG RELEASE
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
+      summary="Minimal code-server hello-world image for ODH notebooks" \
+      description="Minimal code-server hello-world image with Python 3.12 based on UBI9 for ODH notebooks" \
+      io.k8s.description="Minimal code-server hello-world image with Python 3.12 based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      version="${RELEASE}"
+
+USER 1001
+WORKDIR /opt/app-root/src
+
+CMD ["echo", "Hello from the minimal code-server image"]

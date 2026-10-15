@@ -78,6 +78,18 @@ TESTCONTAINERS_RYUK_DISABLED=true uv run --offline --no-sync pytest \
   --image=quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:odh-stable
 ```
 
+For **Universal Jupyter** (`jupyter-universal`), use the same suites with a universal
+image ref (lean JupyterLab; datascience library tests skip automatically). Dual-mode
+entrypoint unit tests: `tests/unit/jupyter/universal/test_entrypoint_universal.py`.
+Build, operating modes, and full validation runbook:
+[`jupyter/universal/ubi9-python-3.12/README.md`](../../jupyter/universal/ubi9-python-3.12/README.md).
+
+```bash
+# After building or pulling a universal image
+make test-integration PRODUCT=odh PYTEST_ARGS="--image=<universal-image> -k 'workbench or jupyterlab or offline'"
+make test-jupyter-universal-ubi9-python-3.12 PRODUCT=odh   # cluster papermill
+```
+
 Pulling both images and preparing the locked `uv` environment are separate from
 the offline test run. Caddy may be pulled during setup if it is not cached.
 `uv --offline` controls dependency resolution; the internal network isolates the

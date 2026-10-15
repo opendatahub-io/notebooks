@@ -125,6 +125,44 @@ append_missing_env_keys() {
   done < "${overlay}"
 }
 
+# Prefer local non-dummy values over operator params (dev testing personal/quay builds).
+# Operator bundles often ship new ImageStreams as "dummy" until Konflux nudges digests;
+# append_missing_env_keys alone cannot replace those placeholders.
+overlay_local_env_overrides() {
+  local dest="$1"
+  local overlay="$2"
+  [[ -f "${overlay}" && -f "${dest}" ]] || return 0
+
+  local line key value tmp
+  tmp="$(mktemp)"
+  cp "${dest}" "${tmp}"
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line//$'\r'/}"
+    [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    [[ "${line}" == *"="* ]] || continue
+    key="${line%%=*}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    value="${line#*=}"
+    [[ -n "${key}" && -n "${value}" && "${value}" != "dummy" ]] || continue
+    if grep -q "^${key}=" "${tmp}" 2>/dev/null; then
+      # Replace in-place (BSD/GNU sed portable via temp rewrite).
+      local rewritten
+      rewritten="$(mktemp)"
+      awk -v k="${key}" -v v="${value}" '
+        BEGIN { FS="="; OFS="=" }
+        $1 == k { print k, v; next }
+        { print }
+      ' "${tmp}" > "${rewritten}"
+      mv "${rewritten}" "${tmp}"
+    else
+      printf '%s\n' "${line}" >> "${tmp}"
+    fi
+  done < "${overlay}"
+  mv "${tmp}" "${dest}"
+}
+
 configure_platform() {
   case "${PLATFORM}" in
     odh)
@@ -539,9 +577,18 @@ ensure_operator_resolved() {
 }
 
 workbench_namespace() {
-  oc get workbenches default-workbenches \
-    -o jsonpath='{.spec.workbenchNamespace}' 2>/dev/null \
-    || die "Workbenches CR default-workbenches not found"
+  # Prefer the FQ resource name: clusters may also register
+  # workbenches.444444-components.platform.opendatahub.io, and the short name
+  # "workbenches" can resolve to that empty group (NotFound).
+  local ns=""
+  ns="$(oc get workbenches.components.platform.opendatahub.io default-workbenches \
+    -o jsonpath='{.spec.workbenchNamespace}' 2>/dev/null || true)"
+  if [[ -z "${ns}" ]]; then
+    ns="$(oc get datasciencecluster default-dsc \
+      -o jsonpath='{.spec.components.workbenches.workbenchNamespace}' 2>/dev/null || true)"
+  fi
+  [[ -n "${ns}" ]] || die "Workbenches CR default-workbenches not found (and DSC workbenchNamespace unset)"
+  printf '%s\n' "${ns}"
 }
 
 imagestream_names_from_build() {
@@ -751,6 +798,7 @@ build_workdir() {
 
   cp "${operator_params}" "${workdir}/params-latest.env"
   append_missing_env_keys "${workdir}/params-latest.env" "${MANIFESTS_DIR}/params-latest.env"
+  overlay_local_env_overrides "${workdir}/params-latest.env" "${MANIFESTS_DIR}/params-latest.env"
 
   if [[ -s "${operator_commits}" ]]; then
     cp "${operator_commits}" "${workdir}/commit-latest.env"
@@ -758,9 +806,10 @@ build_workdir() {
     : > "${workdir}/commit-latest.env"
   fi
   append_missing_env_keys "${workdir}/commit-latest.env" "${MANIFESTS_DIR}/commit-latest.env"
+  overlay_local_env_overrides "${workdir}/commit-latest.env" "${MANIFESTS_DIR}/commit-latest.env"
 
   rm -f "${operator_params}" "${operator_commits}"
-  log "Using operator params/commit env with local keys merged for new ImageStreams"
+  log "Using operator params/commit env with local keys merged (non-dummy local overrides win)"
 
   printf '%s' "${workdir}"
 }

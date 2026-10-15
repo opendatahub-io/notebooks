@@ -756,6 +756,34 @@ def test_collect_conf_targets_classifies_managed_paths(tmp_path: Path) -> None:
     assert targets[0].flavor == "minimal"
 
 
+def test_collect_conf_targets_classifies_minimal_cpu_conf(tmp_path: Path) -> None:
+    updater = load_updater()
+    managed = tmp_path / "codeserver" / "ubi9-python-3.12" / "build-args" / "minimal.cpu.conf"
+    write_conf(managed, "BASE_IMAGE=example")
+
+    targets = updater.collect_conf_targets(tmp_path)
+
+    assert len(targets) == 1
+    assert targets[0].path == managed
+    assert targets[0].distribution == "odh"
+    assert targets[0].accelerator == "cpu"
+    assert targets[0].flavor is None
+
+
+def test_collect_conf_targets_classifies_codeserver_minimal_paths(tmp_path: Path) -> None:
+    updater = load_updater()
+    managed = tmp_path / "codeserver-minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
+    write_conf(managed, "BASE_IMAGE=example")
+
+    targets = updater.collect_conf_targets(tmp_path)
+
+    assert len(targets) == 1
+    assert targets[0].path == managed
+    assert targets[0].distribution == "rhds"
+    assert targets[0].accelerator == "cpu"
+    assert targets[0].flavor is None
+
+
 def test_collect_conf_targets_ignores_base_images_build_args(tmp_path: Path) -> None:
     updater = load_updater()
     managed = tmp_path / "base-images" / "build-args" / "cuda13.0.conf"
@@ -2318,6 +2346,51 @@ def test_is_baseline_conf_path_detects_baseline_families() -> None:
     assert updater.is_baseline_conf_path(Path("runtimes/baseline/ubi9-python-3.12/build-args/cpu.conf"))
     assert updater.is_baseline_conf_path(Path("codeserver-baseline/ubi9-python-3.12/build-args/cpu.conf"))
     assert not updater.is_baseline_conf_path(Path("jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf"))
+    # Universal is dual-mode but uses shared cpu (ODH + RHOAI), not baseline_cpu.
+    assert not updater.is_baseline_conf_path(Path("jupyter/universal/ubi9-python-3.12/build-args/cpu.conf"))
+    assert not updater.is_baseline_conf_path(
+        Path("jupyter/universal/ubi9-python-3.12/build-args/konflux.cpu.conf")
+    )
+
+
+def test_collect_conf_targets_includes_jupyter_universal_shared_cpu(tmp_path: Path) -> None:
+    updater = load_updater()
+    odh_conf = tmp_path / "jupyter/universal/ubi9-python-3.12/build-args/cpu.conf"
+    rhds_conf = tmp_path / "jupyter/universal/ubi9-python-3.12/build-args/konflux.cpu.conf"
+    write_conf(odh_conf, "BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest", "RELEASE=3.6")
+    write_conf(
+        rhds_conf,
+        "BASE_IMAGE=quay.io/aipcc/base-images/cpu-torch2.13-el9.8:1",
+        "RELEASE=3.6",
+    )
+
+    by_name = {t.path.name: t for t in updater.collect_conf_targets(tmp_path) if "universal" in str(t.path)}
+    assert set(by_name) == {"cpu.conf", "konflux.cpu.conf"}
+    assert by_name["cpu.conf"].accelerator == "cpu"
+    assert by_name["cpu.conf"].distribution == "odh"
+    assert by_name["cpu.conf"].is_baseline is False
+    assert by_name["konflux.cpu.conf"].accelerator == "cpu"
+    assert by_name["konflux.cpu.conf"].distribution == "rhds"
+    assert by_name["konflux.cpu.conf"].is_baseline is False
+
+
+def test_plan_updates_resolves_universal_via_shared_cpu(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    updater = load_updater()
+    write_versions_config(tmp_path / "versions_config.yml", rhds_os_base="el9.8")
+
+    odh_conf = tmp_path / "jupyter/universal/ubi9-python-3.12/build-args/cpu.conf"
+    write_conf(
+        odh_conf,
+        "BASE_IMAGE=registry.redhat.io/rhel9/python-312:9.8-1",
+        "RELEASE=3.6",
+    )
+
+    updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+    by_path = {update.path: update for update in updates}
+
+    assert (
+        pinned_base_image("quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest") in by_path[odh_conf].updated_text
+    )
 
 
 def test_select_latest_rhel_python_tag_picks_highest_build() -> None:

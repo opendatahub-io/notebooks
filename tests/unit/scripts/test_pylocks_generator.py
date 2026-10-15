@@ -357,6 +357,7 @@ def test_get_index_flags_falls_back_to_test_index(
 def test_run_lock_logs_index_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project_dir = tmp_path / "project"
     project_dir.mkdir()
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\nversion = "0.1.0"\n', encoding="utf-8")
 
     log = pg.LogBuffer()
     completed = pg.subprocess.CompletedProcess(args=["uv"], returncode=0, stdout="", stderr="")
@@ -454,6 +455,7 @@ def _run_lock_with_fake_subprocess(
     backoff sleep is neutralized so the test runs instantly.
     """
     project_dir.mkdir(parents=True, exist_ok=True)
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\nversion = "0.1.0"\n', encoding="utf-8")
     monkeypatch.setattr("time.sleep", lambda _s: None)
     calls = {"n": 0}
 
@@ -512,6 +514,7 @@ def test_run_lock_times_out_and_exhausts_retries(tmp_path: Path, monkeypatch: py
     """A persistent subprocess timeout is transient: retried until the budget is exhausted."""
     project_dir = tmp_path / "p"
     project_dir.mkdir()
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\nversion = "0.1.0"\n', encoding="utf-8")
     monkeypatch.setattr("time.sleep", lambda _s: None)
     calls = {"n": 0}
 
@@ -616,6 +619,24 @@ def test_effective_index_mode_honors_explicit_mode(tmp_path: Path) -> None:
     assert pg.effective_index_mode(project_dir, pg.IndexMode.public_index) == pg.IndexMode.public_index, (
         "explicit public-index must win even when uv.lock.d/ exists"
     )
+
+
+def test_jupyter_universal_is_not_hybrid_public_rh_project() -> None:
+    project_dir = pg.ROOT_DIR / "jupyter" / "universal" / "ubi9-python-3.12"
+    assert not pg.is_hybrid_public_rh_project(project_dir), (
+        "universal uses RH-index for both ODH and RHOAI (not hybrid public+RH)"
+    )
+
+
+def test_hybrid_rh_output_flavor_reads_konflux_pylock_flavor(tmp_path: Path) -> None:
+    project_dir = tmp_path / "jupyter" / "example-hybrid" / "ubi9-python-3.12"
+    conf_dir = project_dir / "build-args"
+    conf_dir.mkdir(parents=True)
+    (conf_dir / "konflux.cpu.conf").write_text(
+        "BASE_IMAGE=quay.io/example/cpu\nPYLOCK_FLAVOR=rhoai\nPRODUCT=rhoai\n",
+        encoding="utf-8",
+    )
+    assert pg.hybrid_rh_output_flavor(project_dir, "cpu") == "rhoai"
 
 
 def _public_index_project(tmp_path: Path) -> Path:
@@ -1116,6 +1137,44 @@ dependencies = ["uv"]
 
     assert generated is None, "no constraints file should be generated when the source dir is missing"
     assert not (baseline_dir / ".aipcc-alignment.constraints.txt").exists(), "no leftover constraints file expected"
+
+
+def test_inject_project_dependencies_appends_before_closing_bracket() -> None:
+    original = """
+[project]
+name = "hybrid-test"
+version = "0.1.0"
+dependencies = [
+    "uv",
+    "wheel",
+]
+
+[tool.uv]
+exclude-dependencies = ["py-spy"]
+""".strip()
+    patched = pg._inject_project_dependencies(
+        original + "\n",
+        ["pandoc-rhai; sys_platform == 'linux'"],
+    )
+    assert '    "pandoc-rhai; sys_platform == \'linux\'",' in patched
+    assert patched.index("pandoc-rhai") < patched.index("\n]")
+    # Idempotent
+    assert pg._inject_project_dependencies(patched, ["pandoc-rhai; sys_platform == 'linux'"]) == patched
+
+
+def test_hybrid_rh_extra_dependencies_from_map(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    rel = Path("jupyter/example-hybrid/ubi9-python-3.12")
+    project = tmp_path / rel
+    project.mkdir(parents=True)
+    monkeypatch.setattr(pg, "ROOT_DIR", tmp_path)
+    monkeypatch.setattr(
+        pg,
+        "HYBRID_RH_EXTRA_DEPENDENCIES",
+        {rel: ("pandoc-rhai; sys_platform == 'linux'",)},
+    )
+    extras = pg.hybrid_rh_extra_dependencies(project)
+    assert extras == ["pandoc-rhai; sys_platform == 'linux'"]
+    assert pg.hybrid_rh_extra_dependencies(tmp_path / "jupyter/other") == []
 
 
 @pytest.mark.parametrize(

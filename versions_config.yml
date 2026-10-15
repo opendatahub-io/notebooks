@@ -19,6 +19,10 @@ release:
 
 artifacts:
   base_image:
+    # Shared CPU policy for managed non-baseline CPU workbenches/runtimes that
+    # have both ODH (cpu.conf) and RHOAI (konflux.cpu.conf) build-args, including:
+    # jupyter/{minimal,datascience,trustyai,universal}, runtimes/*, codeserver/*.
+    # jupyter/universal uses this block (RH-index + AIPCC for RHOAI), not baseline_cpu.
     cpu:
       channel_torch_version: "2.13"
       rhds:
@@ -27,6 +31,8 @@ artifacts:
         origin: in-house
         version: "latest"
 
+    # ODH-only public-index baseline families (jupyter/baseline, runtimes/baseline,
+    # codeserver-baseline). No konflux.cpu.conf / RHDS prefetch.
     baseline_cpu:
       odh:
         origin: in-house
