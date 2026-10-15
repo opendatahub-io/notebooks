@@ -756,6 +756,34 @@ def test_collect_conf_targets_classifies_managed_paths(tmp_path: Path) -> None:
     assert targets[0].flavor == "minimal"
 
 
+def test_collect_conf_targets_classifies_minimal_cpu_conf(tmp_path: Path) -> None:
+    updater = load_updater()
+    managed = tmp_path / "codeserver" / "ubi9-python-3.12" / "build-args" / "minimal.cpu.conf"
+    write_conf(managed, "BASE_IMAGE=example")
+
+    targets = updater.collect_conf_targets(tmp_path)
+
+    assert len(targets) == 1
+    assert targets[0].path == managed
+    assert targets[0].distribution == "odh"
+    assert targets[0].accelerator == "cpu"
+    assert targets[0].flavor is None
+
+
+def test_collect_conf_targets_classifies_codeserver_minimal_paths(tmp_path: Path) -> None:
+    updater = load_updater()
+    managed = tmp_path / "codeserver-minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
+    write_conf(managed, "BASE_IMAGE=example")
+
+    targets = updater.collect_conf_targets(tmp_path)
+
+    assert len(targets) == 1
+    assert targets[0].path == managed
+    assert targets[0].distribution == "rhds"
+    assert targets[0].accelerator == "cpu"
+    assert targets[0].flavor is None
+
+
 def test_collect_conf_targets_ignores_base_images_build_args(tmp_path: Path) -> None:
     updater = load_updater()
     managed = tmp_path / "base-images" / "build-args" / "cuda13.0.conf"

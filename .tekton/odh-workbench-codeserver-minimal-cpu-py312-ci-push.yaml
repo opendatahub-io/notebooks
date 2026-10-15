@@ -13,10 +13,9 @@ metadata:
       !("manifests/base/params-latest.env".pathChanged()) &&
       (
         ".tekton/odh-workbench-codeserver-minimal-cpu-py312-ci-push.yaml".pathChanged() ||
-        "codeserver/**".pathChanged() ||
-        "codeserver/ubi9-python-3.12/**".pathChanged() ||
-        "codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu".pathChanged() ||
-        "codeserver/ubi9-python-3.12/build-args/minimal.cpu.conf".pathChanged()
+        "codeserver-minimal/ubi9-python-3.12/**".pathChanged() ||
+        "codeserver-minimal/ubi9-python-3.12/Dockerfile.konflux.cpu".pathChanged() ||
+        "codeserver-minimal/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
       )
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -43,9 +42,9 @@ spec:
   - name: dockerfile
     value: Dockerfile.konflux.cpu
   - name: path-context
-    value: codeserver/ubi9-python-3.12
+    value: codeserver-minimal/ubi9-python-3.12
   - name: build-args-file
-    value: codeserver/ubi9-python-3.12/build-args/minimal.cpu.conf
+    value: codeserver-minimal/ubi9-python-3.12/build-args/cpu.conf
   pipelineRef:
     resolver: git
     params:
