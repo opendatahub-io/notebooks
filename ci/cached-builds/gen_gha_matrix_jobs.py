@@ -24,6 +24,7 @@ project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 ARM64_COMPATIBLE = {
     "codeserver-baseline-ubi9-python-3.12",
     "codeserver-ubi9-python-3.12",
+    "codeserver-minimal-ubi9-python-3.12",
     "cuda-jupyter-minimal-ubi9-python-3.12",
     "cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12",
     "cuda-jupyter-pytorch-ubi9-python-3.12",
