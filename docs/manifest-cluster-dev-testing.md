@@ -136,6 +136,7 @@ to apply to the applications namespace and the DSC `workbenchNamespace`.
 | Symptom | Action |
 |---------|--------|
 | `Workbenches must be Managed` | Set `managementState: Managed` on DSC workbenches |
+| `Workbenches CR default-workbenches not found` | The CR usually exists as `workbenches.components.platform.opendatahub.io`. A second CRD (`workbenches.444444-components...`) can steal the short name `workbenches`; the script uses the FQ name and falls back to DSC `spec.components.workbenches.workbenchNamespace`. Or use `--target applications` (default) if you only need the dashboard namespace. |
 | `No notebook manifest bundle` / `No operator pod` | Ensure `workbenches-operator` is running in the applications namespace. On RHOAI 3.6+, notebook manifests are no longer in `rhods-operator`. Omit `--operator-ns` unless you need legacy platform-operator fallback. |
 | `tar` not found in operator pod | Expected on `workbenches-operator` (minimal image). The script tries `oc cp`, then streams the tree in one `oc exec` (find + base64). Look for `Streaming manifest tree` / `Copied N manifest file(s)` in the log. |
 | Manifest applied but UI unchanged | On 3.6+, `workbenches-operator` may have reconciled the ImageStream. Re-run `apply` (pauses the operator by default) or check `oc get imagestream <name> -o yaml`. Run `revert` to resume the operator. |

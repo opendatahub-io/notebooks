@@ -236,9 +236,10 @@ fi
 PYPROJECT="$COMPONENT_DIR/pyproject.toml"
 if [[ -f "$PYPROJECT" ]]; then
   echo "=== [2/5] Pip wheels ==="
-  REQUIREMENTS_FILE="$COMPONENT_DIR/requirements.${FLAVOR}.txt"
+  PIP_FLAVOR="$FLAVOR"
+  REQUIREMENTS_FILE="$COMPONENT_DIR/requirements.${PIP_FLAVOR}.txt"
   if [[ ! -f "$REQUIREMENTS_FILE" ]]; then
-    error_exit "requirements.${FLAVOR}.txt not found in $COMPONENT_DIR. prefetch-all.sh does not generate pip lockfiles — run 'make refresh-lock-files DIR=$COMPONENT_DIR' (or scripts/lockfile-generators/create-requirements-lockfile.sh), commit the result, then re-run prefetch."
+    error_exit "requirements.${PIP_FLAVOR}.txt not found in $COMPONENT_DIR. prefetch-all.sh does not generate pip lockfiles — run 'make refresh-lock-files DIR=$COMPONENT_DIR' (or scripts/lockfile-generators/create-requirements-lockfile.sh), commit the result, then re-run prefetch."
   fi
 
   # Derive target arch from BUILD_ARCH (GHA cross-build via QEMU) or host
@@ -328,6 +329,9 @@ if [[ -f "$RPM_INPUT" ]]; then
   echo "=== [4/5] RPMs ==="
   if [[ -f "$RPM_LOCKFILE" ]]; then
     echo "  rpms.lock.yaml exists — downloading RPMs only (skipping lockfile regeneration)"
+    # BUILD_ARCH (if set) limits hermeto to one RPM arch so missing
+    # entitlement coverage on unused arches (e.g. ppc64le) does not fail
+    # a single-arch local build.
     "$SCRIPTS_PATH/helpers/hermeto-fetch-rpm.sh" --prefetch-dir "$VARIANT_DIR"
   else
     echo "  rpms.lock.yaml not found — generating lockfile and downloading"

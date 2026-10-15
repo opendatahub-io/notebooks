@@ -165,6 +165,38 @@ The entitlement certificates are not being mounted into the build container, or 
 2. Verify mounts work: run the verify command from Step 2
 3. Build with `--no-cache` to avoid cached layers from failed attempts
 
+### SSL `CERTIFICATE_VERIFY_FAILED` / self-signed chain on `cdn.redhat.com`
+
+```text
+SSLCertVerificationError: ... self-signed certificate in certificate chain
+Unsuccessful download: https://cdn.redhat.com/content/eus/rhel9/...
+```
+
+This is usually **missing RHSM CA trust**, not a broken corporate proxy bypass.
+`cdn.redhat.com` (especially on Red Hat VPN) presents a chain rooted at Red Hat
+**Entitlement Master CA**. That CA is not in public trust stores (`/etc/ssl/cert.pem`);
+it ships as `/etc/rhsm/ca/redhat-uep.pem` in UBI/RHEL.
+
+Hermeto only gets that CA when entitlement client certs are configured
+(`entitlement/*.pem` on the host, or auto-synced from the podman machine). Without
+them, prefetch fails TLS before it can even return HTTP 403.
+
+Fix:
+
+1. Ensure host `entitlement/*.pem` exists (Step 1), **or** keep certs in the
+   podman machine at `/etc/pki/entitlement` — `hermeto-fetch-rpm.sh` syncs them
+   to `./entitlement` automatically on macOS.
+2. Re-run RHDS prefetch:
+   `./scripts/lockfile-generators/prefetch-all.sh --component-dir <dir> --flavor cpu --rhds`
+3. Sanity-check CDN auth (expect HTTP 200):
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  --cacert <(podman run --rm registry.access.redhat.com/ubi9/ubi cat /etc/rhsm/ca/redhat-uep.pem) \
+  --cert entitlement/<id>.pem --key entitlement/<id>-key.pem \
+  'https://cdn.redhat.com/content/eus/rhel9/9.8/x86_64/appstream/os/repodata/repomd.xml'
+```
+
 ### QEMU segfault on macOS
 
 See [macos-podman-rosetta.md](macos-podman-rosetta.md) to enable Rosetta.

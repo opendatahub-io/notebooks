@@ -22,7 +22,7 @@
       "properties": {
         "cpu": {
           "$ref": "#/$defs/CpuArtifact",
-          "description": "Shared CPU policy for all managed CPU workbenches."
+          "description": "Shared CPU policy for managed non-baseline CPU workbenches/runtimes (ODH cpu.conf + RHOAI konflux.cpu.conf), including jupyter/universal."
         },
         "baseline_cpu": {
           "$ref": "#/$defs/BaselineCpuArtifact",

@@ -225,17 +225,15 @@ detailed usage.
 
 The `build_image` macro was updated to auto-detect hermetic builds:
 
-```makefile
-$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),\
-    --volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
-    --volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
-```
+The Makefile mounts `cachi2/output` and a **hermeto-only copy** of
+`deps/rpm/<arch>/repos.d/` (read-only) over `/etc/yum.repos.d/`. Only targets
+with both `cachi2/output/` and a `prefetch-input/` tree get these mounts.
 
-This evaluates per-target: only targets with both `cachi2/output/` and a
-`prefetch-input/` directory get the volume mounts. The second mount overlays
-`/etc/yum.repos.d/` with hermeto-generated repos, making local builds behave
-like Konflux (repos are already in place when the Dockerfile runs). All other
-targets are completely unaffected.
+Do not bind-mount the raw `repos.d/` read-write: on local AIPCC/RHOAI builds,
+`subscription-manager` can write `redhat.repo` into that directory (live CDN
+AppStream mixed with hermeto/CentOS Stream), which causes package conflicts
+(for example mesa/libomp/llvm). The Makefile drops any leaked `redhat.repo`
+from the prefetch tree and mounts a temporary copy that excludes it.
 
 ### GitHub Actions workflow
 

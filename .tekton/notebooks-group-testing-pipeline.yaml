@@ -306,6 +306,14 @@ spec:
                   undeploy9-jupyter-trustyai-ubi9-python-3.12 \
                   || ((FAILURES++))
 
+              run_workbench_test \
+                  odh-workbench-jupyter-universal-cpu-py312-c9s-ci \
+                  jupyter-universal-ubi9-python-3-12 \
+                  deploy9-jupyter-universal-ubi9-python-3.12 \
+                  test-jupyter-universal-ubi9-python-3.12 \
+                  undeploy9-jupyter-universal-ubi9-python-3.12 \
+                  || ((FAILURES++))
+
               echo ""
               echo "=========================================="
               echo "Results: ${FAILURES} failure(s) out of ${#RESULTS[@]} workbenches"

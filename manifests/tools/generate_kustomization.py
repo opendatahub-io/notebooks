@@ -166,7 +166,8 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
     workbench_imagestream_order: list[str] = []
     seen_workbench_imagestreams: set[str] = set()
     for _key, istream in replacement_params_pairs:
-        if _key.startswith("odh-pipeline-runtime-"):
+        if _key.startswith("odh-pipeline-runtime-") or istream.startswith("runtime-"):
+            # runtime-* ImageStreams may share an odh-workbench-* key (dual-mode).
             continue
         if istream not in seen_workbench_imagestreams:
             workbench_imagestream_order.append(istream)
@@ -179,7 +180,12 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
     runtime_imagestream_order: list[str] = []
     seen_runtime_imagestreams: set[str] = set()
     for _key, istream in replacement_params_pairs:
-        if not _key.startswith("odh-pipeline-runtime-"):
+        # Include dedicated pipeline-runtime keys and dual-mode runtime-* ImageStreams
+        # that reuse a workbench params key / digest.
+        if not (
+            _key.startswith("odh-pipeline-runtime-")
+            or (istream.startswith("runtime-") and _key.startswith("odh-workbench-"))
+        ):
             continue
         if istream not in seen_runtime_imagestreams:
             runtime_imagestream_order.append(istream)
@@ -214,6 +220,14 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
             for full_key in yaml_keys_by_imagestream.get(istream, [])
             if full_key in param_keys and full_key.startswith("odh-pipeline-runtime-")
         ]
+        if not runtime_keys:
+            # Dual-mode images (e.g. jupyter/universal) expose a runtime-* ImageStream
+            # that shares the workbench params key / digest — no separate pipeline-runtime build.
+            runtime_keys = [
+                full_key
+                for full_key in yaml_keys_by_imagestream.get(istream, [])
+                if full_key in param_keys and full_key.startswith("odh-workbench-")
+            ]
         if not runtime_keys:
             continue
         full_key = runtime_keys[0]

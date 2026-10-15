@@ -29,14 +29,14 @@ if [ "${PRODUCT:-odh}" = 'rhoai' ]; then
     _MANIFESTS_VARIANT="rhoai"
     # This value needs to be updated everytime we deliberately change number of the
     # images we want to have in the `params.env` or `params-latest.env` file.
-    EXPECTED_COMMIT_NUM_RECORDS=44
-    EXPECTED_PARAMS_NUM_RECORDS=58
+    EXPECTED_COMMIT_NUM_RECORDS=45
+    EXPECTED_PARAMS_NUM_RECORDS=59
 else
     _MANIFESTS_VARIANT="odh"
     # This value needs to be updated everytime we deliberately change number of the
     # images we want to have in the `params.env` or `params-latest.env` file.
-    EXPECTED_COMMIT_NUM_RECORDS=23
-    EXPECTED_PARAMS_NUM_RECORDS=30
+    EXPECTED_COMMIT_NUM_RECORDS=24
+    EXPECTED_PARAMS_NUM_RECORDS=31
 fi
 
 COMMIT_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit-latest.env"
@@ -420,6 +420,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             else
                 expected_img_size=2312
             fi
+            ;;
+        odh-workbench-jupyter-universal-cpu-py312-ubi9-n)
+            expected_name="opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=2200
             ;;
         odh-workbench-jupyter-trustyai-cpu-py312-ubi9-2025-2)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
@@ -808,6 +814,15 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                         else
                             expected_name="opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9"
                             expected_img_size=2312
+                        fi
+                        ;;
+                    odh-workbench-jupyter-universal-cpu-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-universal-cpu-py312-rhel9"
+                            expected_img_size=2200
+                        else
+                            expected_name="opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9"
+                            expected_img_size=2200
                         fi
                         ;;
                     odh-workbench-codeserver-datascience-cpu-py312-ubi9)
