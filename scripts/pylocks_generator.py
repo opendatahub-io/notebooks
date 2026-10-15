@@ -133,7 +133,7 @@ NO_EMIT_PACKAGES = (
     "odh-notebooks-meta-workbench-datascience-deps",
 )
 
-FLAVORS = ("cpu", "cuda", "rocm")
+FLAVORS = ("cpu", "cuda", "rocm", "spyre")
 AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME = ".aipcc-alignment.constraints.txt"
 
 # Baseline public-index images inherit direct dependency lock versions from paired
@@ -393,7 +393,7 @@ def effective_index_mode(project_dir: Path, index_mode: IndexMode) -> IndexMode:
 
 
 def detect_flavors(project_dir: Path) -> set[str]:
-    """Detect available Dockerfile.konflux.* flavors (cpu, cuda, rocm) in a directory."""
+    """Detect available Dockerfile.konflux.* flavors (cpu, cuda, rocm, spyre) in a directory."""
     return {f for f in FLAVORS if (project_dir / f"Dockerfile.konflux.{f}").is_file()}
 
 
@@ -702,7 +702,6 @@ def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str]
     resolved = resolve_rh_index_config(project_dir, flavor, log)
     if resolved is None:
         return None
-
     return [f"--default-index={ensure_json_format_param(resolved.index_url)}"]
 
 
@@ -1244,7 +1243,7 @@ def process_directory(
 
     flavors = detect_flavors(tdir)
     if not flavors:
-        log.warning(f"No Dockerfile.konflux.* files found in {tdir} (cpu/cuda/rocm). Skipping.")
+        log.warning(f"No Dockerfile.konflux.* files found in {tdir} (cpu/cuda/rocm/spyre). Skipping.")
         return tdir, False, log
 
     log.print(f"📦 Python version: {python_version}")
@@ -1288,7 +1287,7 @@ def process_directory(
                 if extra_constraints is not None:
                     extra_constraints.unlink(missing_ok=True)
     else:
-        for flavor in ("cpu", "cuda", "rocm"):
+        for flavor in FLAVORS:
             if flavor not in flavors:
                 continue
             if requirements_only:

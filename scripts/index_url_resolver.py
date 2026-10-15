@@ -380,7 +380,6 @@ def resolve_index_config(
         release_override=release_override,
     ):
         return resolved
-
     return _resolve_from_base_image_ref(
         base_image,
         conf_file,
