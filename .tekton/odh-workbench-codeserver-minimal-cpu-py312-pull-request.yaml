@@ -22,7 +22,7 @@ metadata:
         "codeserver-minimal/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
       ) && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
-    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/application: opendatahub-builds
     appstudio.openshift.io/component: odh-workbench-codeserver-minimal-cpu-py312-ci
     pipelines.appstudio.openshift.io/type: build
   name: odh-workbench-codeserver-minimal-cpu-py312-on-pull-request
