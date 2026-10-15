@@ -22,7 +22,7 @@ metadata:
       ) && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
-    appstudio.openshift.io/component: odh-workbench-codeserver-minimal-cpu-py312-ubi9-ci
+    appstudio.openshift.io/component: odh-workbench-codeserver-minimal-cpu-py312-ubi9
     pipelines.appstudio.openshift.io/type: build
   name: odh-workbench-codeserver-minimal-cpu-py312-ubi9-on-pull-request
   namespace: open-data-hub-tenant
@@ -55,7 +55,7 @@ spec:
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-workbench-codeserver-minimal-cpu-py312-ubi9-ci
+    serviceAccountName: build-pipeline-odh-workbench-codeserver-minimal-cpu-py312-ubi9
   workspaces:
   - name: git-auth
     secret:

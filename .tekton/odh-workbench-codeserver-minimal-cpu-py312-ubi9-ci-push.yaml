@@ -49,7 +49,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-workbench-codeserver-minimal-cpu-py312-ubi9-ci
+    serviceAccountName: build-pipeline-odh-workbench-codeserver-minimal-cpu-py312-ubi9
   workspaces:
   - name: git-auth
     secret:
