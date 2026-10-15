@@ -255,6 +255,10 @@ runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
 codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,codeserver/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
+.PHONY: codeserver-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+codeserver-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,codeserver-minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
+
 .PHONY: che-code-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION)
 che-code-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,codeserver/che-code-ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
@@ -660,6 +664,7 @@ all-images: \
 	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	codeserver-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	che-code-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
