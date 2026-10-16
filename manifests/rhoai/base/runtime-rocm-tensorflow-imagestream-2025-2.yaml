@@ -6,8 +6,9 @@ metadata:
     opendatahub.io/runtime-image: "true"
   annotations:
     opendatahub.io/runtime-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/runtimes"
-    opendatahub.io/runtime-image-name: "Runtime | TensorFlow | ROCm | Python 3.12 | 2025.2"
+    opendatahub.io/runtime-image-name: "Runtime | TensorFlow | ROCm | Python 3.12 | 2025.2 (Deprecated)"
     opendatahub.io/runtime-image-desc: "ROCm optimized TensorFlow runtime image for Elyra, enabling pipeline execution from Workbenches with TensorFlow libraries and dependencies, supporting different runtimes for various pipeline nodes."
+    opendatahub.io/deprecated: "true"
   name: runtime-rocm-tensorflow-2025-2
 spec:
   lookupPolicy:
@@ -18,12 +19,12 @@ spec:
         opendatahub.io/runtime-image-metadata: |
           [
             {
-              "display_name": "Runtime | TensorFlow | ROCm | Python 3.12 | 2025.2",
+              "display_name": "Runtime | TensorFlow | ROCm | Python 3.12 | 2025.2 (Deprecated)",
               "metadata": {
                 "tags": [
                   "rocm-tensorflow-2025.2"
                 ],
-                "display_name": "Runtime | TensorFlow | ROCm | Python 3.12 | 2025.2",
+                "display_name": "Runtime | TensorFlow | ROCm | Python 3.12 | 2025.2 (Deprecated)",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
