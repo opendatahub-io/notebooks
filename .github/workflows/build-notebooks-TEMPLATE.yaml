@@ -536,7 +536,7 @@ jobs:
 
       - name: Upload Testcontainers pytest JUnit XML
         if: ${{ always() && steps.pytest-testcontainers.conclusion != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           path: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_testcontainers-junit.xml"
           archive: false
@@ -613,7 +613,7 @@ jobs:
 
       - name: Upload OpenShift pytest JUnit XML
         if: ${{ always() && steps.pytest-openshift.conclusion != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           path: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_openshift-junit.xml"
           archive: false
