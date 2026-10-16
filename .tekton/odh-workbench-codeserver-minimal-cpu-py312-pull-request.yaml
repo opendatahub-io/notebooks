@@ -34,7 +34,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-codeserver-minimal-cpu-py312:pr-{{pull_request_number}}-{{revision}}
+    value: quay.io/opendatahub/odh-workbench-codeserver-minimal-cpu-py312:pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: dockerfile
