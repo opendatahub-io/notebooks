@@ -56,6 +56,12 @@ def test_flags_unquoted_var_in_dangerous_cmd(pattern: re.Pattern[str], line: str
         'rm "$FILE"; echo $OTHER',
         'rm "$FILE" | echo $OTHER',
         'rm "$FILE" & echo $OTHER',
+        # "rm" inside --platform must not span to a later-line $VAR (issue #4131).
+        (
+            "ACCELERATE_VERSION=$(python3 ./pylock_version.py accelerate --platform x86_64)\n"
+            'uv pip install "accelerate==${ACCELERATE_VERSION}"'
+        ),
+        "rm -f dist/foo\nFOO=$BAR",
     ],
 )
 def test_ignores_safe_or_other_command_vars(pattern: re.Pattern[str], line: str) -> None:
