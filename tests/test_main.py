@@ -285,9 +285,11 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
             # Hybrid dual-product images (ODH public + RHOAI RH-index) intentionally keep both.
             # jupyter/universal is RH-index-only for both products (not hybrid).
             try:
-                from scripts.pylocks_generator import is_hybrid_public_rh_project
+                from scripts.pylocks_generator import (  # ruff: ignore[import-outside-top-level]
+                    is_hybrid_public_rh_project,
+                )
             except ImportError:  # pragma: no cover
-                is_hybrid_public_rh_project = lambda _p: False  # noqa: E731
+                is_hybrid_public_rh_project = lambda _p: False  # ruff: ignore[lambda-assignment]
             hybrid_locks = is_hybrid_public_rh_project(file.parent)
             assert hybrid_locks or not (uv_lock_d.is_dir() and standalone_pylock.is_file()), (
                 f"Both {uv_lock_d} and {standalone_pylock} exist. "
@@ -356,17 +358,14 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
                             )
                             continue
 
-                        assert requirement.name in packages_for_lock, (
-                            f"Dependency {d} is not in {pylock_path.name}"
-                        )
+                        assert requirement.name in packages_for_lock, f"Dependency {d} is not in {pylock_path.name}"
                         assert "version" in packages_for_lock[requirement.name], (
                             f"Version missing for {requirement.name} in {pylock_path.name}"
                         )
                         version = packages_for_lock[requirement.name]["version"]
                         if requirement.specifier:
                             assert requirement.specifier.contains(version), (
-                                f"Version of {d} in pyproject.toml does not match "
-                                f"{version=} in {pylock_path.name}"
+                                f"Version of {d} in pyproject.toml does not match {version=} in {pylock_path.name}"
                             )
                 # Imagestream / workbench package checks use the primary (first) lock only.
                 if not pylock_packages:
@@ -1157,7 +1156,7 @@ def test_imagestream_imported_from_provenance(subtests: pytest.Subtests, base_di
 
     for is_file in sorted(base_dir.glob("*-imagestream.yaml")):
         is_data = yaml.safe_load(is_file.read_text())
-        is_name = is_data["metadata"]["name"]
+        _is_name = is_data["metadata"]["name"]
         tags = is_data["spec"]["tags"]
 
         for tag in tags:
@@ -1165,7 +1164,9 @@ def test_imagestream_imported_from_provenance(subtests: pytest.Subtests, base_di
             annotations = tag.get("annotations", {})
             imported_from = annotations.get("openshift.io/imported-from")
 
-            with subtests.test(msg=f"imported-from present in {is_file.name} tag {tag_name}", imagestream=is_file.name, tag=tag_name):
+            with subtests.test(
+                msg=f"imported-from present in {is_file.name} tag {tag_name}", imagestream=is_file.name, tag=tag_name
+            ):
                 assert imported_from, f"{is_file.name} tag {tag_name}: missing openshift.io/imported-from annotation"
 
                 for bad in bad_prefixes:

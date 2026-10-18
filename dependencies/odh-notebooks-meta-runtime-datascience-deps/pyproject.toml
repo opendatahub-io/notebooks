@@ -7,7 +7,9 @@ dependencies = [
     # Core Data Science Libraries
 
     "numpy",
-    "pandas",
+    # RHAIENG-7790: pin below the pandas 2.3 pickle regression (RHOAIENG-99347).
+    # 3.0.6 is fixed but feast/mlflow cap pandas<3. TrustyAI overrides this to >=3.0.1.
+    "pandas==2.2.3",
     "scikit-learn",
     "scipy",
     "matplotlib",
