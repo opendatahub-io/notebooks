@@ -337,6 +337,13 @@ odh-workbench-codeserver-baseline-cpu-py312-c9s-n:
   size_mb: 1100
   variants:
     - odh
+odh-workbench-codeserver-minimal-cpu-py312-n:
+  name: opendatahub/odh-workbench-codeserver-minimal-cpu-py312-ubi9
+  commitref: main
+  build_name: konflux
+  size_mb: 425
+  variants:
+    - odh
 odh-workbench-codeserver-datascience-cpu-py312-ubi9-2025-2:
   name:
     odh: odh-notebook-code-server-ubi9-python-3.12
