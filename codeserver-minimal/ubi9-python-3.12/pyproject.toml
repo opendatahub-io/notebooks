@@ -1,0 +1,47 @@
+# [HERMETIC] Minimal code-server Python contract:
+#   - uv + micropipenv are explicit so cachi2 can prefetch them
+#   - ipykernel + debugpy are explicit for VS Code Jupyter/debug support
+#   - ripgrep is required by the code-server build/runtime
+#   - py-spy is excluded to keep the minimal image lean
+[project]
+name = "notebooks"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Installer/tooling used in Docker/CI (prefetched with main deps for cachi2 offline)
+    "uv",
+    "micropipenv[toml]",
+
+    # Base packages
+    "wheel",
+    "setuptools",
+
+    "debugpy",
+
+    # RHAIENG-6157: VS Code Jupyter extension requires these
+    #  ipykernel: raw-kernel gate
+    #  jupyter+notebook: Jupyter-Server gate (s390x/ppc64le, no built-in native zeromq for nodejs)
+    "ipykernel",
+    "jupyter",
+    "notebook",
+
+    # Required by code-server's hermetic build and runtime search
+    "ripgrep",
+]
+
+[tool.uv]
+# RHAIENG-5451 / RHAIENG-7088: fail at lock-generation time (not inside the
+# Konflux build) if a package version lacks wheels for any architecture this
+# image ships. See opendatahub-io/notebooks#4422 for the dynamic alternative.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "sys_platform == 'linux' and platform_machine == 'ppc64le'",
+    "sys_platform == 'linux' and platform_machine == 's390x'",
+]
+exclude-dependencies = ["py-spy"]
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+]
