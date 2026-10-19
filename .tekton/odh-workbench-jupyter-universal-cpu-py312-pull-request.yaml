@@ -25,16 +25,15 @@ spec:
   - name: output-image
     value: quay.io/rhoai/pull-request-pipelines:odh-workbench-jupyter-universal-cpu-py312-{{revision}}
   - name: dockerfile
-    value: Dockerfile.konflux.cpu
+    value: jupyter/universal/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: build-args-file
     value: jupyter/universal/ubi9-python-3.12/build-args/konflux.cpu.conf
   - name: path-context
-    value: jupyter/universal/ubi9-python-3.12
+    value: .
   - name: image-expires-after
     value: 5d
   - name: enable-slack-failure-notification
     value: "false"
-
   - name: build-platforms
     value:
     - linux/x86_64
