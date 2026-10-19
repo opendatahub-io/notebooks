@@ -6,3 +6,7 @@
 
 # Pin version due to conflicts issues with the latest: https://redhat-internal.slack.com/archives/C05TTTYG599/p1787186871895519?thread_ts=1787154375.793519&cid=C05TTTYG599
 jupyterlab>=4.5.7,<4.6
+
+# RHAIENG-7790: pandas 2.3.x cannot unpickle its own data (RHOAIENG-99347).
+# 3.0.6 is fixed, but feast and mlflow cap pandas<3, so every image stays on 2.2.3.
+pandas==2.2.3

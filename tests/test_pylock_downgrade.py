@@ -62,7 +62,7 @@ TRACKED_PACKAGES_CANONICAL: frozenset[str] = frozenset(packaging.utils.canonical
 
 # Locked versions that are an intentional step down from the PR base.
 # RHAIENG-7790: pandas 2.3.x cannot unpickle its own data (RHOAIENG-99347).
-# 3.0.6 is fixed, but feast and mlflow cap pandas<3, so standard images stay on 2.2.3.
+# 3.0.6 is fixed, but feast and mlflow cap pandas<3, so every image stays on 2.2.3.
 _INTENTIONAL_DOWNGRADES: dict[str, str] = {
     "pandas": "2.2.3",
 }
