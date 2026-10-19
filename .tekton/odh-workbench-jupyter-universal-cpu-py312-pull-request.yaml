@@ -34,6 +34,19 @@ spec:
     value: 5d
   - name: enable-slack-failure-notification
     value: "false"
+  - name: rhel-subscription-activation-key
+    value: rhel-subscription-activation-key-rhoai-devops-for-notebooks-rhel9-6
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/mongocli
+      type: gomod
+    - path: prefetch-input/rhds
+      type: rpm
+    - path: jupyter/trustyai/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: "x86_64,aarch64,ppc64le,s390x"
+      requirements_files: [requirements.cpu.txt]
   - name: build-platforms
     value:
     - linux/x86_64
