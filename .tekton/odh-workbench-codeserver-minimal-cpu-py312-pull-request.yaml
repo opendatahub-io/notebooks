@@ -270,7 +270,7 @@ spec:
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-workbench-codeserver-minimal-cpu-py312
+    serviceAccountName: build-pipeline-odh-workbench-codeserver-minimal-cpu-py312-ci
   workspaces:
   - name: git-auth
     secret:
