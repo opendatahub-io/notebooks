@@ -71,6 +71,8 @@ packages:
   # Node.js (module nodejs:22). nodejs-packaging pulls redhat-rpm-config, which
   # requires glibc-gconv-extra matching odh-base-image-cpu-py312-c9s (2.34-277.el9).
   # If lock regen picks glibc 2.34-285, rpm-base dnf install of nodejs-devel fails.
+  - glibc-langpack-en
+  - glibc-minimal-langpack
   - nodejs-devel
   - nodejs-packaging
   - npm
