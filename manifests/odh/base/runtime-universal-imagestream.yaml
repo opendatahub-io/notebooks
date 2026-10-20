@@ -31,10 +31,10 @@ spec:
             }
           ]
         # Same digest as jupyter-universal-notebook (dual-mode entrypoint).
-        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-universal-cpu-py312-c9s
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-universal-cpu-py312-ubi9-n_PLACEHOLDER
+        name: odh-workbench-jupyter-universal-cpu-py312-c9s-n_PLACEHOLDER
       name: "universal"
       referencePolicy:
         type: Source
