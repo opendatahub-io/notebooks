@@ -104,7 +104,7 @@ CONSTRAINTS_FILE = ROOT_DIR / "dependencies" / "constraints.txt"
 OVERRIDES_FILE = ROOT_DIR / "dependencies" / "overrides.txt"
 PYLOCK_TO_REQUIREMENTS = ROOT_DIR / "scripts" / "lockfile-generators" / "helpers" / "pylock-to-requirements.py"
 PUBLIC_INDEX = "--default-index=https://pypi.org/simple"
-MAIN_DIRS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline")
+MAIN_DIRS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline", "codeserver-minimal")
 # Shared lock inputs: a PR touching any of these regenerates all image project locks.
 # Generator/resolver script edits alone do not force a full regen (that re-resolves
 # every image under CI exclude-newer and fails on unrelated RH-index gaps). Lock

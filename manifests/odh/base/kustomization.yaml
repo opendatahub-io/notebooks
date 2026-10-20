@@ -11,6 +11,7 @@ resources:
   - jupyter-trustyai-notebook-imagestream.yaml
   - jupyter-universal-notebook-imagestream.yaml
   - code-server-notebook-imagestream.yaml
+  - code-server-minimal-notebook-imagestream.yaml
   - che-code-notebook-imagestream.yaml
   - code-server-baseline-notebook-imagestream.yaml
   - jupyter-rocm-minimal-notebook-imagestream.yaml
@@ -384,6 +385,19 @@ replacements:
           name: che-code-notebook
           version: v1
   - source:
+      fieldPath: data.odh-workbench-codeserver-minimal-cpu-py312-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: code-server-minimal-notebook
+          version: v1
+  - source:
       fieldPath: data.odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n
       kind: ConfigMap
       name: notebook-image-commithash
@@ -720,6 +734,19 @@ replacements:
           group: image.openshift.io
           kind: ImageStream
           name: che-code-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-workbench-codeserver-minimal-cpu-py312-commit-n
+      kind: ConfigMap
+      name: notebook-image-commithash
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: code-server-minimal-notebook
           version: v1
   - source:
       fieldPath: data.odh-pipeline-runtime-minimal-cpu-py312-ubi9-n

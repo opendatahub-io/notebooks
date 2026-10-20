@@ -97,7 +97,7 @@ if [[ -n "$RPM_ARCH_FILTER" ]]; then
   # Install cleanup before mktemp/filter so set -e failures still remove the dir.
   # Later EXIT trap (hermeto staging) replaces this and also cleans FILTERED_PREFETCH.
   trap 'rm -rf -- "${FILTERED_PREFETCH:-}"' EXIT
-  FILTERED_PREFETCH=$(mktemp -d)
+  FILTERED_PREFETCH=$(mktemp -d "${TMPDIR:-/tmp}/hermeto-filter.XXXXXX")
   # Copy lockfile siblings hermeto may need; keep tree shallow.
   cp -a "$PREFETCH_DIR/." "$FILTERED_PREFETCH/"
   python3 - "$FILTERED_PREFETCH/rpms.lock.yaml" "$RPM_ARCH_FILTER" <<'PY'
@@ -170,7 +170,7 @@ REG_LOG=""
 # =========================================================================
 if [[ -n "$CERT_DIR" ]] && [[ -d "$CERT_DIR" ]]; then
   echo "--- Using entitlement certs from $CERT_DIR ---"
-  CDN_CERT_DIR=$(mktemp -d)
+  CDN_CERT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/hermeto-certs.XXXXXX")
   mkdir -p "$CDN_CERT_DIR/etc/pki/entitlement" "$CDN_CERT_DIR/etc/rhsm/ca"
   cp "$CERT_DIR"/*.pem "$CDN_CERT_DIR/etc/pki/entitlement/" 2>/dev/null || true
 
@@ -189,7 +189,7 @@ if [[ -n "$CERT_DIR" ]] && [[ -d "$CERT_DIR" ]]; then
 # =========================================================================
 elif [[ -n "$ACTIVATION_KEY" ]] && [[ -n "$ORG" ]]; then
   echo "--- Registering subscription and extracting certs ---"
-  CDN_CERT_DIR=$(mktemp -d)
+  CDN_CERT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/hermeto-certs.XXXXXX")
 
   # Why temp file instead of a pipe?  With `set -euo pipefail`, a pipe
   # like `podman run ... | tar -xf -` would abort the entire script if
@@ -272,7 +272,7 @@ fi
 # a staging dir to avoid destroying pip/npm/generic artifacts that other
 # prefetch steps already placed in cachi2/output/deps/.
 # =========================================================================
-HERMETO_STAGING=$(mktemp -d)
+HERMETO_STAGING=$(mktemp -d "${TMPDIR:-/tmp}/hermeto-staging.XXXXXX")
 trap '
   _status=$?
   if [[ -n "${FILTERED_PREFETCH:-}" ]]; then
