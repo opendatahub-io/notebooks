@@ -65,12 +65,7 @@ packages:
   - libtool
 
   # Node.js (module nodejs:22)
-  # Pin the glibc family to the RHEL 9.8 EUS base image version (2.34-275.el9_8);
-  # newer glibc RPMs conflict with the base image's installed glibc-langpack-en.
-  - glibc-2.34-275.el9_8
-  - glibc-common-2.34-275.el9_8
-  - glibc-gconv-extra-2.34-275.el9_8
-  - glibc-minimal-langpack-2.34-275.el9_8
+  - glibc-langpack-en
   - nodejs-devel
   - nodejs-packaging
   - npm
