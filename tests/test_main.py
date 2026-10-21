@@ -511,29 +511,6 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
             version = dep["version"]
             packages[name].append(VersionData(manifest=manifest, version=version))
 
-    # TODO(jdanek): review these, if any are unwarranted
-    ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
-        # ("package name", ("allowed version 1", "allowed version 2", ...))
-        ("JupyterLab", ("4.5", "4.6")),
-        ("Matplotlib", ("3.10", "3.11")),
-        ("MLflow", ("3.14", "3.15")),
-        ("Kfp", ("2.15", "2.16")),
-        ("Feast", ("0.63", "0.65")),  # codeserver still on 0.63; others refreshed to 0.65
-        ("Scikit-learn", ("1.7", "1.6")),
-        ("Scipy", ("1.16", "1.17")),
-        ("Pandas", ("3.0", "2.3")),
-        ("PyMongo", ("4.16", "4.17")),
-        (
-            "Numpy",
-            (
-                "2.4",  # llmcompressor
-                "2.5",  # latest where possible
-            ),
-        ),
-        ("Tensorboard", ("2.19", "2.20")),
-        ("PyTorch", ("2.9", "2.10")),
-    )
-
     for name, data in packages.items():
         versions = [d.version for d in data]
 
@@ -543,14 +520,7 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
 
         mapping = {str(d.manifest.filename.relative_to(PROJECT_ROOT)): d.version for d in data}
         with subtests.test(msg=f"checking versions for {name} across the latest tags in all imagestreams"):
-            exception = next((it for it in ignored_exceptions if it[0] == name), None)
-            if exception:
-                # exception may save us from failing
-                assert set(versions) == set(exception[1]), (
-                    f"{name} is allowed to have {set(exception[1])} but actually has {set(versions)}. "
-                    f"Manifest breakdown: {pprint.pformat(mapping)}"
-                )
-                continue
+            # Allow drift only when each manifest major.minor is backed by some image pylock pin.
             pip_name = packaging.utils.canonicalize_name(manifest_name_to_pip(name))
             pylock_versions = pylock_major_minor_versions.get(pip_name, set())
             if len(pylock_versions) > 1 and set(versions).issubset(pylock_versions):
