@@ -60,6 +60,13 @@ _TRACKED_PYPI_RAW: tuple[str, ...] = (
 
 TRACKED_PACKAGES_CANONICAL: frozenset[str] = frozenset(packaging.utils.canonicalize_name(n) for n in _TRACKED_PYPI_RAW)
 
+# Locked versions that are an intentional step down from the PR base.
+# RHAIENG-7790: pandas 2.3.x cannot unpickle its own data (RHOAIENG-99347).
+# 3.0.6 is fixed, but feast and mlflow cap pandas<3, so every image stays on 2.2.3.
+_INTENTIONAL_DOWNGRADES: dict[str, str] = {
+    "pandas": "2.2.3",
+}
+
 
 def _resolve_base_ref() -> str | None:
     env = (os.environ.get("NOTEBOOKS_DOWNGRADE_BASE_REF") or "").strip()
@@ -156,6 +163,9 @@ def _iter_downgrades(
         except packaging.version.InvalidVersion:
             continue
         if cur_v < base_v:
+            allowed = _INTENTIONAL_DOWNGRADES.get(cn)
+            if allowed is not None and cur_v == packaging.version.parse(allowed):
+                continue
             yield (raw_name, cur_v, base_v)
 
 
