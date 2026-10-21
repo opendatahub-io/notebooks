@@ -48,7 +48,7 @@ def main() -> int:
     build_args = extract_build_args(args.remaining[1:])
     prereqs = buildinputs(dockerfile=args.dockerfile, platform=args.platform, build_args=build_args)
 
-    with tempfile.TemporaryDirectory(delete=True) as tmpdir:
+    with tempfile.TemporaryDirectory(prefix=".sandbox-", dir=ROOT_DIR, delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
         command = [arg if arg != "{};" else tmpdir for arg in args.remaining[1:]]
         print(f"running {command=}")
@@ -163,6 +163,16 @@ def _copy_tree(
     )
 
 
+def _copy_file(src: pathlib.Path, dst: pathlib.Path) -> None:
+    try:
+        os.link(src, dst)
+    except FileExistsError:
+        if not dst.samefile(src):
+            shutil.copy(src, dst)
+    except OSError:
+        shutil.copy(src, dst)
+
+
 def _copy_tree_dir(
     src_dir: pathlib.Path,
     dst_dir: pathlib.Path,
@@ -212,7 +222,7 @@ def _copy_tree_dir(
             )
         elif entry.is_file(follow_symlinks=True):
             try:
-                shutil.copy(entry.path, dst_dir / name)
+                _copy_file(pathlib.Path(entry.path), dst_dir / name)
             except PermissionError:
                 log.warning(f"cannot copy file, skipping: {rel / name}")
 
@@ -249,7 +259,7 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
                         any_depth_ignore=any_depth_ignore,
                     )
                 else:
-                    shutil.copy(m_path, tmpdir / m_path.parent)
+                    _copy_file(m_path, tmpdir / m_path)
             continue
 
         if not dep.exists():
@@ -268,7 +278,7 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
             )
         else:
             (tmpdir / dep.parent).mkdir(parents=True, exist_ok=True)
-            shutil.copy(dep, tmpdir / dep.parent)
+            _copy_file(dep, tmpdir / dep)
 
 
 if __name__ == "__main__":

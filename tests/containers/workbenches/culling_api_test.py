@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 CODESERVER_WORKSPACE_ROOT = PROJECT_ROOT / "codeserver/ubi9-python-3.12"
 CODESERVER_BASELINE_WORKSPACE_ROOT = PROJECT_ROOT / "codeserver-baseline/ubi9-python-3.12"
+CODESERVER_MINIMAL_WORKSPACE_ROOT = PROJECT_ROOT / "codeserver-minimal/ubi9-python-3.12"
 
 # date -Iseconds output: 2026-03-18T01:23:45+00:00
 RFC3339_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$")
@@ -81,6 +82,8 @@ def _codeserver_workspace_root(codeserver_image: conftest.Image) -> Path:
     image_refs = " ".join((codeserver_image.name, codeserver_image.labels.get("name", "")))
     if "codeserver-baseline" in image_refs:
         return CODESERVER_BASELINE_WORKSPACE_ROOT
+    if "codeserver-minimal" in image_refs:
+        return CODESERVER_MINIMAL_WORKSPACE_ROOT
     return CODESERVER_WORKSPACE_ROOT
 
 

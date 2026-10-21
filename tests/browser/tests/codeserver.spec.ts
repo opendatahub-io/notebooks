@@ -44,11 +44,11 @@ const test = base.extend<TestFixtures>({
         break;
       case 'image': {
         const container = await new GenericContainer(codeServerSource.image)
-            .withExposedPorts(8787)
-            .withWaitStrategy(new HttpWaitStrategy('/?folder=/opt/app-root/src', 8787, {abortOnContainerExit: true}))
+            .withExposedPorts(8888)
+            .withWaitStrategy(new HttpWaitStrategy('/codeserver/?folder=/opt/app-root/src', 8888, {abortOnContainerExit: true}))
             .start();
         try {
-          await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8787)}`))
+          await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8888)}/codeserver/`))
         } finally {
           await container.stop()
         }

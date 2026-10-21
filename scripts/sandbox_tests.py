@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from ci.logging_config import configure_logging
-from scripts.sandbox import _copy_tree, _ignored_dir_names, _load_dockerignore, setup_sandbox
+from scripts.sandbox import _copy_file, _copy_tree, _ignored_dir_names, _load_dockerignore, setup_sandbox
 
 if TYPE_CHECKING:
     import pyfakefs.fake_filesystem
@@ -133,6 +133,40 @@ class TestIgnoredDirNames:
 
 
 class TestCopyTreeWithIgnore:
+    def test_same_filesystem_copy_hard_links_file(self, tmp_path: pathlib.Path):
+        src = tmp_path / "src.txt"
+        dst = tmp_path / "dst.txt"
+        src.write_text("content")
+
+        _copy_file(src, dst)
+
+        assert dst.read_text() == "content"
+        assert dst.samefile(src)
+
+    def test_copy_falls_back_when_hard_link_is_unsupported(self, tmp_path, monkeypatch):
+        src = tmp_path / "src.txt"
+        dst = tmp_path / "dst.txt"
+        src.write_text("content")
+
+        def unsupported_link(*args, **kwargs):
+            raise OSError("cross-device link not permitted")
+
+        monkeypatch.setattr("scripts.sandbox.os.link", unsupported_link)
+        _copy_file(src, dst)
+
+        assert dst.read_text() == "content"
+
+    def test_duplicate_copy_is_idempotent(self, tmp_path: pathlib.Path):
+        src = tmp_path / "src.txt"
+        dst = tmp_path / "dst.txt"
+        src.write_text("content")
+
+        _copy_file(src, dst)
+        _copy_file(src, dst)
+
+        assert dst.read_text() == "content"
+        assert dst.samefile(src)
+
     def test_ignored_dir_not_copied(self, tmp_path: pathlib.Path):
         src = tmp_path / "src"
         src.mkdir()

@@ -1,0 +1,11 @@
+---
+# artifacts.in.yaml - Generic (non-RPM, non-pip) artifacts to prefetch
+#
+# This manifest tells cachi2 to download these URLs before the build starts.
+# They are stored at /cachi2/output/deps/generic/<filename>. The corresponding lock file (artifacts.lock.yaml)
+# is auto-generated and contains integrity hashes for each URL.
+
+input:
+    # CentOS Stream 9 GPG key (needed for ppc64le/s390x dnf install from CentOS repos;
+    # from CentOS baseos/appstream/crb repos; UBI9 images only ship the Red Hat key)
+    - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official

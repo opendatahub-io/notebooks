@@ -89,7 +89,7 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
     # 2. Find the notebook's characteristic path components
     path_parts = directory.parts
     # Find the root component ('jupyter', 'runtimes', etc.) to anchor the search
-    for root_candidate in ("codeserver-baseline", "jupyter", "codeserver", "runtimes"):
+    for root_candidate in ("codeserver-baseline", "codeserver-minimal", "jupyter", "codeserver", "runtimes"):
         try:
             start_index = path_parts.index(root_candidate)
             break
@@ -202,7 +202,9 @@ def get_source_of_truth_filepath(
                 filename = f"jupyter-{scope}-{file_suffix}"
 
     elif CODESERVER_NOTEBOOK_ID in notebook_id or notebook_id == "codeserver-baseline":
-        if notebook_id == "codeserver-baseline" or scope == JUPYTER_BASELINE_NOTEBOOK_ID:
+        if notebook_id == "codeserver-minimal":
+            filename = f"code-server-minimal-{file_suffix}"
+        elif notebook_id == "codeserver-baseline" or scope == JUPYTER_BASELINE_NOTEBOOK_ID:
             filename = f"code-server-baseline-{file_suffix}"
         else:
             filename = f"code-server-{file_suffix}"

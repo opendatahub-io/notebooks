@@ -924,6 +924,7 @@ def is_subproject_metapackage(package_name: str) -> bool:
 
 _ODH_ONLY_MANIFEST_DIRS = (
     "codeserver-baseline",
+    "codeserver-minimal",
     "jupyter/baseline",
     "runtimes/baseline",
 )

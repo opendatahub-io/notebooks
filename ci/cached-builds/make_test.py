@@ -219,6 +219,14 @@ class TestMakeTest(unittest.TestCase):
         output = _make_just_print("undeploy9-codeserver-baseline-ubi9-python-3.12")
         assert "codeserver-baseline/ubi9-python-3.12/kustomize/base" in output, output
 
+    def test_make_deploy_codeserver_minimal_resolves_component_kustomize_dir(self) -> None:
+        output = _make_just_print("deploy9-codeserver-minimal-ubi9-python-3.12")
+        assert "codeserver-minimal/ubi9-python-3.12/kustomize/base/kustomization.yaml" in output, output
+
+    def test_make_undeploy_codeserver_minimal_resolves_component_kustomize_dir(self) -> None:
+        output = _make_just_print("undeploy9-codeserver-minimal-ubi9-python-3.12")
+        assert "codeserver-minimal/ubi9-python-3.12/kustomize/base" in output, output
+
     def test_make_deploy_jupyter_baseline_resolves_baseline_kustomize_dir(self) -> None:
         output = _make_just_print("deploy9-jupyter-baseline-ubi9-python-3.12")
         assert "jupyter/baseline/ubi9-python-3.12/kustomize/base/kustomization.yaml" in output, output

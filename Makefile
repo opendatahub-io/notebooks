@@ -145,7 +145,7 @@ $(eval _YUM_REPOS_D_SRC := $(if $(_CACHI2_OUTPUT),$(_CACHI2_OUTPUT)/deps/rpm/$(R
 	trap cleanup EXIT; \
 	if [ -n '$(_CACHI2_OUTPUT)' ]; then \
 	  rm -f '$(_YUM_REPOS_D_SRC)/redhat.repo'; \
-	  YUM_REPOS_CLEAN=$$(mktemp -d); \
+	  YUM_REPOS_CLEAN=$$(mktemp -d '$(ROOT_DIR).yum-repos-clean.XXXXXX'); \
 	  find '$(_YUM_REPOS_D_SRC)' -maxdepth 1 -type f -name '*.repo' ! -name 'redhat.repo' \
 	    -exec cp -a {} "$${YUM_REPOS_CLEAN}/" \; ; \
 	  if [ -z "$$(find "$${YUM_REPOS_CLEAN}" -maxdepth 1 -type f -name '*.repo' -print -quit)" ]; then \
@@ -353,7 +353,7 @@ python_version_from_stem = $(word 2,$(call target_and_python_from_stem,$1))
 deploy9-%: bin/kubectl bin/yq
 	$(eval TARGET := $(call target_from_stem,$*))
 	$(eval PYTHON_VERSION := $(call python_version_from_stem,$*))
-	$(eval TARGET_PATH := $(if $(filter codeserver-baseline,$(TARGET)),codeserver-baseline,$(subst -,/,$(subst cuda-,,$(TARGET)))))
+	$(eval TARGET_PATH := $(if $(filter codeserver-baseline codeserver-minimal,$(TARGET)),$(TARGET),$(subst -,/,$(subst cuda-,,$(TARGET)))))
 	$(eval NOTEBOOK_DIR := $(TARGET_PATH)/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
@@ -367,7 +367,7 @@ endif
 undeploy9-%: bin/kubectl
 	$(eval TARGET := $(call target_from_stem,$*))
 	$(eval PYTHON_VERSION := $(call python_version_from_stem,$*))
-	$(eval TARGET_PATH := $(if $(filter codeserver-baseline,$(TARGET)),codeserver-baseline,$(subst -,/,$(subst cuda-,,$(TARGET)))))
+	$(eval TARGET_PATH := $(if $(filter codeserver-baseline codeserver-minimal,$(TARGET)),$(TARGET),$(subst -,/,$(subst cuda-,,$(TARGET)))))
 	$(eval NOTEBOOK_DIR := $(TARGET_PATH)/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
