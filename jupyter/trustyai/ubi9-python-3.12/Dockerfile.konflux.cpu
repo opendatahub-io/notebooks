@@ -180,6 +180,9 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements-trustyai.txt
 
+# uv and uvx are only needed while building the image.
+rm -f /opt/app-root/bin/uv /opt/app-root/bin/uvx
+
 pandoc --version
 EOF
 
