@@ -428,5 +428,43 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
-          gh pr checks "${PR_URL}" --watch --fail-fast --interval 30
+          wait_for_stable_checks() {
+            local stable_polls=0
+            local previous_count=-1
+            local deadline=$((SECONDS + 3600))
+
+            while (( SECONDS < deadline )); do
+              local checks count pending failed
+              checks=$(gh pr checks "${PR_URL}" --json name,bucket)
+              count=$(jq 'length' <<< "${checks}")
+              pending=$(jq '[.[] | select(.bucket == "pending")] | length' <<< "${checks}")
+              failed=$(jq '[.[] | select(.bucket == "fail" or .bucket == "cancel")] | length' <<< "${checks}")
+
+              echo "Checks: count=${count}, pending=${pending}, failed=${failed}"
+
+              if (( failed > 0 )); then
+                echo "One or more PR checks failed." >&2
+                return 1
+              fi
+
+              if (( count > 0 && pending == 0 && count == previous_count )); then
+                stable_polls=$((stable_polls + 1))
+              else
+                stable_polls=0
+              fi
+
+              previous_count=${count}
+
+              if (( stable_polls >= 2 )); then
+                return 0
+              fi
+
+              sleep 60
+            done
+
+            echo "Timed out waiting for stable PR checks." >&2
+            return 1
+          }
+
+          wait_for_stable_checks
           gh pr merge "${PR_URL}" --merge --delete-branch
