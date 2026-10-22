@@ -185,6 +185,9 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
 
+# uv and uvx are only needed while building the image.
+rm -f /opt/app-root/bin/uv /opt/app-root/bin/uvx
+
 # JupyterLab/Elyra/Kale install only on x86_64/aarch64 (Path B allowlist). Skip
 # Jupyter post-install on ppc64le/s390x — kernel.json and labextension do not exist.
 if [[ "$(uname -m)" != "s390x" && "$(uname -m)" != "ppc64le" ]]; then
