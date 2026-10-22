@@ -46,6 +46,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read  # checkout only; push and PR creation use the PAT
+      pull-requests: write  # approve generated renewal PRs with GITHUB_TOKEN
       packages: write  # push/pull rpm-lockfile build cache to ghcr.io
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
@@ -392,13 +393,10 @@ jobs:
             --color "0E8A16" \
             2>/dev/null || true
 
-          PR_URL="$(gh pr list --head "${RENEWAL_BRANCH}" --state open --limit 1 --json url --jq '.[0].url // empty')"
+          PR_URL=$(gh pr list --head "${RENEWAL_BRANCH}" --state open --limit 1 --json url --jq '.[0].url // empty')
 
           if [[ -z "${PR_URL}" ]]; then
-            PR_URL="$(gh pr create \
-              --title "GHA: Renew lock files" \
-              --head "${RENEWAL_BRANCH}" \
-              --body "$(cat <<'EOF'
+            PR_BODY=$(cat <<'EOF'
           Automated lock file renewal in a single PR with separate commits:
 
           1. Pylock lock files
@@ -406,9 +404,13 @@ jobs:
           3. ODH `rpms.lock.yaml` regeneration
           4. RHDS `rpms.lock.yaml` regeneration
           EOF
-          )")" \
+            )
+            PR_URL=$(gh pr create \
+              --title "GHA: Renew lock files" \
+              --head "${RENEWAL_BRANCH}" \
+              --body "${PR_BODY}" \
               --label "automated-full-lockfile-renewal" \
-              --base "$BRANCH"
+              --base "$BRANCH")
           else
             echo "Updating existing renewal PR: ${PR_URL}"
           fi
@@ -417,8 +419,6 @@ jobs:
 
       - name: Approve renewal PR
         if: ${{ env.PR_URL != '' }}
-        permissions:
-          pull-requests: write
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr review "${PR_URL}" --approve --body "Auto-approved after renewal workflow validation."
