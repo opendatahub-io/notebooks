@@ -28,6 +28,7 @@ JUPYTER_DATASCIENCE_NOTEBOOK_ID = "datascience"
 JUPYTER_TRUSTYAI_NOTEBOOK_ID = "trustyai"
 JUPYTER_UNIVERSAL_NOTEBOOK_ID = "universal"
 JUPYTER_PYTORCH_NOTEBOOK_ID = "pytorch"
+JUPYTER_PYTORCH_SPYRE_NOTEBOOK_ID = "pytorch-spyre"
 JUPYTER_TENSORFLOW_NOTEBOOK_ID = "tensorflow"
 
 CODESERVER_NOTEBOOK_ID = "codeserver"
@@ -112,7 +113,9 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
         except IndexError:
             # codeserver doesn't have scope
             scope = ""
-    if "-" in scope:
+    # jupyter/pytorch-spyre is a standalone (RHOAI-only) image; its scope is kept as-is
+    # and maps to jupyter-pytorch-spyre-notebook-imagestream.yaml (no accelerator prefix).
+    if "-" in scope and scope != JUPYTER_PYTORCH_SPYRE_NOTEBOOK_ID:
         assert path_parts[start_index] == "runtimes", "this naming pattern only appears in rocm runtime images"
         scope = scope.split("-", 1)[-1]
 
@@ -192,6 +195,10 @@ def get_source_of_truth_filepath(
 
         elif scope == JUPYTER_BASELINE_NOTEBOOK_ID:
             filename = f"jupyter-baseline-{file_suffix}"
+
+        elif scope == JUPYTER_PYTORCH_SPYRE_NOTEBOOK_ID:
+            # RHOAI-only image, no accelerator prefix
+            filename = f"jupyter-{scope}-{file_suffix}"
 
         elif JUPYTER_PYTORCH_NOTEBOOK_ID in scope or JUPYTER_TENSORFLOW_NOTEBOOK_ID in scope:
             # Logic for pytorch and tensorflow

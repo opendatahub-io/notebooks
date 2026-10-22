@@ -7,7 +7,7 @@ import re
 AIPCC_BASE_IMAGES_PREFIX = "quay.io/aipcc/base-images/"
 _OS_SUFFIX = r"(?:el|ubi)\d+(?:\.\d+)?"
 CHANNEL_IMAGE_NAME_RE = re.compile(
-    rf"^(?P<channel>(?:cuda|rocm)\d+\.\d+-torch\d+\.\d+-{_OS_SUFFIX}|cpu(?:-notorch|-torch\d+\.\d+)-{_OS_SUFFIX})$"
+    rf"^(?P<channel>(?:cuda|rocm)\d+\.\d+-torch\d+\.\d+-{_OS_SUFFIX}|spyre-torch\d+\.\d+-{_OS_SUFFIX}|cpu(?:-notorch|-torch\d+\.\d+)-{_OS_SUFFIX})$"
 )
 RHDS_CHANNEL_TAG_RE = re.compile(r"^(?P<build>\d+)$")
 
