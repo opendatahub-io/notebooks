@@ -195,7 +195,7 @@ def get_source_of_truth_filepath(
 
         elif scope == JUPYTER_BASELINE_NOTEBOOK_ID:
             filename = f"jupyter-baseline-{file_suffix}"
-        
+
         elif scope == JUPYTER_PYTORCH_SPYRE_NOTEBOOK_ID:
             # RHOAI-only image, no accelerator prefix
             filename = f"jupyter-{scope}-{file_suffix}"
