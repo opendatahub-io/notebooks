@@ -423,8 +423,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr review "${PR_URL}" --approve --body "Auto-approved after renewal workflow validation."
 
-      - name: Enable auto-merge
+      - name: Wait for CI and merge renewal PR
         if: ${{ env.PR_URL != '' }}
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
-        run: gh pr merge "${PR_URL}" --merge --auto --delete-branch
+        run: |
+          gh pr checks "${PR_URL}" --watch --fail-fast --interval 30
+          gh pr merge "${PR_URL}" --merge --delete-branch
