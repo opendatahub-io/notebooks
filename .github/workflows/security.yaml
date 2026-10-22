@@ -29,7 +29,7 @@ jobs:
       - name: Trivy scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          version: 'v0.76.0'
+          version: 'v0.76.1'
           scan-type: 'fs'
           trivy-config: trivy.yaml
           format: 'sarif'
@@ -37,7 +37,7 @@ jobs:
           exit-code: '0'
 
       - name: Update Security tab
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee  # v4.39.0
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
         with:
           sarif_file: 'trivy-results.sarif'
 
@@ -71,7 +71,7 @@ jobs:
       - name: Trivy scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          version: 'v0.76.0'
+          version: 'v0.76.1'
           scan-type: 'fs'
           trivy-config: trivy.yaml
           format: 'sarif'
@@ -79,7 +79,7 @@ jobs:
           exit-code: '0'
 
       - name: Update Security tab
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee  # v4.39.0
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
         with:
           sarif_file: 'trivy-results.sarif'
           # Required here (unlike the push/pull_request job above): matrix.ref
