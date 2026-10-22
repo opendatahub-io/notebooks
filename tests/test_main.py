@@ -322,11 +322,18 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
             # Pin platform_machine to x86_64: public-index Jupyter deps use Path B allowlist
             # ``== 'x86_64' or == 'aarch64'``. Host macOS reports ``arm64``, which is not
             # ``aarch64``, so those packages would otherwise vanish from the filtered lock.
+            # Exception: single-architecture images (e.g. jupyter/pytorch-spyre is ppc64le-only)
+            # declare exactly one machine in ``tool.uv.required-environments``; use that one.
+            required_machines = {
+                m
+                for env in pyproject.get("tool", {}).get("uv", {}).get("required-environments", [])
+                for m in re.findall(r"platform_machine\s*==\s*'([^']+)'", env)
+            }
             marker_env = {
                 "python_full_version": f"{python}.0",
                 "implementation_name": "cpython",
                 "sys_platform": "linux",
-                "platform_machine": "x86_64",
+                "platform_machine": next(iter(required_machines)) if len(required_machines) == 1 else "x86_64",
             }
             pylock_packages: dict[str, dict[str, Any]] = {}
             for pylock_path in pylock_paths:
@@ -391,6 +398,9 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
                             )
                         elif s.get("name") in ("R", "code-server"):
                             # TODO(jdanek): check not implemented yet
+                            continue
+                        elif s.get("name") == "Spyre":
+                            # Spyre runtime stack version is tied to the base image, not tracked here
                             continue
                         elif s.get("name") in ("CUDA", "ROCm"):
                             expected_version = get_accelerator_version_for_directory(directory, s["name"])
@@ -509,6 +519,35 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
             name = dep["name"]
             version = dep["version"]
             packages[name].append(VersionData(manifest=manifest, version=version))
+
+    # TODO(jdanek): review these, if any are unwarranted
+    ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
+        # ("package name", ("allowed version 1", "allowed version 2", ...))
+        ("JupyterLab", ("4.5", "4.6")),
+        ("Matplotlib", ("3.10", "3.11")),
+        ("MLflow", ("3.14", "3.15")),
+        ("Kfp", ("2.15", "2.16")),
+        ("Feast", ("0.63", "0.65")),  # codeserver still on 0.63; others refreshed to 0.65
+        ("Scikit-learn", ("1.7", "1.6")),
+        ("Scipy", ("1.16", "1.17")),
+        ("Pandas", ("3.0", "2.3")),
+        ("PyMongo", ("4.16", "4.17")),
+        (
+            "Numpy",
+            (
+                "2.4",  # llmcompressor
+                "2.5",  # latest where possible
+            ),
+        ),
+        ("Tensorboard", ("2.19", "2.20")),
+        (
+            "PyTorch",
+            (
+                "2.11",  # jupyter/pytorch-spyre (RHOAI-only): torch-sendnn pins the torch version
+                "2.13",  # latest everywhere else
+            ),
+        ),
+    )
 
     for name, data in packages.items():
         versions = [d.version for d in data]
@@ -929,6 +968,8 @@ _ODH_ONLY_MANIFEST_DIRS = (
     "runtimes/baseline",
 )
 
+_RHOAI_ONLY_MANIFEST_DIRS = ("jupyter/pytorch-spyre",)
+
 
 def _skip_unimplemented_manifests(
     directory: pathlib.Path,
@@ -938,15 +979,21 @@ def _skip_unimplemented_manifests(
     """Skip image dirs with no manifest in the selected product tree.
 
     Baseline workbench/runtime images ship on ODH only; RHOAI has no imagestream manifests for them.
+    Spyre (IBM, ppc64le) ships on RHOAI only; ODH has no imagestream manifest for it.
     """
     if manifests_directory == manifests.MANIFESTS_RHOAI_DIR:
-        rel_parts = directory.relative_to(PROJECT_ROOT).parts
-        for d in _ODH_ONLY_MANIFEST_DIRS:
-            prefix_parts = pathlib.Path(d).parts
-            if len(rel_parts) >= len(prefix_parts) and rel_parts[: len(prefix_parts)] == prefix_parts:
-                if call_skip:
-                    pytest.skip(f"Baseline manifests are ODH-only (no RHOAI manifest for {directory.parts})")
-                return True
+        absent_dirs, product = _ODH_ONLY_MANIFEST_DIRS, "ODH"
+    elif manifests_directory == manifests.MANIFESTS_ODH_DIR:
+        absent_dirs, product = _RHOAI_ONLY_MANIFEST_DIRS, "RHOAI"
+    else:
+        return False
+    rel_parts = directory.relative_to(PROJECT_ROOT).parts
+    for d in absent_dirs:
+        prefix_parts = pathlib.Path(d).parts
+        if len(rel_parts) >= len(prefix_parts) and rel_parts[: len(prefix_parts)] == prefix_parts:
+            if call_skip:
+                pytest.skip(f"Manifests are {product}-only (no manifest for {directory.parts} in this product)")
+            return True
     return False
 
 

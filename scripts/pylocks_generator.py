@@ -12,7 +12,7 @@ and dependency environment markers are honored. RH-index images continue to use
 
 Features:
   - Supports multiple Python project directories, detected by pyproject.toml.
-  - Detects available Dockerfile.konflux.* flavors (CPU, CUDA, ROCm) for rh-index mode.
+  - Detects available Dockerfile.konflux.* flavors (CPU, CUDA, ROCm, Spyre) for rh-index mode.
   - Validates Python version extracted from directory name (expects format .../ubi9-python-X.Y).
   - Generates per-flavor locks in 'uv.lock.d/' for rh-index mode.
   - Overwrites existing pylock.toml in-place for public PyPI index mode.
@@ -137,7 +137,7 @@ NO_EMIT_PACKAGES = (
     "odh-notebooks-meta-workbench-datascience-deps",
 )
 
-FLAVORS = ("cpu", "cuda", "rocm")
+FLAVORS = ("cpu", "cuda", "rocm", "spyre")
 AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME = ".aipcc-alignment.constraints.txt"
 
 # Baseline public-index images inherit direct dependency lock versions from paired
@@ -437,7 +437,7 @@ def effective_index_mode(project_dir: Path, index_mode: IndexMode) -> IndexMode:
 
 
 def detect_flavors(project_dir: Path) -> set[str]:
-    """Detect available Dockerfile.konflux.* flavors (cpu, cuda, rocm) in a directory."""
+    """Detect available Dockerfile.konflux.* flavors (cpu, cuda, rocm, spyre) in a directory."""
     return {f for f in FLAVORS if (project_dir / f"Dockerfile.konflux.{f}").is_file()}
 
 
@@ -1377,7 +1377,7 @@ def process_directory(
 
     flavors = detect_flavors(tdir)
     if not flavors:
-        log.warning(f"No Dockerfile.konflux.* files found in {tdir} (cpu/cuda/rocm). Skipping.")
+        log.warning(f"No Dockerfile.konflux.* files found in {tdir} (cpu/cuda/rocm/spyre). Skipping.")
         return tdir, False, log
 
     log.print(f"📦 Python version: {python_version}")
@@ -1436,7 +1436,7 @@ def process_directory(
                     extra_constraints.unlink(missing_ok=True)
 
     if run_rh:
-        for dockerfile_flavor in ("cpu", "cuda", "rocm"):
+        for dockerfile_flavor in FLAVORS:
             if dockerfile_flavor not in flavors:
                 continue
             output_flavor = (
