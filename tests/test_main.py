@@ -541,6 +541,21 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
         ),
         ("Tensorboard", ("2.19", "2.20")),
         (
+            "Accelerate",
+            (
+                "1.14",  # llmcompressor: pinned by its dependency stack
+                "1.15",  # latest everywhere else
+            ),
+        ),
+        (
+            "Transformers",
+            (
+                "5.14",  # llmcompressor: pinned by its dependency stack
+                "5.16",  # llmcompressor: pinned by its dependency stack
+                "5.20",  # latest where possible
+            ),
+        ),
+        (
             "PyTorch",
             (
                 "2.11",  # jupyter/pytorch-spyre (RHOAI-only): torch-sendnn pins the torch version
