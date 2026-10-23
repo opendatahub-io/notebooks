@@ -88,6 +88,27 @@ verify Python and JupyterLab. The pipeline can also be retried independently wit
 /retest-jupyter-minimal
 ```
 
+The Jupyter Minimal POC also has three independently retryable post-build lanes:
+
+```text
+/test-jupyter-minimal-container
+/test-jupyter-minimal-browser
+/test-jupyter-minimal-e2e
+```
+
+Each command can be prefixed with `retest-` to rerun only that lane. The container lane
+uses the built image directly as a Tekton step, verifies the multi-arch index contains
+all four required platforms, and runs the JupyterLab integration checks that are
+applicable to the minimal image. The browser and E2E lanes each provision their own
+ephemeral OpenShift cluster so a failure in one lane can be retried without rerunning
+the others.
+
+The current EaaS integration clusters are linux/amd64. They validate the amd64 image
+instance at runtime while the container lane verifies that the image index also contains
+linux/arm64, linux/ppc64le, and linux/s390x manifests. Running the browser and Papermill
+suites natively on every architecture requires architecture-matched EaaS clusters or a
+Konflux-supported remote container runtime; neither is part of this first POC.
+
 Different ways to run tests against built images in Konflux:
 
 | Pattern | How | Pros | Cons |
