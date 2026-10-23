@@ -386,7 +386,14 @@ jobs:
           COMMIT_COUNT=$(git rev-list --count "${BRANCH}..HEAD")
           echo "Pushing ${COMMIT_COUNT} commit(s) on ${RENEWAL_BRANCH}"
 
-          git push --force-with-lease -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "${RENEWAL_BRANCH}"
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          REMOTE_BRANCH_SHA=$(git ls-remote "${REMOTE_URL}" "refs/heads/${RENEWAL_BRANCH}" | awk '{print $1}')
+
+          if [[ -z "${REMOTE_BRANCH_SHA}" ]]; then
+            git push -u "${REMOTE_URL}" "${RENEWAL_BRANCH}"
+          else
+            git push --force-with-lease="${RENEWAL_BRANCH}:${REMOTE_BRANCH_SHA}" -u "${REMOTE_URL}" "${RENEWAL_BRANCH}"
+          fi
 
           gh label create "automated-full-lockfile-renewal" \
             --description "Auto-created full lockfile renewal PR (pylock, manifests, ODH/RHDS RPMs)" \
