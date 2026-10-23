@@ -59,7 +59,7 @@ spec:
             while (( SECONDS < deadline )); do
               if digest="$(skopeo inspect --format '{{.Digest}}' "docker://${IMAGE}" 2>/dev/null)"; then
                 repository="${IMAGE%%:*}"
-                printf '%s@%s\n' "${repository}" "${digest}" > "$(results.IMAGE.path)"
+                printf '%s@%s' "${repository}" "${digest}" > "$(results.IMAGE.path)"
                 cat "$(results.IMAGE.path)"
                 exit 0
               fi
