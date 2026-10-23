@@ -101,19 +101,6 @@ spec:
         - name: clusterName
           value: "$(steps.create-cluster.results.clusterName)"
         steps:
-        - name: get-supported-versions
-          ref:
-            resolver: git
-            params:
-            - name: url
-              value: https://github.com/konflux-ci/build-definitions.git
-            - name: revision
-              value: main
-            - name: pathInRepo
-              value: stepactions/eaas-get-supported-ephemeral-cluster-versions/0.1/eaas-get-supported-ephemeral-cluster-versions.yaml
-          params:
-          - name: eaasSpaceSecretRef
-            value: $(tasks.provision-eaas-space.results.secretRef)
         - name: pick-version
           ref:
             resolver: git
@@ -126,7 +113,7 @@ spec:
               value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
           params:
           - name: prefix
-            value: "$(steps.get-supported-versions.results.versions[0])."
+            value: 4.20.
         - name: create-cluster
           ref:
             resolver: git
