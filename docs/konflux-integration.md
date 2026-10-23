@@ -75,6 +75,19 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 
 ## Test Execution Patterns
 
+### Jupyter Minimal functional-test POC
+
+`.tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-functional-test.yaml` runs a
+small post-build smoke test for the Jupyter Minimal CPU image. It triggers on the same
+PR paths as the Jupyter Minimal CPU build, waits for the PR image tag to appear in
+Quay, resolves the image digest, and then uses that image as the Tekton step image to
+verify Python and JupyterLab. The pipeline can also be retried independently with:
+
+```text
+/test-jupyter-minimal
+/retest-jupyter-minimal
+```
+
 Different ways to run tests against built images in Konflux:
 
 | Pattern | How | Pros | Cons |
