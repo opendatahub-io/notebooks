@@ -124,11 +124,6 @@ jobs:
           for variant in "${variants[@]}"; do
             echo "=== Regenerating RPM lockfiles for ${variant} (USE_CACHE=${USE_CACHE}) ==="
 
-            # ODH must not see subscription credentials; create-rpm-lockfile.sh would switch to UBI9.
-            if [[ "$variant" == "odh" ]]; then
-              unset SUBSCRIPTION_ACTIVATION_KEY SUBSCRIPTION_ORG
-            fi
-
             cache="ghcr.io/${{ github.repository }}/rpm-lockfile-build-cache-${variant}"
             cache="${cache,,}"
             if [[ "$USE_CACHE" == "true" ]]; then
@@ -161,7 +156,13 @@ jobs:
                 echo "Skipping missing input: $rpm_input"
                 continue
               fi
-              ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+              if [[ "$variant" == "odh" ]]; then
+                # ODH must not see subscription credentials; create-rpm-lockfile.sh would switch to UBI9.
+                env -u SUBSCRIPTION_ACTIVATION_KEY -u SUBSCRIPTION_ORG \
+                  ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+              else
+                ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+              fi
             done
 
             for lockfile in \
