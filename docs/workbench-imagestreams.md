@@ -24,9 +24,9 @@ metadata:
 - **`opendatahub.io/notebook-image-order:`** - an index value for the particular workbench ImageStream (used by the UI to list available workbench images in a specific order)
 - **`opendatahub.io/recommended-accelerators`** - a string that represents the list of recommended hardware accelerators for the particular workbench ImageStream (used in the UI)
 - **`opendatahub.io/notebook-tier:`** - classifies the workbench image for display in the [odh-dashboard](https://github.com/opendatahub-io/odh-dashboard) image selector (workbench creation, pipeline configuration, and related flows). The dashboard reads this value from `metadata.annotations` and shows a tier badge beside each image so users can tell support model and package policy apart before they select an image. Allowed values:
-  - **`secure`** — Red Hat–supported images built from the AIPCC (Red Hat Python Index) supply chain. Use when compliance or support requires provenance from the Red Hat curated index rather than unrestricted public PyPI.
-  - **`community`** — user-maintained minimal images with a lean public PyPI footprint (for example the baseline workbench images in this repository). Use when you need broader PyPI access and accept that you maintain additional packages yourself.
-  - **`custom`** — user-built or otherwise non–out-of-the-box images (for example admin-imported ImageStreams). The UI labels these as user-built so they are distinct from shipped Secure and Community tiers.
+  - **`Red Hat-provided`** — Red Hat–supported images built from the AIPCC (Red Hat Python Index) supply chain. Use when compliance or support requires provenance from the Red Hat curated index rather than unrestricted public PyPI. This is the value used by the out-of-the-box workbench and runtime ImageStreams in this repository (except baseline images).
+  - **`External`** — images with a lean public PyPI footprint that are not built from the Red Hat curated index (for example the baseline workbench and runtime ImageStreams in this repository). Use when you need broader PyPI access and accept that you maintain additional packages yourself.
+  - **`custom`** — user-built or otherwise non–out-of-the-box images (for example admin-imported ImageStreams). The UI labels these as user-built so they are distinct from shipped Red Hat-provided and External tiers.
 
 - **`opendatahub.io/deprecated:`** - when set to **`"true"`** on the ImageStream `metadata.annotations`, marks the entire workbench image as deprecated (not a single tag). The dashboard shows a **Deprecated** badge next to the tier label, warning helper text when choosing an image (including **Applications > Enabled**), and deprecation status on existing workbenches. Deprecated images remain usable; the goal is to steer users away from ImageStreams that will not receive new version updates. This is separate from per-tag **`opendatahub.io/image-tag-outdated`**: stream-level deprecation means the whole ImageStream is end-of-life, so updating to another tag on the same stream does not restore support—users should select a different workbench image. Omit the annotation or use any value other than `"true"` for images that are still actively maintained.
 
@@ -70,7 +70,7 @@ metadata:
     opendatahub.io/notebook-image-desc: "Exemplary Jupyter notebook image just for demonstrative purposes"
     opendatahub.io/notebook-image-order: "1"
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu", "amd.com/gpu"]'
-    opendatahub.io/notebook-tier: "secure"
+    opendatahub.io/notebook-tier: "Red Hat-provided"
     opendatahub.io/deprecated: "false"
   name: example-jupyter-notebook
 spec:
