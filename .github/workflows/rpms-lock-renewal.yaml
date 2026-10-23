@@ -77,13 +77,13 @@ jobs:
       # install-podman-action runs `sudo podman system reset`, which can leave
       # root-owned files under $HOME/.config/containers and break a later cp.
       - name: Unlock git-crypt and configure registry auth
-        if: contains(env.VARIANT, 'rhds')
+        if: env.VARIANT == 'both' || env.VARIANT == 'rhds'
         uses: ./.github/actions/git-crypt-auth
         with:
           git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
 
       - name: Mask subscription credentials
-        if: contains(env.VARIANT, 'rhds')
+        if: env.VARIANT == 'both' || env.VARIANT == 'rhds'
         env:
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
