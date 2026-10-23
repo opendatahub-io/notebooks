@@ -14,21 +14,19 @@ metadata:
       event == "pull_request" && target_branch == "main" &&
       (
         ".tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-e2e-test.yaml".pathChanged() ||
-        "ci/konflux/test_jupyter_minimal.sh".pathChanged() ||
         "jupyter/utils/**".pathChanged() ||
         "jupyter/minimal/ubi9-python-3.12/**".pathChanged() ||
-        "jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf".pathChanged() ||
-        "scripts/test_jupyter_with_papermill.sh".pathChanged()
+        "jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
       )
   labels:
-    appstudio.openshift.io/application: group-testing
-    appstudio.openshift.io/component: notebooks-group
+    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/component: odh-workbench-jupyter-minimal-cpu-py312-ubi9
     pipelines.appstudio.openshift.io/type: test
   name: odh-workbench-jupyter-minimal-cpu-py312-ubi9-e2e-test
   namespace: open-data-hub-tenant
 spec:
   timeouts:
-    pipeline: 3h
+    pipeline: 2h
   params:
   - name: image
     value: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:on-pr-{{revision}}
@@ -78,66 +76,12 @@ spec:
             done
             echo "Timed out waiting for ${IMAGE}" >&2
             exit 1
-    - name: provision-eaas-space
-      taskRef:
-        resolver: git
-        params:
-        - name: url
-          value: https://github.com/konflux-ci/build-definitions.git
-        - name: revision
-          value: main
-        - name: pathInRepo
-          value: task/eaas-provision-space/0.1/eaas-provision-space.yaml
-      params:
-      - name: ownerName
-        value: $(context.pipelineRun.name)
-      - name: ownerUid
-        value: $(context.pipelineRun.uid)
-    - name: provision-cluster
-      runAfter:
-      - provision-eaas-space
-      taskSpec:
-        results:
-        - name: clusterName
-          value: "$(steps.create-cluster.results.clusterName)"
-        steps:
-        - name: pick-version
-          ref:
-            resolver: git
-            params:
-            - name: url
-              value: https://github.com/konflux-ci/build-definitions.git
-            - name: revision
-              value: main
-            - name: pathInRepo
-              value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
-          params:
-          - name: prefix
-            value: 4.20.
-        - name: create-cluster
-          ref:
-            resolver: git
-            params:
-            - name: url
-              value: https://github.com/konflux-ci/build-definitions.git
-            - name: revision
-              value: main
-            - name: pathInRepo
-              value: stepactions/eaas-create-ephemeral-cluster-hypershift-aws/0.1/eaas-create-ephemeral-cluster-hypershift-aws.yaml
-          params:
-          - name: eaasSpaceSecretRef
-            value: $(tasks.provision-eaas-space.results.secretRef)
-          - name: version
-            value: "$(steps.pick-version.results.version)"
-          - name: instanceType
-            value: m5.2xlarge
     - name: e2e-test
       runAfter:
       - wait-for-image
-      - provision-cluster
       params:
       - name: IMAGE
-        value: $(params.image)
+        value: $(tasks.wait-for-image.results.IMAGE)
       - name: REPO_URL
         value: $(params.repo-url)
       - name: REVISION
@@ -151,35 +95,86 @@ spec:
         - name: REVISION
           type: string
         volumes:
-        - name: credentials
+        - name: test-input
           emptyDir: {}
+        - name: test-state
+          emptyDir: {}
+        sidecars:
+        - name: workbench
+          image: $(params.IMAGE)
+          command:
+          - /bin/bash
+          - -c
+          - |
+            set -Eeuo pipefail
+            while [[ ! -f /test-state/input-ready ]]; do
+              sleep 1
+            done
+            export NOTEBOOK_BASE_URL=/notebook/e2e/
+            export NOTEBOOK_ARGS="--ServerApp.port=8888
+            --ServerApp.token=''
+            --ServerApp.password=''
+            --ServerApp.quit_button=False"
+            set +e
+            python3 -m pip install 'papermill==2.7.0'
+            status=$?
+            set -e
+            if (( status != 0 )); then
+              printf '%s\n' "${status}" >/test-state/exit
+              printf '%s\n' 'Failed to install Papermill in the workbench sidecar' >/test-state/e2e.log
+              exit "${status}"
+            fi
+            start-notebook.sh &
+            server_pid=$!
+            cleanup() {
+              kill -TERM "${server_pid}" 2>/dev/null || true
+              wait "${server_pid}" 2>/dev/null || true
+            }
+            trap cleanup EXIT
+            trap 'exit 130' INT
+            trap 'exit 143' TERM
+            deadline=$((SECONDS + 300))
+            while (( SECONDS < deadline )); do
+              if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8888/notebook/e2e/api', timeout=2).read()" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            if (( SECONDS >= deadline )); then
+              printf '%s\n' '1' >/test-state/exit
+              printf '%s\n' 'JupyterLab did not become ready' >/test-state/e2e.log
+              exit 1
+            fi
+            cp /test-input/test_notebook.ipynb /opt/app-root/src/test_notebook.ipynb
+            cp /test-input/expected_versions.json /opt/app-root/src/expected_versions.json
+            cd /opt/app-root/src
+            set +e
+            python3 -m papermill test_notebook.ipynb /test-state/test_notebook_output.ipynb \
+              --kernel python3 --start-timeout 300 --log-level DEBUG \
+              --stderr-file /test-state/test_notebook_error.txt
+            status=$?
+            set -e
+            if (( status == 0 )) && grep -q FAILED /test-state/test_notebook_error.txt; then
+              status=1
+            fi
+            printf '%s\n' "${status}" >/test-state/exit
+            exit "${status}"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: '1'
+              memory: 4Gi
+          volumeMounts:
+          - name: test-input
+            mountPath: /test-input
+          - name: test-state
+            mountPath: /test-state
         steps:
-        - name: get-kubeconfig
-          ref:
-            resolver: git
-            params:
-            - name: url
-              value: https://github.com/konflux-ci/build-definitions.git
-            - name: revision
-              value: main
-            - name: pathInRepo
-              value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
-          params:
-          - name: eaasSpaceSecretRef
-            value: $(tasks.provision-eaas-space.results.secretRef)
-          - name: clusterName
-            value: "$(tasks.provision-cluster.results.clusterName)"
-          - name: credentials
-            value: credentials
         - name: run-e2e-test
           image: quay.io/rhoai/rhoai-task-toolset:notebooks
           workingDir: /workspace
-          env:
-          - name: KUBECONFIG
-            value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
-          volumeMounts:
-          - name: credentials
-            mountPath: /credentials
           script: |
             #!/bin/bash
             set -Eeuo pipefail
@@ -187,19 +182,80 @@ spec:
             git -C /workspace/source remote add origin "$(params.REPO_URL)"
             git -C /workspace/source fetch --depth=1 origin "$(params.REVISION)"
             git -C /workspace/source checkout FETCH_HEAD
-            /workspace/source/ci/konflux/test_jupyter_minimal.sh \
-              e2e \
-              "$(params.IMAGE)" \
-              "$(params.REPO_URL)" \
-              "$(params.REVISION)" \
-              /workspace
+            python3 - <<'PY'
+            import json
+            import re
+            from pathlib import Path
+
+            source = Path('/workspace/source')
+            manifest = source / 'manifests/odh/base/jupyter-minimal-notebook-imagestream.yaml'
+            requirements = source / 'jupyter/minimal/ubi9-python-3.12/requirements.cpu.txt'
+
+            def annotation_json(key):
+                collected = []
+                key_indent = None
+                for line in manifest.read_text().splitlines():
+                    stripped = line.lstrip()
+                    if key_indent is None:
+                        if stripped.startswith(f'{key}:'):
+                            key_indent = len(line) - len(stripped)
+                        continue
+                    if not line.strip():
+                        collected.append('')
+                        continue
+                    current_indent = len(line) - len(stripped)
+                    if current_indent <= key_indent:
+                        break
+                    collected.append(line[key_indent + 2:])
+                if not collected:
+                    raise ValueError(f'Missing {key} annotation in {manifest}')
+                return json.loads('\n'.join(collected))
+
+            def requirement_version(package):
+                match = re.search(
+                    rf'(?m)^{re.escape(package)}==(\d+\.\d+)',
+                    requirements.read_text(),
+                )
+                if match is None:
+                    raise ValueError(f'Missing {package} pin in {requirements}')
+                return match.group(1)
+
+            expected = {
+                entry['name']: entry['version']
+                for key in (
+                    'opendatahub.io/notebook-software',
+                    'opendatahub.io/notebook-python-dependencies',
+                )
+                for entry in annotation_json(key)
+            }
+            expected['nbdime'] = requirement_version('nbdime')
+            expected['nbgitpuller'] = requirement_version('nbgitpuller')
+            Path('/test-input/expected_versions.json').write_text(
+                json.dumps(expected, indent=2) + '\n',
+            )
+            PY
+            cp /workspace/source/jupyter/minimal/ubi9-python-3.12/test/test_notebook.ipynb \
+              /test-input/test_notebook.ipynb
+            touch /test-state/input-ready
+            deadline=$((SECONDS + 1500))
+            while [[ ! -f /test-state/exit ]]; do
+              if (( SECONDS >= deadline )); then
+                echo 'E2E test timed out' >&2
+                exit 1
+              fi
+              sleep 5
+            done
+            if [[ -f /test-state/e2e.log ]]; then
+              cat /test-state/e2e.log
+            fi
+            if [[ -f /test-state/test_notebook_error.txt ]]; then
+              cat /test-state/test_notebook_error.txt
+            fi
+            exit "$(cat /test-state/exit)"
+          volumeMounts:
+          - name: test-input
+            mountPath: /test-input
+          - name: test-state
+            mountPath: /test-state
   taskRunTemplate:
-    podTemplate:
-      nodeSelector:
-        konflux-ci.dev/workload: konflux-tenants
-      tolerations:
-      - effect: NoSchedule
-        key: konflux-ci.dev/workload
-        operator: Equal
-        value: konflux-tenants
-    serviceAccountName: konflux-integration-runner
+    serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-cpu-py312-ubi9
