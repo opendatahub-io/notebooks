@@ -393,7 +393,7 @@ jobs:
             2>/dev/null || true
 
           gh pr create \
-            --title "GHA: Renew lock files" \
+            --title "GHA: Full Lock Files Renewal" \
             --head "${RENEWAL_BRANCH}" \
             --body "$(cat <<'EOF'
           Automated lock file renewal in a single PR with separate commits:
