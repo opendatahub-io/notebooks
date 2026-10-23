@@ -58,6 +58,7 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Configure Git
         run: |
@@ -195,7 +196,7 @@ jobs:
 
       - name: Validate manifests (make test)
         if: steps.regenerate-rpm-lock-files.outputs.changed == 'true'
-        run: make test
+        run: env -u VARIANT make test
 
       - name: Create Pull Request
         env:
