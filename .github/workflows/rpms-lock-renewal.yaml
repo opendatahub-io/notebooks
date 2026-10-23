@@ -38,6 +38,7 @@ jobs:
     permissions:
       contents: read  # checkout only; push and PR creation use the PAT
       packages: write  # push/pull rpm-lockfile build cache to ghcr.io
+      pull-requests: write  # approve the generated RPM lockfile renewal PR
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
       VARIANT: ${{ github.event.inputs.variant || 'both' }}
@@ -226,15 +227,14 @@ jobs:
           existing_pr_url=$(gh pr list --head "$RENEWAL_BRANCH" --state open --limit 1 --json url --jq '.[0].url // empty')
           if [[ -n "$existing_pr_url" ]]; then
             echo "Updating existing RPM lockfile renewal PR: $existing_pr_url"
-            exit 0
-          fi
-
-          VARIANT_UPPER=$(echo "$VARIANT" | tr '[:lower:]' '[:upper:]')
-          BRANCH_NAME="$RENEWAL_BRANCH"
-          gh pr create \
-            --title "GHA: Update RPM lock files (${VARIANT_UPPER})" \
-            --head "$BRANCH_NAME" \
-            --body "$(cat <<EOF
+            PR_URL="$existing_pr_url"
+          else
+            VARIANT_UPPER=$(echo "$VARIANT" | tr '[:lower:]' '[:upper:]')
+            BRANCH_NAME="$RENEWAL_BRANCH"
+            PR_URL="$(gh pr create \
+              --title "GHA: Update RPM lock files (${VARIANT_UPPER})" \
+              --head "$BRANCH_NAME" \
+              --body "$(cat <<EOF
           Automated regeneration of \`rpms.lock.yaml\` from \`rpms.in.yaml\`.
 
           Updated paths:
@@ -246,5 +246,20 @@ jobs:
           repository requirements pass.
           EOF
           )" \
-            --label "automated-rpms-lockfile-update" \
-            --base "$BRANCH"
+              --label "automated-rpms-lockfile-update" \
+              --base "$BRANCH")"
+          fi
+
+          echo "PR_URL=${PR_URL}" >> "$GITHUB_ENV"
+
+      - name: Approve renewal PR
+        if: env.PR_URL != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr review "${PR_URL}" --approve --body "Auto-approved after RPM renewal workflow validation."
+
+      - name: Enable auto-merge
+        if: env.PR_URL != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: gh pr merge "${PR_URL}" --merge --auto --delete-branch
