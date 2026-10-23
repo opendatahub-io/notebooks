@@ -8,7 +8,7 @@ permissions: {}  # default-deny: unscoped jobs get only metadata:read
 
 on:  # yamllint disable-line rule:truthy
   schedule:
-    - cron: "0 1 * * *"  # Daily lockfile update (1am UTC)
+    - cron: "0 1 * * 3"  # Weekly lockfile update (Wednesday 1am UTC)
   workflow_dispatch:
     inputs:
       branch:
@@ -46,7 +46,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read  # checkout only; push and PR creation use the PAT
-      pull-requests: write  # approve generated renewal PRs with GITHUB_TOKEN
       packages: write  # push/pull rpm-lockfile build cache to ghcr.io
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
@@ -72,8 +71,8 @@ jobs:
 
       - name: Create renewal branch
         run: |
-          BRANCH_NAME="lockfile-renewal-${BRANCH//\//-}"
-          git checkout -B "$BRANCH_NAME" "$BRANCH"
+          BRANCH_NAME="lockfile-renewal-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH_NAME"
           echo "RENEWAL_BRANCH=$BRANCH_NAME" >> "${GITHUB_ENV}"
 
       - name: Setup uv and Python
@@ -386,24 +385,17 @@ jobs:
           COMMIT_COUNT=$(git rev-list --count "${BRANCH}..HEAD")
           echo "Pushing ${COMMIT_COUNT} commit(s) on ${RENEWAL_BRANCH}"
 
-          REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          REMOTE_BRANCH_SHA=$(git ls-remote "${REMOTE_URL}" "refs/heads/${RENEWAL_BRANCH}" | awk '{print $1}')
-
-          if [[ -z "${REMOTE_BRANCH_SHA}" ]]; then
-            git push -u "${REMOTE_URL}" "${RENEWAL_BRANCH}"
-          else
-            git push --force-with-lease="${RENEWAL_BRANCH}:${REMOTE_BRANCH_SHA}" -u "${REMOTE_URL}" "${RENEWAL_BRANCH}"
-          fi
+          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "${RENEWAL_BRANCH}"
 
           gh label create "automated-full-lockfile-renewal" \
             --description "Auto-created full lockfile renewal PR (pylock, manifests, ODH/RHDS RPMs)" \
             --color "0E8A16" \
             2>/dev/null || true
 
-          PR_URL=$(gh pr list --head "${RENEWAL_BRANCH}" --state open --limit 1 --json url --jq '.[0].url // empty')
-
-          if [[ -z "${PR_URL}" ]]; then
-            PR_BODY=$(cat <<'EOF'
+          gh pr create \
+            --title "GHA: Renew lock files" \
+            --head "${RENEWAL_BRANCH}" \
+            --body "$(cat <<'EOF'
           Automated lock file renewal in a single PR with separate commits:
 
           1. Pylock lock files
@@ -411,57 +403,6 @@ jobs:
           3. ODH `rpms.lock.yaml` regeneration
           4. RHDS `rpms.lock.yaml` regeneration
           EOF
-            )
-            PR_URL=$(gh pr create \
-              --title "GHA: Renew lock files" \
-              --head "${RENEWAL_BRANCH}" \
-              --body "${PR_BODY}" \
-              --label "automated-full-lockfile-renewal" \
-              --base "$BRANCH")
-          else
-            echo "Updating existing renewal PR: ${PR_URL}"
-          fi
-
-          echo "PR_URL=${PR_URL}" >> "${GITHUB_ENV}"
-
-      - name: Approve renewal PR
-        if: ${{ env.PR_URL != '' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr review "${PR_URL}" --approve --body "Auto-approved after renewal workflow validation."
-
-      - name: Verify CI checks before merge
-        if: ${{ env.PR_URL != '' }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
-        run: |
-          checks_are_green() {
-            gh pr checks "${PR_URL}" --json bucket \
-              | jq -e 'length > 0 and all(.[]; .bucket == "pass" or .bucket == "skipping")'
-          }
-
-          checks_have_failed() {
-            gh pr checks "${PR_URL}" --json bucket \
-              | jq -e 'any(.[]; .bucket == "fail" or .bucket == "cancel")'
-          }
-
-          deadline=$((SECONDS + 3600))
-          while (( SECONDS < deadline )); do
-            if checks_are_green; then
-              sleep 60
-              if checks_are_green; then
-                gh pr merge "${PR_URL}" --merge --delete-branch
-                exit 0
-              fi
-            fi
-
-            if checks_have_failed; then
-              echo "One or more PR checks failed." >&2
-              exit 1
-            fi
-
-            sleep 30
-          done
-
-          echo "Timed out waiting for all PR checks to pass." >&2
-          exit 1
+          )" \
+            --label "automated-full-lockfile-renewal" \
+            --base "$BRANCH"
