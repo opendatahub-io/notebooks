@@ -39,6 +39,9 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/opendatahub/odh-workbench-codeserver-minimal-cpu-py312:odh-stable
+  - name: additional-tags
+    value:
+    - 3.6-v1.50
   - name: build-platforms
     value:
     # https://github.com/redhat-appstudio/infra-deployments/blob/main/components/multi-platform-controller/production-downstream/stone-prod-p02/host-config.yaml
