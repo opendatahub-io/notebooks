@@ -99,16 +99,16 @@ The Jupyter Minimal POC also has three independently retryable post-build lanes:
 Each command can be prefixed with `retest-` to rerun only that lane. The container lane
 uses the built image directly as a Tekton step, verifies the multi-arch index contains
 all four required platforms, and runs the JupyterLab integration checks that are
-applicable to the minimal image. The browser lane runs the built workbench and pinned
-Playwright runner as sidecars in one TaskRun pod. The E2E lane provisions an ephemeral
-OpenShift cluster, so a failure in either lane can be retried without rerunning the
-others.
+applicable to the minimal image. The browser and E2E lanes run the built workbench as a
+sidecar in one TaskRun pod. The browser lane adds a pinned Playwright runner sidecar,
+while the E2E lane executes the Papermill notebook inside the workbench sidecar. A
+failure in either lane can be retried without rerunning the others.
 
-The current browser sidecars and EaaS integration cluster are linux/amd64. They validate
-the amd64 image instance at runtime while the container lane verifies that the image index
-also contains linux/arm64, linux/ppc64le, and linux/s390x manifests. Running the browser
-and Papermill suites natively on every architecture requires architecture-matched
-TaskRun nodes or EaaS clusters; neither is part of this first POC.
+The current browser and E2E sidecars are linux/amd64. They validate the amd64 image
+instance at runtime while the container lane verifies that the image index also contains
+linux/arm64, linux/ppc64le, and linux/s390x manifests. Running the browser and Papermill
+suites natively on every architecture requires architecture-matched TaskRun nodes; that
+is not part of this first POC.
 
 The browser lane uses a digest-pinned Playwright runner image with dependencies already
 installed. It compares the repository lockfile with the lockfile baked into that image;
