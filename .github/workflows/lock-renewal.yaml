@@ -423,10 +423,38 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr review "${PR_URL}" --approve --body "Auto-approved after renewal workflow validation."
 
-      - name: Wait for CI and merge renewal PR
+      - name: Verify CI checks before merge
         if: ${{ env.PR_URL != '' }}
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
-          gh pr checks "${PR_URL}" --watch --fail-fast --interval 30
-          gh pr merge "${PR_URL}" --merge --delete-branch
+          checks_are_green() {
+            gh pr checks "${PR_URL}" --json bucket \
+              | jq -e 'length > 0 and all(.[]; .bucket == "pass" or .bucket == "skipping")'
+          }
+
+          checks_have_failed() {
+            gh pr checks "${PR_URL}" --json bucket \
+              | jq -e 'any(.[]; .bucket == "fail" or .bucket == "cancel")'
+          }
+
+          deadline=$((SECONDS + 3600))
+          while (( SECONDS < deadline )); do
+            if checks_are_green; then
+              sleep 60
+              if checks_are_green; then
+                gh pr merge "${PR_URL}" --merge --delete-branch
+                exit 0
+              fi
+            fi
+
+            if checks_have_failed; then
+              echo "One or more PR checks failed." >&2
+              exit 1
+            fi
+
+            sleep 30
+          done
+
+          echo "Timed out waiting for all PR checks to pass." >&2
+          exit 1
