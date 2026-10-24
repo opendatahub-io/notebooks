@@ -7,18 +7,9 @@ metadata:
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: 'false'
+    pipelinesascode.tekton.dev/cancel-in-progress: 'true'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-comment: ^/(test-jupyter-minimal-container|retest-jupyter-minimal-container)
-    pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main" &&
-      (
-        ".tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-container-test.yaml".pathChanged() ||
-        "ci/konflux/test_jupyter_minimal.sh".pathChanged() ||
-        "jupyter/utils/**".pathChanged() ||
-        "jupyter/minimal/ubi9-python-3.12/**".pathChanged() ||
-        "jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
-      )
   labels:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-workbench-jupyter-minimal-cpu-py312-ubi9
@@ -57,7 +48,7 @@ spec:
           script: |
             #!/bin/bash
             set -Eeuo pipefail
-            deadline=$((SECONDS + 21600))
+            deadline=$((SECONDS + 300))
             while (( SECONDS < deadline )); do
               if digest="$(skopeo inspect --format '{{.Digest}}' "docker://${IMAGE}" 2>/dev/null)"; then
                 repository="${IMAGE%%:*}"
@@ -65,8 +56,8 @@ spec:
                 cat "$(results.IMAGE.path)"
                 exit 0
               fi
-              echo "Waiting for ${IMAGE} to be published"
-              sleep 30
+              echo "Waiting briefly for ${IMAGE} to become visible in the registry"
+              sleep 10
             done
             echo "Timed out waiting for ${IMAGE}" >&2
             exit 1
