@@ -77,11 +77,22 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 
 ### Jupyter Minimal functional-test POC
 
-`.tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-functional-test.yaml` runs a
-small post-build smoke test for the Jupyter Minimal CPU image. It triggers on the same
-PR paths as the Jupyter Minimal CPU build, waits for the PR image tag to appear in
-Quay, resolves the image digest, and then uses that image as the Tekton step image to
-verify Python and JupyterLab. The pipeline can also be retried independently with:
+The Jupyter Minimal CPU test lanes are deliberately **post-build only**. They do not
+auto-trigger when a PR opens; each lane is triggered by its own PR comment after the
+Jupyter Minimal build check succeeds. This prevents multiple TaskRuns from spending
+six hours polling Quay while the build is still queued.
+
+`.github/workflows/konflux-jupyter-minimal-test-dispatch.yaml` listens for the successful
+Jupyter Minimal build check and posts one trigger comment per lane. GitHub's `check_run`
+event uses the workflow definition from the default branch, so automatic dispatch begins
+after this workflow is merged; before then, it can be exercised with `workflow_dispatch`.
+The workflow uses `GH_ACCESS_TOKEN` because Pipelines as Code requires comment senders
+to be repository collaborators—the standard `github-actions[bot]` token cannot trigger
+these commands. Each test still executes in Konflux, not GitHub Actions.
+
+After dispatch, each test resolves the immutable image digest and allows a short
+registry-propagation window. The functional lane uses the built image directly as the
+Tekton step image to verify Python and JupyterLab. Every lane can be retried independently:
 
 ```text
 /test-jupyter-minimal
