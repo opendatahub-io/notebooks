@@ -1,8 +1,8 @@
 ---
-# Regenerate rpms.lock.yaml from rpms.in.yaml for ODH (upstream) and RHDS (downstream).
+# Regenerate rpms.lock.yaml from rpms.in.yaml for ODH and RHDS in parallel.
 name: RPM Lock Files Renewal Action
 
-permissions: {}  # default-deny: unscoped jobs get only metadata:read
+permissions: {}  # least-privilege; grant per-job below
 
 on:  # yamllint disable-line rule:truthy
   schedule:
@@ -28,36 +28,64 @@ on:  # yamllint disable-line rule:truthy
         default: true
         type: boolean
 
+concurrency:
+  group: rpms-lockfile-renewal-${{ github.event.inputs.branch || github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  refresh-rpm-lock-files:
+  prepare:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-26.04
-    concurrency:
-      group: refresh-rpm-lock-files-${{ github.ref }}
-      cancel-in-progress: false
+    outputs:
+      variants: ${{ steps.inputs.outputs.variants }}
+      base-sha: ${{ steps.base.outputs.sha }}
+    steps:
+      - name: Validate inputs
+        id: inputs
+        env:
+          VARIANT: ${{ github.event.inputs.variant || 'both' }}
+        run: |
+          case "${VARIANT}" in
+            both) variants='["odh","rhds"]' ;;
+            odh|rhds) variants="[\"${VARIANT}\"]" ;;
+            *) echo "VARIANT must be one of: both, odh, rhds" >&2; exit 1 ;;
+          esac
+          echo "variants=${variants}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.branch || 'main' }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Resolve base SHA
+        id: base
+        run: echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+
+  generate:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(needs.prepare.outputs.variants) }}
+    runs-on: ubuntu-26.04
     permissions:
-      contents: read  # checkout only; push and PR creation use the PAT
-      packages: write  # push/pull rpm-lockfile build cache to ghcr.io
-      pull-requests: write  # approve the generated RPM lockfile renewal PR
+      contents: read
+      packages: write
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
-      VARIANT: ${{ github.event.inputs.variant || 'both' }}
+      BASE_SHA: ${{ needs.prepare.outputs.base-sha }}
+      VARIANT: ${{ matrix.variant }}
       TMPDIR: /var/tmp
       CI: "true"
       USE_CACHE: ${{ github.event.inputs.use_cache != 'false' && 'true' || 'false' }}
 
     steps:
-      - name: Validate inputs
-        run: |
-          case "${VARIANT}" in
-            both|odh|rhds) ;;
-            *) echo "VARIANT must be one of: both, odh, rhds" >&2; exit 1 ;;
-          esac
-
-      - name: Checkout code
+      - name: Checkout base SHA
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ env.BRANCH }}
+          ref: ${{ env.BASE_SHA }}
           persist-credentials: false
           fetch-depth: 0
 
@@ -66,37 +94,26 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
 
-      - name: Create renewal branch
-        run: |
-          RENEWAL_BRANCH="rpms-lockfile-renewal-${VARIANT}-${BRANCH//\//-}"
-          git checkout -B "$RENEWAL_BRANCH" "$BRANCH"
-          echo "RENEWAL_BRANCH=$RENEWAL_BRANCH" >> "${GITHUB_ENV}"
-
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
 
       - name: Prepare Podman temp directory
         run: mkdir -p "$TMPDIR"
 
-      # RHDS secrets and registry auth must be configured before Install Podman.
-      # install-podman-action runs `sudo podman system reset`, which can leave
-      # root-owned files under $HOME/.config/containers and break a later cp.
       - name: Unlock git-crypt and configure registry auth
-        if: env.VARIANT == 'both' || env.VARIANT == 'rhds'
+        if: matrix.variant == 'rhds'
         uses: ./.github/actions/git-crypt-auth
         with:
           git-crypt-key: ${{ secrets.GIT_CRYPT_KEY }}
 
       - name: Mask subscription credentials
-        if: env.VARIANT == 'both' || env.VARIANT == 'rhds'
+        if: matrix.variant == 'rhds'
         env:
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
         run: |
-          # Mask before any podman build/run so activation key never appears in logs.
-          # Secrets are passed only via env vars (never CLI args); see prefetch-all.sh.
           if [[ -z "$SUBSCRIPTION_ACTIVATION_KEY" || -z "$SUBSCRIPTION_ORG" ]]; then
-            echo "RHDS variant requires SUBSCRIPTION_ACTIVATION_KEY and SUBSCRIPTION_ORG repository secrets." >&2
+            echo "RHDS requires subscription secrets." >&2
             exit 1
           fi
           echo "::add-mask::${SUBSCRIPTION_ACTIVATION_KEY}"
@@ -114,126 +131,156 @@ jobs:
         with:
           platform: linux/amd64
 
-      - name: Regenerate rpms.lock.yaml
-        id: regenerate-rpm-lock-files
+      - name: Compute container build cache args
+        id: cache
         env:
-          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
-          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+          CACHE: ghcr.io/${{ github.repository }}/rpm-lockfile-build-cache-${{ matrix.variant }}
+          USE_CACHE: ${{ env.USE_CACHE }}
+          VARIANT: ${{ matrix.variant }}
         run: |
-          set -euo pipefail
-
-          case "${VARIANT}" in
-            both) variants=(odh rhds) ;;
-            *) variants=("${VARIANT}") ;;
-          esac
-
-          for variant in "${variants[@]}"; do
-            echo "=== Regenerating RPM lockfiles for ${variant} (USE_CACHE=${USE_CACHE}) ==="
-
-            cache="ghcr.io/${{ github.repository }}/rpm-lockfile-build-cache-${variant}"
-            cache="${cache,,}"
-            if [[ "$USE_CACHE" == "true" ]]; then
-              if [[ "$variant" == "rhds" ]]; then
-                # RHDS builds register with subscription-manager; do not push layers to GHCR.
-                export CONTAINER_BUILD_CACHE_ARGS="--cache-from ${cache}"
-              else
-                export CONTAINER_BUILD_CACHE_ARGS="--cache-from ${cache} --cache-to ${cache}"
-              fi
-            elif [[ "$variant" == "odh" ]]; then
-              export CONTAINER_BUILD_CACHE_ARGS="--cache-to ${cache}"
+          cache="${CACHE,,}"
+          if [[ "$USE_CACHE" == "true" ]]; then
+            if [[ "$VARIANT" == "rhds" ]]; then
+              echo "CONTAINER_BUILD_CACHE_ARGS=--cache-from ${cache}" >> "$GITHUB_OUTPUT"
             else
-              export CONTAINER_BUILD_CACHE_ARGS=""
+              echo "CONTAINER_BUILD_CACHE_ARGS=--cache-from ${cache} --cache-to ${cache}" >> "$GITHUB_OUTPUT"
             fi
-
-            if [[ "$variant" == "rhds" ]]; then
-              # ODH leaves a CentOS-based lockfile image; RHDS must rebuild with subscription.
-              podman rmi -f localhost/notebook-rpm-lockfile:latest 2>/dev/null || true
-            elif [[ "$USE_CACHE" == "false" ]]; then
-              podman rmi -f localhost/notebook-rpm-lockfile:latest 2>/dev/null || true
-            fi
-
-            rpm_inputs=(
-              "prefetch-input/${variant}/rpms.in.yaml"
-              "codeserver/ubi9-python-3.12/prefetch-input/${variant}/rpms.in.yaml"
-              "codeserver-baseline/ubi9-python-3.12/prefetch-input/${variant}/rpms.in.yaml"
-            )
-            for rpm_input in "${rpm_inputs[@]}"; do
-              if [[ ! -f "$rpm_input" ]]; then
-                echo "Skipping missing input: $rpm_input"
-                continue
-              fi
-              if [[ "$variant" == "odh" ]]; then
-                # ODH must not see subscription credentials; create-rpm-lockfile.sh would switch to UBI9.
-                env -u SUBSCRIPTION_ACTIVATION_KEY -u SUBSCRIPTION_ORG \
-                  ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
-              else
-                ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
-              fi
-            done
-
-            for lockfile in \
-              "prefetch-input/${variant}/rpms.lock.yaml" \
-              "codeserver/ubi9-python-3.12/prefetch-input/${variant}/rpms.lock.yaml" \
-              "codeserver-baseline/ubi9-python-3.12/prefetch-input/${variant}/rpms.lock.yaml"; do
-              if [[ -f "$lockfile" ]]; then
-                git add "$lockfile"
-              fi
-            done
-
-            if git diff --cached --quiet; then
-              echo "No ${variant} RPM lockfile changes to commit."
-              continue
-            fi
-
-            variant_upper="${variant^^}"
-            git commit -m "Update ${variant_upper} rpms.lock.yaml lock files"
-          done
-
-          if [[ "$(git rev-list --count "${BRANCH}..HEAD")" -eq 0 ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif [[ "$VARIANT" == "odh" ]]; then
+            echo "CONTAINER_BUILD_CACHE_ARGS=--cache-to ${cache}" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "CONTAINER_BUILD_CACHE_ARGS=" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Validate manifests (make test)
-        if: steps.regenerate-rpm-lock-files.outputs.changed == 'true'
-        run: env -u VARIANT make test
-
-      - name: Create Pull Request
+      - name: Generate lockfiles
         env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ matrix.variant == 'rhds' && secrets.SUBSCRIPTION_ACTIVATION_KEY || '' }}
+          SUBSCRIPTION_ORG: ${{ matrix.variant == 'rhds' && secrets.SUBSCRIPTION_ORG || '' }}
+          CONTAINER_BUILD_CACHE_ARGS: ${{ steps.cache.outputs.CONTAINER_BUILD_CACHE_ARGS }}
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
           set -euo pipefail
 
-          if [[ "$(git rev-list --count "${BRANCH}..HEAD" 2>/dev/null || echo 0)" -eq 0 ]]; then
-            echo "No RPM lockfile changes. Skipping PR creation."
-            exit 0
+          if [[ "$VARIANT" == "odh" ]]; then
+            unset SUBSCRIPTION_ACTIVATION_KEY SUBSCRIPTION_ORG || true
+          fi
+
+          temp_branch="rpm-lockfile-${VARIANT}-${BRANCH//\//-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git checkout -b "$temp_branch" "$BASE_SHA"
+
+          rpm_inputs=(
+            "prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+          )
+          for rpm_input in "${rpm_inputs[@]}"; do
+            if [[ ! -f "$rpm_input" ]]; then
+              echo "Skipping missing input: $rpm_input"
+              continue
+            fi
+            ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+          done
+
+          for lockfile in \
+            "prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
+            if [[ -f "$lockfile" ]]; then
+              git add "$lockfile"
+            fi
+          done
+
+          if git diff --cached --quiet; then
+            echo "No ${VARIANT} RPM lockfile changes."
+          else
+            variant_upper="${VARIANT^^}"
+            git commit -m "Update ${variant_upper} rpms.lock.yaml lock files"
           fi
 
           remote_url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          remote_branch_sha=$(git ls-remote "$remote_url" "refs/heads/${RENEWAL_BRANCH}" | awk '{print $1}')
+          git push "$remote_url" "HEAD:refs/heads/${temp_branch}"
+
+  finalize:
+    needs: [prepare, generate]
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      BRANCH: ${{ github.event.inputs.branch || 'main' }}
+      BASE_SHA: ${{ needs.prepare.outputs.base-sha }}
+      VARIANTS: ${{ needs.prepare.outputs.variants }}
+      TMPDIR: /var/tmp
+      CI: "true"
+
+    steps:
+      - name: Checkout base SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ env.BASE_SHA }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Merge variant branches
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          remote_url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          renewal_branch="rpms-lockfile-renewal-${{ github.event.inputs.variant || 'both' }}-${BRANCH//\//-}"
+          git checkout -B "$renewal_branch" "$BASE_SHA"
+
+          for variant in $(jq -r '.[]' <<<"$VARIANTS"); do
+            temp_branch="rpm-lockfile-${variant}-${BRANCH//\//-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            git fetch "$remote_url" "+refs/heads/${temp_branch}:refs/remotes/origin/${temp_branch}"
+            commit_count="$(git rev-list --count "${BASE_SHA}..refs/remotes/origin/${temp_branch}")"
+            if [[ "$commit_count" -gt 0 ]]; then
+              git cherry-pick "${BASE_SHA}..refs/remotes/origin/${temp_branch}"
+            fi
+          done
+
+          changed="$(git rev-list --count "${BASE_SHA}..HEAD")"
+          echo "changed=${changed}" >> "$GITHUB_ENV"
+
+      - name: Validate manifests
+        if: env.changed != '0'
+        run: env -u VARIANT make test
+
+      - name: Create Pull Request
+        if: env.changed != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          remote_url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          renewal_branch="rpms-lockfile-renewal-${{ github.event.inputs.variant || 'both' }}-${BRANCH//\//-}"
+          remote_branch_sha="$(git ls-remote "$remote_url" "refs/heads/${renewal_branch}" | awk '{print $1}')"
           if [[ -z "$remote_branch_sha" ]]; then
-            git push -u "$remote_url" "$RENEWAL_BRANCH"
+            git push -u "$remote_url" "$renewal_branch"
           else
-            git push --force-with-lease="${RENEWAL_BRANCH}:${remote_branch_sha}" -u "$remote_url" "$RENEWAL_BRANCH"
+            git push --force-with-lease="${renewal_branch}:${remote_branch_sha}" -u "$remote_url" "$renewal_branch"
           fi
 
-          # gh pr create fails if the label does not exist yet (see automated-lockfile-update).
           gh label create "automated-rpms-lockfile-update" \
             --description "Auto-created RPM lockfile update PR" \
             --color "0E8A16" \
             2>/dev/null || true
 
-          existing_pr_url=$(gh pr list --head "$RENEWAL_BRANCH" --state open --limit 1 --json url --jq '.[0].url // empty')
+          existing_pr_url="$(gh pr list --head "$renewal_branch" --state open --limit 1 --json url --jq '.[0].url // empty')"
           if [[ -n "$existing_pr_url" ]]; then
-            echo "Updating existing RPM lockfile renewal PR: $existing_pr_url"
             PR_URL="$existing_pr_url"
           else
-            VARIANT_UPPER=$(echo "$VARIANT" | tr '[:lower:]' '[:upper:]')
-            BRANCH_NAME="$RENEWAL_BRANCH"
+            VARIANT_UPPER="$(echo '${{ github.event.inputs.variant || 'both' }}' | tr '[:lower:]' '[:upper:]')"
             PR_URL="$(gh pr create \
               --title "GHA: Update RPM lock files (${VARIANT_UPPER})" \
-              --head "$BRANCH_NAME" \
+              --head "$renewal_branch" \
               --body "$(cat <<EOF
           Automated regeneration of \`rpms.lock.yaml\` from \`rpms.in.yaml\`.
 
@@ -249,7 +296,6 @@ jobs:
               --label "automated-rpms-lockfile-update" \
               --base "$BRANCH")"
           fi
-
           echo "PR_URL=${PR_URL}" >> "$GITHUB_ENV"
 
       - name: Approve renewal PR
