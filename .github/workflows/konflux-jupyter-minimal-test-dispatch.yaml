@@ -32,7 +32,7 @@ jobs:
     permissions:
       pull-requests: write
     runs-on: ubuntu-26.04
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - name: Dispatch post-build test lanes
         env:
@@ -59,6 +59,27 @@ jobs:
           if [[ "${head_sha}" != "${COMMIT_SHA}" ]]; then
             echo "Build was for ${COMMIT_SHA}; PR head is ${head_sha}. Skipping stale dispatch."
             exit 0
+          fi
+
+          manifest_url="https://quay.io/v2/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9/manifests/on-pr-${COMMIT_SHA}"
+          manifest_accept='application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json'
+          for attempt in $(seq 1 30); do
+            status="$(
+              curl --silent --show-error --location --max-time 30 \
+                --head --output /dev/null --write-out '%{http_code}' \
+                --header "Accept: ${manifest_accept}" "${manifest_url}" 2>/dev/null || true
+            )"
+            if [[ "${status}" == "200" ]]; then
+              echo "Published image is available: ${manifest_url}"
+              break
+            fi
+            echo "Waiting for published image (attempt ${attempt}/30, HTTP ${status:-none})"
+            sleep 30
+          done
+
+          if [[ "${status}" != "200" ]]; then
+            echo "::error::Published image did not become available at ${manifest_url}"
+            exit 1
           fi
 
           dispatch_lane() {
