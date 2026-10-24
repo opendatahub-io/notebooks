@@ -115,15 +115,15 @@ spec:
             --ServerApp.token=''
             --ServerApp.password=''
             --ServerApp.quit_button=False"
-            git config --global user.name "Offline Browser Fixture"
-            git config --global user.email offline-browser@example.invalid
+            /usr/bin/git config --global user.name "Offline Browser Fixture"
+            /usr/bin/git config --global user.email offline-browser@example.invalid
             mkdir -p /opt/app-root/src/offline-git-remote.git /opt/app-root/src/offline-git-repo
-            git -C /opt/app-root/src/offline-git-remote.git init --bare
-            git -C /opt/app-root/src/offline-git-repo init
+            /usr/bin/git -C /opt/app-root/src/offline-git-remote.git init --bare
+            /usr/bin/git -C /opt/app-root/src/offline-git-repo init
             printf '%s\n' 'initial content' >/opt/app-root/src/offline-git-repo/git-ui.txt
-            git -C /opt/app-root/src/offline-git-repo add git-ui.txt
-            git -C /opt/app-root/src/offline-git-repo commit -m 'initial offline fixture'
-            git -C /opt/app-root/src/offline-git-repo remote add origin \
+            /usr/bin/git -C /opt/app-root/src/offline-git-repo add git-ui.txt
+            /usr/bin/git -C /opt/app-root/src/offline-git-repo commit -m 'initial offline fixture'
+            /usr/bin/git -C /opt/app-root/src/offline-git-repo remote add origin \
               file:///opt/app-root/src/offline-git-remote.git
             exec /opt/app-root/bin/start-notebook.sh
           resources:
