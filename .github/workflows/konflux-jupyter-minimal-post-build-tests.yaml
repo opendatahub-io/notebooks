@@ -1,0 +1,420 @@
+---
+name: Konflux Jupyter Minimal post-build tests
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+    paths:
+      - .github/workflows/konflux-jupyter-minimal-post-build-tests.yaml
+      - .tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-pull-request.yaml
+      - jupyter/utils/**
+      - jupyter/minimal/ubi9-python-3.12/**
+      - jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number
+        required: true
+        type: string
+      commit_sha:
+        description: Pull request head commit SHA
+        required: true
+        type: string
+      functional_platforms:
+        description: >-
+          Comma-separated architectures for functional tests
+        required: false
+        default: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+        type: string
+      container_platforms:
+        description: Comma-separated architectures for Testcontainers tests
+        required: false
+        default: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+        type: string
+      browser_platforms:
+        description: >-
+          Comma-separated architectures for browser tests (Playwright image supports
+          linux/amd64 and linux/arm64 only)
+        required: false
+        default: linux/amd64,linux/arm64
+        type: string
+      e2e_platforms:
+        description: Comma-separated architectures for E2E tests
+        required: false
+        default: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+        type: string
+
+concurrency:
+  group: konflux-jupyter-minimal-post-build-tests-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Resolve build and image
+    if: >-
+      github.repository == 'opendatahub-io/notebooks' && (
+        github.event_name == 'pull_request' ||
+        github.event_name == 'workflow_dispatch'
+      )
+    permissions:
+      contents: read
+      checks: read
+      pull-requests: read
+    runs-on: ubuntu-26.04
+    timeout-minutes: 360
+    outputs:
+      pr_number: ${{ steps.resolve.outputs.pr_number }}
+      commit_sha: ${{ steps.resolve.outputs.commit_sha }}
+      image: ${{ steps.resolve.outputs.image }}
+      image_tag: ${{ steps.resolve.outputs.image_tag }}
+      functional_matrix: ${{ steps.matrices.outputs.functional_matrix }}
+      container_matrix: ${{ steps.matrices.outputs.container_matrix }}
+      browser_matrix: ${{ steps.matrices.outputs.browser_matrix }}
+      e2e_matrix: ${{ steps.matrices.outputs.e2e_matrix }}
+    steps:
+      - name: Resolve PR, build, and immutable image
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CHECK_NAME: Red Hat Konflux / odh-workbench-jupyter-minimal-cpu-py312-ubi9-on-pull-request
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${COMMIT_SHA}" ]]; then
+            echo "::error::Could not resolve commit SHA"
+            exit 1
+          fi
+
+          if [[ -z "${PR_NUMBER}" ]]; then
+            PR_NUMBER="$(
+              gh api "repos/${REPO}/commits/${COMMIT_SHA}/pulls" \
+                --jq '[.[] | select(.state == "open")][0].number'
+            )"
+          fi
+
+          head_sha="$(gh pr view "${PR_NUMBER}" --repo "${REPO}" --json headRefOid --jq '.headRefOid')"
+          if [[ "${head_sha}" != "${COMMIT_SHA}" ]]; then
+            echo "Build was for ${COMMIT_SHA}; PR head is ${head_sha}. Skipping stale tests."
+            exit 1
+          fi
+
+          check_url="repos/${REPO}/commits/${COMMIT_SHA}/check-runs"
+          for attempt in $(seq 1 360); do
+            check_state="$(
+              gh api "${check_url}" \
+                --jq ".check_runs[] | select(.name == \"${CHECK_NAME}\") |
+                      ((.status // \"\") + \"/\" + (.conclusion // \"\"))" |
+                head -n 1
+            )"
+            if [[ "${check_state}" == "completed/success" ]]; then
+              echo "Konflux build succeeded at attempt ${attempt}/360"
+              break
+            fi
+            if [[ "${check_state}" == completed/* ]]; then
+              echo "::error::Konflux build is not successful (${check_state:-missing})"
+              exit 1
+            fi
+            echo "Waiting for Konflux build (attempt ${attempt}/360, ${check_state:-not started})"
+            sleep 60
+          done
+
+          if [[ "${check_state}" != "completed/success" ]]; then
+            echo "::error::Konflux build did not complete within six hours"
+            exit 1
+          fi
+
+          image_repository="quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9"
+          image_tag="on-pr-${COMMIT_SHA}"
+          manifest_url="https://quay.io/v2/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9/manifests/${image_tag}"
+          manifest_accept='application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json'
+
+          for attempt in $(seq 1 60); do
+            digest="$(
+              curl --silent --show-error --location --max-time 30 \
+                --head --header "Accept: ${manifest_accept}" "${manifest_url}" 2>/dev/null |
+                awk 'BEGIN { IGNORECASE=1 } /^docker-content-digest:/ { gsub("\r", "", $2); print $2; exit }'
+            )"
+            if [[ -n "${digest}" ]]; then
+              break
+            fi
+            echo "Waiting for published image (attempt ${attempt}/60)"
+            sleep 30
+          done
+
+          if [[ -z "${digest}" ]]; then
+            echo "::error::Published image did not become available at ${manifest_url}"
+            exit 1
+          fi
+
+          image="${image_repository}@${digest}"
+          {
+            echo "pr_number=${PR_NUMBER}"
+            echo "commit_sha=${COMMIT_SHA}"
+            echo "image=${image}"
+            echo "image_tag=${image_tag}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "Testing ${image}"
+
+      - name: Build architecture matrices
+        id: matrices
+        env:
+          FUNCTIONAL_PLATFORMS: ${{ github.event.inputs.functional_platforms || vars.KONFLUX_JUPYTER_MINIMAL_FUNCTIONAL_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
+          CONTAINER_PLATFORMS: ${{ github.event.inputs.container_platforms || vars.KONFLUX_JUPYTER_MINIMAL_CONTAINER_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
+          BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64' }}
+          E2E_PLATFORMS: ${{ github.event.inputs.e2e_platforms || vars.KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+
+          allowed_platforms = {
+              "linux/amd64",
+              "linux/arm64",
+              "linux/ppc64le",
+              "linux/s390x",
+          }
+          browser_supported_platforms = {"linux/amd64", "linux/arm64"}
+
+          def parse_platforms(value, allowed):
+              platforms = []
+              for platform in value.split(","):
+                  platform = platform.strip()
+                  if not platform:
+                      continue
+                  if platform not in allowed:
+                      raise SystemExit(f"Unsupported platform {platform!r}")
+                  if platform not in platforms:
+                      platforms.append(platform)
+              if not platforms:
+                  raise SystemExit("At least one platform is required")
+              return platforms
+
+          functional_platforms = parse_platforms(
+              os.environ["FUNCTIONAL_PLATFORMS"], allowed_platforms
+          )
+          container_platforms = parse_platforms(
+              os.environ["CONTAINER_PLATFORMS"], allowed_platforms
+          )
+          browser_platforms = parse_platforms(
+              os.environ["BROWSER_PLATFORMS"], browser_supported_platforms
+          )
+          e2e_platforms = parse_platforms(
+              os.environ["E2E_PLATFORMS"], allowed_platforms
+          )
+
+          outputs = {
+              "functional_matrix": {"include": [{"platform": platform} for platform in functional_platforms]},
+              "container_matrix": {"include": [{"platform": platform} for platform in container_platforms]},
+              "browser_matrix": {"include": [{"platform": platform} for platform in browser_platforms]},
+              "e2e_matrix": {"include": [{"platform": platform} for platform in e2e_platforms]},
+          }
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for name, value in outputs.items():
+                  output.write(f"{name}={json.dumps(value)}\n")
+          PY
+
+  functional:
+    name: Functional (${{ matrix.platform }})
+    needs: prepare
+    permissions:
+      contents: read
+    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm","linux/ppc64le":"ubuntu-26.04","linux/s390x":"ubuntu-26.04"}')[matrix.platform] }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.functional_matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 1
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up QEMU
+        if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), matrix.platform)
+        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+
+      - uses: ./.github/actions/install-podman-action
+        with:
+          platform: ${{ matrix.platform }}
+
+      - name: Verify Python and JupyterLab
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -Eeuxo pipefail
+          podman pull --platform "${PLATFORM}" "${IMAGE}"
+          podman run --rm --platform "${PLATFORM}" "${IMAGE}" python --version
+          podman run --rm --platform "${PLATFORM}" "${IMAGE}" jupyter lab --version
+
+  container:
+    name: Testcontainers (${{ matrix.platform }})
+    needs: prepare
+    permissions:
+      contents: read
+    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm","linux/ppc64le":"ubuntu-26.04","linux/s390x":"ubuntu-26.04"}')[matrix.platform] }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.container_matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 1
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up QEMU
+        if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), matrix.platform)
+        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+
+      - uses: ./.github/actions/install-podman-action
+        with:
+          platform: ${{ matrix.platform }}
+
+      - uses: ./.github/actions/setup-uv
+
+      - name: Run container tests
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
+          DOCKER_HOST: unix:///var/run/podman/podman.sock
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/podman/podman.sock
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          FORCE_COLOR: "1"
+          JUNIT_XML: ${{ runner.temp }}/junit-container-${{ matrix.platform }}.xml
+        run: |
+          set -Eeuxo pipefail
+          podman pull --platform "${PLATFORM}" "${IMAGE}"
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers \
+            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
+            --image="${IMAGE}" \
+            --junitxml="${JUNIT_XML}" \
+            -o junit_family=legacy \
+            --log-level=DEBUG
+
+      - name: Upload container JUnit XML
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: jupyter-minimal-container-${{ matrix.platform }}-junit
+          path: ${{ runner.temp }}/junit-container-${{ matrix.platform }}.xml
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
+
+  browser:
+    name: Browser (${{ matrix.platform }})
+    needs: prepare
+    permissions:
+      contents: read
+    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm"}')[matrix.platform] }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.browser_matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 1
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: ./.github/actions/install-podman-action
+        with:
+          platform: ${{ matrix.platform }}
+
+      - name: Pull workbench image
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
+        run: podman pull --platform "${PLATFORM}" "${IMAGE}"
+
+      - name: Build browser tests image
+        id: browser-tests-image
+        run: |
+          set -Eeuxo pipefail
+          IMAGE="localhost/workbench-images-tests:ci"
+          PLAYWRIGHT_VERSION="$(uv run python scripts/get_playwright_version.py tests/browser/package.json5)"
+          podman build \
+            --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
+            -t "${IMAGE}" \
+            -f tests/browser/Dockerfile \
+            tests/browser
+          echo "image=${IMAGE}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run JupyterLab Playwright tests
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ needs.prepare.outputs.image }}
+          playwright-image: ${{ steps.browser-tests-image.outputs.image }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: true
+          upload-junit: true
+          report-artifact-name: jupyter-minimal-${{ matrix.platform }}-playwright-report
+          junit-artifact-file: jupyter-minimal-${{ matrix.platform }}-playwright-junit.xml
+          grep-pattern: '@jupyter'
+
+  e2e:
+    name: E2E (${{ matrix.platform }})
+    needs: prepare
+    permissions:
+      contents: read
+    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm","linux/ppc64le":"ubuntu-26.04","linux/s390x":"ubuntu-26.04"}')[matrix.platform] }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.e2e_matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 1
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up QEMU
+        if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), matrix.platform)
+        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+
+      - uses: ./.github/actions/install-podman-action
+        with:
+          platform: ${{ matrix.platform }}
+
+      - name: Pull workbench image
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
+        run: podman pull --platform "${PLATFORM}" "${IMAGE}"
+
+      - name: Use local image in Kubernetes
+        run: |
+          set -Eeuxo pipefail
+          find . \( -name "statefulset.yaml" -o -name "pod.yaml" \) -type f -exec \
+            sed -i'' 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' {} +
+
+      - uses: ./.github/actions/provision-k8s
+
+      - name: Run notebook E2E tests
+        env:
+          IMAGE_REGISTRY: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+          NOTEBOOK_TAG: ${{ needs.prepare.outputs.image_tag }}
+          PRODUCT: odh
+        run: python3 ci/cached-builds/make_test.py --target jupyter-minimal-ubi9-python-3.12
