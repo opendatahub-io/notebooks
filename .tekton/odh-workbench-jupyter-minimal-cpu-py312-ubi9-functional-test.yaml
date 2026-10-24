@@ -29,7 +29,7 @@ spec:
     - name: image
       type: string
     tasks:
-    - name: wait-for-image
+    - name: resolve-image
       params:
       - name: image
         value: $(params.image)
@@ -49,25 +49,19 @@ spec:
           script: |
             #!/bin/bash
             set -Eeuo pipefail
-            deadline=$((SECONDS + 300))
-            while (( SECONDS < deadline )); do
-              if digest="$(skopeo inspect --format '{{.Digest}}' "docker://${IMAGE}" 2>/dev/null)"; then
-                repository="${IMAGE%%:*}"
-                printf '%s@%s' "${repository}" "${digest}" > "$(results.IMAGE.path)"
-                cat "$(results.IMAGE.path)"
-                exit 0
-              fi
-              echo "Waiting briefly for ${IMAGE} to become visible in the registry"
-              sleep 10
-            done
-            echo "Timed out waiting for ${IMAGE}" >&2
-            exit 1
+            if ! digest="$(skopeo inspect --format '{{.Digest}}' "docker://${IMAGE}")"; then
+              echo "Image ${IMAGE} is not available. Dispatch this lane only after the build publishes it." >&2
+              exit 1
+            fi
+            repository="${IMAGE%%:*}"
+            printf '%s@%s' "${repository}" "${digest}" > "$(results.IMAGE.path)"
+            cat "$(results.IMAGE.path)"
     - name: smoke-test
       runAfter:
-      - wait-for-image
+      - resolve-image
       params:
       - name: image
-        value: $(tasks.wait-for-image.results.IMAGE)
+        value: $(tasks.resolve-image.results.IMAGE)
       taskSpec:
         params:
         - name: image

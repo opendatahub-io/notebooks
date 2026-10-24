@@ -79,8 +79,9 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 
 The Jupyter Minimal CPU test lanes are deliberately **post-build only**. They do not
 auto-trigger when a PR opens; each lane is triggered by its own PR comment after the
-Jupyter Minimal build check succeeds. This prevents multiple TaskRuns from spending
-six hours polling Quay while the build is still queued.
+Jupyter Minimal build check succeeds and the dispatcher can resolve the published image
+manifest in Quay. This prevents multiple TaskRuns from spending six hours polling Quay
+while the build is still queued.
 
 `.github/workflows/konflux-jupyter-minimal-test-dispatch.yaml` listens for the successful
 Jupyter Minimal build check and posts one trigger comment per lane. GitHub's `check_run`
@@ -88,10 +89,12 @@ event uses the workflow definition from the default branch, so automatic dispatc
 after this workflow is merged; before then, it can be exercised with `workflow_dispatch`.
 The workflow uses `GH_ACCESS_TOKEN` because Pipelines as Code requires comment senders
 to be repository collaborators—the standard `github-actions[bot]` token cannot trigger
-these commands. Each test still executes in Konflux, not GitHub Actions.
+these commands. Each test still executes in Konflux, not GitHub Actions. The dispatcher
+waits in GitHub Actions for the registry manifest to return HTTP 200, then posts the
+four lane comments; it does not consume a Konflux test slot while waiting.
 
-After dispatch, each test resolves the immutable image digest and allows a short
-registry-propagation window. The functional lane uses the built image directly as the
+After dispatch, each test resolves the immutable image digest without polling. The
+functional lane uses the built image directly as the
 Tekton step image to verify Python and JupyterLab. Every lane can be retried independently:
 
 ```text
