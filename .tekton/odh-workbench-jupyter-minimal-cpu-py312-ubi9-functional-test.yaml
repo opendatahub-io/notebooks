@@ -13,6 +13,7 @@ metadata:
   labels:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-workbench-jupyter-minimal-cpu-py312-ubi9
+    kueue.x-k8s.io/priority-class: konflux-pre-merge-test
     pipelines.appstudio.openshift.io/type: test
   name: odh-workbench-jupyter-minimal-cpu-py312-ubi9-functional-test
   namespace: open-data-hub-tenant
