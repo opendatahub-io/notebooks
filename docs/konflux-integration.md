@@ -75,6 +75,60 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 
 ## Test Execution Patterns
 
+### Jupyter Minimal functional-test POC
+
+The Jupyter Minimal CPU test lanes are deliberately **post-build only**. They do not
+auto-trigger when a PR opens; each lane is triggered by its own PR comment after the
+Jupyter Minimal build check succeeds and the dispatcher can resolve the published image
+manifest in Quay. This prevents multiple TaskRuns from spending six hours polling Quay
+while the build is still queued.
+
+`.github/workflows/konflux-jupyter-minimal-test-dispatch.yaml` listens for the successful
+Jupyter Minimal build check and posts one trigger comment per lane. GitHub's `check_run`
+event uses the workflow definition from the default branch, so automatic dispatch begins
+after this workflow is merged; before then, it can be exercised with `workflow_dispatch`.
+The workflow uses `GH_ACCESS_TOKEN` because Pipelines as Code requires comment senders
+to be repository collaborators—the standard `github-actions[bot]` token cannot trigger
+these commands. Each test still executes in Konflux, not GitHub Actions. The dispatcher
+waits in GitHub Actions for the registry manifest to return HTTP 200, then posts the
+four lane comments; it does not consume a Konflux test slot while waiting.
+
+After dispatch, each test resolves the immutable image digest without polling. The
+functional lane uses the built image directly as the
+Tekton step image to verify Python and JupyterLab. Every lane can be retried independently:
+
+```text
+/test-jupyter-minimal
+/retest-jupyter-minimal
+```
+
+The Jupyter Minimal POC also has three independently retryable post-build lanes:
+
+```text
+/test-jupyter-minimal-container
+/test-jupyter-minimal-browser
+/test-jupyter-minimal-e2e
+```
+
+Each command can be prefixed with `retest-` to rerun only that lane. The container lane
+uses the built image directly as a Tekton step, verifies the multi-arch index contains
+all four required platforms, and runs the JupyterLab integration checks that are
+applicable to the minimal image. The browser and E2E lanes run the built workbench as a
+sidecar in one TaskRun pod. The browser lane adds a pinned Playwright runner sidecar,
+while the E2E lane executes the Papermill notebook inside the workbench sidecar. A
+failure in either lane can be retried without rerunning the others.
+
+The current browser and E2E sidecars are linux/amd64. They validate the amd64 image
+instance at runtime while the container lane verifies that the image index also contains
+linux/arm64, linux/ppc64le, and linux/s390x manifests. Running the browser and Papermill
+suites natively on every architecture requires architecture-matched TaskRun nodes; that
+is not part of this first POC.
+
+The browser lane uses a digest-pinned Playwright runner image with dependencies already
+installed. It compares the repository lockfile with the lockfile baked into that image;
+if `tests/browser/pnpm-lock.yaml` changes, rebuild the runner image and update both the
+image digest and Playwright version guard in the PipelineRun.
+
 Different ways to run tests against built images in Konflux:
 
 | Pattern | How | Pros | Cons |
