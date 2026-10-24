@@ -144,10 +144,10 @@ spec:
             fi
 
             curl --fail --silent --show-error --max-time 30 \
-              http://127.0.0.1:8888/notebook/konflux-test/ >"${response_file}"
+              --location http://127.0.0.1:8888/notebook/konflux-test/ >"${response_file}"
             grep -Eq 'class="pf-v6-c-spinner"|jp-ThemedContainer' "${response_file}"
 
-            extension_output="$(jupyter labextension list)"
+            extension_output="$(jupyter labextension list 2>&1)"
             printf '%s\n' "${extension_output}"
             grep -E 'odh-jupyter-trash-cleanup.*enabled.*OK' <<<"${extension_output}"
             grep -A20 'Disabled extensions:' <<<"${extension_output}" |
@@ -170,6 +170,6 @@ spec:
             }
             JSON
             jupyter nbconvert test.ipynb --to pdf
-            test -f test.ipynb.pdf
+            test -f test.pdf
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-cpu-py312-ubi9
