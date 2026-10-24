@@ -108,6 +108,8 @@ spec:
           - -c
           - |
             set -Eeuo pipefail
+            export HOME=/opt/app-root/src
+            export PATH=/opt/app-root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
             export NOTEBOOK_BASE_URL=/notebook/offline/
             export NOTEBOOK_ARGS="--ServerApp.port=8888
             --ServerApp.token=''
@@ -123,7 +125,7 @@ spec:
             git -C /opt/app-root/src/offline-git-repo commit -m 'initial offline fixture'
             git -C /opt/app-root/src/offline-git-repo remote add origin \
               file:///opt/app-root/src/offline-git-remote.git
-            exec start-notebook.sh
+            exec /opt/app-root/bin/start-notebook.sh
           resources:
             requests:
               cpu: 500m
