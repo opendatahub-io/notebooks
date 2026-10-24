@@ -66,7 +66,10 @@ spec:
             set -Eeuo pipefail
             deadline=$((SECONDS + 5400))
             while (( SECONDS < deadline )); do
-              if digest="$(skopeo inspect --format '{{.Digest}}' "docker://${IMAGE}" 2>/dev/null)"; then
+              if manifest="$(skopeo inspect --raw "docker://${IMAGE}" 2>/dev/null)" &&
+                 digest="$(jq -er 'first(.manifests[]? |
+                   select(.platform.os == "linux" and .platform.architecture == "amd64") |
+                   .digest)' <<<"${manifest}")"; then
                 repository="${IMAGE%%:*}"
                 printf '%s@%s' "${repository}" "${digest}" > "$(results.IMAGE.path)"
                 cat "$(results.IMAGE.path)"
