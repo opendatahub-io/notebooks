@@ -84,7 +84,7 @@ runs:
         # Same pattern as provision-k8s and microk8s workarounds in this repo.
         # Use iptables, not nft: ubuntu-26.04 is nftables-backed but exposes iptables-nft;
         # netavark installs rules through that API, so this matches what Podman expects.
-        sudo modprobe br_netfilter
+        sudo modprobe br_netfilter || echo "warning: br_netfilter module is unavailable"
         sudo sysctl -w net.ipv4.ip_forward=1
         sudo iptables -P FORWARD ACCEPT
 
