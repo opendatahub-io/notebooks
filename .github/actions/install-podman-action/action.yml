@@ -106,6 +106,8 @@ runs:
         podman_sock=/var/run/podman/podman.sock
         echo "PODMAN_SOCK=${podman_sock}" >> "$GITHUB_ENV"
         echo "CONTAINER_HOST=unix://${podman_sock}" >> "$GITHUB_ENV"
+        export PODMAN_SOCK="${podman_sock}"
+        export CONTAINER_HOST="unix://${podman_sock}"
 
         # quick check podman works
         podman ps
