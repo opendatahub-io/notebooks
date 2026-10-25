@@ -297,7 +297,17 @@ jobs:
       - uses: ./.github/actions/setup-uv
 
       - name: Sync Python environment
-        run: uv sync --locked
+        run: |
+          set -Eeuxo pipefail
+          if [[ "${{ matrix.platform }}" == "linux/ppc64le" || "${{ matrix.platform }}" == "linux/s390x" ]] && [[ "${{ matrix.use_qemu }}" == "false" ]]; then
+            uv sync --locked \
+              --no-binary-package hypothesis \
+              --no-binary-package pyyaml \
+              --no-binary-package markupsafe \
+              --no-binary-package ruamel-yaml-clib
+          else
+            uv sync --locked
+          fi
 
       - name: Pull workbench image
         env:
