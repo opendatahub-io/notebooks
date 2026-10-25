@@ -279,8 +279,8 @@ jobs:
         run: |
           set -Eeuxo pipefail
           podman pull --platform "${PLATFORM}" "${IMAGE}"
-          podman run --rm --platform "${PLATFORM}" "${IMAGE}" python --version
-          podman run --rm --platform "${PLATFORM}" "${IMAGE}" jupyter lab --version
+          timeout 60 podman run --rm --platform "${PLATFORM}" --entrypoint python "${IMAGE}" --version
+          timeout 60 podman run --rm --platform "${PLATFORM}" --entrypoint jupyter "${IMAGE}" lab --version
 
   container:
     name: Testcontainers Jupyter Minimal (${{ matrix.artifact_name }})
