@@ -77,14 +77,15 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 
 ### Jupyter Minimal post-build GHA POC
 
-The Jupyter Minimal CPU test lanes are deliberately **post-build only**. The workflow in
+The Jupyter Minimal CPU test lane is deliberately **post-build only**. The workflow in
 `.github/workflows/konflux-jupyter-minimal-post-build-tests.yaml` starts on a relevant
 PR, but its single `prepare` job waits for the Jupyter Minimal Konflux check to succeed
-and for the published Quay manifest to become available. The four test lanes therefore
+and for the published Quay manifest to become available. The architecture lanes therefore
 do not consume runners while the Konflux build is queued.
 
-Once the image is available, `prepare` resolves its immutable digest and fans out four
-independently retryable GitHub Actions lanes:
+Once the image is available, `prepare` resolves its immutable digest and fans out one
+GitHub Actions lane per architecture. Each lane starts all eligible test types in
+parallel:
 
 - **Testcontainers**: runs the non-OpenShift JupyterLab container tests.
 - **OpenShift**: deploys the image with the `restricted-v2` SCC and runs the
@@ -93,18 +94,19 @@ independently retryable GitHub Actions lanes:
 - **E2E**: deploys the image to the workflow's ephemeral Kubernetes cluster and runs
   the repository's Papermill notebook test.
 
-Each lane is a separate matrix job, so GitHub's failed-job retry can rerun only that
-lane and architecture. A Konflux build can still be retried independently with its
+Retrying a failed architecture lane reruns all eligible test types for that
+architecture, but it does **not** rebuild the Konflux image; the lane reuses the digest
+resolved by `prepare`. A Konflux build can still be retried independently with its
 component-specific `/build-*` PR comment; after a successful rebuild, rerun the failed
-`prepare` job or the failed test lane.
+`prepare` job or the failed architecture lane.
 
 Testcontainers, OpenShift, and E2E tests default to all four published
 architectures: `linux/amd64`, `linux/arm64`, `linux/ppc64le`, and `linux/s390x`. Browser
 tests default to `linux/amd64` and `linux/arm64` because the Playwright runner image
-does not publish `ppc64le` or `s390x` variants. Non-native Testcontainers, OpenShift,
-and E2E lanes use QEMU on the amd64 runner; arm64 lanes use GitHub's native arm64 runner.
+does not publish `ppc64le` or `s390x` variants. Non-native architecture lanes use QEMU
+on the amd64 runner; arm64 lanes use GitHub's native arm64 runner.
 
-Each lane's platform list can be overridden for a manual run with its
+Each test type's platform list can be overridden for a manual run with its
 `*_platforms` input. For automatic PR runs, repository variables provide persistent
 configuration without editing the workflow:
 

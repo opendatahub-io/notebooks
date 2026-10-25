@@ -67,10 +67,7 @@ jobs:
       commit_sha: ${{ steps.resolve.outputs.commit_sha }}
       image: ${{ steps.resolve.outputs.image }}
       image_tag: ${{ steps.resolve.outputs.image_tag }}
-      container_matrix: ${{ steps.matrices.outputs.container_matrix }}
-      browser_matrix: ${{ steps.matrices.outputs.browser_matrix }}
-      e2e_matrix: ${{ steps.matrices.outputs.e2e_matrix }}
-      openshift_matrix: ${{ steps.matrices.outputs.openshift_matrix }}
+      test_matrix: ${{ steps.matrices.outputs.test_matrix }}
     steps:
       - name: Resolve PR, build, and immutable image
         id: resolve
@@ -186,12 +183,13 @@ jobs:
           import json
           import os
 
-          allowed_platforms = {
+          platform_order = [
               "linux/amd64",
               "linux/arm64",
               "linux/ppc64le",
               "linux/s390x",
-          }
+          ]
+          allowed_platforms = set(platform_order)
           browser_supported_platforms = {"linux/amd64", "linux/arm64"}
 
           def parse_platforms(value, allowed):
@@ -221,90 +219,35 @@ jobs:
               os.environ["OPENSHIFT_PLATFORMS"], allowed_platforms
           )
 
-          def matrix_for(platforms):
-              return {
-                  "include": [
-                      {
-                          "platform": platform,
-                          "artifact_name": platform.split("/", 1)[1],
-                      }
-                      for platform in platforms
-                  ]
-              }
-
-          outputs = {
-              "container_matrix": matrix_for(container_platforms),
-              "browser_matrix": matrix_for(browser_platforms),
-              "e2e_matrix": matrix_for(e2e_platforms),
-              "openshift_matrix": matrix_for(openshift_platforms),
+          all_platforms = {
+              *container_platforms,
+              *browser_platforms,
+              *e2e_platforms,
+              *openshift_platforms,
           }
+          test_matrix = {
+              "include": [
+                  {
+                      "platform": platform,
+                      "artifact_name": platform.split("/", 1)[1],
+                      "container": platform in container_platforms,
+                      "browser": platform in browser_platforms,
+                      "e2e": platform in e2e_platforms,
+                      "openshift": platform in openshift_platforms,
+                  }
+                  for platform in platform_order
+                  if platform in all_platforms
+              ]
+          }
+
+          outputs = {"test_matrix": test_matrix}
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               for name, value in outputs.items():
                   output.write(f"{name}={json.dumps(value)}\n")
           PY
 
-  container:
-    name: Testcontainers Jupyter Minimal (${{ matrix.artifact_name }})
-    needs: prepare
-    permissions:
-      contents: read
-    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm","linux/ppc64le":"ubuntu-26.04","linux/s390x":"ubuntu-26.04"}')[matrix.platform] }}
-    timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare.outputs.container_matrix) }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          ref: ${{ needs.prepare.outputs.commit_sha }}
-          fetch-depth: 1
-          submodules: recursive
-          persist-credentials: false
-
-      - name: Set up QEMU
-        if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), matrix.platform)
-        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
-        env:
-          PLATFORM: ${{ matrix.platform }}
-
-      - uses: ./.github/actions/install-podman-action
-        with:
-          platform: ${{ matrix.platform }}
-
-      - uses: ./.github/actions/setup-uv
-
-      - name: Run container tests
-        env:
-          IMAGE: ${{ needs.prepare.outputs.image }}
-          PLATFORM: ${{ matrix.platform }}
-          DOCKER_HOST: unix:///var/run/podman/podman.sock
-          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/podman/podman.sock
-          TESTCONTAINERS_RYUK_DISABLED: "true"
-          FORCE_COLOR: "1"
-          JUNIT_XML: ${{ runner.temp }}/junit-container-${{ matrix.platform }}.xml
-        run: |
-          set -Eeuxo pipefail
-          podman pull --platform "${PLATFORM}" "${IMAGE}"
-          mkdir -p "$(dirname "${JUNIT_XML}")"
-          uv run pytest --capture=fd tests/containers \
-            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
-            --image="${IMAGE}" \
-            --junitxml="${JUNIT_XML}" \
-            -o junit_family=legacy \
-            --log-level=DEBUG
-
-      - name: Upload container JUnit XML
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: jupyter-minimal-container-${{ matrix.artifact_name }}-junit
-          path: ${{ runner.temp }}/junit-container-${{ matrix.platform }}.xml
-          archive: false
-          retention-days: 14
-          if-no-files-found: warn
-
-  openshift:
-    name: OpenShift Jupyter Minimal (${{ matrix.artifact_name }})
+  test:
+    name: Test Jupyter Minimal (${{ matrix.artifact_name }})
     needs: prepare
     permissions:
       contents: read
@@ -312,7 +255,7 @@ jobs:
     timeout-minutes: 360
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare.outputs.openshift_matrix) }}
+      matrix: ${{ fromJSON(needs.prepare.outputs.test_matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -333,74 +276,24 @@ jobs:
 
       - uses: ./.github/actions/setup-uv
 
+      - name: Sync Python environment
+        run: uv sync --locked
+
       - name: Pull workbench image
         env:
           IMAGE: ${{ needs.prepare.outputs.image }}
           PLATFORM: ${{ matrix.platform }}
         run: podman pull --platform "${PLATFORM}" "${IMAGE}"
 
-      - uses: ./.github/actions/provision-k8s
-
-      - name: Run OpenShift container tests
-        env:
-          IMAGE: ${{ needs.prepare.outputs.image }}
-          PLATFORM: ${{ matrix.platform }}
-          DOCKER_HOST: unix:///var/run/podman/podman.sock
-          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/podman/podman.sock
-          TESTCONTAINERS_RYUK_DISABLED: "true"
-          FORCE_COLOR: "1"
-          JUNIT_XML: ${{ runner.temp }}/junit-openshift-${{ matrix.platform }}.xml
+      - name: Use local image in Kubernetes
+        if: ${{ matrix.e2e }}
         run: |
           set -Eeuxo pipefail
-          mkdir -p "$(dirname "${JUNIT_XML}")"
-          uv run pytest --capture=fd tests/containers \
-            -m 'openshift and not cuda and not rocm' \
-            --image="${IMAGE}" \
-            --junitxml="${JUNIT_XML}" \
-            -o junit_family=legacy \
-            --log-level=DEBUG
-
-      - name: Upload OpenShift JUnit XML
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: jupyter-minimal-openshift-${{ matrix.artifact_name }}-junit
-          path: ${{ runner.temp }}/junit-openshift-${{ matrix.platform }}.xml
-          archive: false
-          retention-days: 14
-          if-no-files-found: warn
-
-  browser:
-    name: Browser Jupyter Minimal (${{ matrix.artifact_name }})
-    needs: prepare
-    permissions:
-      contents: read
-    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm"}')[matrix.platform] }}
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare.outputs.browser_matrix) }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          ref: ${{ needs.prepare.outputs.commit_sha }}
-          fetch-depth: 1
-          submodules: recursive
-          persist-credentials: false
-
-      - uses: ./.github/actions/install-podman-action
-        with:
-          platform: ${{ matrix.platform }}
-
-      - uses: ./.github/actions/setup-uv
-
-      - name: Pull workbench image
-        env:
-          IMAGE: ${{ needs.prepare.outputs.image }}
-          PLATFORM: ${{ matrix.platform }}
-        run: podman pull --platform "${PLATFORM}" "${IMAGE}"
+          find . \( -name "statefulset.yaml" -o -name "pod.yaml" \) -type f -exec \
+            sed -i'' 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' {} +
 
       - name: Build browser tests image
+        if: ${{ matrix.browser }}
         id: browser-tests-image
         run: |
           set -Eeuxo pipefail
@@ -413,7 +306,90 @@ jobs:
             tests/browser
           echo "image=${IMAGE}" >> "${GITHUB_OUTPUT}"
 
+      - name: Provision Kubernetes
+        if: ${{ matrix.openshift || matrix.e2e }}
+        uses: ./.github/actions/provision-k8s
+
+      - name: Copy Kubernetes configs
+        if: ${{ matrix.openshift || matrix.e2e }}
+        run: |
+          set -Eeuxo pipefail
+          cp "$HOME/.kube/config" "$RUNNER_TEMP/kubeconfig-openshift"
+          cp "$HOME/.kube/config" "$RUNNER_TEMP/kubeconfig-e2e"
+
+      - name: Start parallel tests
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+          PODMAN_SOCK: /var/run/podman/podman.sock
+        run: |
+          set -Eeuxo pipefail
+
+          test_dir="${RUNNER_TEMP}/post-build-tests"
+          mkdir -p "${test_dir}"
+          mkdir -p "$(dirname "${RUNNER_TEMP}/junit-container-${PLATFORM}.xml")"
+          mkdir -p "$(dirname "${RUNNER_TEMP}/junit-openshift-${PLATFORM}.xml")"
+
+          start_test() {
+            local name="$1"
+            shift
+            nohup ci/cached-builds/run_post_build_test.sh "${name}" "$@" \
+              >"${test_dir}/${name}.log" 2>&1 &
+            echo $! >"${test_dir}/${name}.pid"
+          }
+
+          if [[ "${{ matrix.container }}" == "true" ]]; then
+            start_test container env \
+              IMAGE="${IMAGE}" \
+              PLATFORM="${PLATFORM}" \
+              DOCKER_HOST="unix://${PODMAN_SOCK}" \
+              TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="${PODMAN_SOCK}" \
+              TESTCONTAINERS_RYUK_DISABLED=true \
+              FORCE_COLOR=1 \
+              JUNIT_XML="${RUNNER_TEMP}/junit-container-${PLATFORM}.xml" \
+              uv run pytest --capture=fd tests/containers \
+                -m 'not openshift and not cuda and not rocm and not manifest_validation' \
+                --image="${IMAGE}" \
+                --junitxml="${JUNIT_XML}" \
+                -o junit_family=legacy \
+                --log-level=DEBUG \
+                -p no:cacheprovider
+          fi
+
+          if [[ "${{ matrix.openshift }}" == "true" ]]; then
+            start_test openshift env \
+              KUBECONFIG="${RUNNER_TEMP}/kubeconfig-openshift" \
+              IMAGE="${IMAGE}" \
+              PLATFORM="${PLATFORM}" \
+              DOCKER_HOST="unix://${PODMAN_SOCK}" \
+              TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="${PODMAN_SOCK}" \
+              TESTCONTAINERS_RYUK_DISABLED=true \
+              FORCE_COLOR=1 \
+              JUNIT_XML="${RUNNER_TEMP}/junit-openshift-${PLATFORM}.xml" \
+              uv run pytest --capture=fd tests/containers \
+                -m 'openshift and not cuda and not rocm' \
+                --image="${IMAGE}" \
+                --junitxml="${JUNIT_XML}" \
+                -o junit_family=legacy \
+                --log-level=DEBUG \
+                -p no:cacheprovider
+          fi
+
+          if [[ "${{ matrix.e2e }}" == "true" ]]; then
+            start_test e2e env \
+              KUBECONFIG="${RUNNER_TEMP}/kubeconfig-e2e" \
+              IMAGE_REGISTRY=quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9 \
+              IMAGE_TAG="${IMAGE_TAG}" \
+              NOTEBOOK_TAG="${IMAGE_TAG}" \
+              PRODUCT=odh \
+              python3 ci/cached-builds/make_test.py --target jupyter-minimal-ubi9-python-3.12
+          fi
+
       - name: Run JupyterLab Playwright tests
+        if: ${{ matrix.browser }}
+        id: browser
+        continue-on-error: true
         uses: ./.github/actions/playwright-test
         with:
           test-target: ${{ needs.prepare.outputs.image }}
@@ -425,52 +401,67 @@ jobs:
           junit-artifact-file: jupyter-minimal-${{ matrix.artifact_name }}-playwright-junit.xml
           grep-pattern: '@jupyter'
 
-  e2e:
-    name: E2E Jupyter Minimal (${{ matrix.artifact_name }})
-    needs: prepare
-    permissions:
-      contents: read
-    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm","linux/ppc64le":"ubuntu-26.04","linux/s390x":"ubuntu-26.04"}')[matrix.platform] }}
-    timeout-minutes: 360
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare.outputs.e2e_matrix) }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          ref: ${{ needs.prepare.outputs.commit_sha }}
-          fetch-depth: 1
-          submodules: recursive
-          persist-credentials: false
-
-      - name: Set up QEMU
-        if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), matrix.platform)
-        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
+      - name: Wait for parallel tests
         env:
-          PLATFORM: ${{ matrix.platform }}
-
-      - uses: ./.github/actions/install-podman-action
-        with:
-          platform: ${{ matrix.platform }}
-
-      - name: Pull workbench image
-        env:
-          IMAGE: ${{ needs.prepare.outputs.image }}
-          PLATFORM: ${{ matrix.platform }}
-        run: podman pull --platform "${PLATFORM}" "${IMAGE}"
-
-      - name: Use local image in Kubernetes
+          BROWSER_OUTCOME: ${{ steps.browser.outcome }}
         run: |
-          set -Eeuxo pipefail
-          find . \( -name "statefulset.yaml" -o -name "pod.yaml" \) -type f -exec \
-            sed -i'' 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' {} +
+          set -euo pipefail
 
-      - uses: ./.github/actions/provision-k8s
+          test_dir="${RUNNER_TEMP}/post-build-tests"
+          tests=()
+          if [[ "${{ matrix.container }}" == "true" ]]; then tests+=(container); fi
+          if [[ "${{ matrix.openshift }}" == "true" ]]; then tests+=(openshift); fi
+          if [[ "${{ matrix.e2e }}" == "true" ]]; then tests+=(e2e); fi
 
-      - name: Run notebook E2E tests
-        env:
-          IMAGE_REGISTRY: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9
-          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
-          NOTEBOOK_TAG: ${{ needs.prepare.outputs.image_tag }}
-          PRODUCT: odh
-        run: python3 ci/cached-builds/make_test.py --target jupyter-minimal-ubi9-python-3.12
+          if (( ${#tests[@]} == 0 )); then
+            echo "::error::No post-build tests were started"
+            exit 1
+          fi
+
+          failed=0
+          for name in "${tests[@]}"; do
+            status_file="${test_dir}/${name}.status"
+            pid_file="${test_dir}/${name}.pid"
+            pid=$(<"${pid_file}")
+            while [[ ! -f "${status_file}" ]]; do
+              if ! kill -0 "${pid}" 2>/dev/null; then
+                echo "::error::${name} test process exited without reporting status"
+                cat "${test_dir}/${name}.log"
+                failed=1
+                break
+              fi
+              sleep 1
+            done
+
+            if [[ -f "${status_file}" ]]; then
+              status_code=$(<"${status_file}")
+              if (( status_code != 0 )); then
+                echo "::error::${name} test failed with exit code ${status_code}"
+                cat "${test_dir}/${name}.log"
+                failed=1
+              else
+                echo "${name} test passed"
+              fi
+            fi
+          done
+
+          if [[ "${BROWSER_OUTCOME}" == "failure" ]]; then
+            echo "::error::Browser test failed"
+            failed=1
+          fi
+
+          if (( failed != 0 )); then
+            exit 1
+          fi
+
+      - name: Upload post-build test artifacts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: jupyter-minimal-${{ matrix.artifact_name }}-post-build-tests
+          path: |
+            ${{ runner.temp }}/junit-container-${{ matrix.platform }}.xml
+            ${{ runner.temp }}/junit-openshift-${{ matrix.platform }}.xml
+            ${{ runner.temp }}/post-build-tests/*.log
+          retention-days: 14
+          if-no-files-found: warn
