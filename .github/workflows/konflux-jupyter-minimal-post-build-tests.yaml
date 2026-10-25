@@ -8,6 +8,7 @@ on:  # yamllint disable-line rule:truthy
     paths:
       - .github/workflows/konflux-jupyter-minimal-post-build-tests.yaml
       - .github/actions/install-podman-action/action.yml
+      - .github/actions/provision-k8s/action.yml
       - ci/cached-builds/storage.conf
       - .tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-pull-request.yaml
       - jupyter/utils/**
