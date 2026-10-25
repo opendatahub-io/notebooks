@@ -300,11 +300,19 @@ jobs:
         run: |
           set -Eeuxo pipefail
           if [[ "${{ matrix.platform }}" == "linux/ppc64le" || "${{ matrix.platform }}" == "linux/s390x" ]] && [[ "${{ matrix.use_qemu }}" == "false" ]]; then
-            uv sync --locked \
-              --no-binary-package hypothesis \
-              --no-binary-package pyyaml \
-              --no-binary-package markupsafe \
+            no_binary_packages=(
+              --no-binary-package hypothesis
+              --no-binary-package pyyaml
+              --no-binary-package markupsafe
               --no-binary-package ruamel-yaml-clib
+            )
+            if [[ "${{ matrix.platform }}" == "linux/ppc64le" ]]; then
+              no_binary_packages+=(--no-binary-package prek)
+            fi
+            if [[ "${{ matrix.platform }}" == "linux/s390x" ]]; then
+              no_binary_packages+=(--no-binary-package cryptography)
+            fi
+            uv sync --locked "${no_binary_packages[@]}"
           else
             uv sync --locked
           fi
