@@ -230,7 +230,7 @@ jobs:
           PY
 
   functional:
-    name: Functional (${{ matrix.platform }})
+    name: Functional Jupyter Minimal (${{ matrix.artifact_name }})
     needs: prepare
     permissions:
       contents: read
@@ -268,7 +268,7 @@ jobs:
           podman run --rm --platform "${PLATFORM}" "${IMAGE}" jupyter lab --version
 
   container:
-    name: Testcontainers (${{ matrix.platform }})
+    name: Testcontainers Jupyter Minimal (${{ matrix.artifact_name }})
     needs: prepare
     permissions:
       contents: read
@@ -328,7 +328,7 @@ jobs:
           if-no-files-found: warn
 
   browser:
-    name: Browser (${{ matrix.platform }})
+    name: Browser Jupyter Minimal (${{ matrix.artifact_name }})
     needs: prepare
     permissions:
       contents: read
@@ -383,7 +383,7 @@ jobs:
           grep-pattern: '@jupyter'
 
   e2e:
-    name: E2E (${{ matrix.platform }})
+    name: E2E Jupyter Minimal (${{ matrix.artifact_name }})
     needs: prepare
     permissions:
       contents: read
