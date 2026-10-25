@@ -351,7 +351,7 @@ jobs:
               uv run pytest --capture=fd tests/containers \
                 -m 'not openshift and not cuda and not rocm and not manifest_validation' \
                 --image="${IMAGE}" \
-                --junitxml="${JUNIT_XML}" \
+                --junitxml="${RUNNER_TEMP}/junit-container-${PLATFORM}.xml" \
                 -o junit_family=legacy \
                 --log-level=DEBUG \
                 -p no:cacheprovider
@@ -370,7 +370,7 @@ jobs:
               uv run pytest --capture=fd tests/containers \
                 -m 'openshift and not cuda and not rocm' \
                 --image="${IMAGE}" \
-                --junitxml="${JUNIT_XML}" \
+                --junitxml="${RUNNER_TEMP}/junit-openshift-${PLATFORM}.xml" \
                 -o junit_family=legacy \
                 --log-level=DEBUG \
                 -p no:cacheprovider
