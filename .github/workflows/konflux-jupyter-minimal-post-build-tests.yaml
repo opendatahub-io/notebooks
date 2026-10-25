@@ -21,6 +21,11 @@ on:  # yamllint disable-line rule:truthy
         description: Pull request head commit SHA
         required: true
         type: string
+      use_ibm_runners:
+        description: Use native IBM runners for ppc64le and s390x
+        required: false
+        default: false
+        type: boolean
       container_platforms:
         description: Comma-separated architectures for Testcontainers tests
         required: false
@@ -177,6 +182,7 @@ jobs:
           BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64' }}
           E2E_PLATFORMS: ${{ github.event.inputs.e2e_platforms || vars.KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           OPENSHIFT_PLATFORMS: ${{ github.event.inputs.openshift_platforms || vars.KONFLUX_JUPYTER_MINIMAL_OPENSHIFT_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
+          USE_IBM_RUNNERS: ${{ github.event.inputs.use_ibm_runners || false }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -218,6 +224,16 @@ jobs:
           openshift_platforms = parse_platforms(
               os.environ["OPENSHIFT_PLATFORMS"], allowed_platforms
           )
+          use_ibm_runners = os.environ["USE_IBM_RUNNERS"].lower() == "true"
+          runner_by_platform = {
+              "linux/amd64": "ubuntu-26.04",
+              "linux/arm64": "ubuntu-26.04-arm",
+              "linux/ppc64le": "ubuntu-26.04",
+              "linux/s390x": "ubuntu-26.04",
+          }
+          if use_ibm_runners:
+              runner_by_platform["linux/ppc64le"] = "ubuntu-24.04-ppc64le"
+              runner_by_platform["linux/s390x"] = "ubuntu-24.04-s390x"
 
           all_platforms = {
               *container_platforms,
@@ -234,6 +250,8 @@ jobs:
                       "browser": platform in browser_platforms,
                       "e2e": platform in e2e_platforms,
                       "openshift": platform in openshift_platforms,
+                      "runner": runner_by_platform[platform],
+                      "use_qemu": platform in {"linux/ppc64le", "linux/s390x"} and not use_ibm_runners,
                   }
                   for platform in platform_order
                   if platform in all_platforms
@@ -251,7 +269,7 @@ jobs:
     needs: prepare
     permissions:
       contents: read
-    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm","linux/ppc64le":"ubuntu-26.04","linux/s390x":"ubuntu-26.04"}')[matrix.platform] }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 360
     strategy:
       fail-fast: false
@@ -265,7 +283,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up QEMU
-        if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), matrix.platform)
+        if: ${{ matrix.use_qemu }}
         run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
         env:
           PLATFORM: ${{ matrix.platform }}
