@@ -301,16 +301,17 @@ jobs:
           set -Eeuxo pipefail
           if [[ "${{ matrix.platform }}" == "linux/ppc64le" || "${{ matrix.platform }}" == "linux/s390x" ]] && [[ "${{ matrix.use_qemu }}" == "false" ]]; then
             no_binary_packages=(
+              --no-binary-package bcrypt
               --no-binary-package hypothesis
-              --no-binary-package pyyaml
               --no-binary-package markupsafe
-              --no-binary-package ruamel-yaml-clib
+              --no-binary-package psutil
+              --no-binary-package pynacl
               --no-binary-package pyzmq
               --no-binary-package tornado
-              --no-binary-package bcrypt
             )
             if [[ "${{ matrix.platform }}" == "linux/ppc64le" ]]; then
               no_binary_packages+=(--no-binary-package prek)
+              no_binary_packages+=(--no-binary-package pyyaml)
             fi
             if [[ "${{ matrix.platform }}" == "linux/s390x" ]]; then
               no_binary_packages+=(--no-binary-package cryptography)
