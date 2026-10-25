@@ -75,24 +75,24 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 
 ## Test Execution Patterns
 
-### Jupyter Minimal post-build GHA POC
+### Konflux post-build GHA POC
 
-The Jupyter Minimal CPU test lane is deliberately **post-build only**. The workflow in
-`.github/workflows/konflux-jupyter-minimal-post-build-tests.yaml` starts on a relevant
-PR, but its single `prepare` job waits for the Jupyter Minimal Konflux check to succeed
-and for the published Quay manifest to become available. The architecture lanes therefore
-do not consume runners while the Konflux build is queued.
+The Jupyter Minimal CPU and Code-Server Datascience CPU test lanes are deliberately
+**post-build only**. Their workflows start on a relevant PR, but each `prepare` job waits
+for that component's Konflux check to succeed and for the published Quay manifest to
+become available. The architecture lanes therefore do not consume runners while the
+Konflux build is queued.
 
 Once the image is available, `prepare` resolves its immutable digest and fans out one
 GitHub Actions lane per architecture. Each lane starts all eligible test types in
 parallel:
 
-- **Testcontainers**: runs the non-OpenShift JupyterLab container tests.
+- **Testcontainers**: runs the non-OpenShift workbench container tests.
 - **OpenShift**: deploys the image with the `restricted-v2` SCC and runs the
-  OpenShift-marked JupyterLab container tests.
-- **Browser**: runs the JupyterLab Playwright suite.
+  OpenShift-marked workbench container tests.
+- **Browser**: runs the component's Playwright suite (`@jupyter` or `@codeserver`).
 - **E2E**: deploys the image to the workflow's ephemeral Kubernetes cluster and runs
-  the repository's Papermill notebook test.
+  the component's Makefile validation test.
 
 Retrying a failed architecture lane reruns all eligible test types for that
 architecture, but it does **not** rebuild the Konflux image; the lane reuses the digest
@@ -115,6 +115,10 @@ configuration without editing the workflow:
 | OpenShift | `KONFLUX_JUPYTER_MINIMAL_OPENSHIFT_PLATFORMS` |
 | Browser | `KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS` |
 | E2E | `KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS` |
+| Testcontainers | `KONFLUX_CODESERVER_DATASCIENCE_CONTAINER_PLATFORMS` |
+| OpenShift | `KONFLUX_CODESERVER_DATASCIENCE_OPENSHIFT_PLATFORMS` |
+| Browser | `KONFLUX_CODESERVER_DATASCIENCE_BROWSER_PLATFORMS` |
+| E2E | `KONFLUX_CODESERVER_DATASCIENCE_E2E_PLATFORMS` |
 
 Different ways to run tests against built images in Konflux:
 
