@@ -1,5 +1,5 @@
 ---
-name: Konflux Jupyter Minimal post-build tests
+name: Test
 
 on:  # yamllint disable-line rule:truthy
   pull_request:
@@ -51,7 +51,7 @@ concurrency:
 
 jobs:
   prepare:
-    name: Resolve build and image
+    name: Wait for Konflux image build
     if: >-
       github.repository == 'opendatahub-io/notebooks' && (
         github.event_name == 'pull_request' ||
