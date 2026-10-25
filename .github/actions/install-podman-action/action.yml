@@ -95,7 +95,8 @@ runs:
         sudo cp ci/cached-builds/podman.socket /usr/local/lib/systemd/system/podman.socket
         sudo systemctl daemon-reload
         sudo systemctl unmask podman.service podman.socket
-        sudo systemctl enable --now podman.socket
+        sudo systemctl enable podman.socket
+        sudo systemctl restart podman.socket
 
         # Grant runner user access without sudo for CONTAINER_HOST clients
         sudo setfacl -m "u:${USER}:x" /var/run/podman
