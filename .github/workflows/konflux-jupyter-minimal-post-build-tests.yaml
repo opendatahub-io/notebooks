@@ -44,6 +44,11 @@ on:  # yamllint disable-line rule:truthy
         required: false
         default: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
         type: string
+      openshift_platforms:
+        description: Comma-separated architectures for OpenShift tests
+        required: false
+        default: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+        type: string
 
 concurrency:
   group: konflux-jupyter-minimal-post-build-tests-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
@@ -72,6 +77,7 @@ jobs:
       container_matrix: ${{ steps.matrices.outputs.container_matrix }}
       browser_matrix: ${{ steps.matrices.outputs.browser_matrix }}
       e2e_matrix: ${{ steps.matrices.outputs.e2e_matrix }}
+      openshift_matrix: ${{ steps.matrices.outputs.openshift_matrix }}
     steps:
       - name: Resolve PR, build, and immutable image
         id: resolve
@@ -181,6 +187,7 @@ jobs:
           CONTAINER_PLATFORMS: ${{ github.event.inputs.container_platforms || vars.KONFLUX_JUPYTER_MINIMAL_CONTAINER_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64' }}
           E2E_PLATFORMS: ${{ github.event.inputs.e2e_platforms || vars.KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
+          OPENSHIFT_PLATFORMS: ${{ github.event.inputs.openshift_platforms || vars.KONFLUX_JUPYTER_MINIMAL_OPENSHIFT_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -221,6 +228,9 @@ jobs:
           e2e_platforms = parse_platforms(
               os.environ["E2E_PLATFORMS"], allowed_platforms
           )
+          openshift_platforms = parse_platforms(
+              os.environ["OPENSHIFT_PLATFORMS"], allowed_platforms
+          )
 
           def matrix_for(platforms):
               return {
@@ -238,6 +248,7 @@ jobs:
               "container_matrix": matrix_for(container_platforms),
               "browser_matrix": matrix_for(browser_platforms),
               "e2e_matrix": matrix_for(e2e_platforms),
+              "openshift_matrix": matrix_for(openshift_platforms),
           }
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               for name, value in outputs.items():
@@ -338,6 +349,73 @@ jobs:
         with:
           name: jupyter-minimal-container-${{ matrix.artifact_name }}-junit
           path: ${{ runner.temp }}/junit-container-${{ matrix.platform }}.xml
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
+
+  openshift:
+    name: OpenShift Jupyter Minimal (${{ matrix.artifact_name }})
+    needs: prepare
+    permissions:
+      contents: read
+    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm","linux/ppc64le":"ubuntu-26.04","linux/s390x":"ubuntu-26.04"}')[matrix.platform] }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.openshift_matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 1
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up QEMU
+        if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), matrix.platform)
+        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+
+      - uses: ./.github/actions/install-podman-action
+        with:
+          platform: ${{ matrix.platform }}
+
+      - uses: ./.github/actions/setup-uv
+
+      - name: Pull workbench image
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
+        run: podman pull --platform "${PLATFORM}" "${IMAGE}"
+
+      - uses: ./.github/actions/provision-k8s
+
+      - name: Run OpenShift container tests
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
+          DOCKER_HOST: unix:///var/run/podman/podman.sock
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/podman/podman.sock
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          FORCE_COLOR: "1"
+          JUNIT_XML: ${{ runner.temp }}/junit-openshift-${{ matrix.platform }}.xml
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers \
+            -m 'openshift and not cuda and not rocm' \
+            --image="${IMAGE}" \
+            --junitxml="${JUNIT_XML}" \
+            -o junit_family=legacy \
+            --log-level=DEBUG
+
+      - name: Upload OpenShift JUnit XML
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: jupyter-minimal-openshift-${{ matrix.artifact_name }}-junit
+          path: ${{ runner.temp }}/junit-openshift-${{ matrix.platform }}.xml
           archive: false
           retention-days: 14
           if-no-files-found: warn
