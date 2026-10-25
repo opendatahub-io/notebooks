@@ -116,8 +116,8 @@ runs:
         sudo iptables -P FORWARD ACCEPT
 
         # Reload netavark rules after FORWARD policy fix (only when a network already exists).
-        if [[ -n "$(podman network ls -q)" ]]; then
-          podman network reload --all
+        if [[ -n "$(sudo podman network ls -q)" ]]; then
+          sudo podman network reload --all
         fi
 
     - run: podman system info
