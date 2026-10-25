@@ -338,6 +338,8 @@ jobs:
         with:
           platform: ${{ matrix.platform }}
 
+      - uses: ./.github/actions/setup-uv
+
       - name: Pull workbench image
         env:
           IMAGE: ${{ needs.prepare.outputs.image }}

@@ -17,10 +17,11 @@ metadata:
       !("manifests/base/params-latest.env".pathChanged()) &&
       (
         ".tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-pull-request.yaml".pathChanged() ||
+        ".github/workflows/konflux-jupyter-minimal-post-build-tests.yaml".pathChanged() ||
         "jupyter/utils/**".pathChanged() ||
         "jupyter/minimal/ubi9-python-3.12/**".pathChanged() ||
         "jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
-      )
+      ) && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-workbench-jupyter-minimal-cpu-py312-ubi9
