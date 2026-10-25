@@ -36,10 +36,9 @@ on:  # yamllint disable-line rule:truthy
         type: string
       browser_platforms:
         description: >-
-          Comma-separated architectures for browser tests (Playwright image supports
-          linux/amd64 and linux/arm64 only)
+          Comma-separated architectures for browser tests
         required: false
-        default: linux/amd64,linux/arm64
+        default: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
         type: string
       e2e_platforms:
         description: Comma-separated architectures for E2E tests
@@ -182,7 +181,7 @@ jobs:
         id: matrices
         env:
           CONTAINER_PLATFORMS: ${{ github.event.inputs.container_platforms || vars.KONFLUX_JUPYTER_MINIMAL_CONTAINER_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
-          BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64' }}
+          BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           E2E_PLATFORMS: ${{ github.event.inputs.e2e_platforms || vars.KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           OPENSHIFT_PLATFORMS: ${{ github.event.inputs.openshift_platforms || vars.KONFLUX_JUPYTER_MINIMAL_OPENSHIFT_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           USE_IBM_RUNNERS: ${{ github.event.inputs.use_ibm_runners || false }}
@@ -199,7 +198,7 @@ jobs:
               "linux/s390x",
           ]
           allowed_platforms = set(platform_order)
-          browser_supported_platforms = {"linux/amd64", "linux/arm64"}
+          browser_supported_platforms = allowed_platforms
 
           def parse_platforms(value, allowed):
               platforms = []

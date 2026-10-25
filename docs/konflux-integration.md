@@ -100,11 +100,10 @@ resolved by `prepare`. A Konflux build can still be retried independently with i
 component-specific `/build-*` PR comment; after a successful rebuild, rerun the failed
 `prepare` job or the failed architecture lane.
 
-Testcontainers, OpenShift, and E2E tests default to all four published
-architectures: `linux/amd64`, `linux/arm64`, `linux/ppc64le`, and `linux/s390x`. Browser
-tests default to `linux/amd64` and `linux/arm64` because the Playwright runner image
-does not publish `ppc64le` or `s390x` variants. Non-native architecture lanes use QEMU
-on the amd64 runner; arm64 lanes use GitHub's native arm64 runner.
+Testcontainers, OpenShift, Browser, and E2E tests default to all four published
+architectures: `linux/amd64`, `linux/arm64`, `linux/ppc64le`, and `linux/s390x`.
+`ppc64le` and `s390x` lanes use QEMU on the amd64 runner; arm64 lanes use GitHub's
+native arm64 runner.
 
 Each test type's platform list can be overridden for a manual run with its
 `*_platforms` input. For automatic PR runs, repository variables provide persistent
