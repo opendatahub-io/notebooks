@@ -306,6 +306,7 @@ jobs:
               --no-binary-package markupsafe
               --no-binary-package ruamel-yaml-clib
               --no-binary-package pyzmq
+              --no-binary-package tornado
             )
             if [[ "${{ matrix.platform }}" == "linux/ppc64le" ]]; then
               no_binary_packages+=(--no-binary-package prek)
