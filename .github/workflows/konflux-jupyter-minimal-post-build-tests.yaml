@@ -7,7 +7,7 @@ on:  # yamllint disable-line rule:truthy
     types: [opened, reopened, synchronize]
     paths:
       - .github/workflows/konflux-jupyter-minimal-post-build-tests.yaml
-      - .github/actions/install-podman-action/**
+      - .github/actions/install-podman-action/action.yml
       - ci/cached-builds/storage.conf
       - .tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-pull-request.yaml
       - jupyter/utils/**
