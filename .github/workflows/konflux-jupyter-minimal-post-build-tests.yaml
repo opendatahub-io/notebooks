@@ -207,11 +207,22 @@ jobs:
               os.environ["E2E_PLATFORMS"], allowed_platforms
           )
 
+          def matrix_for(platforms):
+              return {
+                  "include": [
+                      {
+                          "platform": platform,
+                          "artifact_name": platform.split("/", 1)[1],
+                      }
+                      for platform in platforms
+                  ]
+              }
+
           outputs = {
-              "functional_matrix": {"include": [{"platform": platform} for platform in functional_platforms]},
-              "container_matrix": {"include": [{"platform": platform} for platform in container_platforms]},
-              "browser_matrix": {"include": [{"platform": platform} for platform in browser_platforms]},
-              "e2e_matrix": {"include": [{"platform": platform} for platform in e2e_platforms]},
+              "functional_matrix": matrix_for(functional_platforms),
+              "container_matrix": matrix_for(container_platforms),
+              "browser_matrix": matrix_for(browser_platforms),
+              "e2e_matrix": matrix_for(e2e_platforms),
           }
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               for name, value in outputs.items():
@@ -310,7 +321,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: jupyter-minimal-container-${{ matrix.platform }}-junit
+          name: jupyter-minimal-container-${{ matrix.artifact_name }}-junit
           path: ${{ runner.temp }}/junit-container-${{ matrix.platform }}.xml
           archive: false
           retention-days: 14
@@ -367,8 +378,8 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: true
           upload-junit: true
-          report-artifact-name: jupyter-minimal-${{ matrix.platform }}-playwright-report
-          junit-artifact-file: jupyter-minimal-${{ matrix.platform }}-playwright-junit.xml
+          report-artifact-name: jupyter-minimal-${{ matrix.artifact_name }}-playwright-report
+          junit-artifact-file: jupyter-minimal-${{ matrix.artifact_name }}-playwright-junit.xml
           grep-pattern: '@jupyter'
 
   e2e:
