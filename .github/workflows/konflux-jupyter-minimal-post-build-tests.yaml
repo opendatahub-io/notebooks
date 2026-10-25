@@ -182,7 +182,7 @@ jobs:
           BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64' }}
           E2E_PLATFORMS: ${{ github.event.inputs.e2e_platforms || vars.KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           OPENSHIFT_PLATFORMS: ${{ github.event.inputs.openshift_platforms || vars.KONFLUX_JUPYTER_MINIMAL_OPENSHIFT_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
-          USE_IBM_RUNNERS: ${{ github.event.inputs.use_ibm_runners || false }}
+          USE_IBM_RUNNERS: true
         run: |
           set -euo pipefail
           python3 - <<'PY'
