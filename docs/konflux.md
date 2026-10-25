@@ -245,7 +245,7 @@ Automated synchronization infrastructure between upstream ODH and downstream RHD
 All PipelineRuns in `.tekton/` override compute resources for tasks that require tailored limits on this repo's large source tree:
 - **Standard pipelines**: 4 CPU / 8Gi requests and limits for `prefetch-dependencies` and `build-images`, 8 CPU / 8Gi for `clair-scan`, and 4 CPU / 8Gi for `ecosystem-cert-preflight-checks`.
 - **Codeserver pipelines**: 8 CPU / 16Gi requests and limits for `build-images` (with codeserver pipelines additionally specifying `memory: 8Gi` for `prepare-sboms`).
-- **Heavy CUDA/ROCm pipelines**: 4 CPU / 8Gi requests and limits for build steps (`prefetch-dependencies`, `build-images`), while `clair-scan` uses 8 CPU / 8Gi requests and limits. ROCm variants also request and limit **40Gi** of `ephemeral-storage` for `clair-scan`, because those scans unpack a large ROCm base layer.
+- **Heavy CUDA/ROCm pipelines**: 4 CPU / 8Gi requests and limits for build steps (`prefetch-dependencies`, `build-images`), while `clair-scan` uses 8 CPU / 8Gi requests and limits. ROCm variants also request and limit **160Gi** of `ephemeral-storage` for `clair-scan`, because those scans can exceed the node’s available disk.
 
 This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`).
 
