@@ -80,13 +80,12 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 The Jupyter Minimal CPU test lanes are deliberately **post-build only**. The workflow in
 `.github/workflows/konflux-jupyter-minimal-post-build-tests.yaml` starts on a relevant
 PR, but its single `prepare` job waits for the Jupyter Minimal Konflux check to succeed
-and for the published Quay manifest to become available. The five test lanes therefore
+and for the published Quay manifest to become available. The four test lanes therefore
 do not consume runners while the Konflux build is queued.
 
-Once the image is available, `prepare` resolves its immutable digest and fans out five
+Once the image is available, `prepare` resolves its immutable digest and fans out four
 independently retryable GitHub Actions lanes:
 
-- **Functional**: starts the image and verifies Python and JupyterLab.
 - **Testcontainers**: runs the non-OpenShift JupyterLab container tests.
 - **OpenShift**: deploys the image with the `restricted-v2` SCC and runs the
   OpenShift-marked JupyterLab container tests.
@@ -99,12 +98,11 @@ lane and architecture. A Konflux build can still be retried independently with i
 component-specific `/build-*` PR comment; after a successful rebuild, rerun the failed
 `prepare` job or the failed test lane.
 
-Functional, Testcontainers, OpenShift, and E2E tests default to all four published
+Testcontainers, OpenShift, and E2E tests default to all four published
 architectures: `linux/amd64`, `linux/arm64`, `linux/ppc64le`, and `linux/s390x`. Browser
 tests default to `linux/amd64` and `linux/arm64` because the Playwright runner image
-does not publish `ppc64le` or `s390x` variants. Non-native functional, Testcontainers,
-OpenShift, and E2E lanes use QEMU on the amd64 runner; arm64 lanes use GitHub's native
-arm64 runner.
+does not publish `ppc64le` or `s390x` variants. Non-native Testcontainers, OpenShift,
+and E2E lanes use QEMU on the amd64 runner; arm64 lanes use GitHub's native arm64 runner.
 
 Each lane's platform list can be overridden for a manual run with its
 `*_platforms` input. For automatic PR runs, repository variables provide persistent
@@ -112,7 +110,6 @@ configuration without editing the workflow:
 
 | Test lane | Repository variable |
 |-----------|----------------------|
-| Functional | `KONFLUX_JUPYTER_MINIMAL_FUNCTIONAL_PLATFORMS` |
 | Testcontainers | `KONFLUX_JUPYTER_MINIMAL_CONTAINER_PLATFORMS` |
 | OpenShift | `KONFLUX_JUPYTER_MINIMAL_OPENSHIFT_PLATFORMS` |
 | Browser | `KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS` |

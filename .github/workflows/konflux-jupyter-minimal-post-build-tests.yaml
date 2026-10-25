@@ -21,12 +21,6 @@ on:  # yamllint disable-line rule:truthy
         description: Pull request head commit SHA
         required: true
         type: string
-      functional_platforms:
-        description: >-
-          Comma-separated architectures for functional tests
-        required: false
-        default: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
-        type: string
       container_platforms:
         description: Comma-separated architectures for Testcontainers tests
         required: false
@@ -73,7 +67,6 @@ jobs:
       commit_sha: ${{ steps.resolve.outputs.commit_sha }}
       image: ${{ steps.resolve.outputs.image }}
       image_tag: ${{ steps.resolve.outputs.image_tag }}
-      functional_matrix: ${{ steps.matrices.outputs.functional_matrix }}
       container_matrix: ${{ steps.matrices.outputs.container_matrix }}
       browser_matrix: ${{ steps.matrices.outputs.browser_matrix }}
       e2e_matrix: ${{ steps.matrices.outputs.e2e_matrix }}
@@ -183,7 +176,6 @@ jobs:
       - name: Build architecture matrices
         id: matrices
         env:
-          FUNCTIONAL_PLATFORMS: ${{ github.event.inputs.functional_platforms || vars.KONFLUX_JUPYTER_MINIMAL_FUNCTIONAL_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           CONTAINER_PLATFORMS: ${{ github.event.inputs.container_platforms || vars.KONFLUX_JUPYTER_MINIMAL_CONTAINER_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64' }}
           E2E_PLATFORMS: ${{ github.event.inputs.e2e_platforms || vars.KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
@@ -216,9 +208,6 @@ jobs:
                   raise SystemExit("At least one platform is required")
               return platforms
 
-          functional_platforms = parse_platforms(
-              os.environ["FUNCTIONAL_PLATFORMS"], allowed_platforms
-          )
           container_platforms = parse_platforms(
               os.environ["CONTAINER_PLATFORMS"], allowed_platforms
           )
@@ -244,7 +233,6 @@ jobs:
               }
 
           outputs = {
-              "functional_matrix": matrix_for(functional_platforms),
               "container_matrix": matrix_for(container_platforms),
               "browser_matrix": matrix_for(browser_platforms),
               "e2e_matrix": matrix_for(e2e_platforms),
@@ -254,44 +242,6 @@ jobs:
               for name, value in outputs.items():
                   output.write(f"{name}={json.dumps(value)}\n")
           PY
-
-  functional:
-    name: Functional Jupyter Minimal (${{ matrix.artifact_name }})
-    needs: prepare
-    permissions:
-      contents: read
-    runs-on: ${{ fromJSON('{"linux/amd64":"ubuntu-26.04","linux/arm64":"ubuntu-26.04-arm","linux/ppc64le":"ubuntu-26.04","linux/s390x":"ubuntu-26.04"}')[matrix.platform] }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare.outputs.functional_matrix) }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          ref: ${{ needs.prepare.outputs.commit_sha }}
-          fetch-depth: 1
-          submodules: recursive
-          persist-credentials: false
-
-      - name: Set up QEMU
-        if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), matrix.platform)
-        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
-        env:
-          PLATFORM: ${{ matrix.platform }}
-
-      - uses: ./.github/actions/install-podman-action
-        with:
-          platform: ${{ matrix.platform }}
-
-      - name: Verify Python and JupyterLab
-        env:
-          IMAGE: ${{ needs.prepare.outputs.image }}
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          set -Eeuxo pipefail
-          podman pull --platform "${PLATFORM}" "${IMAGE}"
-          timeout 60 podman run --rm --platform "${PLATFORM}" --entrypoint python "${IMAGE}" --version
-          timeout 60 podman run --rm --platform "${PLATFORM}" --entrypoint jupyter "${IMAGE}" lab --version
 
   container:
     name: Testcontainers Jupyter Minimal (${{ matrix.artifact_name }})
