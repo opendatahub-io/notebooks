@@ -197,6 +197,16 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
 
         self.port = port
         self.with_exposed_ports(self.port)
+        if os.environ.get("NGINX_USE_POLL") == "true":
+            self.with_command([
+                "/bin/bash",
+                "-c",
+                'tmp="$(mktemp)" && '
+                "sed '/^events {/a\\    use poll;' /etc/nginx/nginx.conf > \"$tmp\" && "
+                'cat "$tmp" > /etc/nginx/nginx.conf && '
+                'rm --force "$tmp" && '
+                "exec /opt/app-root/bin/run-code-server.sh",
+            ])
 
     @testcontainers.core.waiting_utils.wait_container_is_ready(urllib.error.URLError)
     def _connect(

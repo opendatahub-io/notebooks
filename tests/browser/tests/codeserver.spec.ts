@@ -46,12 +46,12 @@ const test = base.extend<TestFixtures>({
         const container = new GenericContainer(codeServerSource.image)
             .withExposedPorts(8888)
             .withWaitStrategy(new HttpWaitStrategy('/codeserver/?folder=/opt/app-root/src', 8888, {abortOnContainerExit: true}));
-        if (process.env.NGINX_AIO_OFF === 'true') {
+        if (process.env.NGINX_USE_POLL === 'true') {
           container.withCommand([
             '/bin/bash',
             '-c',
             `tmp="$(mktemp)" &&
-             sed '/^http {/a\\    aio off;' /etc/nginx/nginx.conf > "$tmp" &&
+             sed '/^events {/a\\    use poll;' /etc/nginx/nginx.conf > "$tmp" &&
              cat "$tmp" > /etc/nginx/nginx.conf &&
              rm --force "$tmp" &&
              exec /opt/app-root/bin/run-code-server.sh`,

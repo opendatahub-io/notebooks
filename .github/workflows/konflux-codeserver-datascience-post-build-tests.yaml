@@ -400,6 +400,7 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
           PODMAN_SOCK: /var/run/podman/podman.sock
+          NGINX_USE_POLL: ${{ matrix.platform == 'linux/ppc64le' || matrix.platform == 'linux/s390x' }}
         run: |
           set -Eeuxo pipefail
 
@@ -477,7 +478,7 @@ jobs:
           report-artifact-name: codeserver-datascience-${{ matrix.artifact_name }}-playwright-report
           junit-artifact-file: codeserver-datascience-${{ matrix.artifact_name }}-playwright-junit.xml
           grep-pattern: '@codeserver'
-          disableNginxAio: ${{ matrix.platform == 'linux/ppc64le' || matrix.platform == 'linux/s390x' }}
+          useNginxPoll: ${{ matrix.platform == 'linux/ppc64le' || matrix.platform == 'linux/s390x' }}
 
       - name: Wait for parallel tests
         env:
