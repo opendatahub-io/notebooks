@@ -26,7 +26,7 @@ on:  # yamllint disable-line rule:truthy
       use_ibm_runners:
         description: Use native IBM runners for ppc64le and s390x
         required: false
-        default: false
+        default: true
         type: boolean
       container_platforms:
         description: Comma-separated architectures for Testcontainers tests
@@ -169,7 +169,7 @@ jobs:
           BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_CODESERVER_DATASCIENCE_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           E2E_PLATFORMS: ${{ github.event.inputs.e2e_platforms || vars.KONFLUX_CODESERVER_DATASCIENCE_E2E_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           OPENSHIFT_PLATFORMS: ${{ github.event.inputs.openshift_platforms || vars.KONFLUX_CODESERVER_DATASCIENCE_OPENSHIFT_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
-          USE_IBM_RUNNERS: ${{ github.event.inputs.use_ibm_runners || false }}
+          USE_IBM_RUNNERS: ${{ github.event_name == 'pull_request' || github.event.inputs.use_ibm_runners }}
         run: |
           set -euo pipefail
           python3 - <<'PY'

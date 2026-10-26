@@ -94,6 +94,10 @@ parallel:
 - **E2E**: deploys the image to the workflow's ephemeral Kubernetes cluster and runs
   the component's Makefile validation test.
 
+Code-Server uses the native IBM runners for ppc64le and s390x by default. Its nginx
+startup uses the Linux AIO `io_setup()` syscall, which is unavailable when those
+architectures are emulated with QEMU on x86_64 runners.
+
 Retrying a failed architecture lane reruns all eligible test types for that
 architecture, but it does **not** rebuild the Konflux image; the lane reuses the digest
 resolved by `prepare`. A Konflux build can still be retried independently with its
