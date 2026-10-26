@@ -1,0 +1,84 @@
+---
+name: RPM Lock Files Renewal Auto Merge
+
+permissions: {}
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: rpms-lock-renewal-automerge
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    if: github.repository == 'opendatahub-io/notebooks'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Merge green RPM lockfile renewal PRs
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          repo="${{ github.repository }}"
+          prs="$(gh pr list --repo "$repo" \
+            --label "automated-rpms-lockfile-update" \
+            --state open \
+            --base main \
+            --json number,url,isDraft,reviewDecision \
+            --limit 50)"
+
+          if [[ -z "$prs" || "$prs" == "[]" ]]; then
+            echo "No open RPM lockfile renewal PRs found."
+            exit 0
+          fi
+
+          while IFS= read -r pr; do
+            number="$(jq -r '.number' <<<"$pr")"
+            url="$(jq -r '.url' <<<"$pr")"
+            is_draft="$(jq -r '.isDraft' <<<"$pr")"
+            review_decision="$(jq -r '.reviewDecision' <<<"$pr")"
+
+            if [[ "$is_draft" == "true" ]]; then
+              echo "SKIP: $url is a draft."
+              continue
+            fi
+
+            if [[ "$review_decision" != "APPROVED" ]]; then
+              echo "SKIP: $url is not approved."
+              continue
+            fi
+
+            labels="$(gh pr view "$number" --repo "$repo" \
+              --json labels \
+              --jq '[.labels[].name]')"
+            if jq -e 'any(.[]; startswith("do-not-merge/"))' \
+              <<<"$labels" >/dev/null; then
+              echo "SKIP: $url has a do-not-merge label."
+              continue
+            fi
+
+            if ! checks="$(gh pr checks "$number" --repo "$repo" \
+              --json bucket)"; then
+              echo "SKIP: Could not read checks for $url."
+              continue
+            fi
+
+            if [[ -z "$checks" || "$checks" == "[]" ]]; then
+              echo "SKIP: $url has no reported checks yet."
+              continue
+            fi
+
+            if jq -e 'all(.[]; .bucket == "pass" or .bucket == "skipping")' \
+              <<<"$checks" >/dev/null; then
+              echo "MERGE: $url is approved and all reported checks are green."
+              gh pr merge "$number" --repo "$repo" --merge --delete-branch
+            else
+              echo "SKIP: $url still has failing or pending checks."
+            fi
+          done < <(jq -c '.[]' <<<"$prs")

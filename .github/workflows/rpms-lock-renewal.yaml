@@ -290,7 +290,7 @@ jobs:
           - \`codeserver-baseline/ubi9-python-3.12/prefetch-input/{odh,rhds}/rpms.lock.yaml\`
 
           PR CI runs independently after this workflow finishes; Tide handles merging once
-          repository requirements pass.
+          all reported checks are green and the PR is approved.
           EOF
           )" \
               --label "automated-rpms-lockfile-update" \
@@ -303,9 +303,3 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr review "${PR_URL}" --approve --body "Auto-approved after RPM renewal workflow validation."
-
-      - name: Enable auto-merge
-        if: env.PR_URL != ''
-        env:
-          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
-        run: gh pr merge "${PR_URL}" --merge --auto --delete-branch
