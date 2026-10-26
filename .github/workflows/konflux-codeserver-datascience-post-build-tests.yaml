@@ -310,6 +310,8 @@ jobs:
           matrix.use_qemu == false
         run: |
           set -Eeuxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y fuse-overlayfs
           fuse_overlayfs="$(command -v fuse-overlayfs)"
           echo "mount_program = \"${fuse_overlayfs}\"" | sudo tee -a /etc/containers/storage.conf
           sudo systemctl stop podman.service podman.socket || true
