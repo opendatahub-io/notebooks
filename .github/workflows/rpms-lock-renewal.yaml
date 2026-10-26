@@ -289,7 +289,7 @@ jobs:
           - \`codeserver/ubi9-python-3.12/prefetch-input/{odh,rhds}/rpms.lock.yaml\`
           - \`codeserver-baseline/ubi9-python-3.12/prefetch-input/{odh,rhds}/rpms.lock.yaml\`
 
-          This PR will be merged automatically after all reported checks are
+          Tide will merge this PR automatically after all reported checks are
           green.
           EOF
           )" \
@@ -306,12 +306,3 @@ jobs:
           gh pr review "${PR_URL}" \
             --approve \
             --body "Auto-approved after RPM renewal workflow validation."
-
-      - name: Wait for CI checks and merge
-        if: env.PR_URL != ''
-        env:
-          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh pr checks "${PR_URL}" --watch --fail-fast --interval 30
-          gh pr merge "${PR_URL}" --merge --delete-branch
