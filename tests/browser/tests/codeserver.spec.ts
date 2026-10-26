@@ -46,17 +46,6 @@ const test = base.extend<TestFixtures>({
         const container = new GenericContainer(codeServerSource.image)
             .withExposedPorts(8888)
             .withWaitStrategy(new HttpWaitStrategy('/codeserver/?folder=/opt/app-root/src', 8888, {abortOnContainerExit: true}));
-        if (process.env.NGINX_USE_POLL === 'true') {
-          container.withCommand([
-            '/bin/bash',
-            '-c',
-            `tmp="$(mktemp)" &&
-             sed '/^events {/a\\    use poll;' /etc/nginx/nginx.conf > "$tmp" &&
-             cat "$tmp" > /etc/nginx/nginx.conf &&
-             rm --force "$tmp" &&
-             exec /opt/app-root/bin/run-code-server.sh`,
-          ]);
-        }
         const startedContainer = await container.start();
         try {
           await use(new CodeServer(page, `http://${startedContainer.getHost()}:${startedContainer.getMappedPort(8888)}/codeserver/`))
@@ -81,6 +70,7 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
   })
 
   test('wait for startup surface to load', async ({codeServer, page}, testInfo) => {
+    test.setTimeout(120_000)
     await page.goto(codeServer.url);
 
     expect(await codeServer.isEditorVisible()).toBe(true)

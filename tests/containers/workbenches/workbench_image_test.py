@@ -198,16 +198,6 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
 
         self.port = port
         self.with_exposed_ports(self.port)
-        if os.environ.get("NGINX_USE_POLL") == "true":
-            self.with_command([
-                "/bin/bash",
-                "-c",
-                'tmp="$(mktemp)" && '
-                "sed '/^events {/a\\    use poll;' /etc/nginx/nginx.conf > \"$tmp\" && "
-                'cat "$tmp" > /etc/nginx/nginx.conf && '
-                'rm --force "$tmp" && '
-                "exec /opt/app-root/bin/run-code-server.sh",
-            ])
 
     @testcontainers.core.waiting_utils.wait_container_is_ready(urllib.error.URLError)
     def _connect(
@@ -342,6 +332,8 @@ def grab_and_check_logs(
         # RHAIENG-5644: oauth-proxy / kube-rbac-proxy provides external auth; in-container Jupyter auth is disabled
         "WARNING: The Jupyter server is listening on all IP addresses and not using encryption. This is not recommended.",
     ]
+    if os.environ.get("QEMU_WORKBENCH") == "true":
+        allowed_messages.append("io_setup() failed (38: Function not implemented)")
     if extra_allowed:
         allowed_messages.extend(extra_allowed)
 

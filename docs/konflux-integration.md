@@ -96,9 +96,10 @@ parallel:
 
 Code-Server's ppc64le and s390x lanes run on x86_64 runners with QEMU for the workbench
 image. Its nginx startup uses the Linux AIO `io_setup()` syscall, which QEMU does not
-implement, so those browser-test lanes explicitly start nginx with `aio off`. The
-Playwright test image itself is always built and executed natively as `linux/amd64`
-because Microsoft does not publish ppc64le or s390x Playwright images.
+implement. Nginx logs that known limitation and continues without file AIO; the QEMU
+lanes waive only that exact startup-log message. The Playwright test image itself is
+always built and executed natively as `linux/amd64` because Microsoft does not publish
+ppc64le or s390x Playwright images.
 
 Retrying a failed architecture lane reruns all eligible test types for that
 architecture, but it does **not** rebuild the Konflux image; the lane reuses the digest

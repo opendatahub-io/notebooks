@@ -65,10 +65,6 @@ inputs:
     description: 'Grep pattern passed to --grep to filter tests (e.g. "@codeserver", "@smoke"). Empty string runs all tests.'
     required: false
     default: ''
-  useNginxPoll:
-    description: 'Use the nginx poll event module in the Code-Server test container (for QEMU-emulated architectures).'
-    required: false
-    default: 'false'
 
 outputs:
   outcome:
@@ -122,7 +118,6 @@ runs:
           --env "PODMAN_SOCK=/var/run/docker.sock" \
           --env "TEST_TARGET" \
           --env "TEST_TARGET_ARCH=${target_arch}" \
-          --env "NGINX_USE_POLL" \
           --volume "${PODMAN_SOCKET}":/var/run/docker.sock \
           --volume "${PWD}/results":/home/pwuser/tests/browser/results:Z \
           --volume "${PWD}/playwright-report":/home/pwuser/tests/browser/playwright-report:Z \
@@ -134,7 +129,6 @@ runs:
         PODMAN_SOCKET: ${{ inputs.podman-socket }}
         PLAYWRIGHT_IMAGE: ${{ inputs.playwright-image }}
         GREP_PATTERN: ${{ inputs.grep-pattern }}
-        NGINX_USE_POLL: ${{ inputs.useNginxPoll }}
 
     - name: Stage Playwright JUnit XML
       id: stage-junit
