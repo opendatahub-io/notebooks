@@ -10,6 +10,13 @@
 ARG PLAYWRIGHT_VERSION
 FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble AS builder
 ARG PLAYWRIGHT_VERSION
+ARG NODE_VERSION
+
+RUN if [ -n "${NODE_VERSION}" ]; then \
+      curl --fail --silent --show-error --location \
+        "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz" | \
+        tar --extract --gzip --strip-components=1 --directory=/usr/local; \
+    fi
 
 RUN npm install -g pnpm@11.9.0
 
@@ -21,6 +28,8 @@ RUN PNPM_CONFIG_fund=false pnpm install --frozen-lockfile
 FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble
 ARG PLAYWRIGHT_VERSION
 LABEL org.opendatahub.playwright.version="${PLAYWRIGHT_VERSION}"
+
+COPY --from=builder /usr/local/bin/node /usr/local/bin/node
 
 WORKDIR /home/pwuser/tests/browser
 USER pwuser

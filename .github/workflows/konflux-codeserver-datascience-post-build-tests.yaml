@@ -330,11 +330,10 @@ jobs:
             amd64) qemu_binary="qemu-x86_64" ;;
             *) qemu_binary="qemu-${QEMU_PLATFORM}" ;;
           esac
-          sudo apt-get install -y qemu-user-static
           container_id="$(podman create docker.io/tonistiigi/binfmt:latest)"
           podman cp "${container_id}:/usr/bin/binfmt" "${binfmt_dir}/binfmt"
+          podman cp "${container_id}:/usr/bin/${qemu_binary}" "${binfmt_dir}/${qemu_binary}"
           podman rm "${container_id}"
-          sudo ln -s "/usr/bin/${qemu_binary}-static" "${binfmt_dir}/${qemu_binary}"
           if [[ ! -e /proc/sys/fs/binfmt_misc/status ]]; then
             sudo mkdir -p /proc/sys/fs/binfmt_misc
             sudo mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
@@ -391,10 +390,15 @@ jobs:
         run: |
           set -Eeuxo pipefail
           IMAGE="localhost/workbench-images-tests:ci"
+          NODE_VERSION=""
+          if [[ "${{ matrix.platform }}" == "linux/ppc64le" || "${{ matrix.platform }}" == "linux/s390x" ]] && [[ "${{ matrix.use_qemu }}" == "false" ]]; then
+            NODE_VERSION="22.23.4"
+          fi
           PLAYWRIGHT_VERSION="$(uv run python scripts/get_playwright_version.py tests/browser/package.json5)"
           podman build \
             --platform "${{ matrix.browser_build_platform }}" \
             --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
+            --build-arg "NODE_VERSION=${NODE_VERSION}" \
             -t "${IMAGE}" \
             -f tests/browser/Dockerfile \
             tests/browser
