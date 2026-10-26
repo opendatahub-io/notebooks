@@ -311,7 +311,7 @@ jobs:
         run: |
           set -Eeuxo pipefail
           sudo apt-get update
-          sudo apt-get install -y fuse-overlayfs runc
+          sudo apt-get install -y fuse-overlayfs
           fuse_overlayfs="$(command -v fuse-overlayfs)"
           echo "mount_program = \"${fuse_overlayfs}\"" | sudo tee -a /etc/containers/storage.conf
           sudo systemctl stop podman.service podman.socket || true
@@ -322,7 +322,20 @@ jobs:
 
       - name: Set up QEMU
         if: ${{ matrix.qemu_platform != '' }}
-        run: sudo env -u CONTAINER_HOST -u PODMAN_SOCK podman run --rm --privileged --runtime /usr/sbin/runc tonistiigi/binfmt --install ${QEMU_PLATFORM}
+        run: |
+          set -Eeuxo pipefail
+          binfmt_dir="${RUNNER_TEMP}/binfmt"
+          mkdir -p "${binfmt_dir}"
+          case "${QEMU_PLATFORM}" in
+            amd64) qemu_binary="qemu-x86_64" ;;
+            *) qemu_binary="qemu-${QEMU_PLATFORM}" ;;
+          esac
+          container_id="$(podman create docker.io/tonistiigi/binfmt:latest)"
+          podman cp "${container_id}:/usr/bin/binfmt" "${binfmt_dir}/binfmt"
+          podman cp "${container_id}:/usr/bin/${qemu_binary}" "${binfmt_dir}/${qemu_binary}"
+          podman rm "${container_id}"
+          sudo env QEMU_BINARY_PATH="${binfmt_dir}" "${binfmt_dir}/binfmt" --install "${QEMU_PLATFORM}"
+          grep '^enabled' "/proc/sys/fs/binfmt_misc/${qemu_binary}"
         env:
           QEMU_PLATFORM: ${{ matrix.qemu_platform }}
 
