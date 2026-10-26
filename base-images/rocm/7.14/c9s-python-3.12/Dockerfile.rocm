@@ -11,6 +11,8 @@ COPY base-images/utils/fix-permissions /mnt/usr/bin/
 # Source: https://github.com/opendatahub-io/base-containers (rocm/7.14/)
 FROM quay.io/opendatahub/odh-midstream-rocm-base-7-14@sha256:e6c82f3ed8ead877e550efbf61c8b3e06a17cd441f6b194642bb87e0ea837e5a AS base
 
+LABEL org.opencontainers.image.created="${BUILD_DATE:-1970-01-01T00:00:00Z}"
+
 USER 0
 ARG TARGETARCH
 ENV TARGETARCH=${TARGETARCH}
