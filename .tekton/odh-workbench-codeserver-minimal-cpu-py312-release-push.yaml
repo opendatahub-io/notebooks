@@ -205,6 +205,8 @@ spec:
     # Registry-only npm deps (ProdSec); @parcel/watcher, @emmetio/css-parser, @playwright/browser-chromium in custom-packages/package.json
     - path: codeserver-minimal/ubi9-python-3.12/prefetch-input/patches/code-server-v4.122.1/custom-packages
       type: npm
+  - name: dev-package-managers
+    value: 'true'
   taskRunSpecs:
   - pipelineTaskName: prefetch-dependencies
     computeResources:
