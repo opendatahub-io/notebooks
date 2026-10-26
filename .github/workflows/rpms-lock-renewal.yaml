@@ -306,3 +306,9 @@ jobs:
           gh pr review "${PR_URL}" \
             --approve \
             --body "Auto-approved after RPM renewal workflow validation."
+
+      - name: Add Tide merge labels
+        if: env.PR_URL != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: gh pr edit "${PR_URL}" --add-label "lgtm,approved"
