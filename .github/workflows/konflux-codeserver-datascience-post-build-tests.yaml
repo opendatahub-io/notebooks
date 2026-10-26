@@ -316,6 +316,8 @@ jobs:
           echo "mount_program = \"${fuse_overlayfs}\"" | sudo tee -a /etc/containers/storage.conf
           sudo systemctl stop podman.service podman.socket || true
           sudo systemctl start podman.socket
+          sudo setfacl -m "u:${USER}:x" /var/run/podman
+          sudo setfacl -m "u:${USER}:rw" /var/run/podman/podman.sock
           podman system info
 
       - name: Set up QEMU
