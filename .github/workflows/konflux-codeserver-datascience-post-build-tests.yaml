@@ -304,9 +304,21 @@ jobs:
         with:
           platform: ${{ matrix.platform }}
 
+      - name: Configure IBM Podman storage
+        if: >-
+          (matrix.platform == 'linux/ppc64le' || matrix.platform == 'linux/s390x') &&
+          matrix.use_qemu == false
+        run: |
+          set -Eeuxo pipefail
+          fuse_overlayfs="$(command -v fuse-overlayfs)"
+          echo "mount_program = \"${fuse_overlayfs}\"" | sudo tee -a /etc/containers/storage.conf
+          sudo systemctl stop podman.service podman.socket || true
+          sudo systemctl start podman.socket
+          podman system info
+
       - name: Set up QEMU
         if: ${{ matrix.qemu_platform != '' }}
-        run: sudo podman run --rm --privileged tonistiigi/binfmt --install ${QEMU_PLATFORM}
+        run: sudo env -u CONTAINER_HOST -u PODMAN_SOCK podman run --rm --privileged tonistiigi/binfmt --install ${QEMU_PLATFORM}
         env:
           QEMU_PLATFORM: ${{ matrix.qemu_platform }}
 
