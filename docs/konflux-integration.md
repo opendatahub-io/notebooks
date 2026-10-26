@@ -77,7 +77,7 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 
 ### Konflux post-build GHA POC
 
-The Jupyter Minimal CPU, Jupyter Universal CPU, and Code-Server Datascience CPU test lanes are deliberately
+The Jupyter Minimal CPU, Jupyter Datascience CPU, Jupyter Universal CPU, and Code-Server Datascience CPU test lanes are deliberately
 **post-build only**. Their workflows start on a relevant PR, but each `prepare` job waits
 for that component's Konflux check to succeed and for the published Quay manifest to
 become available. The architecture lanes therefore do not consume runners while the
@@ -109,11 +109,13 @@ component-specific `/build-*` PR comment; after a successful rebuild, rerun the 
 
 Testcontainers, OpenShift, Browser, and E2E tests default to all four published
 architectures: `linux/amd64`, `linux/arm64`, `linux/ppc64le`, and `linux/s390x`.
-Jupyter Universal's E2E tests default to `linux/amd64`, `linux/arm64`, and
-`linux/ppc64le`; the existing GHA image-test template excludes `linux/s390x` because
-its Elyra test requirements are not installable there. Universal's ppc64le and s390x
-browser suites still run but skip JupyterLab-specific cases because Path B omits the
-JupyterLab stack on those architectures.
+Jupyter Datascience CPU supports `linux/amd64`, `linux/arm64`, and
+`linux/ppc64le`; the current image-test matrix excludes `linux/s390x`.
+Jupyter Universal's E2E tests default to the same three architectures because the
+existing GHA image-test template excludes `linux/s390x` when Elyra test requirements
+are not installable there. Universal's ppc64le and s390x browser suites still run but
+skip JupyterLab-specific cases because Path B omits the JupyterLab stack on those
+architectures.
 `ppc64le` and `s390x` lanes use QEMU on the amd64 runner; arm64 lanes use GitHub's
 native arm64 runner.
 
@@ -127,6 +129,10 @@ configuration without editing the workflow:
 | OpenShift | `KONFLUX_JUPYTER_MINIMAL_OPENSHIFT_PLATFORMS` |
 | Browser | `KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS` |
 | E2E | `KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS` |
+| Testcontainers | `KONFLUX_JUPYTER_DATASCIENCE_CONTAINER_PLATFORMS` |
+| OpenShift | `KONFLUX_JUPYTER_DATASCIENCE_OPENSHIFT_PLATFORMS` |
+| Browser | `KONFLUX_JUPYTER_DATASCIENCE_BROWSER_PLATFORMS` |
+| E2E | `KONFLUX_JUPYTER_DATASCIENCE_E2E_PLATFORMS` |
 | Testcontainers | `KONFLUX_CODESERVER_DATASCIENCE_CONTAINER_PLATFORMS` |
 | OpenShift | `KONFLUX_CODESERVER_DATASCIENCE_OPENSHIFT_PLATFORMS` |
 | Browser | `KONFLUX_CODESERVER_DATASCIENCE_BROWSER_PLATFORMS` |
