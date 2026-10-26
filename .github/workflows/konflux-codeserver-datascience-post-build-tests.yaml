@@ -243,9 +243,25 @@ jobs:
               *e2e_platforms,
               *openshift_platforms,
           }
+          def architecture_settings(platform):
+              qemu_platform = ""
+              browser_build_platform = platform
+              if platform in {"linux/ppc64le", "linux/s390x"}:
+                  if use_ibm_runners:
+                      if platform in browser_platforms:
+                          qemu_platform = "amd64"
+                          browser_build_platform = "linux/amd64"
+                  else:
+                      qemu_platform = platform.split("/", 1)[1]
+              return {
+                  "qemu_platform": qemu_platform,
+                  "browser_build_platform": browser_build_platform,
+              }
+
           test_matrix = {
               "include": [
                   {
+                      **architecture_settings(platform),
                       "platform": platform,
                       "artifact_name": platform.split("/", 1)[1],
                       "container": platform in container_platforms,
@@ -284,15 +300,15 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - name: Set up QEMU
-        if: ${{ matrix.use_qemu }}
-        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
-        env:
-          PLATFORM: ${{ matrix.platform }}
-
       - uses: ./.github/actions/install-podman-action
         with:
           platform: ${{ matrix.platform }}
+
+      - name: Set up QEMU
+        if: ${{ matrix.qemu_platform != '' }}
+        run: podman run --rm --privileged tonistiigi/binfmt --install ${QEMU_PLATFORM}
+        env:
+          QEMU_PLATFORM: ${{ matrix.qemu_platform }}
 
       - uses: ./.github/actions/setup-uv
 
@@ -343,6 +359,7 @@ jobs:
           IMAGE="localhost/workbench-images-tests:ci"
           PLAYWRIGHT_VERSION="$(uv run python scripts/get_playwright_version.py tests/browser/package.json5)"
           podman build \
+            --platform "${{ matrix.browser_build_platform }}" \
             --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
             -t "${IMAGE}" \
             -f tests/browser/Dockerfile \
