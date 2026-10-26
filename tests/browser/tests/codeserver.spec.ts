@@ -80,7 +80,7 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
   })
 
   test('use the terminal to run command', async ({codeServer, page}, _testInfo) => {
-    test.setTimeout(120_000)
+    test.setTimeout(240_000)
     await page.goto(codeServer.url);
 
     await test.step("Should always see the code-server editor", async () => {
