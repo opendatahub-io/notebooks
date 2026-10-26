@@ -301,6 +301,12 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      - name: Set up QEMU
+        if: ${{ matrix.use_qemu }}
+        run: docker run --rm --privileged tonistiigi/binfmt --install ${PLATFORM#*/}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+
       - uses: ./.github/actions/install-podman-action
         with:
           platform: ${{ matrix.platform }}
@@ -320,29 +326,6 @@ jobs:
           sudo setfacl -m "u:${USER}:x" /var/run/podman
           sudo setfacl -m "u:${USER}:rw" /var/run/podman/podman.sock
           podman system info
-
-      - name: Set up QEMU
-        if: ${{ matrix.qemu_platform != '' }}
-        run: |
-          set -Eeuxo pipefail
-          binfmt_dir="${RUNNER_TEMP}/binfmt"
-          mkdir -p "${binfmt_dir}"
-          case "${QEMU_PLATFORM}" in
-            amd64) qemu_binary="qemu-x86_64" ;;
-            *) qemu_binary="qemu-${QEMU_PLATFORM}" ;;
-          esac
-          container_id="$(podman create docker.io/tonistiigi/binfmt:latest)"
-          podman cp "${container_id}:/usr/bin/binfmt" "${binfmt_dir}/binfmt"
-          podman cp "${container_id}:/usr/bin/${qemu_binary}" "${binfmt_dir}/${qemu_binary}"
-          podman rm "${container_id}"
-          if [[ ! -e /proc/sys/fs/binfmt_misc/status ]]; then
-            sudo mkdir -p /proc/sys/fs/binfmt_misc
-            sudo mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
-          fi
-          sudo env QEMU_BINARY_PATH="${binfmt_dir}" "${binfmt_dir}/binfmt" --install "${QEMU_PLATFORM}"
-          grep '^enabled' "/proc/sys/fs/binfmt_misc/${qemu_binary}"
-        env:
-          QEMU_PLATFORM: ${{ matrix.qemu_platform }}
 
       - uses: ./.github/actions/setup-uv
 
