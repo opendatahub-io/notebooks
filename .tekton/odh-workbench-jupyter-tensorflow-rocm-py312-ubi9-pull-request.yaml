@@ -95,11 +95,9 @@ spec:
       requests:
         cpu: '8'
         memory: 8Gi
-        ephemeral-storage: 64Gi
       limits:
         cpu: '8'
         memory: 8Gi
-        ephemeral-storage: 200Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
       requests:

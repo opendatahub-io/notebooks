@@ -79,7 +79,6 @@ ARG LABEL_COMPONENT
 ARG RELEASE
 
 LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
-      org.opencontainers.image.created="${BUILD_DATE:-1970-01-01T00:00:00Z}" \
       com.redhat.component="${LABEL_COMPONENT}" \
       io.k8s.display-name="${LABEL_COMPONENT}" \
       summary="Runtime ROCm pytorch notebook image for ODH notebooks" \
