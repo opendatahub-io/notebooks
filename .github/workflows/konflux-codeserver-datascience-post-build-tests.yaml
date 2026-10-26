@@ -334,6 +334,10 @@ jobs:
           podman cp "${container_id}:/usr/bin/binfmt" "${binfmt_dir}/binfmt"
           podman cp "${container_id}:/usr/bin/${qemu_binary}" "${binfmt_dir}/${qemu_binary}"
           podman rm "${container_id}"
+          if [[ ! -e /proc/sys/fs/binfmt_misc/status ]]; then
+            sudo mkdir -p /proc/sys/fs/binfmt_misc
+            sudo mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
+          fi
           sudo env QEMU_BINARY_PATH="${binfmt_dir}" "${binfmt_dir}/binfmt" --install "${QEMU_PLATFORM}"
           grep '^enabled' "/proc/sys/fs/binfmt_misc/${qemu_binary}"
         env:
