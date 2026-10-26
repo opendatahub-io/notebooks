@@ -83,6 +83,8 @@ jobs:
           CHECK_NAME: Red Hat Konflux / odh-workbench-codeserver-datascience-cpu-py312-ubi9-on-pull-request
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          POC_IMAGE: ${{ (github.head_ref || github.ref_name) == 'poc/konflux-jupyter-minimal' && 'quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9@sha256:ae8944895d3eaf50d187e0fa47d0f84354f4256cf21a63908ad9cf177f203c83' || '' }}
+          POC_IMAGE_TAG: on-pr-0660338887b95a160309e878dec4dada9da96d35
         run: |
           set -euo pipefail
 
@@ -102,6 +104,19 @@ jobs:
           if [[ "${head_sha}" != "${COMMIT_SHA}" ]]; then
             echo "Build was for ${COMMIT_SHA}; PR head is ${head_sha}. Skipping stale tests."
             exit 1
+          fi
+
+          if [[ -n "${POC_IMAGE}" ]]; then
+            image="${POC_IMAGE}"
+            image_tag="${POC_IMAGE_TAG}"
+            {
+              echo "pr_number=${PR_NUMBER}"
+              echo "commit_sha=${COMMIT_SHA}"
+              echo "image=${image}"
+              echo "image_tag=${image_tag}"
+            } >> "${GITHUB_OUTPUT}"
+            echo "Testing POC image ${image}"
+            exit 0
           fi
 
 
@@ -305,6 +320,7 @@ jobs:
           else
             uv sync --locked
           fi
+          echo "UV_NO_SYNC=1" >> "${GITHUB_ENV}"
 
       - name: Pull workbench image
         env:
