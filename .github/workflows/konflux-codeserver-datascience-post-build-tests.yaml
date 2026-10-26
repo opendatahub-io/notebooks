@@ -306,7 +306,7 @@ jobs:
 
       - name: Set up QEMU
         if: ${{ matrix.qemu_platform != '' }}
-        run: podman run --rm --privileged tonistiigi/binfmt --install ${QEMU_PLATFORM}
+        run: sudo podman run --rm --privileged tonistiigi/binfmt --install ${QEMU_PLATFORM}
         env:
           QEMU_PLATFORM: ${{ matrix.qemu_platform }}
 
