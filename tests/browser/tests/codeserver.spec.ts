@@ -43,14 +43,25 @@ const test = base.extend<TestFixtures>({
         await use(new CodeServer(page, codeServerSource.url));
         break;
       case 'image': {
-        const container = await new GenericContainer(codeServerSource.image)
+        const container = new GenericContainer(codeServerSource.image)
             .withExposedPorts(8888)
-            .withWaitStrategy(new HttpWaitStrategy('/codeserver/?folder=/opt/app-root/src', 8888, {abortOnContainerExit: true}))
-            .start();
+            .withWaitStrategy(new HttpWaitStrategy('/codeserver/?folder=/opt/app-root/src', 8888, {abortOnContainerExit: true}));
+        if (process.env.NGINX_AIO_OFF === 'true') {
+          container.withCommand([
+            '/bin/bash',
+            '-c',
+            `tmp="$(mktemp)" &&
+             sed '/^http {/a\\    aio off;' /etc/nginx/nginx.conf > "$tmp" &&
+             cat "$tmp" > /etc/nginx/nginx.conf &&
+             rm --force "$tmp" &&
+             exec /opt/app-root/bin/run-code-server.sh`,
+          ]);
+        }
+        const startedContainer = await container.start();
         try {
-          await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8888)}/codeserver/`))
+          await use(new CodeServer(page, `http://${startedContainer.getHost()}:${startedContainer.getMappedPort(8888)}/codeserver/`))
         } finally {
-          await container.stop()
+          await startedContainer.stop()
         }
         break;
       }

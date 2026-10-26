@@ -26,7 +26,7 @@ on:  # yamllint disable-line rule:truthy
       use_ibm_runners:
         description: Use native IBM runners for ppc64le and s390x
         required: false
-        default: true
+        default: false
         type: boolean
       container_platforms:
         description: Comma-separated architectures for Testcontainers tests
@@ -184,7 +184,7 @@ jobs:
           BROWSER_PLATFORMS: ${{ github.event.inputs.browser_platforms || vars.KONFLUX_CODESERVER_DATASCIENCE_BROWSER_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           E2E_PLATFORMS: ${{ github.event.inputs.e2e_platforms || vars.KONFLUX_CODESERVER_DATASCIENCE_E2E_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
           OPENSHIFT_PLATFORMS: ${{ github.event.inputs.openshift_platforms || vars.KONFLUX_CODESERVER_DATASCIENCE_OPENSHIFT_PLATFORMS || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
-          USE_IBM_RUNNERS: ${{ github.event_name == 'pull_request' || github.event.inputs.use_ibm_runners }}
+          USE_IBM_RUNNERS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.use_ibm_runners }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -253,6 +253,7 @@ jobs:
                           browser_build_platform = "linux/amd64"
                   else:
                       qemu_platform = platform.split("/", 1)[1]
+                      browser_build_platform = "linux/amd64"
               return {
                   "qemu_platform": qemu_platform,
                   "browser_build_platform": browser_build_platform,
@@ -390,15 +391,10 @@ jobs:
         run: |
           set -Eeuxo pipefail
           IMAGE="localhost/workbench-images-tests:ci"
-          NODE_VERSION=""
-          if [[ "${{ matrix.platform }}" == "linux/ppc64le" || "${{ matrix.platform }}" == "linux/s390x" ]] && [[ "${{ matrix.use_qemu }}" == "false" ]]; then
-            NODE_VERSION="22.23.4"
-          fi
           PLAYWRIGHT_VERSION="$(uv run python scripts/get_playwright_version.py tests/browser/package.json5)"
           podman build \
             --platform "${{ matrix.browser_build_platform }}" \
             --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
-            --build-arg "NODE_VERSION=${NODE_VERSION}" \
             -t "${IMAGE}" \
             -f tests/browser/Dockerfile \
             tests/browser
@@ -498,6 +494,7 @@ jobs:
           report-artifact-name: codeserver-datascience-${{ matrix.artifact_name }}-playwright-report
           junit-artifact-file: codeserver-datascience-${{ matrix.artifact_name }}-playwright-junit.xml
           grep-pattern: '@codeserver'
+          disableNginxAio: ${{ matrix.platform == 'linux/ppc64le' || matrix.platform == 'linux/s390x' }}
 
       - name: Wait for parallel tests
         env:

@@ -94,11 +94,11 @@ parallel:
 - **E2E**: deploys the image to the workflow's ephemeral Kubernetes cluster and runs
   the component's Makefile validation test.
 
-Code-Server uses the native IBM runners for ppc64le and s390x by default. Its nginx
-startup uses the Linux AIO `io_setup()` syscall, which is unavailable when those
-architectures are emulated with QEMU on x86_64 runners.
-On those native lanes, the Playwright test image is built and executed as `linux/amd64`
-through QEMU because Microsoft does not publish ppc64le or s390x Playwright images.
+Code-Server's ppc64le and s390x lanes run on x86_64 runners with QEMU for the workbench
+image. Its nginx startup uses the Linux AIO `io_setup()` syscall, which QEMU does not
+implement, so those browser-test lanes explicitly start nginx with `aio off`. The
+Playwright test image itself is always built and executed natively as `linux/amd64`
+because Microsoft does not publish ppc64le or s390x Playwright images.
 
 Retrying a failed architecture lane reruns all eligible test types for that
 architecture, but it does **not** rebuild the Konflux image; the lane reuses the digest
