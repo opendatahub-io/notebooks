@@ -204,6 +204,7 @@ jobs:
     runs-on: ubuntu-26.04
     permissions:
       contents: read
+      issues: write
       pull-requests: write
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
@@ -310,5 +311,12 @@ jobs:
       - name: Add Tide merge labels
         if: env.PR_URL != ''
         env:
-          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
-        run: gh pr edit "${PR_URL}" --add-label "lgtm,approved"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          pr_number="${PR_URL##*/}"
+          gh api --method POST \
+            "repos/${{ github.repository }}/issues/${pr_number}/labels" \
+            -f 'labels[]=lgtm' \
+            -f 'labels[]=approved' \
+            --silent
