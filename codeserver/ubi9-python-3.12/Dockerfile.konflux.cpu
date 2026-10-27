@@ -261,6 +261,9 @@ COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/patches/strip-apply-seccomp.sh /tm
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 bash /tmp/strip-apply-seccomp.sh /usr/lib/code-server
+# RHAIENG-7770: @microsoft/mxc-sdk is unused on Linux and bundles a Rust binary
+# that uses non-attested crypto.
+rm -rf /usr/lib/code-server/lib/vscode/node_modules/@microsoft/mxc-sdk
 rm -f /tmp/strip-apply-seccomp.sh
 EOF
 
@@ -387,6 +390,9 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --compile-bytecode --index-strategy=unsafe-best-match \
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
+
+# uv and uvx are only needed while building the image.
+rm -f /opt/app-root/bin/uv /opt/app-root/bin/uvx
 
 # change ownership to default user (all packages were installed as root and has root:root ownership
 chown -R 1001:0 /opt/app-root

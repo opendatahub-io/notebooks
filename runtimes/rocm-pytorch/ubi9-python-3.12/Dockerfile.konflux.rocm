@@ -57,6 +57,10 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
 
+# tensorboard-data-server ships a Rust binary linked against ring, which
+# check-payload rejects. TensorBoard --load_fast=auto falls back without it.
+rm -f /opt/app-root/lib/python3.12/site-packages/tensorboard_data_server/bin/server
+
 python3 ./de-vendor-torch.py
 rm ./de-vendor-torch.py
 
