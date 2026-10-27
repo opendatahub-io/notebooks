@@ -34,7 +34,9 @@ def test_setup_kale_scripts_stay_in_sync() -> None:
 
 def test_universal_exports_bearer_without_word_splitting() -> None:
     text = _UNIVERSAL.read_text(encoding="utf-8")
-    assert 'export KF_PIPELINES_TOKEN="${_kale_auth}"' in text
+    export_line = next(line for line in text.splitlines() if 'export KF_PIPELINES_TOKEN="' in line)
+    assert 'export KF_PIPELINES_TOKEN="${_kale_auth}"' in export_line
+    assert "nosemgrep: generic-hardcoded-secret" in export_line
 
 
 def test_configure_kale_helpers_stay_in_sync() -> None:

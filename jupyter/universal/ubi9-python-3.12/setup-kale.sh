@@ -38,11 +38,11 @@ if [ -f "$ELYRA_RUNTIME_CONFIG" ]; then
   # Child os.environ does not reach this sourced shell. Capture stdout only;
   # status stays on stderr. xtrace would record the expanded bearer.
   set +x
-  # nosemgrep: generic-hardcoded-secret -- runtime bearer from Elyra JSON, not a literal
   _kale_auth=$(python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py" || true)
   if [ -n "${_kale_auth}" ]; then
-    # nosemgrep: generic-hardcoded-secret -- exports runtime Elyra bearer into env
-    export KF_PIPELINES_TOKEN="${_kale_auth}"
+    # Quoted so the bearer is not split. The value is the helper's stdout, not a literal.
+    # The suppression must sit on the assignment: this regex rule ignores the previous line.
+    export KF_PIPELINES_TOKEN="${_kale_auth}" # nosemgrep: generic-hardcoded-secret -- runtime bearer from the helper, not a literal
   fi
   unset _kale_auth
   set -x
