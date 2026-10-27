@@ -1625,6 +1625,12 @@ marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' a
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/tensorboard-2.20.0-4-py3-none-any.whl", upload-time = 2026-10-14T17:37:01Z, size = 5527781, hashes = { sha256 = "a036d671528b8b5b0ddf3f1cec6dbf35c21c85dac5bdaf0d518eb6968e18e2aa" } }]
 
 [[packages]]
+name = "tensorboard-data-server"
+version = "0.7.2"
+marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/tensorboard_data_server-0.7.2-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-10-08T18:41:16Z, size = 4873723, hashes = { sha256 = "f78f1ce7f89429dc507b18cf178b3b47a29af5f9561d6f787157ee3a666d2136" } }]
+
+[[packages]]
 name = "termcolor"
 version = "3.3.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
