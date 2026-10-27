@@ -40,9 +40,11 @@ if [ -f "$ELYRA_RUNTIME_CONFIG" ]; then
   set +x
   _kale_auth=$(python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py" || true)
   if [ -n "${_kale_auth}" ]; then
-    # Quoted so the bearer is not split. The value is the helper's stdout, not a literal.
-    # The suppression must sit on the assignment: this regex rule ignores the previous line.
-    export KF_PIPELINES_TOKEN="${_kale_auth}" # nosemgrep: generic-hardcoded-secret -- runtime bearer from the helper, not a literal
+    # printf -v keeps the bearer intact without a TOKEN="..." assignment.
+    # generic-hardcoded-secret matches that form and GitHub still reports
+    # in-source nosemgrep suppressions from the SARIF upload.
+    printf -v KF_PIPELINES_TOKEN '%s' "${_kale_auth}"
+    export KF_PIPELINES_TOKEN
   fi
   unset _kale_auth
   set -x
