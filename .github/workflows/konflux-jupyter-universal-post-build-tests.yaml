@@ -6,10 +6,6 @@ on:  # yamllint disable-line rule:truthy
     branches: [main]
     types: [opened, reopened, synchronize]
     paths:
-      - .github/workflows/konflux-jupyter-universal-post-build-tests.yaml
-      - .github/actions/install-podman-action/action.yml
-      - .github/actions/provision-k8s/action.yml
-      - ci/cached-builds/storage.conf
       - .tekton/odh-workbench-jupyter-universal-cpu-py312-c9s-pull-request.yaml
       - jupyter/universal/ubi9-python-3.12/**
       - jupyter/universal/ubi9-python-3.12/build-args/cpu.conf

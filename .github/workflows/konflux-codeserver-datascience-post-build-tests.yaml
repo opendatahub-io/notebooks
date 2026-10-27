@@ -6,10 +6,6 @@ on:  # yamllint disable-line rule:truthy
     branches: [main]
     types: [opened, reopened, synchronize]
     paths:
-      - .github/workflows/konflux-codeserver-datascience-post-build-tests.yaml
-      - .github/actions/install-podman-action/action.yml
-      - .github/actions/provision-k8s/action.yml
-      - ci/cached-builds/storage.conf
       - .tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml
       - codeserver/ubi9-python-3.12/**
       - codeserver/ubi9-python-3.12/build-args/cpu.conf
