@@ -2003,15 +2003,6 @@ wheels = [
 ]
 
 [[packages]]
-name = "tensorboard-data-server"
-version = "0.7.2"
-marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/cuda13.0-torch2.13-el9.8/tensorboard_data_server-0.7.2-3-cp312-cp312-linux_aarch64.whl", upload-time = 2026-10-08T21:46:17Z, size = 4778518, hashes = { sha256 = "73239e88560ea1c17ebd0b1c05c5027f3f3ee626a8e05a07608dad7d047d6350" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/cuda13.0-torch2.13-el9.8/tensorboard_data_server-0.7.2-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-10-08T21:46:17Z, size = 4873724, hashes = { sha256 = "e0698d341cf2875f14d912ce6c9dfb6812836e55fd2ca1842d5a98588e53283f" } },
-]
-
-[[packages]]
 name = "termcolor"
 version = "3.3.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"

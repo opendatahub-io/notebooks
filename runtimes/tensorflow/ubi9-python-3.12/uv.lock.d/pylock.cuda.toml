@@ -1610,15 +1610,6 @@ wheels = [
 ]
 
 [[packages]]
-name = "tensorboard-data-server"
-version = "0.7.2"
-marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/cuda12.9-torch2.13-el9.8/tensorboard_data_server-0.7.2-3-cp312-cp312-linux_aarch64.whl", upload-time = 2026-10-08T23:11:09Z, size = 4778520, hashes = { sha256 = "0080708e0aa2d223e44688669072567b2303cbefa790a0aa118deab4e1de36be" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/cuda12.9-torch2.13-el9.8/tensorboard_data_server-0.7.2-3-cp312-cp312-linux_x86_64.whl", upload-time = 2026-10-08T23:11:09Z, size = 4873725, hashes = { sha256 = "6207328c720bf1d99c00ff09b3fe3bf9657a50de3561e2dea13b5deaf746c520" } },
-]
-
-[[packages]]
 name = "tensorflow"
 version = "2.21.0+redhat"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"

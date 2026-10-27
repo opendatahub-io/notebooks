@@ -64,8 +64,9 @@ required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
     "sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
-# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
-exclude-dependencies = ["py-spy"]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916) and the
+# optional tensorboard-data-server Rust binary (RHAIENG-7770).
+exclude-dependencies = ["py-spy", "tensorboard-data-server"]
 
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
