@@ -1,30 +1,40 @@
 #!/bin/bash
-# Sourced by start-notebook.sh — do not use `set -u` here (nounset leaks into the
-# parent shell and breaks optional NOTEBOOK_* env vars). Match datascience: set -x only.
-__SETUP_KALE_SHELL_OPTS="$(set +o)"
-set -Eeuxo pipefail
+# Sourced by start-notebook.sh. Nounset and errexit stay off: nounset exits this
+# shell on an unset expansion, and errexit exits it when configure_kale_from_elyra.py
+# returns 1 after an intentional DEX skip (see setup-elyra.sh). xtrace is restored
+# so sourcing this file does not change the caller's trace setting.
+
+__kale_had_xtrace=0
+if [ -o xtrace ]; then
+  __kale_had_xtrace=1
+fi
+set -x
 
 # Runtime configuration for Kubeflow Kale JupyterLab extension
 # This script configures Kale to connect to KFP by reading Elyra runtime config
 # Note: The extension is disabled by default at build time (see Dockerfile)
 
-# Read Elyra config and copy the relevant information to Kale config
 # Prefer the default "Pipeline" runtime configuration created by the operator,
 # otherwise fall back to the first available runtime config.
-ELYRA_RUNTIME_CONFIG="/opt/app-root/runtimes/..data/Pipeline.json"
+# The glob runs in a subshell so enabling nullglob cannot change the caller.
+_KALE_RUNTIME_DIR="/opt/app-root/runtimes/..data"
+ELYRA_RUNTIME_CONFIG="${_KALE_RUNTIME_DIR}/Pipeline.json"
 if [ ! -f "$ELYRA_RUNTIME_CONFIG" ]; then
-  shopt -s nullglob
-  RUNTIME_CONFIGS=(/opt/app-root/runtimes/..data/*.json)
-  shopt -u nullglob
-  if [ ${#RUNTIME_CONFIGS[@]} -gt 0 ]; then
-    ELYRA_RUNTIME_CONFIG="${RUNTIME_CONFIGS[0]}"
-  fi
+  ELYRA_RUNTIME_CONFIG="$(
+    shopt -s nullglob
+    configs=("${_KALE_RUNTIME_DIR}"/*.json)
+    if [ "${#configs[@]}" -gt 0 ]; then
+      printf '%s' "${configs[0]}"
+    fi
+  )"
 fi
+unset _KALE_RUNTIME_DIR
 
 if [ -f "$ELYRA_RUNTIME_CONFIG" ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   export ELYRA_RUNTIME_CONFIG
-  python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py"
+  # Non-zero is expected for an intentional DEX skip; keep going so Jupyter still starts.
+  python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py" || true
 fi
 
 # Set environment variables for KFP authentication
@@ -46,5 +56,9 @@ if [ ! -f "${KALE_SETTINGS_DIR}/kale-settings.jupyterlab-settings" ]; then
     echo '{"outputPath": "_kale"}' > "${KALE_SETTINGS_DIR}/kale-settings.jupyterlab-settings"
 fi
 
-eval "$__SETUP_KALE_SHELL_OPTS"
-unset __SETUP_KALE_SHELL_OPTS
+if [ "$__kale_had_xtrace" -eq 1 ]; then
+  set -o xtrace
+else
+  set +o xtrace
+fi
+unset __kale_had_xtrace
