@@ -731,6 +731,15 @@ def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bo
                     "sast-unicode-check",
                     # Related: KONFLUX-12286, KONFLUX-12587
                 )
+            ]
+            + [
+                {
+                    "pipelineTaskName": "rpms-signature-scan",
+                    "computeResources": {
+                        "requests": {"cpu": "4", "memory": "8Gi"},
+                        "limits": {"cpu": "4", "memory": "8Gi"},
+                    },
+                }
             ],
             "taskRunTemplate": {},
             "workspaces": [{"name": "git-auth", "secret": {"secretName": "{{ git_auth_secret }}"}}],
