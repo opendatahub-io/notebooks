@@ -167,26 +167,22 @@ jobs:
           temp_branch="rpm-lockfile-${VARIANT}-${BRANCH//\//-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           git checkout -b "$temp_branch" "$BASE_SHA"
 
-          rpm_inputs=(
-            "prefetch-input/${VARIANT}/rpms.in.yaml"
-            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
-            "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+          mapfile -t rpm_inputs < <(
+            find . -type f -path "*/prefetch-input/${VARIANT}/rpms.in.yaml" | sort
           )
+          if [[ "${#rpm_inputs[@]}" -eq 0 ]]; then
+            echo "No ${VARIANT} RPM lockfile inputs found." >&2
+            exit 1
+          fi
           for rpm_input in "${rpm_inputs[@]}"; do
-            if [[ ! -f "$rpm_input" ]]; then
-              echo "Skipping missing input: $rpm_input"
-              continue
-            fi
             ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
           done
 
-          for lockfile in \
-            "prefetch-input/${VARIANT}/rpms.lock.yaml" \
-            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml" \
-            "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
-            if [[ -f "$lockfile" ]]; then
-              git add "$lockfile"
-            fi
+          mapfile -t lockfiles < <(
+            find . -type f -path "*/prefetch-input/${VARIANT}/rpms.lock.yaml" | sort
+          )
+          for lockfile in "${lockfiles[@]}"; do
+            git add "$lockfile"
           done
 
           if git diff --cached --quiet; then
@@ -278,9 +274,13 @@ jobs:
           if [[ -n "$existing_pr_url" ]]; then
             PR_URL="$existing_pr_url"
           else
-            VARIANT_UPPER="$(echo '${{ github.event.inputs.variant || 'both' }}' | tr '[:lower:]' '[:upper:]')"
+            case '${{ github.event.inputs.variant || 'both' }}' in
+              both) pr_title="GHA: (ODH+RHDS) Update RPM lock files" ;;
+              odh) pr_title="GHA: (ODH) Update RPM lock files" ;;
+              rhds) pr_title="GHA: (RHDS) Update RPM lock files" ;;
+            esac
             PR_URL="$(gh pr create \
-              --title "GHA: Update RPM lock files (${VARIANT_UPPER})" \
+              --title "$pr_title" \
               --head "$renewal_branch" \
               --body "$(cat <<EOF
           Automated regeneration of \`rpms.lock.yaml\` from \`rpms.in.yaml\`.
