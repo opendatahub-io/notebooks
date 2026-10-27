@@ -1,13 +1,13 @@
 ARG TARGETARCH
 
-FROM quay.io/centos/centos:stream9@sha256:33346f5fe280763eb78e85f968ad52bc2b2013369de85403f67e802db98ed243 AS buildscripts
+FROM quay.io/centos/centos:stream9@sha256:6f8045fc4f552544d8a401d61848bafc8d06ca7c11897c5b54a2c37fc419a20a AS buildscripts
 COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
 COPY base-images/utils/fix-permissions base-images/utils/rpm-file-permissions /mnt/usr/bin/
 
 ####################
 # base             #
 ####################
-FROM quay.io/centos/centos:stream9@sha256:33346f5fe280763eb78e85f968ad52bc2b2013369de85403f67e802db98ed243 AS base
+FROM quay.io/centos/centos:stream9@sha256:6f8045fc4f552544d8a401d61848bafc8d06ca7c11897c5b54a2c37fc419a20a AS base
 
 ARG PYTHON_VERSION=3.12
 ENV PYTHON=python${PYTHON_VERSION}
