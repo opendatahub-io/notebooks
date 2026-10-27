@@ -25,20 +25,20 @@ arches:
     name: automake
     evr: 1.16.2-8.el9
     sourcerpm: automake-1.16.2-8.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/b/brotli-1.0.9-10.el9_8.aarch64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/b/brotli-1.0.9-10.el9_8.1.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
-    size: 323450
-    checksum: sha256:6c20622fbd8bc4d62c8dd53492f60e2c8f4948b0db5bdfb4e954b1b28e101066
+    size: 323505
+    checksum: sha256:b6e9f14628e1b7c28b46d3401eed608a9b07a6bb3f26623fa9c2eed9d2a97cd6
     name: brotli
-    evr: 1.0.9-10.el9_8
-    sourcerpm: brotli-1.0.9-10.el9_8.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/b/brotli-devel-1.0.9-10.el9_8.aarch64.rpm
+    evr: 1.0.9-10.el9_8.1
+    sourcerpm: brotli-1.0.9-10.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/b/brotli-devel-1.0.9-10.el9_8.1.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
-    size: 38113
-    checksum: sha256:e98bd74677869cc4709dbea561ba53418bb470f9fd581771985fb842d7780cf1
+    size: 38203
+    checksum: sha256:696542df180d76b588ddf1cb067c00cf02fd999d9496affa0dd43fdac43a1b36
     name: brotli-devel
-    evr: 1.0.9-10.el9_8
-    sourcerpm: brotli-1.0.9-10.el9_8.src.rpm
+    evr: 1.0.9-10.el9_8.1
+    sourcerpm: brotli-1.0.9-10.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/b/bzip2-devel-1.0.8-11.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 224503
@@ -1803,13 +1803,13 @@ arches:
     name: libassuan
     evr: 2.5.5-3.el9
     sourcerpm: libassuan-2.5.5-3.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libbrotli-1.0.9-10.el9_8.aarch64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libbrotli-1.0.9-10.el9_8.1.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
-    size: 325419
-    checksum: sha256:04d157b138153dcd27c04d81ae985e8190ddc542d63620f3d1ae0a690a1041b7
+    size: 325599
+    checksum: sha256:f1b700ba7bfa1bb8d0b0f8af47c9a5afd8a44c74cec4ef17627b268c518c358b
     name: libbrotli
-    evr: 1.0.9-10.el9_8
-    sourcerpm: brotli-1.0.9-10.el9_8.src.rpm
+    evr: 1.0.9-10.el9_8.1
+    sourcerpm: brotli-1.0.9-10.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libcap-2.48-10.el9_8.1.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 78021
@@ -3779,10 +3779,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/repodata/f20e48e00b6311157aeebe08c3ee30c99738cbed1200f4fcbd68a91e3d5128f0-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/repodata/4cb02cd98ca4c8e44e6212a9c957b6e7a8876ba5a2ba1e9db618d1e0a06404c8-modules.yaml.gz
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 9210
-    checksum: sha256:f20e48e00b6311157aeebe08c3ee30c99738cbed1200f4fcbd68a91e3d5128f0
+    checksum: sha256:4cb02cd98ca4c8e44e6212a9c957b6e7a8876ba5a2ba1e9db618d1e0a06404c8
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/repodata/0b36406ee119b38f6915e849abe363a4a046862714b6897b3753295a9df5d366-modules.yaml.xz
     repoid: appstream
     size: 18736
@@ -7585,10 +7585,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/repodata/7f46b0b9b49a1841b14d9795cc92bedbf2ca44f1d64a521197aae171d804f632-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/repodata/cf108db96e34c75f41af1a613ba04bea755170a0b138567996f9ea9c63b2f2c7-modules.yaml.gz
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 8889
-    checksum: sha256:7f46b0b9b49a1841b14d9795cc92bedbf2ca44f1d64a521197aae171d804f632
+    checksum: sha256:cf108db96e34c75f41af1a613ba04bea755170a0b138567996f9ea9c63b2f2c7
   - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/repodata/a8ca6784bd077827f07e9bb04e40c1f8036febbf535bb261c45dd21d7e9f7730-modules.yaml.xz
     repoid: appstream
     size: 18744
@@ -11394,20 +11394,20 @@ arches:
     name: automake
     evr: 1.16.2-8.el9
     sourcerpm: automake-1.16.2-8.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/b/brotli-1.0.9-10.el9_8.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/b/brotli-1.0.9-10.el9_8.1.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
-    size: 324901
-    checksum: sha256:0afff37ff5f7bbb3de786d1d650aabbb167d325d74df3db3f9c98dd03d9c8a4d
+    size: 325116
+    checksum: sha256:2daedce31e8cbaa385b2f923fa23202ef0125096d1024218e76c08eccae5af9a
     name: brotli
-    evr: 1.0.9-10.el9_8
-    sourcerpm: brotli-1.0.9-10.el9_8.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/b/brotli-devel-1.0.9-10.el9_8.x86_64.rpm
+    evr: 1.0.9-10.el9_8.1
+    sourcerpm: brotli-1.0.9-10.el9_8.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/b/brotli-devel-1.0.9-10.el9_8.1.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
-    size: 38151
-    checksum: sha256:98d349d56d9b356263c43c71f3de2fa73d398aca06ea88c25967b389ae34801b
+    size: 38245
+    checksum: sha256:443879f0b371af3f458c29760b21002bad06bc4767a5183e5d4c395daf808571
     name: brotli-devel
-    evr: 1.0.9-10.el9_8
-    sourcerpm: brotli-1.0.9-10.el9_8.src.rpm
+    evr: 1.0.9-10.el9_8.1
+    sourcerpm: brotli-1.0.9-10.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/b/bzip2-devel-1.0.8-11.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 224535
@@ -13193,13 +13193,13 @@ arches:
     name: libassuan
     evr: 2.5.5-3.el9
     sourcerpm: libassuan-2.5.5-3.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libbrotli-1.0.9-10.el9_8.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libbrotli-1.0.9-10.el9_8.1.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
-    size: 326501
-    checksum: sha256:ecf2cda794cb9f68a7f67742ce0aeef4c3480795cce0e9bc8f49634072fd2e07
+    size: 326567
+    checksum: sha256:4ac44eaf3518e46780b8f449fa68f762e4fe8b88d0de7845d7fe8399d829d966
     name: libbrotli
-    evr: 1.0.9-10.el9_8
-    sourcerpm: brotli-1.0.9-10.el9_8.src.rpm
+    evr: 1.0.9-10.el9_8.1
+    sourcerpm: brotli-1.0.9-10.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libcap-2.48-10.el9_8.1.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 78928
@@ -15190,10 +15190,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/repodata/65fe2158d43b6a03244c79bae0901bdc80a0b0d7ac38b9ffd3acd2b6db0c2266-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/repodata/3ba5b238e7e33858f6ad0490432b7aeb6ae8577bf57ada0b74d8fc300e234688-modules.yaml.gz
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 8395
-    checksum: sha256:65fe2158d43b6a03244c79bae0901bdc80a0b0d7ac38b9ffd3acd2b6db0c2266
+    checksum: sha256:3ba5b238e7e33858f6ad0490432b7aeb6ae8577bf57ada0b74d8fc300e234688
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/repodata/ba9ef22da7b602214d36bd3eaf969c5c7f0f1319e5e4870ca89a18ca256df799-modules.yaml.xz
     repoid: appstream
     size: 18684
