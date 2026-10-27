@@ -334,14 +334,14 @@ def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bo
                             {"name": "LABELS", "value": ["$(params.image-labels[*])"]},
                             {"name": "COMMIT_SHA", "value": "$(tasks.clone-repository.results.commit)"},
                             {"name": "BUILD_ARGS", "value": ["$(params.build-args[*])"]},
-                            {"name": "BUILD_ARGS_FILE", "value": "$(params.build-args-file)"},
+                            {"name": "BUILD_ARGS_FILES", "value": ["$(params.build-args-file)"]},
                             {
                                 "name": "SOURCE_ARTIFACT",
                                 "value": "$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)",
                             },
                             {
-                                "name": "CACHI2_ARTIFACT",
-                                "value": "$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)",
+                                "name": "PREFETCH_ARTIFACT",
+                                "value": "$(tasks.prefetch-dependencies.results.PREFETCH_ARTIFACT)",
                             },
                             {"name": "IMAGE_APPEND_PLATFORM", "value": "true"},
                         ],
@@ -389,8 +389,8 @@ def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bo
                                 "value": "$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)",
                             },
                             {
-                                "name": "CACHI2_ARTIFACT",
-                                "value": "$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)",
+                                "name": "PREFETCH_ARTIFACT",
+                                "value": "$(tasks.prefetch-dependencies.results.PREFETCH_ARTIFACT)",
                             },
                         ],
                         "runAfter": ["build-image-index"],
@@ -485,10 +485,6 @@ def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bo
                                 "name": "SOURCE_ARTIFACT",
                                 "value": "$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)",
                             },
-                            {
-                                "name": "CACHI2_ARTIFACT",
-                                "value": "$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)",
-                            },
                         ],
                         "runAfter": ["build-image-index"],
                         "taskRef": bundle_task_ref("sast-snyk-check-oci-ta"),
@@ -571,7 +567,7 @@ def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bo
                             },
                             {
                                 "name": "CACHI2_ARTIFACT",
-                                "value": "$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)",
+                                "value": "$(tasks.prefetch-dependencies.results.PREFETCH_ARTIFACT)",
                             },
                         ],
                         "runAfter": ["coverity-availability-check"],
@@ -616,10 +612,6 @@ def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bo
                                 "name": "SOURCE_ARTIFACT",
                                 "value": "$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)",
                             },
-                            {
-                                "name": "CACHI2_ARTIFACT",
-                                "value": "$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)",
-                            },
                         ],
                         "runAfter": ["build-image-index"],
                         "taskRef": bundle_task_ref("sast-shell-check-oci-ta"),
@@ -641,10 +633,6 @@ def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bo
                             {
                                 "name": "SOURCE_ARTIFACT",
                                 "value": "$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)",
-                            },
-                            {
-                                "name": "CACHI2_ARTIFACT",
-                                "value": "$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)",
                             },
                         ],
                         "runAfter": ["build-image-index"],
