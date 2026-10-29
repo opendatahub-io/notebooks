@@ -12,7 +12,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: 'false'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "push" && target_branch == "main" &&
+      event == "push" && target_branch == "stable" &&
       !("manifests/odh/base/params-latest.env".pathChanged()) &&
       (
         ".tekton/odh-workbench-codeserver-minimal-cpu-py312-ci-push.yaml".pathChanged() ||
@@ -267,7 +267,11 @@ spec:
         memory: 8Gi
   - pipelineTaskName: rpms-signature-scan
     computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
       limits:
+        cpu: '4'
         memory: 8Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
