@@ -12,7 +12,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: 'false'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "push" && target_branch == "main" &&
+      event == "push" && target_branch == "stable" &&
       !("manifests/odh/base/params-latest.env".pathChanged()) &&
       (
         ".tekton/odh-workbench-codeserver-minimal-cpu-py312-ci-push.yaml".pathChanged() ||
