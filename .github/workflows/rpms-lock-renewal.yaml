@@ -25,10 +25,6 @@ on:  # yamllint disable-line rule:truthy
         type: choice
         options:
           - 'main'
-          - 'rhoai-2.25'
-          - 'rhoai-3.4'
-          - 'rhoai-3.5'
-          - 'rhoai-3.6'
       use_cache:
         description: 'Use GHCR layer cache (Uncheck to rebuild from scratch)'
         required: false
