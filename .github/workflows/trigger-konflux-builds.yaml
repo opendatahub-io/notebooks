@@ -1,0 +1,142 @@
+---
+name: Trigger Konflux builds
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch name or commit SHA to build (default: stable)"
+        required: false
+        default: "stable"
+        type: string
+      dry_run:
+        description: "List triggers without posting commit comments"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: trigger-konflux-builds-${{ inputs.ref || 'stable' }}
+  cancel-in-progress: false
+
+jobs:
+  trigger-konflux-builds:
+    name: Trigger Konflux builds
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout target ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref || 'stable' }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve branch and commit
+        id: target
+        run: |
+          set -euo pipefail
+
+          branch="$(git symbolic-ref -q --short HEAD || true)"
+          commit="$(git rev-parse HEAD)"
+
+          if [[ -n "${branch}" ]]; then
+            branch="${branch#origin/}"
+          else
+            branches="$(
+              git for-each-ref refs/remotes/origin \
+                --format='%(refname:short) %(objectname)' |
+                awk -v commit="${commit}" '$2 == commit {print $1}'
+            )"
+
+            if [[ -z "${branches}" ]]; then
+              echo "::error::Commit ${commit} is not the HEAD of any remote branch." \
+                "PaC commit comments only work on a branch HEAD."
+              exit 1
+            fi
+
+            if grep -qx 'origin/stable' <<<"${branches}"; then
+              branch="origin/stable"
+            else
+              branch="$(head -n 1 <<<"${branches}")"
+            fi
+          fi
+
+          echo "branch=${branch#origin/}" >> "${GITHUB_OUTPUT}"
+          echo "commit=${commit}" >> "${GITHUB_OUTPUT}"
+          echo "Branch: ${branch#origin/}"
+          echo "Commit: ${commit}"
+
+      - name: Discover push pipelines
+        id: pipelines
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' pipelines < <(
+            find .tekton -maxdepth 1 -type f -name '*-push.yaml' -print0 |
+              sort -z |
+              while IFS= read -r -d '' file; do
+                grep -Fq "target_branch == \"${BRANCH}\"" "${file}" || continue
+                awk '/^metadata:/{in_metadata=1; next}
+                     in_metadata && /^  name:/{
+                       sub(/^  name:[[:space:]]*/, "")
+                       print
+                       printf "\0"
+                       exit
+                     }' "${file}"
+              done
+          )
+
+          if [[ ${#pipelines[@]} -eq 0 ]]; then
+            echo "::error::No push pipelines found in .tekton/."
+            exit 1
+          fi
+
+          printf '%s\n' "${pipelines[@]}" > "${RUNNER_TEMP}/pipelines.txt"
+          echo "count=${#pipelines[@]}" >> "${GITHUB_OUTPUT}"
+          echo "Found ${#pipelines[@]} push pipelines:"
+          printf '  %s\n' "${pipelines[@]}"
+
+      - name: Post Konflux triggers
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
+          COMMIT: ${{ steps.target.outputs.commit }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## Trigger Konflux builds"
+            echo
+            echo "- Branch: \`${BRANCH}\`"
+            echo "- Commit: \`${COMMIT}\`"
+            echo
+            echo "| Pipeline | Comment |"
+            echo "| --- | --- |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          while IFS= read -r pipeline; do
+            [[ -n "${pipeline}" ]] || continue
+            body="/test ${pipeline} branch:${BRANCH}"
+            echo "Triggering ${pipeline} on ${BRANCH}@${COMMIT}"
+
+            if [[ "${DRY_RUN}" == "true" ]]; then
+              echo "Dry run: ${body}"
+              echo "| \`${pipeline}\` | Dry run |" >> "${GITHUB_STEP_SUMMARY}"
+            else
+              comment_url="$(
+                gh api "repos/${GITHUB_REPOSITORY}/commits/${COMMIT}/comments" \
+                  --method POST \
+                  -f body="${body}" \
+                  --jq .html_url
+              )"
+              echo "Posted: ${comment_url}"
+              echo "| \`${pipeline}\` | [View comment](${comment_url}) |" \
+                >> "${GITHUB_STEP_SUMMARY}"
+            fi
+          done < "${RUNNER_TEMP}/pipelines.txt"
