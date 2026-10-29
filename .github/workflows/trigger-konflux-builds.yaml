@@ -27,7 +27,7 @@ jobs:
       contents: write
       checks: read
     env:
-      GH_TOKEN: ${{ secrets.KONFLUX_TRIGGER_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
     steps:
       - name: Checkout target ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -111,7 +111,7 @@ jobs:
           set -euo pipefail
 
           if [[ "${DRY_RUN}" != "true" && -z "${GH_TOKEN}" ]]; then
-            echo "::error::Set the KONFLUX_TRIGGER_TOKEN secret to a user or GitHub App token." \
+            echo "::error::Set the GH_ACCESS_TOKEN secret to a user or GitHub App token." \
               "PaC ignores comments from github-actions[bot]."
             exit 1
           fi
