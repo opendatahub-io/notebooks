@@ -27,7 +27,7 @@ jobs:
       contents: write
       checks: read
     env:
-      GITHUB_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.KONFLUX_TRIGGER_TOKEN }}
     steps:
       - name: Checkout target ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -86,8 +86,7 @@ jobs:
                 awk '/^metadata:/{in_metadata=1; next}
                      in_metadata && /^  name:/{
                        sub(/^  name:[[:space:]]*/, "")
-                       print
-                       printf "\0"
+                       printf "%s%c", $0, 0
                        exit
                      }' "${file}"
               done
@@ -110,6 +109,12 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
+
+          if [[ "${DRY_RUN}" != "true" && -z "${GH_TOKEN}" ]]; then
+            echo "::error::Set the KONFLUX_TRIGGER_TOKEN secret to a user or GitHub App token." \
+              "PaC ignores comments from github-actions[bot]."
+            exit 1
+          fi
 
           mapfile -t pipelines < "${RUNNER_TEMP}/pipelines.txt"
           comment_urls_file="${RUNNER_TEMP}/comment-urls.tsv"
