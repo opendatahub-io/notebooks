@@ -25,6 +25,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      checks: read
     env:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
@@ -110,15 +111,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          {
-            echo "## Trigger Konflux builds"
-            echo
-            echo "- Branch: \`${BRANCH}\`"
-            echo "- Commit: \`${COMMIT}\`"
-            echo
-            echo "| Pipeline | Comment |"
-            echo "| --- | --- |"
-          } >> "${GITHUB_STEP_SUMMARY}"
+          mapfile -t pipelines < "${RUNNER_TEMP}/pipelines.txt"
+          declare -A comment_urls
+          declare -A konflux_urls
 
           while IFS= read -r pipeline; do
             [[ -n "${pipeline}" ]] || continue
@@ -136,7 +131,80 @@ jobs:
                   --jq .html_url
               )"
               echo "Posted: ${comment_url}"
-              echo "| \`${pipeline}\` | [View comment](${comment_url}) |" \
-                >> "${GITHUB_STEP_SUMMARY}"
+              comment_urls["${pipeline}"]="${comment_url}"
             fi
           done < "${RUNNER_TEMP}/pipelines.txt"
+
+          fetch_konflux_urls() {
+            gh api "repos/${GITHUB_REPOSITORY}/commits/${COMMIT}/check-runs?per_page=100" \
+              --paginate |
+              jq -sr '
+                map(.check_runs[])
+                | map(
+                    select(.name | startswith("Red Hat Konflux / "))
+                    | select(.details_url != null and .details_url != "")
+                    | {
+                        pipeline: (.name | sub("^Red Hat Konflux / "; "")),
+                        url: .details_url,
+                        started_at: .started_at
+                      }
+                  )
+                | sort_by(.started_at)
+                | group_by(.pipeline)
+                | map(last)
+                | .[]
+                | [.pipeline, .url]
+                | @tsv
+              '
+          }
+
+          if [[ "${DRY_RUN}" != "true" ]]; then
+            for _ in {1..12}; do
+              konflux_urls=()
+              while IFS=$'\t' read -r pipeline url; do
+                [[ -n "${pipeline}" ]] || continue
+                konflux_urls["${pipeline}"]="${url}"
+              done < <(fetch_konflux_urls)
+
+              missing=0
+              for pipeline in "${pipelines[@]}"; do
+                if [[ -z "${konflux_urls["${pipeline}"]:-}" ]]; then
+                  missing=1
+                  echo "Waiting for Konflux check link: ${pipeline}"
+                fi
+              done
+
+              if [[ "${missing}" -eq 0 ]]; then
+                break
+              fi
+              sleep 5
+            done
+          fi
+
+          {
+            echo "## Trigger Konflux builds"
+            echo
+            echo "- Branch: \`${BRANCH}\`"
+            echo "- Commit: \`${COMMIT}\`"
+            echo
+            echo "| Pipeline | Comment | Konflux |"
+            echo "| --- | --- | --- |"
+
+            for pipeline in "${pipelines[@]}"; do
+              if [[ "${DRY_RUN}" == "true" ]]; then
+                echo "| \`${pipeline}\` | Dry run | N/A |"
+              else
+                comment_url="${comment_urls["${pipeline}"]:-}"
+                konflux_url="${konflux_urls["${pipeline}"]:-}"
+                comment="Not posted"
+                konflux="Pending"
+                if [[ -n "${comment_url}" ]]; then
+                  comment="[View comment](${comment_url})"
+                fi
+                if [[ -n "${konflux_url}" ]]; then
+                  konflux="[View build](${konflux_url})"
+                fi
+                echo "| \`${pipeline}\` | ${comment} | ${konflux} |"
+              fi
+            done
+          } >> "${GITHUB_STEP_SUMMARY}"
