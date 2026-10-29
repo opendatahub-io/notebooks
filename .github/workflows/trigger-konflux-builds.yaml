@@ -112,8 +112,17 @@ jobs:
           set -euo pipefail
 
           mapfile -t pipelines < "${RUNNER_TEMP}/pipelines.txt"
-          declare -A comment_urls
-          declare -A konflux_urls
+          comment_urls_file="${RUNNER_TEMP}/comment-urls.tsv"
+          konflux_urls_file="${RUNNER_TEMP}/konflux-urls.tsv"
+          : > "${comment_urls_file}"
+
+          lookup_url() {
+            local file="${1}"
+            local pipeline="${2}"
+            [[ -f "${file}" ]] || return 0
+            awk -F '\t' -v key="${pipeline}" \
+              '$1 == key { print $2; exit }' "${file}"
+          }
 
           while IFS= read -r pipeline; do
             [[ -n "${pipeline}" ]] || continue
@@ -131,7 +140,8 @@ jobs:
                   --jq .html_url
               )"
               echo "Posted: ${comment_url}"
-              comment_urls["${pipeline}"]="${comment_url}"
+              printf '%s\t%s\n' "${pipeline}" "${comment_url}" \
+                >> "${comment_urls_file}"
             fi
           done < "${RUNNER_TEMP}/pipelines.txt"
 
@@ -160,15 +170,14 @@ jobs:
 
           if [[ "${DRY_RUN}" != "true" ]]; then
             for _ in {1..12}; do
-              konflux_urls=()
-              while IFS=$'\t' read -r pipeline url; do
-                [[ -n "${pipeline}" ]] || continue
-                konflux_urls["${pipeline}"]="${url}"
-              done < <(fetch_konflux_urls)
+              if ! fetch_konflux_urls > "${konflux_urls_file}"; then
+                echo "::warning::Unable to fetch Konflux check links."
+                : > "${konflux_urls_file}"
+              fi
 
               missing=0
               for pipeline in "${pipelines[@]}"; do
-                if [[ -z "${konflux_urls["${pipeline}"]:-}" ]]; then
+                if [[ -z "$(lookup_url "${konflux_urls_file}" "${pipeline}")" ]]; then
                   missing=1
                   echo "Waiting for Konflux check link: ${pipeline}"
                 fi
@@ -194,8 +203,8 @@ jobs:
               if [[ "${DRY_RUN}" == "true" ]]; then
                 echo "| \`${pipeline}\` | Dry run | N/A |"
               else
-                comment_url="${comment_urls["${pipeline}"]:-}"
-                konflux_url="${konflux_urls["${pipeline}"]:-}"
+                comment_url="$(lookup_url "${comment_urls_file}" "${pipeline}")"
+                konflux_url="$(lookup_url "${konflux_urls_file}" "${pipeline}")"
                 comment="Not posted"
                 konflux="Pending"
                 if [[ -n "${comment_url}" ]]; then
