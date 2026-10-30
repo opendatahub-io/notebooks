@@ -83,6 +83,11 @@ for that component's Konflux check to succeed and for the published Quay manifes
 become available. The architecture lanes therefore do not consume runners while the
 Konflux build is queued.
 
+The workflows also listen for `check_run` completions. A successful Konflux rebuild
+therefore starts a fresh test run without requiring another PR push. GitHub only
+delivers `check_run` events to workflows on the default branch, so this automatic
+rebuild path becomes active once the POC workflows are merged.
+
 Once the image is available, `prepare` resolves its immutable digest and fans out one
 GitHub Actions lane per architecture. Each lane starts all eligible test types in
 parallel:
@@ -104,8 +109,10 @@ ppc64le or s390x Playwright images.
 Retrying a failed architecture lane reruns all eligible test types for that
 architecture, but it does **not** rebuild the Konflux image; the lane reuses the digest
 resolved by `prepare`. A Konflux build can still be retried independently with its
-component-specific `/build-*` PR comment; after a successful rebuild, rerun the failed
-`prepare` job or the failed architecture lane.
+component-specific `/build-*` PR comment. Once the workflows are on the default branch,
+a successful rebuild starts a fresh workflow and resolves the new digest automatically.
+Before that merge, use **Re-run all jobs** after a successful rebuild so `prepare`
+resolves the new digest before the architecture lanes rerun.
 
 Testcontainers, OpenShift, Browser, and E2E tests default to all four published
 architectures: `linux/amd64`, `linux/arm64`, `linux/ppc64le`, and `linux/s390x`.

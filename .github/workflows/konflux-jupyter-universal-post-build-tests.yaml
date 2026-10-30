@@ -13,6 +13,8 @@ on:  # yamllint disable-line rule:truthy
       - jupyter/minimal/ubi9-python-3.12/start-notebook.sh
       - prefetch-input/mongocli/**
       - prefetch-input/odh/**
+  check_run:
+    types: [completed]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -51,7 +53,7 @@ on:  # yamllint disable-line rule:truthy
         type: string
 
 concurrency:
-  group: konflux-jupyter-universal-post-build-tests-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  group: konflux-jupyter-universal-post-build-tests-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.check_run.check_suite.head_sha || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -60,7 +62,11 @@ jobs:
     if: >-
       github.repository == 'opendatahub-io/notebooks' && (
         github.event_name == 'pull_request' ||
-        github.event_name == 'workflow_dispatch'
+        github.event_name == 'workflow_dispatch' || (
+          github.event_name == 'check_run' &&
+          github.event.check_run.name == 'Red Hat Konflux / odh-workbench-jupyter-universal-cpu-py312-c9s-on-pull-request' &&
+          github.event.check_run.conclusion == 'success'
+        )
       )
     permissions:
       contents: read
@@ -81,7 +87,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           CHECK_NAME: Red Hat Konflux / odh-workbench-jupyter-universal-cpu-py312-c9s-on-pull-request
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.event.check_run.check_suite.head_sha || github.event.inputs.commit_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
         run: |
           set -euo pipefail

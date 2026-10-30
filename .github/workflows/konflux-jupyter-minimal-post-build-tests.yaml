@@ -11,6 +11,8 @@ on:  # yamllint disable-line rule:truthy
       - jupyter/utils/**
       - jupyter/minimal/ubi9-python-3.12/**
       - jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf
+  check_run:
+    types: [completed]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -49,7 +51,7 @@ on:  # yamllint disable-line rule:truthy
         type: string
 
 concurrency:
-  group: konflux-jupyter-minimal-post-build-tests-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  group: konflux-jupyter-minimal-post-build-tests-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.check_run.check_suite.head_sha || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -58,7 +60,11 @@ jobs:
     if: >-
       github.repository == 'opendatahub-io/notebooks' && (
         github.event_name == 'pull_request' ||
-        github.event_name == 'workflow_dispatch'
+        github.event_name == 'workflow_dispatch' || (
+          github.event_name == 'check_run' &&
+          github.event.check_run.name == 'Red Hat Konflux / odh-workbench-jupyter-minimal-cpu-py312-ubi9-on-pull-request' &&
+          github.event.check_run.conclusion == 'success'
+        )
       )
     permissions:
       contents: read
@@ -79,10 +85,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           CHECK_NAME: Red Hat Konflux / odh-workbench-jupyter-minimal-cpu-py312-ubi9-on-pull-request
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.event.check_run.check_suite.head_sha || github.event.inputs.commit_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-          POC_IMAGE: ${{ (github.head_ref || github.ref_name) == 'poc/konflux-jupyter-minimal' && 'quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9@sha256:c92e84d44809578692a2cc07378d2133d9641276601a8b6110d0fc0df07c04bf' || '' }}
-          POC_IMAGE_TAG: on-pr-86f6fcb4fef6c9128e1415de015058648e9d4e22
         run: |
           set -euo pipefail
 
@@ -102,19 +106,6 @@ jobs:
           if [[ "${head_sha}" != "${COMMIT_SHA}" ]]; then
             echo "Build was for ${COMMIT_SHA}; PR head is ${head_sha}. Skipping stale tests."
             exit 1
-          fi
-
-          if [[ -n "${POC_IMAGE}" ]]; then
-            image="${POC_IMAGE}"
-            image_tag="${POC_IMAGE_TAG}"
-            {
-              echo "pr_number=${PR_NUMBER}"
-              echo "commit_sha=${COMMIT_SHA}"
-              echo "image=${image}"
-              echo "image_tag=${image_tag}"
-            } >> "${GITHUB_OUTPUT}"
-            echo "Testing POC image ${image}"
-            exit 0
           fi
 
           check_url="repos/${REPO}/commits/${COMMIT_SHA}/check-runs"
