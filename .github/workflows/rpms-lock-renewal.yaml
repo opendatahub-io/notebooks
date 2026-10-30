@@ -19,12 +19,13 @@ on:  # yamllint disable-line rule:truthy
           - 'odh'
           - 'rhds'
       branch:
-        description: 'Branch to update (release branches are downstream-only)'
+        description: 'Branch to update, or all supported branches'
         required: false
         default: 'main'
         type: choice
         options:
           - 'main'
+          - 'all'
           - 'rhoai-2.25'
           - 'rhoai-3.4'
           - 'rhoai-3.5'
@@ -62,11 +63,11 @@ jobs:
           case "${REPOSITORY}" in
             opendatahub-io/notebooks)
               is_downstream=false
-              allowed_branches=(main)
+              allowed_branches=(main all)
               ;;
             red-hat-data-services/notebooks)
               is_downstream=true
-              allowed_branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
+              allowed_branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6 all)
               ;;
             *)
               echo "This workflow only supports opendatahub-io/notebooks and red-hat-data-services/notebooks." >&2
@@ -89,7 +90,15 @@ jobs:
               variant='both'
             fi
           else
-            branches=("$branch")
+            if [[ "$branch" == "all" ]]; then
+              if [[ "$is_downstream" == "true" ]]; then
+                branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
+              else
+                branches=(main)
+              fi
+            else
+              branches=("$branch")
+            fi
             if [[ "$is_downstream" == "true" ]]; then
               variant='rhds'
             else
