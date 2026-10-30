@@ -302,19 +302,37 @@ jobs:
           remote_url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           branch_slug="${BRANCH//\//-}"
           canonical_renewal_branch="rpm-lockfile-renewal-${VARIANT}-${branch_slug}"
+          legacy_renewal_branch="rpms-lockfile-renewal-${VARIANT}-${branch_slug}"
+          legacy_dispatcher_branch=''
+          if [[ "$VARIANT" == 'rhds' && "$GITHUB_REPOSITORY" == 'red-hat-data-services/notebooks' ]]; then
+            legacy_dispatcher_branch="rhds-rpm-lockfile-renewal-${branch_slug//./-}"
+          fi
 
           gh label create "automated-rpms-lockfile-update" \
             --description "Auto-created RPM lockfile update PR" \
             --color "0E8A16" \
             2>/dev/null || true
 
-          open_prs="$(gh pr list \
+          candidate_prs="$(gh pr list \
             --repo "$GITHUB_REPOSITORY" \
             --base "$BRANCH" \
             --label "automated-rpms-lockfile-update" \
             --state open \
             --limit 100 \
-            --json url,headRefName,headRepositoryOwner,createdAt)"
+            --json url,headRefName,headRepository,headRepositoryOwner,createdAt)"
+          open_prs="$(jq \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg canonical "$canonical_renewal_branch" \
+            --arg legacy "$legacy_renewal_branch" \
+            --arg legacy_dispatcher "$legacy_dispatcher_branch" \
+            '[.[]
+              | select(.headRepository.nameWithOwner == $repository)
+              | select(
+                  .headRefName == $canonical or
+                  .headRefName == $legacy or
+                  ($legacy_dispatcher != "" and .headRefName == $legacy_dispatcher)
+                )
+            ]' <<<"$candidate_prs")"
           open_pr_count="$(jq 'length' <<<"$open_prs")"
           if [[ "$open_pr_count" -gt 1 ]]; then
             echo "::warning::Found ${open_pr_count} open RPM renewal PRs for ${BRANCH}; updating the oldest one."
@@ -323,8 +341,9 @@ jobs:
           existing_pr="$(jq 'sort_by(.createdAt) | .[0] // empty' <<<"$open_prs")"
           if [[ -n "$existing_pr" ]]; then
             head_owner="$(jq -r '.headRepositoryOwner.login // empty' <<<"$existing_pr")"
-            if [[ "$head_owner" != "$GITHUB_REPOSITORY_OWNER" ]]; then
-              echo "Open RPM renewal PR head is not owned by ${GITHUB_REPOSITORY_OWNER}." >&2
+            head_repository="$(jq -r '.headRepository.nameWithOwner // empty' <<<"$existing_pr")"
+            if [[ "$head_owner" != "$GITHUB_REPOSITORY_OWNER" || "$head_repository" != "$GITHUB_REPOSITORY" ]]; then
+              echo "Open RPM renewal PR head is not in ${GITHUB_REPOSITORY}." >&2
               exit 1
             fi
             renewal_branch="$(jq -r '.headRefName' <<<"$existing_pr")"
@@ -460,19 +479,28 @@ jobs:
           remote_url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           branch_slug="${BRANCH//\//-}"
           canonical_renewal_branch="rpm-lockfile-renewal-both-${branch_slug}"
+          legacy_renewal_branch="rpms-lockfile-renewal-both-${branch_slug}"
 
           gh label create "automated-rpms-lockfile-update" \
             --description "Auto-created RPM lockfile update PR" \
             --color "0E8A16" \
             2>/dev/null || true
 
-          open_prs="$(gh pr list \
+          candidate_prs="$(gh pr list \
             --repo "$GITHUB_REPOSITORY" \
             --base "$BRANCH" \
             --label "automated-rpms-lockfile-update" \
             --state open \
             --limit 100 \
-            --json url,headRefName,headRepositoryOwner,createdAt)"
+            --json url,headRefName,headRepository,headRepositoryOwner,createdAt)"
+          open_prs="$(jq \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg canonical "$canonical_renewal_branch" \
+            --arg legacy "$legacy_renewal_branch" \
+            '[.[]
+              | select(.headRepository.nameWithOwner == $repository)
+              | select(.headRefName == $canonical or .headRefName == $legacy)
+            ]' <<<"$candidate_prs")"
           open_pr_count="$(jq 'length' <<<"$open_prs")"
           if [[ "$open_pr_count" -gt 1 ]]; then
             echo "::warning::Found ${open_pr_count} open RPM renewal PRs for ${BRANCH}; updating the oldest one."
@@ -481,8 +509,9 @@ jobs:
           existing_pr="$(jq 'sort_by(.createdAt) | .[0] // empty' <<<"$open_prs")"
           if [[ -n "$existing_pr" ]]; then
             head_owner="$(jq -r '.headRepositoryOwner.login // empty' <<<"$existing_pr")"
-            if [[ "$head_owner" != "$GITHUB_REPOSITORY_OWNER" ]]; then
-              echo "Open RPM renewal PR head is not owned by ${GITHUB_REPOSITORY_OWNER}." >&2
+            head_repository="$(jq -r '.headRepository.nameWithOwner // empty' <<<"$existing_pr")"
+            if [[ "$head_owner" != "$GITHUB_REPOSITORY_OWNER" || "$head_repository" != "$GITHUB_REPOSITORY" ]]; then
+              echo "Open RPM renewal PR head is not in ${GITHUB_REPOSITORY}." >&2
               exit 1
             fi
             renewal_branch="$(jq -r '.headRefName' <<<"$existing_pr")"
