@@ -114,6 +114,9 @@ jobs:
           for attempt in $(seq 1 360); do
             check_state="$(
               gh api "${check_url}" \
+                --method GET \
+                -f check_name="${CHECK_NAME}" \
+                -f per_page=100 \
                 --jq ".check_runs[] | select(.name == \"${CHECK_NAME}\") |
                       ((.status // \"\") + \"/\" + (.conclusion // \"\"))" |
                 head -n 1
