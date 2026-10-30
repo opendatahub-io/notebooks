@@ -40,6 +40,11 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   renew-lock-files:
+    # RHDS main is synchronized from ODH main, where this workflow renews both variants.
+    # Keep manual renewal available for explicitly selected downstream release branches.
+    if: >-
+      github.repository != 'red-hat-data-services/notebooks' ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main') != 'main')
     runs-on: ubuntu-26.04
     concurrency:
       group: renew-lock-files-${{ github.ref }}
