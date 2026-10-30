@@ -11,7 +11,7 @@ name: Test Infrastructure Self-Test
       - '.github/workflows/test-containers.yaml'
       - 'ci/find_images_for_test_matrix.py'
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths: *test-containers-paths
 
 concurrency:
