@@ -49,7 +49,7 @@ on:  # yamllint disable-line rule:truthy
         type: string
 
 concurrency:
-  group: konflux-codeserver-datascience-post-build-tests-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.check_run.check_suite.head_sha || github.run_id }}
+  group: konflux-codeserver-datascience-post-build-tests-${{ github.event.pull_request.head.sha || github.event.check_run.check_suite.head_sha || github.event.inputs.commit_sha || github.run_id }}
   cancel-in-progress: true
 
 jobs:
