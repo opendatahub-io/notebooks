@@ -25,6 +25,10 @@ on:  # yamllint disable-line rule:truthy
         type: choice
         options:
           - 'main'
+          - 'rhoai-2.25'
+          - 'rhoai-3.4'
+          - 'rhoai-3.5'
+          - 'rhoai-3.6'
       use_cache:
         description: 'Use GHCR layer cache (Uncheck to rebuild from scratch)'
         required: false
@@ -62,7 +66,7 @@ jobs:
               ;;
             red-hat-data-services/notebooks)
               is_downstream=true
-              allowed_branches=(main rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
+              allowed_branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
               ;;
             *)
               echo "This workflow only supports opendatahub-io/notebooks and red-hat-data-services/notebooks." >&2
@@ -78,7 +82,7 @@ jobs:
 
           if [[ "$EVENT_NAME" == "schedule" ]]; then
             if [[ "$is_downstream" == "true" ]]; then
-              branches=(main rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
+              branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
               variant='rhds'
             else
               branches=(main)
@@ -288,7 +292,7 @@ jobs:
           temp_branch="rpm-lockfile-${VARIANT}-${BRANCH//\//-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           git push "$remote_url" "HEAD:refs/heads/${temp_branch}"
 
-      - name: Push single-variant renewal branch
+      - name: Update single-variant renewal branch and pull request
         if: env.changed != '0' && env.VARIANT_COUNT == '1'
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
@@ -296,7 +300,58 @@ jobs:
           set -euo pipefail
           remote_url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           branch_slug="${BRANCH//\//-}"
-          renewal_branch="rpm-lockfile-renewal-${VARIANT}-${branch_slug}"
+          canonical_renewal_branch="rpm-lockfile-renewal-${VARIANT}-${branch_slug}"
+          legacy_renewal_branch="rpms-lockfile-renewal-${VARIANT}-${branch_slug}"
+          legacy_dispatcher_branch=''
+          if [[ "$VARIANT" == 'rhds' && "$GITHUB_REPOSITORY" == 'red-hat-data-services/notebooks' ]]; then
+            legacy_dispatcher_branch="rhds-rpm-lockfile-renewal-${branch_slug//./-}"
+          fi
+
+          gh label create "automated-rpms-lockfile-update" \
+            --description "Auto-created RPM lockfile update PR" \
+            --color "0E8A16" \
+            2>/dev/null || true
+
+          candidate_prs="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --base "$BRANCH" \
+            --label "automated-rpms-lockfile-update" \
+            --state open \
+            --limit 100 \
+            --json url,headRefName,headRepository,headRepositoryOwner,createdAt)"
+          open_prs="$(jq \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg canonical "$canonical_renewal_branch" \
+            --arg legacy "$legacy_renewal_branch" \
+            --arg legacy_dispatcher "$legacy_dispatcher_branch" \
+            '[.[]
+              | select(.headRepository.nameWithOwner == $repository)
+              | select(
+                  .headRefName == $canonical or
+                  .headRefName == $legacy or
+                  ($legacy_dispatcher != "" and .headRefName == $legacy_dispatcher)
+                )
+            ]' <<<"$candidate_prs")"
+          open_pr_count="$(jq 'length' <<<"$open_prs")"
+          if [[ "$open_pr_count" -gt 1 ]]; then
+            echo "::warning::Found ${open_pr_count} open RPM renewal PRs for ${BRANCH}; updating the oldest one."
+          fi
+
+          existing_pr="$(jq 'sort_by(.createdAt) | .[0] // empty' <<<"$open_prs")"
+          if [[ -n "$existing_pr" ]]; then
+            head_owner="$(jq -r '.headRepositoryOwner.login // empty' <<<"$existing_pr")"
+            head_repository="$(jq -r '.headRepository.nameWithOwner // empty' <<<"$existing_pr")"
+            if [[ "$head_owner" != "$GITHUB_REPOSITORY_OWNER" || "$head_repository" != "$GITHUB_REPOSITORY" ]]; then
+              echo "Open RPM renewal PR head is not in ${GITHUB_REPOSITORY}." >&2
+              exit 1
+            fi
+            renewal_branch="$(jq -r '.headRefName' <<<"$existing_pr")"
+            PR_URL="$(jq -r '.url' <<<"$existing_pr")"
+          else
+            renewal_branch="$canonical_renewal_branch"
+            PR_URL=''
+          fi
+
           remote_branch_sha="$(git ls-remote "$remote_url" "refs/heads/${renewal_branch}" | awk '{print $1}')"
           if [[ -z "$remote_branch_sha" ]]; then
             git push "$remote_url" "HEAD:refs/heads/${renewal_branch}"
@@ -305,24 +360,7 @@ jobs:
               "$remote_url" "HEAD:refs/heads/${renewal_branch}"
           fi
 
-      - name: Create single-variant pull request
-        if: env.changed != '0' && env.VARIANT_COUNT == '1'
-        env:
-          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
-        run: |
-          set -euo pipefail
-          branch_slug="${BRANCH//\//-}"
-          renewal_branch="rpm-lockfile-renewal-${VARIANT}-${branch_slug}"
-
-          gh label create "automated-rpms-lockfile-update" \
-            --description "Auto-created RPM lockfile update PR" \
-            --color "0E8A16" \
-            2>/dev/null || true
-
-          existing_pr_url="$(gh pr list --head "$renewal_branch" --state open --limit 1 --json url --jq '.[0].url // empty')"
-          if [[ -n "$existing_pr_url" ]]; then
-            PR_URL="$existing_pr_url"
-          else
+          if [[ -z "$PR_URL" ]]; then
             if [[ "${{ github.repository }}" == "red-hat-data-services/notebooks" ]]; then
               pr_title="GHA: ${BRANCH} - Update RHDS RPM lock files"
             elif [[ "$VARIANT" == "odh" ]]; then
@@ -431,7 +469,7 @@ jobs:
             env -u VARIANT make test
           fi
 
-      - name: Create pull request
+      - name: Update renewal branch and pull request
         if: env.changed != '0'
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
@@ -439,7 +477,49 @@ jobs:
           set -euo pipefail
           remote_url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           branch_slug="${BRANCH//\//-}"
-          renewal_branch="rpm-lockfile-renewal-both-${branch_slug}"
+          canonical_renewal_branch="rpm-lockfile-renewal-both-${branch_slug}"
+          legacy_renewal_branch="rpms-lockfile-renewal-both-${branch_slug}"
+
+          gh label create "automated-rpms-lockfile-update" \
+            --description "Auto-created RPM lockfile update PR" \
+            --color "0E8A16" \
+            2>/dev/null || true
+
+          candidate_prs="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --base "$BRANCH" \
+            --label "automated-rpms-lockfile-update" \
+            --state open \
+            --limit 100 \
+            --json url,headRefName,headRepository,headRepositoryOwner,createdAt)"
+          open_prs="$(jq \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg canonical "$canonical_renewal_branch" \
+            --arg legacy "$legacy_renewal_branch" \
+            '[.[]
+              | select(.headRepository.nameWithOwner == $repository)
+              | select(.headRefName == $canonical or .headRefName == $legacy)
+            ]' <<<"$candidate_prs")"
+          open_pr_count="$(jq 'length' <<<"$open_prs")"
+          if [[ "$open_pr_count" -gt 1 ]]; then
+            echo "::warning::Found ${open_pr_count} open RPM renewal PRs for ${BRANCH}; updating the oldest one."
+          fi
+
+          existing_pr="$(jq 'sort_by(.createdAt) | .[0] // empty' <<<"$open_prs")"
+          if [[ -n "$existing_pr" ]]; then
+            head_owner="$(jq -r '.headRepositoryOwner.login // empty' <<<"$existing_pr")"
+            head_repository="$(jq -r '.headRepository.nameWithOwner // empty' <<<"$existing_pr")"
+            if [[ "$head_owner" != "$GITHUB_REPOSITORY_OWNER" || "$head_repository" != "$GITHUB_REPOSITORY" ]]; then
+              echo "Open RPM renewal PR head is not in ${GITHUB_REPOSITORY}." >&2
+              exit 1
+            fi
+            renewal_branch="$(jq -r '.headRefName' <<<"$existing_pr")"
+            PR_URL="$(jq -r '.url' <<<"$existing_pr")"
+          else
+            renewal_branch="$canonical_renewal_branch"
+            PR_URL=''
+          fi
+
           remote_branch_sha="$(git ls-remote "$remote_url" "refs/heads/${renewal_branch}" | awk '{print $1}')"
           if [[ -z "$remote_branch_sha" ]]; then
             git push "$remote_url" "HEAD:refs/heads/${renewal_branch}"
@@ -448,15 +528,7 @@ jobs:
               "$remote_url" "HEAD:refs/heads/${renewal_branch}"
           fi
 
-          gh label create "automated-rpms-lockfile-update" \
-            --description "Auto-created RPM lockfile update PR" \
-            --color "0E8A16" \
-            2>/dev/null || true
-
-          existing_pr_url="$(gh pr list --head "$renewal_branch" --state open --limit 1 --json url --jq '.[0].url // empty')"
-          if [[ -n "$existing_pr_url" ]]; then
-            PR_URL="$existing_pr_url"
-          else
+          if [[ -z "$PR_URL" ]]; then
             if [[ "${{ github.repository }}" == "red-hat-data-services/notebooks" ]]; then
               pr_title="GHA: ${BRANCH} - Update RHDS RPM lock files"
             else
