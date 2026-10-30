@@ -26,7 +26,6 @@ on:  # yamllint disable-line rule:truthy
         options:
           - 'main'
           - 'rhoai-2.25'
-          - 'rhoai-3.3'
           - 'rhoai-3.4'
           - 'rhoai-3.5'
           - 'rhoai-3.6'
@@ -67,7 +66,7 @@ jobs:
               ;;
             red-hat-data-services/notebooks)
               is_downstream=true
-              allowed_branches=(rhoai-2.25 rhoai-3.3 rhoai-3.4 rhoai-3.5 rhoai-3.6)
+              allowed_branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
               ;;
             *)
               echo "This workflow only supports opendatahub-io/notebooks and red-hat-data-services/notebooks." >&2
@@ -83,7 +82,7 @@ jobs:
 
           if [[ "$EVENT_NAME" == "schedule" ]]; then
             if [[ "$is_downstream" == "true" ]]; then
-              branches=(rhoai-2.25 rhoai-3.3 rhoai-3.4 rhoai-3.5 rhoai-3.6)
+              branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
               variant='rhds'
             else
               branches=(main)
