@@ -6,7 +6,7 @@ permissions: {}  # least-privilege; grant per-job below
 
 on:  # yamllint disable-line rule:truthy
   schedule:
-    - cron: "0 1 * * *"  # Daily RPM lockfile update (1am UTC)
+    - cron: "0 5 * * 3,5"  # Wednesday and Friday RPM lockfile update (12am EST)
   workflow_dispatch:
     inputs:
       variant:
