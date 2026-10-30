@@ -216,7 +216,7 @@ jobs:
           set -euo pipefail
           branch_slug="${BRANCH//\//-}"
           branch_slug="${branch_slug//./-}"
-          cache="${REPOSITORY,,}/rpm-lockfile-build-cache-${VARIANT}-${branch_slug}"
+          cache="ghcr.io/${REPOSITORY,,}/rpm-lockfile-build-cache-${VARIANT}-${branch_slug}"
           if [[ "$USE_CACHE" == "true" ]]; then
             if [[ "$VARIANT" == "rhds" ]]; then
               echo "CONTAINER_BUILD_CACHE_ARGS=--cache-from ${cache}" >> "$GITHUB_OUTPUT"
