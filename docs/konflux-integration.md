@@ -88,6 +88,12 @@ therefore starts a fresh test run without requiring another PR push. GitHub only
 delivers `check_run` events to workflows on the default branch, so this automatic
 rebuild path becomes active once the POC workflows are merged.
 
+Retry behavior is keyed by the PR head commit:
+
+- If the Konflux build fails, `prepare` fails and all dependent architecture lanes are skipped.
+- If a failed build is retried and succeeds, the new `check_run` starts a fresh workflow and cancels any stale waiting run for that commit.
+- If tests fail against a successful build, retrying that Konflux build starts another fresh workflow and resolves the newly published digest before tests run.
+
 Once the image is available, `prepare` resolves its immutable digest and fans out one
 GitHub Actions lane per architecture. Each lane starts all eligible test types in
 parallel:
