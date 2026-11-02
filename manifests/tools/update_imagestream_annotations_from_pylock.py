@@ -222,6 +222,12 @@ def pick_notebook_dir_for_base_key(candidates: list[Path], base_key: str) -> Pat
         for d in candidates:
             if d.name == want:
                 return d
+        # Baseline Konflux params use ``-py312-c9s`` but lockfiles live under ``ubi9-python-*``.
+        if want.startswith("c9s-python-"):
+            ubi9_want = "ubi9-python-" + want.removeprefix("c9s-python-")
+            for d in candidates:
+                if d.name == ubi9_want:
+                    return d
         return None
 
     m = re.search(r"-py(\d)(\d+)-", base_key)
