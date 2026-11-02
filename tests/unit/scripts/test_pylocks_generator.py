@@ -1139,6 +1139,158 @@ dependencies = ["uv"]
     assert not (baseline_dir / ".aipcc-alignment.constraints.txt").exists(), "no leftover constraints file expected"
 
 
+def _write_baseline_pyproject(directory: Path, name: str, dependencies: list[str]) -> None:
+    deps = ",\n  ".join(f'"{dep}"' for dep in dependencies)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "pyproject.toml").write_text(
+        f"""
+[project]
+name = "{name}"
+version = "0.1.0"
+dependencies = [
+  {deps}
+]
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_realign_baseline_aipcc_locks_relocks_only_processed_targets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    baseline_rel = Path("jupyter/baseline/ubi9-python-3.12")
+    source_rel = Path("jupyter/datascience/ubi9-python-3.12")
+    skipped_rel = Path("codeserver-baseline/ubi9-python-3.12")
+    baseline_dir = tmp_path / baseline_rel
+    source_dir = tmp_path / source_rel
+    skipped_dir = tmp_path / skipped_rel
+    codeserver_source = tmp_path / "codeserver" / "ubi9-python-3.12"
+    _write_baseline_pyproject(baseline_dir, "baseline-test", ["setuptools", "uv"])
+    _write_baseline_pyproject(skipped_dir, "codeserver-baseline-test", ["setuptools"])
+    source_dir.mkdir(parents=True)
+    codeserver_source.mkdir(parents=True)
+    (source_dir / "requirements.cpu.txt").write_text(
+        "setuptools==84.2.1\nuv==0.13.5\n",
+        encoding="utf-8",
+    )
+    (codeserver_source / "requirements.cpu.txt").write_text(
+        "setuptools==1.0.0\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(pg, "ROOT_DIR", tmp_path)
+    monkeypatch.setattr(
+        pg,
+        "BASELINE_AIPCC_ALIGNMENT_PAIRS",
+        {baseline_rel: source_rel, skipped_rel: Path("codeserver/ubi9-python-3.12")},
+    )
+    calls: list[tuple[Path, str, list[str], pg.IndexMode, str, Path | None]] = []
+
+    def fake_run_lock(
+        project_dir: Path,
+        flavor: str,
+        index_flags: list[str],
+        mode: pg.IndexMode,
+        python_version: str,
+        upgrade: bool,
+        ci_check: bool,
+        live_timestamp: str,
+        log: pg.LogBuffer,
+        extra_constraints: Path | None = None,
+    ) -> bool:
+        assert extra_constraints is not None, "baseline realign must pass alignment constraints"
+        assert extra_constraints.exists(), "alignment constraints must exist during the lock"
+        content = extra_constraints.read_text(encoding="utf-8")
+        assert "setuptools==84.2.1" in content, f"finished source pin missing: {content}"
+        assert "uv==0.13.5" in content, f"finished source pin missing: {content}"
+        calls.append((project_dir, flavor, index_flags, mode, python_version, extra_constraints))
+        return True
+
+    req_calls: list[tuple[Path, bool]] = []
+
+    def fake_requirements(
+        project_dir: Path,
+        flavor: str,
+        log: pg.LogBuffer,
+        *,
+        public_index: bool = False,
+        index_flavor: str | None = None,
+    ) -> bool:
+        assert flavor == "cpu", f"baseline requirements flavor must be cpu, got {flavor}"
+        req_calls.append((project_dir, public_index))
+        return True
+
+    monkeypatch.setattr(pg, "run_lock", fake_run_lock)
+    monkeypatch.setattr(pg, "generate_requirements_txt", fake_requirements)
+
+    ok = pg.realign_baseline_aipcc_locks(
+        [baseline_dir],
+        upgrade=False,
+        ci_check=True,
+        live_timestamp="2026-11-02T00:00:00Z",
+        requirements_only=False,
+        log=pg.LogBuffer(),
+    )
+
+    assert ok is True, "realign should succeed when the public-index lock succeeds"
+    assert len(calls) == 1, f"only the processed baseline should be re-locked, got {calls}"
+    project_dir, flavor, index_flags, mode, python_version, _extra = calls[0]
+    assert project_dir == baseline_dir.resolve(), f"unexpected project dir: {project_dir}"
+    assert flavor == "cpu", f"unexpected flavor: {flavor}"
+    assert index_flags == [pg.PUBLIC_INDEX], f"unexpected index flags: {index_flags}"
+    assert mode == pg.IndexMode.public_index, f"unexpected index mode: {mode}"
+    assert python_version == "3.12", f"unexpected python version: {python_version}"
+    assert req_calls == [(baseline_dir.resolve(), True)], f"unexpected requirements calls: {req_calls}"
+    leftover = baseline_dir / pg.AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME
+    assert not leftover.exists(), f"alignment constraints must be removed, found {leftover}"
+
+
+def test_realign_baseline_aipcc_locks_skips_when_requirements_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_run_lock(*_args: object, **_kwargs: object) -> bool:
+        raise AssertionError("requirements-only must not re-lock baselines")
+
+    monkeypatch.setattr(pg, "run_lock", fail_run_lock)
+    ok = pg.realign_baseline_aipcc_locks(
+        [],
+        upgrade=False,
+        ci_check=False,
+        live_timestamp="",
+        requirements_only=True,
+        log=pg.LogBuffer(),
+    )
+    assert ok is True, "requirements-only realign should be a no-op success"
+
+
+def test_realign_baseline_aipcc_locks_unlinks_constraints_when_lock_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    baseline_rel = Path("jupyter/baseline/ubi9-python-3.12")
+    source_rel = Path("jupyter/datascience/ubi9-python-3.12")
+    baseline_dir = tmp_path / baseline_rel
+    source_dir = tmp_path / source_rel
+    _write_baseline_pyproject(baseline_dir, "baseline-test", ["setuptools"])
+    source_dir.mkdir(parents=True)
+    (source_dir / "requirements.cpu.txt").write_text("setuptools==84.2.1\n", encoding="utf-8")
+    monkeypatch.setattr(pg, "ROOT_DIR", tmp_path)
+    monkeypatch.setattr(pg, "BASELINE_AIPCC_ALIGNMENT_PAIRS", {baseline_rel: source_rel})
+    monkeypatch.setattr(pg, "run_lock", lambda *_args, **_kwargs: False)
+
+    ok = pg.realign_baseline_aipcc_locks(
+        [baseline_dir],
+        upgrade=False,
+        ci_check=True,
+        live_timestamp="2026-11-02T00:00:00Z",
+        requirements_only=False,
+        log=pg.LogBuffer(),
+    )
+
+    assert ok is False, "a failed baseline lock must fail the realign pass"
+    leftover = baseline_dir / pg.AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME
+    assert not leftover.exists(), f"alignment constraints must be removed after failure, found {leftover}"
+
+
 def test_inject_project_dependencies_appends_before_closing_bracket() -> None:
     original = """
 [project]
