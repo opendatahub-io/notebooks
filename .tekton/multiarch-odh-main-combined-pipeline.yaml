@@ -262,6 +262,7 @@ spec:
       workspace: git-auth
 
   - name: prefetch-dependencies
+    retries: 2
     timeout: 3h
     params:
     - name: input
