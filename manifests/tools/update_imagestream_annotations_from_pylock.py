@@ -212,6 +212,16 @@ def notebook_dirname_from_base_key(base_key: str) -> str | None:
     return f"{os_name}-python-{py}"
 
 
+def _path_matches_base_key_tree(directory: Path, base_key: str) -> bool:
+    """Disambiguate ``jupyter/...`` vs ``runtimes/...`` trees with the same ``*-python-*`` dirname."""
+    parts = directory.parts
+    if "pipeline-runtime" in base_key or "-runtime-" in base_key:
+        return "runtimes" in parts
+    if "workbench" in base_key:
+        return "runtimes" not in parts
+    return True
+
+
 def pick_notebook_dir_for_base_key(candidates: list[Path], base_key: str) -> Path | None:
     """Return an on-disk notebook tree path when it exists for this tag's Python/OS."""
     if not candidates:
@@ -219,21 +229,25 @@ def pick_notebook_dir_for_base_key(candidates: list[Path], base_key: str) -> Pat
 
     want = notebook_dirname_from_base_key(base_key)
     if want is not None:
-        for d in candidates:
-            if d.name == want:
-                return d
+        matches = [d for d in candidates if d.name == want and _path_matches_base_key_tree(d, base_key)]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            return None
         # Baseline Konflux params use ``-py312-c9s`` but lockfiles live under ``ubi9-python-*``.
         if want.startswith("c9s-python-"):
             ubi9_want = "ubi9-python-" + want.removeprefix("c9s-python-")
-            for d in candidates:
-                if d.name == ubi9_want:
-                    return d
+            ubi9_matches = [
+                d for d in candidates if d.name == ubi9_want and _path_matches_base_key_tree(d, base_key)
+            ]
+            if len(ubi9_matches) == 1:
+                return ubi9_matches[0]
         return None
 
     m = re.search(r"-py(\d)(\d+)-", base_key)
     if m:
         py = f"{m.group(1)}.{m.group(2)}"
-        matching = [d for d in candidates if f"python-{py}" in d.name]
+        matching = [d for d in candidates if f"python-{py}" in d.name and _path_matches_base_key_tree(d, base_key)]
         if len(matching) == 1:
             return matching[0]
         if len(matching) > 1:
@@ -409,14 +423,21 @@ def _format_dep_version(pep440: str) -> str:
     return f"{v.major}.{v.minor}"
 
 
-def _load_pylock_packages(pylock_text: str, python_minor: str) -> dict[str, dict[str, Any]]:
-    doc = tomllib.loads(pylock_text)
-    marker_env = {
+def _linux_marker_env(python_minor: str) -> dict[str, str]:
+    """Match ``tests/test_main.py`` marker filtering for pylock alignment checks."""
+    return {
         "python_full_version": f"{python_minor}.0",
         "python_version": python_minor,
         "implementation_name": "cpython",
         "sys_platform": "linux",
+        # Public-index baseline deps gate on x86_64/aarch64; host arm64 is not aarch64.
+        "platform_machine": "x86_64",
     }
+
+
+def _load_pylock_packages(pylock_text: str, python_minor: str) -> dict[str, dict[str, Any]]:
+    doc = tomllib.loads(pylock_text)
+    marker_env = _linux_marker_env(python_minor)
     packages: dict[str, dict[str, Any]] = {}
     for p in doc.get("packages", []):
         if "marker" in p and not packaging.markers.Marker(p["marker"]).evaluate(marker_env):
@@ -430,12 +451,7 @@ def _load_pylock_packages(pylock_text: str, python_minor: str) -> dict[str, dict
 
 def _parse_requirements_txt_packages(text: str, python_minor: str) -> dict[str, dict[str, Any]]:
     """Parse pip-tools / pip ``requirements.txt`` (pinned ``pkg==ver`` lines; skips hash/index options)."""
-    marker_env = {
-        "python_full_version": f"{python_minor}.0",
-        "python_version": python_minor,
-        "implementation_name": "cpython",
-        "sys_platform": "linux",
-    }
+    marker_env = _linux_marker_env(python_minor)
     packages: dict[str, dict[str, Any]] = {}
     for raw_line in text.splitlines():
         line = raw_line.strip()
@@ -476,12 +492,7 @@ def _parse_pipfile_lock_packages(text: str, python_minor: str) -> dict[str, dict
         data = json.loads(text)
     except json.JSONDecodeError as e:
         raise ValueError(f"invalid Pipfile.lock JSON: {e}") from e
-    marker_env = {
-        "python_full_version": f"{python_minor}.0",
-        "python_version": python_minor,
-        "implementation_name": "cpython",
-        "sys_platform": "linux",
-    }
+    marker_env = _linux_marker_env(python_minor)
     packages: dict[str, dict[str, Any]] = {}
     section = data.get("default")
     if not isinstance(section, dict):
