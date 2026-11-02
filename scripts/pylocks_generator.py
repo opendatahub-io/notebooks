@@ -141,7 +141,10 @@ FLAVORS = ("cpu", "cuda", "rocm")
 AIPCC_ALIGNMENT_CONSTRAINTS_FILENAME = ".aipcc-alignment.constraints.txt"
 
 # Baseline public-index images inherit direct dependency lock versions from paired
-# AIPCC-index image requirements files.
+# AIPCC-index image requirements files. The parallel pass can read those files
+# before the source lock finishes, and runtime sources are rewritten again by
+# realign_shared_manifest_imagestream_locks. realign_baseline_aipcc_locks runs
+# after both so the committed baseline pins match the finished source files.
 BASELINE_AIPCC_ALIGNMENT_PAIRS: dict[Path, Path] = {
     Path("codeserver-baseline/ubi9-python-3.12"): Path("codeserver/ubi9-python-3.12"),
     Path("jupyter/baseline/ubi9-python-3.12"): Path("jupyter/datascience/ubi9-python-3.12"),
@@ -851,6 +854,63 @@ def realign_shared_manifest_imagestream_locks(
                     ok = False
             finally:
                 alignment.unlink(missing_ok=True)
+
+    return ok
+
+
+def realign_baseline_aipcc_locks(
+    processed_dirs: list[Path],
+    upgrade: bool,
+    ci_check: bool,
+    live_timestamp: str,
+    requirements_only: bool,
+    log: LogBuffer,
+) -> bool:
+    """Re-lock public-index baselines once AIPCC source requirements are final.
+
+    Parallel refresh pins baselines from source requirements that may still be
+    mid-write, and ``runtimes/datascience`` is rewritten again by the shared
+    ImageStream realign. This pass re-reads those finished files.
+    """
+    if requirements_only:
+        return True
+
+    ok = True
+    processed_set = {directory.resolve() for directory in processed_dirs}
+    for target_rel in BASELINE_AIPCC_ALIGNMENT_PAIRS:
+        target = (ROOT_DIR / target_rel).resolve()
+        if target not in processed_set or not target.is_dir():
+            continue
+
+        python_version = extract_python_version(target)
+        if python_version is None:
+            log.warning(f"Could not determine Python version for baseline realign of {target_rel.as_posix()}.")
+            ok = False
+            continue
+
+        alignment = generate_baseline_alignment_constraints(target, log)
+        if alignment is None:
+            continue
+
+        log.print(f"➡️ Re-aligning {target_rel.as_posix()} with finished AIPCC source pins...")
+        try:
+            if not run_lock(
+                target,
+                "cpu",
+                [PUBLIC_INDEX],
+                IndexMode.public_index,
+                python_version,
+                upgrade,
+                ci_check,
+                live_timestamp,
+                log,
+                alignment,
+            ):
+                ok = False
+            elif not generate_requirements_txt(target, "cpu", log, public_index=True):
+                ok = False
+        finally:
+            alignment.unlink(missing_ok=True)
 
     return ok
 
@@ -1715,8 +1775,11 @@ def main(
 
     realign_ok = True
     if not requirements_only and target_dirs:
+        processed = list(dict.fromkeys([*success_dirs, *failed_dirs]))
+        # Runtime ImageStream pairs first: runtimes/baseline reads
+        # runtimes/datascience, which this pass may rewrite.
         realign_ok = realign_shared_manifest_imagestream_locks(
-            list(dict.fromkeys([*success_dirs, *failed_dirs])),
+            processed,
             index_mode,
             upgrade,
             ci_check,
@@ -1724,6 +1787,15 @@ def main(
             requirements_only,
             log,
         )
+        baseline_ok = realign_baseline_aipcc_locks(
+            processed,
+            upgrade,
+            ci_check,
+            live_ts,
+            requirements_only,
+            log,
+        )
+        realign_ok = realign_ok and baseline_ok
 
     # SUMMARY
     log.print("")
