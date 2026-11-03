@@ -85,6 +85,9 @@ KONFLUX_AIPCC_BASE_IMAGE_SAMPLE_REFS = (
 )
 RENOVATE_JSON_MAX_LINES = 10
 RENOVATE_JSON_SHAPE_ERROR = "renovate.json should include renovate.json5, and nothing else"
+# renovate-central appends this preset beside the json5 include. It is the only
+# extra extends entry the short wrapper is allowed to carry.
+MINTMAKER_RPM_LOCK_PRESET = "github>konflux-ci/mintmaker-presets:refresh-rpm-lockfiles"
 
 
 @dataclass(frozen=True)
@@ -179,11 +182,12 @@ def validate_mintmaker_policy(
 
 
 def _renovate_json_shape_errors(path: Path) -> list[str]:
-    """Allow a short JSON wrapper that only includes renovate.json5.
+    """Allow a short JSON wrapper around renovate.json5.
 
     JSON has no comments. A present file must stay under 10 lines and contain
-    only an optional ``$schema`` plus a single ``extends`` entry that includes
-    ``renovate.json5``.
+    only an optional ``$schema`` plus ``extends``. The first entry must include
+    ``renovate.json5``. A second entry is allowed only when it is the MintMaker
+    RPM lockfile preset written by renovate-central.
     """
     if not path.is_file():
         return []
@@ -201,10 +205,12 @@ def _renovate_json_shape_errors(path: Path) -> list[str]:
     extends = data["extends"]
     if isinstance(extends, str):
         extends = [extends]
-    if not isinstance(extends, list) or len(extends) != 1:
+    if not isinstance(extends, list) or not 1 <= len(extends) <= 2:
         return [RENOVATE_JSON_SHAPE_ERROR]
     include = extends[0]
     if not isinstance(include, str) or "renovate.json5" not in include:
+        return [RENOVATE_JSON_SHAPE_ERROR]
+    if len(extends) == 2 and extends[1] != MINTMAKER_RPM_LOCK_PRESET:
         return [RENOVATE_JSON_SHAPE_ERROR]
     return []
 

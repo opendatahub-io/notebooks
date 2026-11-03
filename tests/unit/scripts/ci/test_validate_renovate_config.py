@@ -142,6 +142,32 @@ def test_validate_config_allows_short_renovate_json_include(tmp_path) -> None:
     assert errors == [], f"Expected a short renovate.json include to pass, got: {errors}"
 
 
+def test_validate_config_allows_mintmaker_rpm_preset_beside_json5(tmp_path) -> None:
+    (tmp_path / "renovate.json").write_text(
+        "{\n"
+        '  "extends": [\n'
+        '    "github>red-hat-data-services/notebooks//.github/renovate.json5",\n'
+        f'    "{validator.MINTMAKER_RPM_LOCK_PRESET}"\n'
+        "  ]\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    errors = validator.validate_config(testdata.minimal_valid_config(), config_dir=tmp_path)
+    assert errors == [], f"Expected the MintMaker RPM preset wrapper to pass, got: {errors}"
+
+
+def test_validate_config_rejects_unknown_second_renovate_json_extend(tmp_path) -> None:
+    (tmp_path / "renovate.json").write_text(
+        '{"extends": ['
+        '"github>red-hat-data-services/notebooks//.github/renovate.json5",'
+        '"github>example/not-the-rpm-preset"'
+        "]}\n",
+        encoding="utf-8",
+    )
+    errors = validator.validate_config(testdata.minimal_valid_config(), config_dir=tmp_path)
+    assert errors == [validator.RENOVATE_JSON_SHAPE_ERROR], f"Expected renovate.json include error, got: {errors}"
+
+
 def test_validate_config_rejects_renovate_json_that_is_not_only_an_include(tmp_path) -> None:
     (tmp_path / "renovate.json").write_text("{}", encoding="utf-8")
     errors = validator.validate_config(testdata.minimal_valid_config(), config_dir=tmp_path)
