@@ -102,10 +102,13 @@ The kickoff recipe runs these steps in order:
 2. `make refresh-lock-files` (with `FORCE_LOCKFILES_UPGRADE=1`)
 3. Generate ODH RPM lockfile (root prefetch input)
 4. Generate ODH RPM lockfile (codeserver prefetch input)
-5. Generate RHDS RPM lockfile (root prefetch input)
-6. Generate RHDS RPM lockfile (codeserver prefetch input)
-7. Roll out imagestream tags (`uv run manifests/tools/rollout_tag_on_imagestreams.py`)
-8. Validate with `make test`
+5. Generate ODH RPM lockfile (codeserver-minimal prefetch input)
+6. Generate ODH RPM lockfile (codeserver-baseline prefetch input)
+7. Generate RHDS RPM lockfile (root prefetch input)
+8. Generate RHDS RPM lockfile (codeserver prefetch input)
+9. Generate RHDS RPM lockfile (codeserver-minimal prefetch input)
+10. Roll out imagestream tags (`uv run manifests/tools/rollout_tag_on_imagestreams.py`)
+11. Validate with `make test`
 
 #### Local kickoff
 
@@ -121,7 +124,7 @@ If a step fails, rerun the same command to auto-resume from
 `.kickoff-release.state`, or force a step:
 
 ```shell
-gmake kickoff-release KICKOFF_START_STEP=5
+gmake kickoff-release KICKOFF_START_STEP=7
 ```
 
 To clear cached RPM lockfile generator images between ODH/RHDS phases manually:
