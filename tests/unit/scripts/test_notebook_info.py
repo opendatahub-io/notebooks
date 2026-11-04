@@ -4,7 +4,14 @@ import pytest
 
 from scripts.notebook_info.config import RELEASES
 from scripts.notebook_info.org_pulse import OrgPulseClient, org_pulse_client_from_env
-from scripts.notebook_info.report import build_report, format_grades, format_grades_summary, jira_link, org_pulse_link
+from scripts.notebook_info.report import (
+    build_report,
+    format_grades,
+    format_grades_summary,
+    jira_link,
+    org_pulse_link,
+    resolve_slack_channel,
+)
 
 
 def test_jira_link_uses_filter_id_when_available() -> None:
@@ -30,6 +37,12 @@ def test_format_grades_orders_and_omits_empty_grades() -> None:
 def test_format_grades_summary_uses_release_order() -> None:
     grades = {"3.4": {"A": 1}, "3.5": {"Unknown": 2}}
     assert format_grades_summary(grades) == "3.4: A:1\n3.5: Unknown:2"
+
+
+def test_slack_channel_prefers_argument_and_environment() -> None:
+    assert resolve_slack_channel("CARGUMENT", "CENVIRONMENT") == "CARGUMENT"
+    assert resolve_slack_channel(None, "CENVIRONMENT") == "CENVIRONMENT"
+    assert resolve_slack_channel(None, None) == "C096ZR053RQ"
 
 
 def test_build_report_uses_all_sources() -> None:
