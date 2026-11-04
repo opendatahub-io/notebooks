@@ -21,7 +21,7 @@ endif
 .RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 3.6
+RELEASE	 		 ?= 3.7
 RELEASE_PYTHON_VERSION	 ?= 3.12
 CHECK_PAYLOAD_VERSION ?= 0.3.17
 CHECK_PAYLOAD_CONFIG_OVERLAY := scripts/check-payload/.overlay.toml

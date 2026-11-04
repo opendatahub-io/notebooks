@@ -29,11 +29,32 @@ spec:
             {"name": "JupyterLab", "version": "4.5"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-codeserver-minimal-cpu-py312-rhel9
-        opendatahub.io/workbench-image-recommended: "true"
+        opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: odh-workbench-codeserver-minimal-cpu-py312-ubi9-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
         name: odh-workbench-codeserver-minimal-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "3.7"
+      referencePolicy:
+        type: Source
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "code-server", "version": "4.122"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"}
+          ]
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-codeserver-minimal-cpu-py312-rhel9
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-minimal-cpu-py312-ubi9-commit-3-6_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-codeserver-minimal-cpu-py312-ubi9-3-6_PLACEHOLDER
       name: "3.6"
       referencePolicy:
         type: Source
