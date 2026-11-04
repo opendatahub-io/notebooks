@@ -336,6 +336,23 @@ function _create_test_versions_source_of_truth()
 }
 
 # Description:
+#   jupyter_client shuts the kernel down with SIGINT. In these OpenShift pods that
+#   os.kill can raise EPERM after the notebook assertions have already passed.
+#   Returns success only for that shutdown failure.
+#
+# Arguments:
+#   $1 : File containing papermill's combined stdout and stderr
+function _papermill_exit_is_kernel_signal_eperm()
+{
+    local log_file="${1:-}"
+    [[ -n "${log_file}" && -f "${log_file}" ]] || return 1
+    grep -q 'PermissionError: \[Errno 13\] Permission denied' "${log_file}" \
+        && grep -q 'os\.kill(self\.pid, sig)' "${log_file}" \
+        && grep -q 'Ran .* tests in .*OK' "${log_file}" \
+        && ! grep -q -e 'PapermillExecutionError' -e 'CellExecutionError' -e 'FAILED (' "${log_file}"
+}
+
+# Description:
 #   Internal function that runs test notebooks WITHOUT creating expected_versions.json.
 #   Used by _test_datascience_notebook to run parent tests using the derived image's manifest.
 #
@@ -353,17 +370,32 @@ function _run_test_notebooks_only()
 
     "${kbin}" cp "${repo_test_directory}/." "${notebook_workload_name}:./"
 
-	if ! "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "export IPY_KERNEL_LOG_LEVEL=DEBUG; python3 -m papermill ${test_notebook_file} ${output_file_prefix}_output.ipynb --kernel python3 --log-level DEBUG --stderr-file ${output_file_prefix}_error.txt" ; then
-		echo "ERROR: The ${notebook_id} ${os_flavor} notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-${notebook_id}-${os_flavor}-${python_flavor}-test-e2e' directory or run 'cat ${output_file_prefix}_error.txt' within your container. The make process has been aborted."
-		exit 1
-	fi
+    local papermill_log=
+    papermill_log="$(mktemp)"
+    local papermill_status=0
+    set +e
+    "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "export IPY_KERNEL_LOG_LEVEL=DEBUG; python3 -m papermill ${test_notebook_file} ${output_file_prefix}_output.ipynb --kernel python3 --log-level DEBUG --stderr-file ${output_file_prefix}_error.txt" 2>&1 | tee "${papermill_log}"
+    papermill_status=${PIPESTATUS[0]}
+    set -e
+    if [[ "${papermill_status}" -ne 0 ]] && ! _papermill_exit_is_kernel_signal_eperm "${papermill_log}"; then
+        rm -f "${papermill_log}"
+        echo "ERROR: The ${notebook_id} ${os_flavor} notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-${notebook_id}-${os_flavor}-${python_flavor}-test-e2e' directory or run 'cat ${output_file_prefix}_error.txt' within your container. The make process has been aborted."
+        exit 1
+    fi
+    if [[ "${papermill_status}" -ne 0 ]]; then
+        printf '%s\n' "WARNING: papermill exited ${papermill_status} while signaling the kernel after the notebook tests passed (PermissionError EPERM). Continuing."
+    fi
+    rm -f "${papermill_log}"
 
 	# Papermill may not create --stderr-file when the notebook writes nothing to stderr; grep exits 2 if the file is missing.
 	"${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c 'f="'"${output_file_prefix}"'_error.txt"; [ -f "$f" ] || : >"$f"'
 
     local test_result=
-    test_result=$("${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "grep FAILED ${output_file_prefix}_error.txt" 2>&1)
-    case "$?" in
+    local grep_status=0
+    # Bash 5.3 exits on a failing command substitution under set -e. Keep grep's
+    # status (0 = FAILED found, 1 = not found, 2 = error) for the case below.
+    test_result=$("${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "grep FAILED ${output_file_prefix}_error.txt" 2>&1) || grep_status=$?
+    case "${grep_status}" in
         0)
             printf '\n\n%s\n' "ERROR: The ${notebook_id} ${os_flavor} notebook encountered a test failure. The make process has been aborted."
             "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "cat ${output_file_prefix}_error.txt"
