@@ -181,6 +181,30 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
 # check-payload rejects. TensorBoard --load_fast=auto falls back without it.
 rm -f /opt/app-root/lib/python3.12/site-packages/tensorboard_data_server/bin/server
 
+# TensorBoard 2.20 imports pkg_resources, which setuptools>=82 removes.
+# Replace it with importlib.metadata until AIPCC ships TensorBoard 2.21.
+python - <<'PY'
+from pathlib import Path
+
+replacements = {
+    "tensorboard/default.py": [
+        ("import pkg_resources", "from importlib import metadata"),
+        ("pkg_resources.iter_entry_points(", "metadata.entry_points(group="),
+        ("entry_point.resolve()", "entry_point.load()"),
+    ],
+    "tensorboard/data/server_ingester.py": [
+        ("import pkg_resources", "from packaging.version import Version"),
+        ("pkg_resources.parse_version", "Version"),
+    ],
+}
+for relative_path, path_replacements in replacements.items():
+    path = Path("/opt/app-root/lib/python3.12/site-packages") / relative_path
+    source = path.read_text()
+    for old, new in path_replacements:
+        source = source.replace(old, new)
+    path.write_text(source)
+PY
+
 pandoc --version
 
 # setup path for runtime configuration
