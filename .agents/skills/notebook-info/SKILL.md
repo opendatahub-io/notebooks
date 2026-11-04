@@ -26,6 +26,9 @@ Set these environment variables before running:
 - `SLACK_CHANNEL`
 - `SLACK_APP_TOKEN`
 
+`SLACK_CHANNEL` is optional. When it is not set, the package uses its configured
+default team channel.
+
 Use `--dry-run` to print the report without posting it to Slack.
 
 The same package is used by the internal GitHub Actions workflow in
