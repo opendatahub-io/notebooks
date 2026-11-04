@@ -439,12 +439,24 @@ validate-runtime-image: bin/kubectl
 		fi
 		if [ $$cmd == "python3" ]; then
 			echo "=> Checking notebook execution..."
+			papermill_log=$$(mktemp)
 			if ! $(KUBECTL_BIN) cp "$(CURDIR)/ci/requirements-elyra.txt" runtime-pod:/tmp/requirements-elyra.txt || \
 				! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /tmp/requirements-elyra.txt > /dev/null && \
-					python3 -m papermill \$$(python3 -c \"import papermill, pathlib; print(pathlib.Path(papermill.__file__).parent / 'tests/notebooks/simple_execute.ipynb')\") /tmp/output.ipynb > /dev/null" ; then
-				echo "ERROR: Image does not meet Python requirements criteria in pipfile"
-				fail=1
+					python3 -m papermill \$$(python3 -c \"import papermill, pathlib; print(pathlib.Path(papermill.__file__).parent / 'tests/notebooks/simple_execute.ipynb')\") /tmp/output.ipynb > /dev/null" > "$$papermill_log" 2>&1 ; then
+				# jupyter_client signals the kernel with SIGINT on shutdown. In these pods
+				# os.kill can raise EPERM after simple_execute.ipynb has already run.
+				if grep -q 'PermissionError: \[Errno 13\] Permission denied' "$$papermill_log" \
+					&& grep -q 'os\.kill(self\.pid, sig)' "$$papermill_log" \
+					&& grep -q 'Executing: 100%' "$$papermill_log" \
+					&& ! grep -q -e PapermillExecutionError -e CellExecutionError "$$papermill_log"; then
+					echo "WARNING: papermill kernel shutdown hit EPERM after the notebook executed. Continuing."
+				else
+					cat "$$papermill_log"
+					echo "ERROR: Image does not meet Python requirements criteria in pipfile"
+					fail=1
+				fi
 			fi
+			rm -f "$$papermill_log"
 		fi
 	done
 	if [ $$fail -eq 1 ]; then
