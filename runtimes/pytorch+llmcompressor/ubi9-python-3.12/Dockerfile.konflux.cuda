@@ -47,6 +47,7 @@ COPY --chown=1001:0 prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/a
 
 ENV ELYRA_INSTALL_PACKAGES="false"
 
+COPY --chown=1001:0 --chmod=0755 scripts/patch_tensorboard_pkg_resources.py /usr/local/bin/patch_tensorboard_pkg_resources.py
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
@@ -62,29 +63,10 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
 # check-payload rejects. TensorBoard --load_fast=auto falls back without it.
 rm -f /opt/app-root/lib/python3.12/site-packages/tensorboard_data_server/bin/server
 
-# TensorBoard 2.20 imports pkg_resources, which setuptools>=82 removes.
-# Replace it with importlib.metadata until AIPCC ships TensorBoard 2.21.
-python - <<'PY'
-from pathlib import Path
-
-replacements = {
-    "tensorboard/default.py": [
-        ("import pkg_resources", "from importlib import metadata"),
-        ("pkg_resources.iter_entry_points(", "metadata.entry_points(group="),
-        ("entry_point.resolve()", "entry_point.load()"),
-    ],
-    "tensorboard/data/server_ingester.py": [
-        ("import pkg_resources", "from packaging.version import Version"),
-        ("pkg_resources.parse_version", "Version"),
-    ],
-}
-for relative_path, path_replacements in replacements.items():
-    path = Path("/opt/app-root/lib/python3.12/site-packages") / relative_path
-    source = path.read_text()
-    for old, new in path_replacements:
-        source = source.replace(old, new)
-    path.write_text(source)
-PY
+# setuptools>=83 (RHAIENG-6408) removes pkg_resources, which TensorBoard 2.20
+# imports at startup. Apply the TensorBoard 2.21 import change so
+# --load_fast=auto can fall back after the Rust server binary is removed.
+python3 /usr/local/bin/patch_tensorboard_pkg_resources.py
 
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
