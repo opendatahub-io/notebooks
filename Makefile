@@ -522,6 +522,7 @@ sync-build-args-from-versions:
 # Kick off release updates in one command
 # Usage:
 #   gmake kickoff-release SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org>
+#   gmake kickoff-release SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org> TAG_OVERRIDE=true
 #   gmake kickoff-release KICKOFF_START_STEP=7 SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org>
 #   gmake kickoff-release KICKOFF_START_STEP=auto SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org>
 # Step index:
@@ -540,7 +541,10 @@ sync-build-args-from-versions:
 #   - KICKOFF_START_STEP=auto (default) resumes from .kickoff-release.state when present
 #   - After a successful full run, the state file is removed
 #   - Delete a stale .kickoff-release.state after changing the step list (step numbers shift)
+#   - TAG_OVERRIDE=true honors non-GA tags pinned in manifests/odh/base/params-latest.env
+#     during imagestream rollout. Leave it unset for the default GA tag lookup.
 # ======================================================================================
+TAG_OVERRIDE ?=
 KICKOFF_START_STEP ?= auto
 KICKOFF_LAST_STEP ?= 11
 KICKOFF_STATE_FILE ?= $(ROOT_DIR).kickoff-release.state
@@ -559,6 +563,7 @@ kickoff-release:
 	@start_step="$(KICKOFF_START_STEP)"; \
 	kickoff_last_step="$(KICKOFF_LAST_STEP)"; \
 	state_file="$(KICKOFF_STATE_FILE)"; \
+	tag_override="$(TAG_OVERRIDE)"; \
 	if [[ "$$start_step" == "auto" ]]; then \
 		if [[ -f "$$state_file" ]]; then \
 			start_step="$$(tr -d '[:space:]' < "$$state_file")"; \
@@ -570,6 +575,10 @@ kickoff-release:
 		echo "ERROR: KICKOFF_START_STEP must be auto or an integer from 1 to $(KICKOFF_LAST_STEP) (got: $(KICKOFF_START_STEP))."; \
 		echo "If resuming automatically, delete an invalid state file and retry:"; \
 		echo "  rm -f $$(printf '%q' "$$state_file")"; \
+		exit 1; \
+	fi; \
+	if [[ -n "$$tag_override" && "$$tag_override" != "true" ]]; then \
+		echo "ERROR: TAG_OVERRIDE must be unset or true (got: $$tag_override)."; \
 		exit 1; \
 	fi; \
 	if (( start_step <= 6 )) && [[ -z "$${SUBSCRIPTION_ACTIVATION_KEY:-}" || -z "$${SUBSCRIPTION_ORG:-}" ]]; then \
@@ -630,7 +639,12 @@ kickoff-release:
 	run_rpm_step rhds 7 "create RHDS rpm lockfile (root prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input prefetch-input/rhds/rpms.in.yaml; \
 	run_rpm_step rhds 8 "create RHDS rpm lockfile (codeserver prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml; \
 	run_rpm_step rhds 9 "create RHDS rpm lockfile (codeserver-minimal prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver-minimal/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml; \
-	run_step 10 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
+	if [[ "$$tag_override" == "true" ]]; then \
+		echo "TAG_OVERRIDE=true: non-GA tags in manifests/odh/base/params-latest.env bypass GA tag selection"; \
+		run_step 10 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py --tag-override; \
+	else \
+		run_step 10 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
+	fi; \
 	run_step 11 "validate manifests (make test)" $(MAKE) test
 
 # ======================================================================================

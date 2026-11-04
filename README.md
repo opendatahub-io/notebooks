@@ -120,6 +120,14 @@ export SUBSCRIPTION_ORG='...'
 gmake kickoff-release
 ```
 
+If `manifests/odh/base/params-latest.env` pins a tag that is not an ODH GA tag
+(`N.M-vX.Y`), pass `TAG_OVERRIDE=true` so rollout uses that pin. Omit it for the
+default GA lookup:
+
+```shell
+gmake kickoff-release TAG_OVERRIDE=true
+```
+
 If a step fails, rerun the same command to auto-resume from
 `.kickoff-release.state`, or force a step:
 
