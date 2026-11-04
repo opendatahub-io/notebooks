@@ -488,6 +488,16 @@ def _quay_rhoai_ref_from_registry_ref(image_ref: str) -> str | None:
     return f"quay.io/rhoai/{image_ref.removeprefix(prefix)}"
 
 
+def _rhoai_registry_inspect_allows_quay_fallback(exc: ValueError) -> bool:
+    """True when the registry manifest cannot be read and the Quay mirror may have it.
+
+    ``manifest unknown`` covers digests that are not published on registry.redhat.io.
+    ``unauthorized`` covers the same digest when the local skopeo session cannot read it.
+    """
+    message = str(exc).lower()
+    return "manifest unknown" in message or "unauthorized" in message
+
+
 def _resolve_rhoai_released_image(
     path: Path,
     related_images_cache: dict[str, dict[str, str]],
@@ -529,7 +539,7 @@ def _resolve_rhoai_released_image(
     try:
         config_payload = _SKOPEO_INSPECT.inspect_config(commit_ref)
     except ValueError as exc:
-        if "manifest unknown" not in str(exc):
+        if not _rhoai_registry_inspect_allows_quay_fallback(exc):
             raise
         quay_ref = _quay_rhoai_ref_from_registry_ref(digest_ref)
         if quay_ref is None:
