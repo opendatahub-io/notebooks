@@ -108,7 +108,8 @@ The kickoff recipe runs these steps in order:
 8. Generate RHDS RPM lockfile (codeserver prefetch input)
 9. Generate RHDS RPM lockfile (codeserver-minimal prefetch input)
 10. Roll out imagestream tags (`uv run manifests/tools/rollout_tag_on_imagestreams.py`)
-11. Validate with `make test`
+11. Refresh ImageStream annotations (`make update-imagestream-annotations`)
+12. Validate with `make test`
 
 #### Local kickoff
 

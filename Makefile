@@ -21,7 +21,7 @@ endif
 .RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 3.6
+RELEASE	 		 ?= 3.7
 RELEASE_PYTHON_VERSION	 ?= 3.12
 CHECK_PAYLOAD_VERSION ?= 0.3.17
 CHECK_PAYLOAD_CONFIG_OVERLAY := scripts/check-payload/.overlay.toml
@@ -445,9 +445,10 @@ validate-runtime-image: bin/kubectl
 					python3 -m papermill \$$(python3 -c \"import papermill, pathlib; print(pathlib.Path(papermill.__file__).parent / 'tests/notebooks/simple_execute.ipynb')\") /tmp/output.ipynb > /dev/null" > "$$papermill_log" 2>&1 ; then
 				# jupyter_client signals the kernel with SIGINT on shutdown. In these pods
 				# os.kill can raise EPERM after simple_execute.ipynb has already run.
+				# Cells with a description print "Executing DESC: 100%", not "Executing: 100%".
 				if grep -q 'PermissionError: \[Errno 13\] Permission denied' "$$papermill_log" \
 					&& grep -q 'os\.kill(self\.pid, sig)' "$$papermill_log" \
-					&& grep -q 'Executing: 100%' "$$papermill_log" \
+					&& grep -Eq 'Executing( DESC)?:[[:space:]]*100%' "$$papermill_log" \
 					&& ! grep -q -e PapermillExecutionError -e CellExecutionError "$$papermill_log"; then
 					echo "WARNING: papermill kernel shutdown hit EPERM after the notebook executed. Continuing."
 				else
@@ -548,7 +549,8 @@ sync-build-args-from-versions:
 #   8=create RHDS rpm lockfile (codeserver prefetch input)
 #   9=create RHDS rpm lockfile (codeserver-minimal prefetch input)
 #   10=rollout tags on imagestreams
-#   11=validate manifests (make test)
+#   11=update imagestream annotations
+#   12=validate manifests (make test)
 # Notes:
 #   - KICKOFF_START_STEP=auto (default) resumes from .kickoff-release.state when present
 #   - After a successful full run, the state file is removed
@@ -558,7 +560,7 @@ sync-build-args-from-versions:
 # ======================================================================================
 TAG_OVERRIDE ?=
 KICKOFF_START_STEP ?= auto
-KICKOFF_LAST_STEP ?= 11
+KICKOFF_LAST_STEP ?= 12
 KICKOFF_STATE_FILE ?= $(ROOT_DIR).kickoff-release.state
 .PHONY: clean-rpm-lockfile-cache
 clean-rpm-lockfile-cache:
@@ -657,7 +659,8 @@ kickoff-release:
 	else \
 		run_step 10 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
 	fi; \
-	run_step 11 "validate manifests (make test)" $(MAKE) test
+	run_step 11 "update imagestream annotations" $(MAKE) update-imagestream-annotations; \
+	run_step 12 "validate manifests (make test)" $(MAKE) test
 
 # ======================================================================================
 #   gmake update-imagestream-annotations
