@@ -152,13 +152,20 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
         if "-commit-" not in key:
             replacement_params_pairs.append((key, istream))
 
-    yaml_pairs = _discover_param_pairs_from_imagestreams(base_dir, all_resources)
+    yaml_pairs, frozen_param_bases = _discover_param_pairs_from_imagestreams(base_dir, all_resources)
     yaml_keys_by_imagestream: dict[str, list[str]] = {}
     for full_key, istream in yaml_pairs:
         yaml_keys_by_imagestream.setdefault(istream, []).append(full_key)
 
     discovered_param_keys = {full_key for full_key, _istream in yaml_pairs if full_key in param_keys}
-    missing_param_keys = sorted(param_keys - discovered_param_keys)
+    # Frozen ImageStreams keep pinned tags and drop the rolling "-n" tag. A
+    # leftover "-n" key for one of those images is not a missing replacement.
+    # Any other params key still has to appear on an ImageStream.
+    missing_param_keys = sorted(
+        key
+        for key in param_keys - discovered_param_keys
+        if not _rolling_key_of_frozen_image(key, frozen_param_bases)
+    )
     assert not missing_param_keys, (
         "Missing imagestream replacement for params key(s): " + ", ".join(missing_param_keys)
     )
@@ -258,11 +265,52 @@ def _is_imagestream_resource(resource: str) -> bool:
     return "-imagestream" in resource and resource.endswith(".yaml")
 
 
+def _metadata_value(metadata: dict[str, object], key: str) -> str | None:
+    """Read a metadata key from annotations, then labels."""
+    for section_name in ("annotations", "labels"):
+        section = metadata.get(section_name)
+        if isinstance(section, dict) and key in section and section[key] is not None:
+            return str(section[key])
+    return None
+
+
+def imagestream_stopped_producing_tags(document: object) -> bool:
+    """True when an ImageStream is frozen and no longer receives a rolling tag.
+
+    Both markers are required. Images that are only deprecated still publish a
+    rolling latest tag. ``opendatahub.io/deprecated`` is an annotation and
+    ``opendatahub.io/notebook-image`` is a label on current manifests; either
+    section is accepted.
+    """
+    if not isinstance(document, dict):
+        return False
+    metadata = document.get("metadata")
+    if not isinstance(metadata, dict):
+        return False
+    return (
+        _metadata_value(metadata, "opendatahub.io/deprecated") == "true"
+        and _metadata_value(metadata, "opendatahub.io/notebook-image") == "false"
+    )
+
+
+def _rolling_key_of_frozen_image(key: str, frozen_param_bases: set[str]) -> bool:
+    """A frozen ImageStream keeps its pinned tags and drops the rolling ``-n`` key."""
+    match = _PARAM_KEY_RE.match(key)
+    return bool(match and match.group(2) == "-n" and match.group(1) in frozen_param_bases)
+
+
 def _discover_param_pairs_from_imagestreams(
     base_dir: Path,
     all_resources: list[str],
-) -> list[tuple[str, str]]:
+) -> tuple[list[tuple[str, str]], set[str]]:
+    """Return placeholder pairs and param bases of ImageStreams that stopped rolling.
+
+    *frozen_param_bases* are the keys before the version suffix (for example
+    ``odh-workbench-jupyter-pytorch-rocm-py312-ubi9``). A leftover ``-n`` params
+    key for one of those bases has no tag to replace.
+    """
     pairs: list[tuple[str, str]] = []
+    frozen_param_bases: set[str] = set()
     for resource in all_resources:
         if not _is_imagestream_resource(resource):
             continue
@@ -282,6 +330,7 @@ def _discover_param_pairs_from_imagestreams(
         tags = spec.get("tags")
         if not isinstance(imagestream_name, str) or not isinstance(tags, list):
             continue
+        stopped = imagestream_stopped_producing_tags(document)
         for tag in tags:
             if not isinstance(tag, dict):
                 continue
@@ -289,9 +338,15 @@ def _discover_param_pairs_from_imagestreams(
             if not isinstance(from_block, dict):
                 continue
             from_name = from_block.get("name")
-            if isinstance(from_name, str) and from_name.endswith("_PLACEHOLDER"):
-                pairs.append((from_name.removesuffix("_PLACEHOLDER"), imagestream_name))
-    return pairs
+            if not isinstance(from_name, str) or not from_name.endswith("_PLACEHOLDER"):
+                continue
+            full_key = from_name.removesuffix("_PLACEHOLDER")
+            pairs.append((full_key, imagestream_name))
+            if stopped:
+                match = _PARAM_KEY_RE.match(full_key)
+                if match:
+                    frozen_param_bases.add(match.group(1))
+    return pairs, frozen_param_bases
 
 
 def _build_imagestream_to_resource(base_dir: Path, all_resources: list[str]) -> dict[str, str]:

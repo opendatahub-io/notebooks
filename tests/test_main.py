@@ -24,6 +24,10 @@ import pytest
 import yaml
 
 from manifests.tools.commit_env_refs import parse_env_file
+from manifests.tools.generate_kustomization import discover_config
+from manifests.tools.generate_kustomization import (
+    imagestream_stopped_producing_tags as _imagestream_stopped_producing_tags,
+)
 from manifests.tools.package_names import all_workbench_pip_names, manifest_name_to_pip
 from tests import PROJECT_ROOT, manifests
 
@@ -1056,32 +1060,6 @@ def _check_all_accelerator_variants(
             )
 
 
-def _imagestream_metadata_value(imagestream: dict[str, Any], key: str) -> str | None:
-    """Read a metadata key from annotations, then labels.
-
-    ``opendatahub.io/deprecated`` is an annotation. ``opendatahub.io/notebook-image``
-    is a label on current manifests. Either section is accepted so a marker is
-    recognized wherever the ImageStream stores it.
-    """
-    metadata = imagestream.get("metadata", {})
-    for section in ("annotations", "labels"):
-        value = metadata.get(section, {}).get(key)
-        if value is not None:
-            return str(value)
-    return None
-
-
-def _imagestream_stopped_producing_tags(imagestream: dict[str, Any]) -> bool:
-    """True when an ImageStream is frozen and no longer receives a rolling tag.
-
-    Both markers are required. Images that are only deprecated still publish a
-    rolling latest tag.
-    """
-    deprecated = _imagestream_metadata_value(imagestream, "opendatahub.io/deprecated")
-    notebook_image = _imagestream_metadata_value(imagestream, "opendatahub.io/notebook-image")
-    return deprecated == "true" and notebook_image == "false"
-
-
 @pytest.mark.parametrize(
     ("annotations", "labels", "expected"),
     [
@@ -1095,6 +1073,56 @@ def _imagestream_stopped_producing_tags(imagestream: dict[str, Any]) -> bool:
 def test_imagestream_stopped_producing_tags(annotations: dict[str, str], labels: dict[str, str], expected: bool):
     imagestream = {"metadata": {"annotations": annotations, "labels": labels}}
     assert _imagestream_stopped_producing_tags(imagestream) is expected
+
+
+_FROZEN_IMAGESTREAMS = {
+    "jupyter-trustyai-notebook",
+    "odh-trustyai-notebook",
+    "jupyter-rocm-pytorch",
+    "jupyter-rocm-tensorflow",
+}
+
+
+@pytest.mark.parametrize(
+    "base_dir",
+    [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"],
+)
+def test_frozen_imagestreams_omit_rolling_tag(base_dir: pathlib.Path):
+    """Frozen ImageStreams keep pinned suffixes. Active ones still start at ``-n``."""
+    _resources, workbenches, _runtime_files, _runtimes = discover_config(base_dir)
+    frozen = [wb for wb in workbenches if wb.imagestream in _FROZEN_IMAGESTREAMS]
+    assert frozen, f"{base_dir.parent.name}: expected frozen workbenches"
+    for wb in workbenches:
+        suffixes = [suffix for _base_key, suffix in wb.versions]
+        if wb.imagestream in _FROZEN_IMAGESTREAMS:
+            assert suffixes, f"{wb.imagestream}: expected pinned tags"
+            assert "-n" not in suffixes, f"{wb.imagestream}: frozen ImageStream still has a rolling tag"
+            continue
+        assert suffixes and suffixes[0] == "-n", f"{wb.imagestream}: active ImageStream should keep a rolling -n tag"
+
+
+def test_frozen_rolling_key_without_placeholder_is_allowed(tmp_path: pathlib.Path):
+    """A leftover ``-n`` key for a frozen ImageStream is not a missing replacement."""
+    source = PROJECT_ROOT / "manifests" / "odh" / "base"
+    destination = tmp_path / "base"
+    shutil.copytree(source, destination)
+    latest = destination / "params-latest.env"
+    latest.write_text(latest.read_text() + "odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n=unused\n")
+
+    _resources, workbenches, _runtime_files, _runtimes = discover_config(destination)
+    trustyai = next(wb for wb in workbenches if wb.imagestream == "jupyter-trustyai-notebook")
+    assert [suffix for _base_key, suffix in trustyai.versions] == ["-3-6"]
+
+
+def test_unknown_params_key_still_requires_imagestream(tmp_path: pathlib.Path):
+    source = PROJECT_ROOT / "manifests" / "odh" / "base"
+    destination = tmp_path / "base"
+    shutil.copytree(source, destination)
+    latest = destination / "params-latest.env"
+    latest.write_text(latest.read_text() + "odh-workbench-jupyter-not-a-real-image-py312-ubi9-n=unused\n")
+
+    with pytest.raises(AssertionError, match="not-a-real-image"):
+        discover_config(destination)
 
 
 @dataclasses.dataclass
