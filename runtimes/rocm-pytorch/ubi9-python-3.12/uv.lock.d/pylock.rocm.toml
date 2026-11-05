@@ -926,7 +926,10 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 name = "onnx"
 version = "1.23.2"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/onnx-1.23.2-1-cp312-abi3-linux_x86_64.whl", upload-time = 2026-10-19T16:21:58Z, size = 9104426, hashes = { sha256 = "46823029bd322f0eb544803afea81e67402c1ac3a43af36efab6fbdc0bbb012a" } }]
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/onnx-1.23.2-1-cp312-abi3-linux_x86_64.whl", upload-time = 2026-10-19T16:21:58Z, size = 9104426, hashes = { sha256 = "46823029bd322f0eb544803afea81e67402c1ac3a43af36efab6fbdc0bbb012a" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/onnx-1.23.2-2-cp312-abi3-linux_x86_64.whl", upload-time = 2026-11-02T23:23:36Z, size = 9104497, hashes = { sha256 = "c1277336fc7eaa5927fa64094c4bc382c8552b53434dca956c76d06006a28ebd" } },
+]
 
 [[packages]]
 name = "onnxconverter-common"

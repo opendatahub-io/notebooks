@@ -659,7 +659,7 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest.Subtests):
             )
 
 
-_BASE_CANONICAL_TAG_ORDER = ["3.5", "3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
+_BASE_CANONICAL_TAG_ORDER = ["3.6", "3.5", "3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
 
 
 def _canonical_tag_order_from_versions_config() -> list[str]:

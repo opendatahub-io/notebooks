@@ -16,6 +16,7 @@ from scripts.notebook_info.report import (
     format_support,
     jira_link,
     org_pulse_link,
+    resolve_slack_channel,
 )
 
 
@@ -107,6 +108,12 @@ def test_support_windows_from_payload_keeps_unpublished_releases_empty() -> None
     assert windows["3.5"] == SupportWindow("2027-03-29", "2028-02-28")
     assert windows["3.4"] == SupportWindow("2026-11-16", None)
     assert windows["3.7"] is None
+
+
+def test_slack_channel_prefers_argument_and_environment() -> None:
+    assert resolve_slack_channel("CARGUMENT", "CENVIRONMENT") == "CARGUMENT"
+    assert resolve_slack_channel(None, "CENVIRONMENT") == "CENVIRONMENT"
+    assert resolve_slack_channel(None, None) == "C096ZR053RQ"
 
 
 def test_build_report_uses_all_sources() -> None:

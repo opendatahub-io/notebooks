@@ -51,6 +51,8 @@ and [README.md § Runtimes](../../README.md#runtimes).
 
 - `tests/containers/` is **excluded from default collection** via `collect_ignore` in
   `tests/conftest.py`. Run container tests explicitly with `pytest tests/containers --image=<img>`.
+- `tests/test_rhoai_additional_baseline.py` is also excluded from default collection
+  (RHOAI opt-in baseline overlay). Run explicitly with `pytest tests/test_rhoai_additional_baseline.py`.
 - Default `make test` collects from `tests/`, `ntb/`, and `ci/` (doctests).
 - `ci/agentic-reviewer/` is excluded from default recursive collection.
   `make test-unit` explicitly collects `tests/`, `ntb/`, and
