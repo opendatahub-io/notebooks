@@ -659,6 +659,8 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest.Subtests):
             )
 
 
+# Previous releases, newest first. kickoff-release records N-1 here via
+# scripts/update_canonical_tag_order.py; the current release is prepended below.
 _BASE_CANONICAL_TAG_ORDER = ["3.6", "3.5", "3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
 
 
@@ -759,7 +761,8 @@ def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_d
                     else:
                         pytest.fail(
                             f"{is_file.name}: tag name {tn!r} is not in CANONICAL_TAG_ORDER. "
-                            f"Update CANONICAL_TAG_ORDER if a new version was added."
+                            "Record the previous release in _BASE_CANONICAL_TAG_ORDER "
+                            "(make kickoff-release, or scripts/update_canonical_tag_order.py)."
                         )
                 assert canonical_positions == sorted(canonical_positions), (
                     f"{is_file.name}: tags are not in newest-to-oldest order. "

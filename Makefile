@@ -550,7 +550,8 @@ sync-build-args-from-versions:
 #   9=create RHDS rpm lockfile (codeserver-minimal prefetch input)
 #   10=rollout tags on imagestreams
 #   11=update imagestream annotations
-#   12=validate manifests (make test)
+#   12=record previous release (N-1) in tests/test_main.py _BASE_CANONICAL_TAG_ORDER
+#   13=validate manifests (make test)
 # Notes:
 #   - KICKOFF_START_STEP=auto (default) resumes from .kickoff-release.state when present
 #   - After a successful full run, the state file is removed
@@ -560,7 +561,7 @@ sync-build-args-from-versions:
 # ======================================================================================
 TAG_OVERRIDE ?=
 KICKOFF_START_STEP ?= auto
-KICKOFF_LAST_STEP ?= 12
+KICKOFF_LAST_STEP ?= 13
 KICKOFF_STATE_FILE ?= $(ROOT_DIR).kickoff-release.state
 .PHONY: clean-rpm-lockfile-cache
 clean-rpm-lockfile-cache:
@@ -660,7 +661,8 @@ kickoff-release:
 		run_step 10 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
 	fi; \
 	run_step 11 "update imagestream annotations" $(MAKE) update-imagestream-annotations; \
-	run_step 12 "validate manifests (make test)" $(MAKE) test
+	run_step 12 "record N-1 in canonical tag order" uv run scripts/update_canonical_tag_order.py; \
+	run_step 13 "validate manifests (make test)" $(MAKE) test
 
 # ======================================================================================
 #   gmake update-imagestream-annotations
