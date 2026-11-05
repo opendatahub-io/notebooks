@@ -6,7 +6,7 @@
 //
 // MintMaker ON (remote @ base branch):
 //   - opendatahub-io/notebooks @ main
-//   - red-hat-data-services/notebooks @ rhoai-2.25, rhoai-3.3, rhoai-3.4
+//   - red-hat-data-services/notebooks @ rhoai-2.25, rhoai-3.3, rhoai-3.4, rhoai-3.5, rhoai-3.6
 // MintMaker OFF:
 //   - opendatahub-io/notebooks @ stable, candidate, legacy poc branches (release-data may
 //     still list them until an ops MR removes them — packageRules gate PR creation)
@@ -182,9 +182,9 @@
       enabled: false,
     },
     {
-      description: "RHDS supported release branches only (rhoai-2.25, rhoai-3.3, rhoai-3.4, rhoai-3.5)",
+      description: "RHDS supported release branches only (rhoai-2.25, rhoai-3.3, rhoai-3.4, rhoai-3.5, rhoai-3.6)",
       matchRepositories: ["red-hat-data-services/notebooks"],
-      matchBaseBranches: ["rhoai-2.25", "rhoai-3.3", "rhoai-3.4", "rhoai-3.5"],
+      matchBaseBranches: ["rhoai-2.25", "rhoai-3.3", "rhoai-3.4", "rhoai-3.5", "rhoai-3.6"],
       enabled: true,
     },
     {

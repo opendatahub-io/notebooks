@@ -42,7 +42,7 @@ Changing the Konflux `versioningTemplate` requires updating `KONFLUX_AIPCC_VERSI
 | Branch / Repo | Major/minor upgrades | Patch/build upgrades |
 |---------------|---------------------|---------------------|
 | `main` on `opendatahub-io/notebooks` | Allowed | Allowed |
-| `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`, `rhoai-3.5` on `red-hat-data-services/notebooks` | Blocked | Allowed |
+| `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`, `rhoai-3.5`, `rhoai-3.6` on `red-hat-data-services/notebooks` | Blocked | Allowed |
 | Other branches, including RHDS `main` | Blocked | Allowed |
 
 Channel identity changes (for example adopting `cuda13.0-torch2.13` instead of `cuda13.0-torch2.12`) are **repository ref changes**, not tag bumps within the same image name; MintMaker will not move you to a new channel repo automatically—update `versions_config.yml` and konflux confs via the release tooling.
@@ -73,7 +73,7 @@ For major/minor updates, the PR body includes a link to the task's `MIGRATION.md
 
 ## MintMaker and self-hosted Renovate
 
-MintMaker runs on `opendatahub-io/notebooks` `main` and on the supported RHDS release branches `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`, and `rhoai-3.5`. It is disabled on ODH non-main branches and on RHDS `main`, EA, and EOL branches. MintMaker uses `platformCommit: "enabled"` and creates branches with the `konflux/mintmaker/` prefix.
+MintMaker runs on `opendatahub-io/notebooks` `main` and on the supported RHDS release branches `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`, `rhoai-3.5`, and `rhoai-3.6`. It is disabled on ODH non-main branches and on RHDS `main`, EA, and EOL branches. MintMaker uses `platformCommit: "enabled"` and creates branches with the `konflux/mintmaker/` prefix.
 
 The repository also has a self-hosted workflow at `.github/workflows/renovate-self-hosted.yaml`. It runs daily at 05:00 UTC for the configured repositories and can be started manually with `workflow_dispatch`, including lookup, full, and extract dry-run modes. Self-hosted runs process Dockerfiles, custom regex managers, and GitHub Actions; Tekton is intentionally excluded because MintMaker handles it.
 
