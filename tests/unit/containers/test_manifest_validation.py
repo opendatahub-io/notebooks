@@ -84,3 +84,37 @@ def test_clair_failed_scan_falls_back_to_sbom(monkeypatch: pytest.MonkeyPatch) -
 
     sbom.assert_called_once_with(tag.image_ref, source_hint="/jupyter/minimal/", python_version="")
     assert compare.call_count == 2
+
+
+def test_code_server_sbom_without_package_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
+    tag = validation._TagInfo(
+        "code-server-notebook-imagestream.yaml", "3.6", "quay.io/example/image@sha256:index", [], []
+    )
+    subtests = Mock()
+    subtests.test.return_value = nullcontext()
+    monkeypatch.setattr(validation, "_packages_from_sbom", lambda *args, **kwargs: {})
+
+    with pytest.raises(pytest.skip.Exception, match="not present in the SBOM"):
+        validation._validate_code_server_via_sbom(
+            subtests,
+            tag,
+            [{"name": "code-server", "version": "4.122"}],
+            has_cosign=True,
+        )
+
+
+def test_code_server_sbom_fetch_failure_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
+    tag = validation._TagInfo(
+        "code-server-notebook-imagestream.yaml", "3.6", "quay.io/example/image@sha256:index", [], []
+    )
+    subtests = Mock()
+    subtests.test.return_value = nullcontext()
+    monkeypatch.setattr(validation, "_packages_from_sbom", Mock(side_effect=RuntimeError("no sbom attached")))
+
+    with pytest.raises(pytest.skip.Exception, match="SBOM unavailable"):
+        validation._validate_code_server_via_sbom(
+            subtests,
+            tag,
+            [{"name": "code-server", "version": "4.122"}],
+            has_cosign=True,
+        )
