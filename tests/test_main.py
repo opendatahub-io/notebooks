@@ -412,6 +412,11 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
                     _check_all_accelerator_variants(directory, manifests_directory, subtests)
 
                 with subtests.test(msg="checking the `notebook-python-dependencies` array", pyproject=file):
+                    if manifest.stopped_producing_tags:
+                        pytest.skip(
+                            f"{manifest.filename.name} is deprecated and no longer receives new tags; "
+                            "frozen annotations are not compared to the current pylock"
+                        )
                     for d in manifest.dep:
                         name = d["name"]
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
@@ -452,6 +457,11 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
                         )
 
                 with subtests.test(msg="checking pylock workbench packages are listed in manifest", pyproject=file):
+                    if manifest.stopped_producing_tags:
+                        pytest.skip(
+                            f"{manifest.filename.name} is deprecated and no longer receives new tags; "
+                            "frozen annotations are not compared to the current pylock"
+                        )
                     known_pip_names = all_workbench_pip_names()
                     manifest_pip_names = {manifest_name_to_pip(d["name"]).lower() for d in manifest.dep}
                     workbench_only_pip = {manifest_name_to_pip(n).lower() for n in workbench_only_packages}
@@ -496,6 +506,9 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
             continue
 
         manifest = load_manifests_file_for(directory, manifests_directory)
+        if manifest.stopped_producing_tags:
+            # The newest tag is the last release that was published, not the rolling latest.
+            continue
         collected_manifests.append(manifest)
 
     @dataclasses.dataclass
@@ -740,6 +753,9 @@ def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_d
         tags = is_data["spec"]["tags"]
         tag_names = [t["name"] for t in tags]
         is_runtime = is_data["metadata"].get("labels", {}).get("opendatahub.io/runtime-image") == "true"
+        # A frozen ImageStream keeps its last release tag at index 0. It does not
+        # gain a rolling "-n" tag when new releases stop.
+        stopped_producing_tags = _imagestream_stopped_producing_tags(is_data)
         has_kustomize_replacements = any(
             target.get("select", {}).get("name") == is_name for r in replacements for target in r["targets"]
         )
@@ -783,7 +799,7 @@ def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_d
                     )
                     suffix = m.group(2)
 
-                    if idx == 0:
+                    if idx == 0 and not stopped_producing_tags:
                         assert suffix == "-n", (
                             f"{is_file.name} tag {tag_name} (index 0): expected suffix '-n' for latest tag, "
                             f"got {suffix!r} in {from_placeholder!r}"
@@ -1040,6 +1056,47 @@ def _check_all_accelerator_variants(
             )
 
 
+def _imagestream_metadata_value(imagestream: dict[str, Any], key: str) -> str | None:
+    """Read a metadata key from annotations, then labels.
+
+    ``opendatahub.io/deprecated`` is an annotation. ``opendatahub.io/notebook-image``
+    is a label on current manifests. Either section is accepted so a marker is
+    recognized wherever the ImageStream stores it.
+    """
+    metadata = imagestream.get("metadata", {})
+    for section in ("annotations", "labels"):
+        value = metadata.get(section, {}).get(key)
+        if value is not None:
+            return str(value)
+    return None
+
+
+def _imagestream_stopped_producing_tags(imagestream: dict[str, Any]) -> bool:
+    """True when an ImageStream is frozen and no longer receives a rolling tag.
+
+    Both markers are required. Images that are only deprecated still publish a
+    rolling latest tag.
+    """
+    deprecated = _imagestream_metadata_value(imagestream, "opendatahub.io/deprecated")
+    notebook_image = _imagestream_metadata_value(imagestream, "opendatahub.io/notebook-image")
+    return deprecated == "true" and notebook_image == "false"
+
+
+@pytest.mark.parametrize(
+    ("annotations", "labels", "expected"),
+    [
+        ({"opendatahub.io/deprecated": "true"}, {"opendatahub.io/notebook-image": "false"}, True),
+        ({"opendatahub.io/deprecated": "true", "opendatahub.io/notebook-image": "false"}, {}, True),
+        ({"opendatahub.io/deprecated": "true"}, {"opendatahub.io/notebook-image": "true"}, False),
+        ({}, {"opendatahub.io/notebook-image": "false"}, False),
+        ({"opendatahub.io/deprecated": "false"}, {"opendatahub.io/notebook-image": "false"}, False),
+    ],
+)
+def test_imagestream_stopped_producing_tags(annotations: dict[str, str], labels: dict[str, str], expected: bool):
+    imagestream = {"metadata": {"annotations": annotations, "labels": labels}}
+    assert _imagestream_stopped_producing_tags(imagestream) is expected
+
+
 @dataclasses.dataclass
 class Manifest:
     filename: pathlib.Path
@@ -1047,6 +1104,7 @@ class Manifest:
     metadata: manifests.NotebookMetadata
     sw: list[dict[str, Any]]
     dep: list[dict[str, Any]]
+    stopped_producing_tags: bool = False
 
 
 def _collect_rpms_lock_files() -> list[pathlib.Path]:
@@ -1123,10 +1181,14 @@ def load_manifests_file_for(
         for tag in imagestream["spec"]["tags"]
         if tag["annotations"].get("opendatahub.io/workbench-image-recommended", None) == "true"
     ]
+    stopped_producing_tags = _imagestream_stopped_producing_tags(imagestream)
     assert len(recommended_tags) <= 1, "at most one tag may be recommended at a time"
-    assert recommended_tags or len(imagestream["spec"]["tags"]) == 1, (
-        "Either there has to be recommended image, or there can be only one tag"
-    )
+    # A frozen ImageStream may keep several historical tags and no recommended tag.
+    # Active ImageStreams still need a recommended tag, unless they have only one tag.
+    if not stopped_producing_tags:
+        assert recommended_tags or len(imagestream["spec"]["tags"]) == 1, (
+            "Either there has to be recommended image, or there can be only one tag"
+        )
     current_tag = recommended_tags[0] if recommended_tags else imagestream["spec"]["tags"][0]
 
     try:
@@ -1141,6 +1203,7 @@ def load_manifests_file_for(
         metadata=metadata,
         sw=sw,
         dep=dep,
+        stopped_producing_tags=stopped_producing_tags,
     )
 
 
