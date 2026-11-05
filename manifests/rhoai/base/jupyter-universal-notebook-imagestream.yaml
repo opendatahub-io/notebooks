@@ -36,6 +36,29 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-universal-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "3.7"
+      referencePolicy:
+        type: Source
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"},
+            {"name": "Kfp", "version": "2.17"},
+            {"name": "Numpy", "version": "2.5"},
+            {"name": "Odh-Elyra", "version": "5.0"}
+          ]
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-universal-cpu-py312-rhel9
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-universal-cpu-py312-ubi9-commit-3-6_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-universal-cpu-py312-ubi9-3-6_PLACEHOLDER
       name: "3.6"
       referencePolicy:
         type: Source

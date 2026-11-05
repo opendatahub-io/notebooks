@@ -21,7 +21,7 @@ endif
 .RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 3.6
+RELEASE	 		 ?= 3.7
 RELEASE_PYTHON_VERSION	 ?= 3.12
 CHECK_PAYLOAD_VERSION ?= 0.3.17
 CHECK_PAYLOAD_CONFIG_OVERLAY := scripts/check-payload/.overlay.toml
@@ -549,7 +549,8 @@ sync-build-args-from-versions:
 #   8=create RHDS rpm lockfile (codeserver prefetch input)
 #   9=create RHDS rpm lockfile (codeserver-minimal prefetch input)
 #   10=rollout tags on imagestreams
-#   11=validate manifests (make test)
+#   11=update imagestream annotations
+#   12=validate manifests (make test)
 # Notes:
 #   - KICKOFF_START_STEP=auto (default) resumes from .kickoff-release.state when present
 #   - After a successful full run, the state file is removed
@@ -559,7 +560,7 @@ sync-build-args-from-versions:
 # ======================================================================================
 TAG_OVERRIDE ?=
 KICKOFF_START_STEP ?= auto
-KICKOFF_LAST_STEP ?= 11
+KICKOFF_LAST_STEP ?= 12
 KICKOFF_STATE_FILE ?= $(ROOT_DIR).kickoff-release.state
 .PHONY: clean-rpm-lockfile-cache
 clean-rpm-lockfile-cache:
@@ -658,7 +659,8 @@ kickoff-release:
 	else \
 		run_step 10 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
 	fi; \
-	run_step 11 "validate manifests (make test)" $(MAKE) test
+	run_step 11 "update imagestream annotations" $(MAKE) update-imagestream-annotations; \
+	run_step 12 "validate manifests (make test)" $(MAKE) test
 
 # ======================================================================================
 #   gmake update-imagestream-annotations

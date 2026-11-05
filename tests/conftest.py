@@ -19,7 +19,9 @@ pytest.register_assert_rewrite("ntb.asserts")
 # This must be set here: pytest.ini has no supported collect_ignore key (pytest 9+
 # warns if you add one). conftest collect_ignore paths are relative to this file's
 # directory, so "containers" means tests/containers/.
-collect_ignore = ["containers"]
+# RHOAI additional/baseline overlay: opt-in kustomize path; not part of kickoff gate.
+# Run explicitly: pytest tests/test_rhoai_additional_baseline.py
+collect_ignore = ["containers", "test_rhoai_additional_baseline.py"]
 
 # Opt-in SMT backend for Hypothesis property tests (requires ``uv sync --group crosshair``).
 # Only register when the backend is installed so default ``make test`` keeps working.
