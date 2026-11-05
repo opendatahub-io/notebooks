@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 
 from .config import RELEASES, ReleaseConfig
 from .jira import jira_client_from_env
+from .lifecycle import SupportWindow, fetch_support_windows
 from .org_pulse import org_pulse_client_from_env
 from .slack import post_report
 
@@ -28,7 +29,12 @@ def org_pulse_link(base_url: str) -> str:
 
 
 def format_date(value: str | None) -> str:
-    return datetime.strptime(value, "%Y-%m-%d").strftime("%b/%d") if value else "—"
+    if not value:
+        return "—"
+    parsed = datetime.strptime(value, "%Y-%m-%d")
+    if parsed.year == datetime.now(EASTERN).year:
+        return parsed.strftime("%b/%d")
+    return parsed.strftime("%b/%d/%Y")
 
 
 def format_grades(grades: dict[str, int]) -> str:
@@ -40,20 +46,28 @@ def format_grades_summary(grades: dict[str, dict[str, int]]) -> str:
     return "\n".join(f"{release}: {format_grades(grade_counts)}" for release, grade_counts in grades.items())
 
 
+def format_support(window: SupportWindow | None) -> str:
+    if window is None:
+        return "—"
+    return format_date(window.extended_support_end or window.full_support_end)
+
+
 def build_report(
     counts: dict[str, int],
     freezes: dict[str, str | None],
     grades: dict[str, dict[str, int]],
+    support: dict[str, SupportWindow | None],
     jira_base_url: str,
     org_pulse_base_url: str,
 ) -> str:
     now = datetime.now(EASTERN).strftime("%Y-%m-%d %H:%M ET")
-    lines = [f"Notebook Status — {now}", "- Release - Open - CF - Grade"]
+    lines = [f"Notebook Status — {now}", "- Release - Open - CF - Grade - EOL"]
     for release, config in RELEASES.items():
         count = counts[release]
         count_text = f"<{jira_link(config, jira_base_url)}|{count}>" if count else str(count)
         lines.append(
-            f"- {release} · {count_text} · {format_date(freezes.get(release))} · {format_grades(grades[release])}"
+            f"- {release} · {count_text} · {format_date(freezes.get(release))} · "
+            f"{format_grades(grades[release])} · {format_support(support.get(release))}"
         )
     lines.append(f"- <{org_pulse_link(org_pulse_base_url)}|Org Pulse Container Health Index>")
     return "\n".join(lines)
@@ -83,11 +97,12 @@ def main() -> None:
 
     counts = {release: jira_client_from_env().count(config.jql) for release, config in RELEASES.items()}
     freezes = org_pulse.code_freezes(RELEASES)
+    support = fetch_support_windows(set(RELEASES))
     jira_base_url = os.getenv("JIRA_URL")
     org_pulse_base_url = os.getenv("ORG_PULSE_UI_URL")
     if not jira_base_url or not org_pulse_base_url:
         raise SystemExit("Missing environment variables: JIRA_URL, ORG_PULSE_UI_URL")
-    report = build_report(counts, freezes, grades, jira_base_url, org_pulse_base_url)
+    report = build_report(counts, freezes, grades, support, jira_base_url, org_pulse_base_url)
     print(report)
     if not dry_run:
         channel = args.slack_channel or os.getenv("SLACK_CHANNEL")
