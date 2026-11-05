@@ -35,6 +35,27 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-minimal-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "3.7"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"}
+          ]
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-3-6_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-minimal-cpu-py312-ubi9-3-6_PLACEHOLDER
       name: "3.6"
       referencePolicy:
         type: Source
@@ -51,8 +72,8 @@ spec:
             {"name": "JupyterLab", "version": "4.6"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9
-        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-3-5_PLACEHOLDER
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-minimal-cpu-py312-ubi9-3-5_PLACEHOLDER
@@ -94,7 +115,7 @@ spec:
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-2025-2_PLACEHOLDER
-        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-minimal-cpu-py312-ubi9-2025-2_PLACEHOLDER
