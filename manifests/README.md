@@ -73,10 +73,12 @@ uv run manifests/tools/generate_kustomization.py --stdout   # preview without wr
 Each workbench ImageStream tag must satisfy these rules:
 
 - **Tag ordering**: tags are listed newest to oldest.
-- **Placeholder suffix**: the first tag (latest) uses suffix `-n`; every
-  subsequent tag's `from.name` and `notebook-build-commit` placeholders use a
-  suffix matching the tag `name:` with `.` replaced by `-`
-  (e.g. tag `"2025.1"` uses suffix `-2025-1`).
+- **Placeholder suffix**: an active ImageStream's first tag (latest) uses
+  suffix `-n`. Every later tag, and every tag on an ImageStream that has
+  stopped producing tags (`opendatahub.io/deprecated: "true"` and
+  `opendatahub.io/notebook-image: "false"`), uses a suffix matching the tag
+  `name:` with `.` replaced by `-` (e.g. tag `"2025.1"` uses suffix
+  `-2025-1`). A frozen ImageStream does not require a rolling `-n` params key.
 - **Commit placeholder**: mirrors the `from.name` placeholder with `-commit`
   inserted before the version suffix.
 - **Env key existence**: every placeholder key must appear in `params.env` /

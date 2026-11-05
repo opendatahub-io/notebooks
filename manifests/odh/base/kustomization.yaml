@@ -21,8 +21,6 @@ resources:
   - runtime-baseline-imagestream.yaml
   - runtime-minimal-imagestream.yaml
   - runtime-pytorch-imagestream.yaml
-  - runtime-rocm-pytorch-imagestream.yaml
-  - runtime-rocm-tensorflow-imagestream.yaml
   - runtime-tensorflow-imagestream.yaml
   - runtime-pytorch-llmcompressor-imagestream.yaml
   - runtime-universal-imagestream.yaml
@@ -176,26 +174,13 @@ replacements:
           name: jupyter-tensorflow-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n
-      kind: ConfigMap
-      name: notebook-image-params
-      version: v1
-    targets:
-      - fieldPaths:
-          - spec.tags.0.from.name
-        select:
-          group: image.openshift.io
-          kind: ImageStream
-          name: jupyter-trustyai-notebook
-          version: v1
-  - source:
       fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-3-6
       kind: ConfigMap
       name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
-          - spec.tags.1.from.name
+          - spec.tags.0.from.name
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -280,43 +265,17 @@ replacements:
           name: jupyter-rocm-minimal
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n
-      kind: ConfigMap
-      name: notebook-image-params
-      version: v1
-    targets:
-      - fieldPaths:
-          - spec.tags.0.from.name
-        select:
-          group: image.openshift.io
-          kind: ImageStream
-          name: jupyter-rocm-pytorch
-          version: v1
-  - source:
       fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-3-6
       kind: ConfigMap
       name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
-          - spec.tags.1.from.name
-        select:
-          group: image.openshift.io
-          kind: ImageStream
-          name: jupyter-rocm-pytorch
-          version: v1
-  - source:
-      fieldPath: data.odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-n
-      kind: ConfigMap
-      name: notebook-image-params
-      version: v1
-    targets:
-      - fieldPaths:
           - spec.tags.0.from.name
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-rocm-tensorflow
+          name: jupyter-rocm-pytorch
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-3-6
@@ -325,7 +284,7 @@ replacements:
       version: v1
     targets:
       - fieldPaths:
-          - spec.tags.1.from.name
+          - spec.tags.0.from.name
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -566,26 +525,13 @@ replacements:
           name: jupyter-tensorflow-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-n
-      kind: ConfigMap
-      name: notebook-image-commithash
-      version: v1
-    targets:
-      - fieldPaths:
-          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
-        select:
-          group: image.openshift.io
-          kind: ImageStream
-          name: jupyter-trustyai-notebook
-          version: v1
-  - source:
       fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-3-6
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
-          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -670,43 +616,17 @@ replacements:
           name: jupyter-rocm-minimal
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-commit-n
-      kind: ConfigMap
-      name: notebook-image-commithash
-      version: v1
-    targets:
-      - fieldPaths:
-          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
-        select:
-          group: image.openshift.io
-          kind: ImageStream
-          name: jupyter-rocm-pytorch
-          version: v1
-  - source:
       fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-commit-3-6
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
-          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
-        select:
-          group: image.openshift.io
-          kind: ImageStream
-          name: jupyter-rocm-pytorch
-          version: v1
-  - source:
-      fieldPath: data.odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-n
-      kind: ConfigMap
-      name: notebook-image-commithash
-      version: v1
-    targets:
-      - fieldPaths:
           - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-rocm-tensorflow
+          name: jupyter-rocm-pytorch
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-3-6
@@ -715,7 +635,7 @@ replacements:
       version: v1
     targets:
       - fieldPaths:
-          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -865,19 +785,6 @@ replacements:
           name: runtime-pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n
-      kind: ConfigMap
-      name: notebook-image-params
-      version: v1
-    targets:
-      - fieldPaths:
-          - spec.tags.0.from.name
-        select:
-          group: image.openshift.io
-          kind: ImageStream
-          name: runtime-rocm-pytorch
-          version: v1
-  - source:
       fieldPath: data.odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n
       kind: ConfigMap
       name: notebook-image-params
@@ -889,19 +796,6 @@ replacements:
           group: image.openshift.io
           kind: ImageStream
           name: runtime-tensorflow
-          version: v1
-  - source:
-      fieldPath: data.odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-n
-      kind: ConfigMap
-      name: notebook-image-params
-      version: v1
-    targets:
-      - fieldPaths:
-          - spec.tags.0.from.name
-        select:
-          group: image.openshift.io
-          kind: ImageStream
-          name: runtime-rocm-tensorflow
           version: v1
   - source:
       fieldPath: data.odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-n
