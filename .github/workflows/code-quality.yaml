@@ -355,7 +355,7 @@ jobs:
           find . -name "Dockerfile*" -print0 | xargs -0 ./hadolint --config ./ci/hadolint-config.yaml
           echo "Hadolint done"
 
-      # This simply checks that the manifests and respective kustomization.yaml finishes without an error.
+      # Builds each */base kustomization. Overlays are not checked.
       - name: Check kustomize manifest
         if: ${{ !cancelled() }}
         id: kustomize-manifests

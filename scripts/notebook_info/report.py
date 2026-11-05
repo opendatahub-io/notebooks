@@ -9,7 +9,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from .config import RELEASES, ReleaseConfig
+from .config import DEFAULT_SLACK_CHANNEL, RELEASES, ReleaseConfig
 from .jira import jira_client_from_env
 from .org_pulse import org_pulse_client_from_env
 from .slack import post_report
@@ -68,6 +68,10 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def resolve_slack_channel(channel_argument: str | None, channel_environment: str | None) -> str:
+    return channel_argument or channel_environment or DEFAULT_SLACK_CHANNEL
+
+
 def main() -> None:
     args = parse_args()
     logging.basicConfig(
@@ -90,9 +94,7 @@ def main() -> None:
     report = build_report(counts, freezes, grades, jira_base_url, org_pulse_base_url)
     print(report)
     if not dry_run:
-        channel = args.slack_channel or os.getenv("SLACK_CHANNEL")
-        if not channel:
-            raise SystemExit("Missing environment variable: SLACK_CHANNEL")
+        channel = resolve_slack_channel(args.slack_channel, os.getenv("SLACK_CHANNEL"))
         post_report(report, channel)
 
 

@@ -177,6 +177,83 @@ class TestImageVariableMatchesMetadata:
         assert result.returncode != 0
         assert "commitref" in result.stdout.lower()
 
+    def test_odh_baseline_and_c9s_release_keys_pass(self) -> None:
+        cases = [
+            (
+                "odh-workbench-jupyter-baseline-cpu-py312-c9s-3-6",
+                "opendatahub/odh-workbench-jupyter-baseline-cpu-py312-ubi9",
+                "1012",
+            ),
+            (
+                "odh-workbench-codeserver-baseline-cpu-py312-c9s-3-6",
+                "opendatahub/odh-workbench-codeserver-baseline-cpu-py312-rhel9",
+                "910",
+            ),
+            (
+                "odh-workbench-jupyter-universal-cpu-py312-c9s-3-6",
+                "opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9",
+                "1072",
+            ),
+            (
+                "odh-workbench-codeserver-minimal-cpu-py312-3-6",
+                "opendatahub/odh-workbench-codeserver-minimal-cpu-py312-ubi9",
+                "771",
+            ),
+        ]
+        for variable, name, size in cases:
+            result = _run_bash(
+                "check_image_variable_matches_name_and_commitref_and_size "
+                f'"{variable}" "{name}" "" "konflux" {size}'
+            )
+            assert result.returncode == 0, result.stdout
+
+    def test_rhoai_skips_baseline_keys(self) -> None:
+        result = _run_bash(
+            "_MANIFESTS_VARIANT=rhoai\n"
+            "check_image_variable_matches_name_and_commitref_and_size "
+            '"odh-workbench-jupyter-baseline-cpu-py312-c9s-3-6" '
+            '"ignored" "" "konflux" 1'
+        )
+        assert result.returncode == 0
+        assert "Skipping baseline image" in result.stdout
+
+        result = _run_bash(
+            "_MANIFESTS_VARIANT=rhoai\n"
+            "check_image "
+            '"odh-workbench-codeserver-baseline-cpu-py312-c9s-3-6" '
+            '"registry.example/unused@sha256:abc"'
+        )
+        assert result.returncode == 0
+        assert "Skipping baseline image" in result.stdout
+
+    def test_rhoai_codeserver_minimal_and_release_sizes(self) -> None:
+        minimal = _run_bash(
+            "_MANIFESTS_VARIANT=rhoai\n"
+            "check_image_variable_matches_name_and_commitref_and_size "
+            '"odh-workbench-codeserver-minimal-cpu-py312-ubi9-3-6" '
+            '"rhoai/odh-workbench-codeserver-minimal-cpu-py312-rhel9" '
+            '"" "konflux" 1675'
+        )
+        assert minimal.returncode == 0, minimal.stdout
+
+        current = _run_bash(
+            "_MANIFESTS_VARIANT=rhoai\n"
+            "check_image_variable_matches_name_and_commitref_and_size "
+            '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-3-6" '
+            '"rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9" '
+            '"" "konflux" 1835'
+        )
+        assert current.returncode == 0, current.stdout
+
+        previous = _run_bash(
+            "_MANIFESTS_VARIANT=rhoai\n"
+            "check_image_variable_matches_name_and_commitref_and_size "
+            '"odh-workbench-jupyter-minimal-cpu-py312-ubi9-3-5" '
+            '"rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9" '
+            '"" "konflux" 996'
+        )
+        assert previous.returncode == 0, previous.stdout
+
 
 # --------------- Size threshold calculations ---------------
 

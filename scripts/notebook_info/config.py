@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+DEFAULT_SLACK_CHANNEL = "C096ZR053RQ"  # team-notebooks
+
 
 @dataclass(frozen=True)
 class ReleaseConfig:
