@@ -249,10 +249,6 @@ cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
-.PHONY: jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
-jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/trustyai/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
-
 .PHONY: runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,runtimes/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
@@ -285,23 +281,6 @@ codeserver-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
 .PHONY: rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
-.PHONY: rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
-.PHONY: rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
-.PHONY: rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
-.PHONY: rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
 
 ####################################### Buildchain for Baseline Images (Codeserver, Jupyter, Runtime) using PYPI #######################################
 
@@ -723,17 +702,12 @@ all-images: \
 	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	codeserver-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
- 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)

@@ -65,6 +65,15 @@ logger = logging.getLogger(__name__)
 
 # Force accelerator flavor when resolving ImageStream paths. ``extract_metadata_from_path`` may
 # infer "cuda" from Dockerfile.konflux.cuda even for the CPU ImageStream (same tree builds both).
+# ImageStreams still shipped in manifests/ but with no in-repo notebook tree (built elsewhere).
+_SKIP_RESOURCE_FILES: frozenset[str] = frozenset(
+    {
+        "jupyter-trustyai-notebook-imagestream.yaml",
+        "jupyter-rocm-pytorch-notebook-imagestream.yaml",
+        "jupyter-rocm-tensorflow-notebook-imagestream.yaml",
+    }
+)
+
 _ACCELERATOR_OVERRIDE_FOR_RESOURCE: dict[str, str | None] = {
     "jupyter-minimal-notebook-imagestream.yaml": None,
     "jupyter-minimal-gpu-notebook-imagestream.yaml": "cuda",
@@ -90,41 +99,6 @@ _CANONICAL_REPO_URL: dict[str, str] = {
 # Commit values from *.env must look like hex object IDs before passing to git (avoid ref injection).
 # Repo env files use short SHAs (7+ chars); full 40-char hashes are also accepted.
 _GIT_HEX_OBJECT_ID = re.compile(r"^[0-9a-f]{7,40}$")
-
-
-def _is_under_jupyter_rocm_tree(directory: Path) -> bool:
-    parts = directory.parts
-    try:
-        j = parts.index("jupyter")
-    except ValueError:
-        return False
-    return len(parts) > j + 1 and parts[j + 1] == "rocm"
-
-
-def _is_under_jupyter_minimal_tree(directory: Path) -> bool:
-    """``jupyter/minimal/<os>-python-*/`` (ROCm minimal uses the same tree as CPU; lockfile is ``pylock.rocm.toml``)."""
-    parts = directory.parts
-    try:
-        j = parts.index("jupyter")
-    except ValueError:
-        return False
-    return len(parts) > j + 1 and parts[j + 1] == "minimal"
-
-
-def _workbench_dir_consistent_with_rocm_policy(wb: Workbench, directory: Path) -> bool:
-    """Skip ``jupyter/rocm/...`` source trees when the ImageStream is not a ROCm workbench."""
-    rf = wb.resource_file
-    rocm_tree = _is_under_jupyter_rocm_tree(directory)
-
-    # ROCm minimal ImageStream is built from jupyter/minimal/..., not jupyter/rocm/minimal/...
-    if rf == "jupyter-rocm-minimal-notebook-imagestream.yaml":
-        return _is_under_jupyter_minimal_tree(directory)
-
-    if rf.startswith("jupyter-rocm-"):
-        return rocm_tree
-    if rf.startswith("jupyter-") and rocm_tree:
-        return False
-    return True
 
 
 def _is_image_directory(directory: Path) -> bool:
@@ -178,8 +152,6 @@ def _dirs_for_workbench(manifests_dir: Path, wb: Workbench, candidate_dirs: list
 
     found: list[Path] = []
     for d in candidate_dirs:
-        if not _workbench_dir_consistent_with_rocm_policy(wb, d):
-            continue
         try:
             meta = extract_metadata_from_path(d)
             if wb.resource_file in _ACCELERATOR_OVERRIDE_FOR_RESOURCE:
@@ -647,6 +619,9 @@ def run_variant(variant: str, dry_run: bool) -> int:
     lockfile_errors: list[str] = []
     candidate_dirs = _discover_candidate_dirs()
     for wb in workbenches:
+        if wb.resource_file in _SKIP_RESOURCE_FILES:
+            logger.info("skip %s: no in-repo source tree (maintained elsewhere)", wb.resource_file)
+            continue
         candidates = _dirs_for_workbench(manifests_dir, wb, candidate_dirs)
         path = base / wb.resource_file
         if not path.is_file():

@@ -28,7 +28,7 @@ RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
 
 
 # Create unversioned .so symlinks for ROCm libs (RHAIENG-2643)
-COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
+COPY jupyter/minimal/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
 RUN python3 /tmp/link-solibs.py
 
 ########################

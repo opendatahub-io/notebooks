@@ -27,7 +27,7 @@ Each notebook image is a self-contained multi-stage Dockerfile — there are no 
 dependencies. To add a new notebook:
 
 - Copy an existing leaf Dockerfile that is closest to your new image (e.g. copy
-  `jupyter/trustyai/ubi9-python-3.12/Dockerfile.cpu` and add your new stage at the end)
+  `jupyter/datascience/ubi9-python-3.12/Dockerfile.cpu` and add your new stage at the end)
 - Create a proper filepath: `jupyter/${NOTEBOOK_NAME}/ubi9-python-3.12/`
 - Add the minimum files:
     - `pyproject.toml` with the additional Python packages

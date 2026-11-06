@@ -88,9 +88,9 @@ carte. For example, a single RHOAI 3.6 release may simultaneously ship:
 |--------------|---------|
 | jupyter-pytorch, pytorch+llmcompressor | `cuda13.0-torch2.11-ubi9` |
 | jupyter-tensorflow | `cuda12.9-torch2.11-ubi9` |
-| jupyter/rocm pytorch | `rocm7.14-torch2.11-ubi9` |
+| jupyter-rocm-minimal (ROCm stack in this repo) | `rocm7.14-torch2.11-ubi9` |
 | minimal, datascience | `cpu-torch2.11-ubi9` |
-| trustyai | `cpu-notorch-ubi9` |
+| Other ROCm PyTorch/TF and TrustyAI image families | *(maintained outside this repository; channel assignment unchanged)* |
 
 GA registration with AIPCC is per channel adopted, not a single channel for the
 whole product. `packages.redhat.com` lists which release(s) consume each channel.
@@ -271,10 +271,10 @@ planning time):
 | CUDA 13.0 | jupyter-pytorch, pytorch+llmcompressor (workbench and runtime) | `cuda13.0-torch2.11-ubi9` |
 | CUDA 12.9 | jupyter-tensorflow, runtime-tensorflow | `cuda12.9-torch2.11-ubi9` |
 | CUDA 13.2 | Planned in 3.5 EA1+; not yet a Notebooks default | `cuda13.2-torch2.11-ubi9` (when adopted) |
-| ROCm 7.14 | jupyter/rocm pytorch and tensorflow, runtimes | `rocm7.14-torch2.11-ubi9` |
+| ROCm 7.14 | jupyter-rocm-minimal (this repo); other ROCm notebook/runtime families elsewhere | `rocm7.14-torch2.11-ubi9` |
 | ROCm 6.4 | Retired after 3.4 in the plan | Channel retires when last consumer EOLs |
 | CPU (with torch) | minimal, datascience, codeserver | `cpu-torch2.11-ubi9` |
-| CPU (no torch) | trustyai and other non-GPU stacks | `cpu-notorch-ubi9` |
+| CPU (no torch) | stacks without PyTorch (e.g. some CPU-only workbenches) | `cpu-notorch-ubi9` |
 
 Multiple accelerator generations coexist as **parallel channels**, not as
 successive renames of a single `rhoai/<release>` index. RHOAI 3.5 on

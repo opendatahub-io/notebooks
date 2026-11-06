@@ -8,10 +8,8 @@ import {log} from '../tests/logger';
 // TODO: then modify these values before running
 const BRANCH = 'rhoai-2.22';
 // $ find . -name Pipfile -exec echo \'{}\', \;
-const PIPFILES = [
-    './runtimes/rocm-tensorflow/ubi9-python-3.11/Pipfile',
-    './runtimes/rocm-pytorch/ubi9-python-3.11/Pipfile',
-    // TODO: ...
+const PIPFILES: string[] = [
+    // TODO: add Pipfile paths for Snyk import (ROCm runtime images removed from this repo)
 ];
 
 async function main() {

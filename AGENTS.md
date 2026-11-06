@@ -177,7 +177,7 @@ Preferred format: `TICKET: scope: description in imperative mood`
 
 Scope follows [Conventional Commits](https://www.conventionalcommits.org/)
 (`chore`, `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, etc.), optionally
-with a directory hint like `chore(.tekton/)` or `fix(jupyter/trustyai)`.
+with a directory hint like `chore(.tekton/)` or `fix(jupyter/minimal)`.
 Most dependency/CVE work is `chore`. See `.coderabbit.yaml` for validation rules.
 
 ## Repo-specific reminders

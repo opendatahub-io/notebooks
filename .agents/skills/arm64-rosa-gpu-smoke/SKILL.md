@@ -24,7 +24,7 @@ skopeo inspect --raw docker://$IMG | jq -e '[.manifests[] | select(.platform.arc
 
 | Tier | Components | Expected archs |
 |------|-----------|----------------|
-| CPU workbenches | minimal-cpu, datascience-cpu, codeserver-datascience-cpu, trustyai-cpu | amd64, arm64, ppc64le, s390x |
+| CPU workbenches | minimal-cpu, datascience-cpu, codeserver-datascience-cpu | amd64, arm64, ppc64le, s390x |
 | CPU runtimes | runtime-minimal-cpu, runtime-datascience-cpu | amd64, arm64, ppc64le, s390x |
 | CUDA workbenches | minimal-cuda, pytorch-cuda, tensorflow-cuda, pytorch-llmcompressor-cuda | amd64, arm64 |
 | CUDA runtimes | runtime-pytorch-cuda, runtime-tensorflow-cuda, runtime-pytorch-llmcompressor-cuda | amd64, arm64 |
@@ -49,7 +49,7 @@ Registry: `quay.io/rhoai/`
 ROCm images should be amd64-only (confirms exclusion is intentional):
 
 ```bash
-IMG="quay.io/rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9:rhoai-3.6-ea.1"
+IMG="quay.io/rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9:rhoai-3.6-ea.1"
 RAW=$(skopeo inspect --raw "docker://$IMG")
 # A genuinely amd64-only image has no manifest list at all (single-manifest
 # response, no top-level .manifests) — jq '.manifests[]' would crash on it

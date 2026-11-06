@@ -291,16 +291,6 @@ def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
 
 
 @pytest.fixture(scope="session")
-def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
-    if "-trustyai-" not in jupyterlab_image.labels["name"]:
-        pytest.skip(
-            f"Image {jupyterlab_image.name} is not trustyai image because it does not have '-trustyai-' in {jupyterlab_image.labels['name']=}'"
-        )
-
-    return jupyterlab_image
-
-
-@pytest.fixture(scope="session")
 def datascience_image(image: str) -> Image:
     image_metadata = get_image_metadata(image)
     name = image_metadata.labels["name"]
