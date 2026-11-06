@@ -271,7 +271,7 @@ planning time):
 | CUDA 13.0 | jupyter-pytorch, pytorch+llmcompressor (workbench and runtime) | `cuda13.0-torch2.11-ubi9` |
 | CUDA 12.9 | jupyter-tensorflow, runtime-tensorflow | `cuda12.9-torch2.11-ubi9` |
 | CUDA 13.2 | Planned in 3.5 EA1+; not yet a Notebooks default | `cuda13.2-torch2.11-ubi9` (when adopted) |
-| ROCm 7.14 | jupyter-rocm-minimal (this repo); other ROCm notebook/runtime families elsewhere | `rocm7.14-torch2.11-ubi9` |
+| ROCm 7.14 | jupyter-rocm-minimal (this repo); other ROCm notebook/runtime families elsewhere | `rocm7.14-torch2.12-ubi9` |
 | ROCm 6.4 | Retired after 3.4 in the plan | Channel retires when last consumer EOLs |
 | CPU (with torch) | minimal, datascience, codeserver | `cpu-torch2.11-ubi9` |
 | CPU (no torch) | stacks without PyTorch (e.g. some CPU-only workbenches) | `cpu-notorch-ubi9` |

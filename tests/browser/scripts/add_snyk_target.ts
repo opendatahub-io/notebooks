@@ -12,12 +12,22 @@ const PIPFILES: string[] = [
     // TODO: add Pipfile paths for Snyk import (ROCm runtime images removed from this repo)
 ];
 
+const pipfileTargets = PIPFILES.filter((p) => !p.trimStart().startsWith("//"));
+
 async function main() {
+    if (pipfileTargets.length === 0) {
+        log.error(
+            "PIPFILES is empty: add at least one Pipfile path before running (see TODO above). " +
+                "Exiting so a no-op run is not mistaken for success.",
+        );
+        process.exit(1);
+    }
+
     const browser = await chromium.connectOverCDP("http://localhost:9222");
     const context = browser.contexts()[0]!;
 
     const page = await findVisiblePage(context);
-    for (const pipfile of PIPFILES) {
+    for (const pipfile of pipfileTargets) {
         const target = pipfile.replace(/^\./, "");
         log.info(`Processing target: ${target}`);
         await addPipfile(page, target, BRANCH);

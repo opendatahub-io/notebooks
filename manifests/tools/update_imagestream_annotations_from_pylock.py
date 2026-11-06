@@ -56,7 +56,7 @@ from manifests.tools.generate_kustomization import (  # ruff: ignore[module-impo
     discover_config,
 )
 from manifests.tools.package_names import manifest_name_to_pip  # ruff: ignore[module-import-not-at-top-of-file]
-from tests.manifests import (  # ruff: ignore[module-import-not-at-top-of-file]
+from manifests.tools.notebook_metadata import (  # ruff: ignore[module-import-not-at-top-of-file]
     extract_metadata_from_path,
     get_source_of_truth_filepath,
 )
