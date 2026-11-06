@@ -321,20 +321,6 @@ def write_versions_config(
                   channel: stable
                 odh:
                   origin: in-house
-              pytorch:
-                acc_version: "8.0"
-                channel_torch_version: "2.12"
-                rhds:
-                  channel: stable
-                odh:
-                  origin: in-house
-              tensorflow:
-                acc_version: "8.0"
-                channel_torch_version: "2.12"
-                rhds:
-                  channel: stable
-                odh:
-                  origin: in-house
         """
     )
 
@@ -566,22 +552,6 @@ def test_load_versions_config_rejects_non_scalar_cpu_version(tmp_path: Path) -> 
                       acc_version: "24.9"
                 rocm:
                   minimal:
-                    channel_torch_version: "2.12"
-                    rhds:
-                      channel: stable
-                      acc_version: "8.0"
-                    odh:
-                      origin: in-house
-                      acc_version: "8.0"
-                  pytorch:
-                    channel_torch_version: "2.12"
-                    rhds:
-                      channel: stable
-                      acc_version: "8.0"
-                    odh:
-                      origin: in-house
-                      acc_version: "8.0"
-                  tensorflow:
                     channel_torch_version: "2.12"
                     rhds:
                       channel: stable

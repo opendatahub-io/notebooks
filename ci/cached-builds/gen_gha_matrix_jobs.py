@@ -32,7 +32,6 @@ ARM64_COMPATIBLE = {
     "jupyter-baseline-ubi9-python-3.12",
     "jupyter-datascience-ubi9-python-3.12",
     "jupyter-minimal-ubi9-python-3.12",
-    "jupyter-trustyai-ubi9-python-3.12",
     "jupyter-universal-ubi9-python-3.12",
     "runtime-baseline-ubi9-python-3.12",
     "runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12",
@@ -347,9 +346,6 @@ class TestSelf(unittest.TestCase):
             "jupyter-baseline-ubi9-python-3.12",
             "jupyter-datascience-ubi9-python-3.12",
             "jupyter-minimal-ubi9-python-3.12",
-            "jupyter-trustyai-ubi9-python-3.12",
             "jupyter-universal-ubi9-python-3.12",
             "rocm-jupyter-minimal-ubi9-python-3.12",
-            "rocm-jupyter-pytorch-ubi9-python-3.12",
-            "rocm-jupyter-tensorflow-ubi9-python-3.12",
         }

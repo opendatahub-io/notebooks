@@ -296,7 +296,7 @@ generation, CI tooling). These tests are fast and don't require containers.
 ### 4. Build the affected image(s)
 
 ```bash
-# Non-GPU images (minimal, datascience, trustyai):
+# Non-GPU images (minimal, datascience):
 make jupyter-datascience-ubi9-python-3.12 PRODUCT=odh \
   IMAGE_REGISTRY=localhost/workbench-images IMAGE_TAG=latest PUSH_IMAGES=no
 

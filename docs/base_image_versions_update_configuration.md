@@ -142,7 +142,7 @@ fail before any file is rewritten.
 
 Non-baseline CPU workbenches and runtimes that ship both ODH (`cpu.conf`) and
 RHOAI (`konflux.cpu.conf`) build-args use `artifacts.base_image.cpu`. That
-includes `jupyter/minimal`, `jupyter/datascience`, `jupyter/trustyai`,
+includes `jupyter/minimal`, `jupyter/datascience`,
 **`jupyter/universal`**, `runtimes/*` (non-baseline), and `codeserver/`.
 
 Universal is dual-mode (workbench + Elyra runtime) but uses the **same** shared

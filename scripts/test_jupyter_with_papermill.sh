@@ -564,15 +564,20 @@ accelerator_flavor=$(_get_accelerator_flavor "${test_target}")
 root_repo_directory=$(readlink -f "$(git rev-parse --show-toplevel)")
 
 kbin=$(readlink -f "${root_repo_directory}/bin/kubectl")
-if ! [ -e "${kbin}" ]; then
-    printf "%s" "missing bin/kubectl"
-    exit 1
-fi
-
 yqbin=$(readlink -f "${root_repo_directory}/bin/yq")
-if ! [ -e "${yqbin}" ]; then
-    printf "%s" "missing bin/yq"
-    exit 1
+
+# Unit tests source this script to exercise _get_notebook_id / _get_source_of_truth_filepath only —
+# skip the kubectl/yq install check when sourced (bin/ may be empty locally).
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    if ! [ -e "${kbin}" ]; then
+        printf "%s" "missing bin/kubectl"
+        exit 1
+    fi
+
+    if ! [ -e "${yqbin}" ]; then
+        printf "%s" "missing bin/yq"
+        exit 1
+    fi
 fi
 
 function main() {

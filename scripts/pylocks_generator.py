@@ -152,15 +152,13 @@ BASELINE_AIPCC_ALIGNMENT_PAIRS: dict[Path, Path] = {
 }
 
 # Runtime trees share ``notebook-python-dependencies`` on the workbench ImageStream
-# (see ``tests/manifests.get_source_of_truth_filepath``). Parallel lock refresh can
+# (see ``manifests/tools/notebook_metadata.get_source_of_truth_filepath``). Parallel lock refresh can
 # resolve different versions (e.g. feast); re-lock runtimes after workbenches using
 # workbench pins for manifest-listed packages.
 SHARED_IMAGESTREAM_LOCK_ALIGNMENT_PAIRS: dict[Path, Path] = {
     Path("runtimes/pytorch/ubi9-python-3.12"): Path("jupyter/pytorch/ubi9-python-3.12"),
     Path("runtimes/tensorflow/ubi9-python-3.12"): Path("jupyter/tensorflow/ubi9-python-3.12"),
     Path("runtimes/datascience/ubi9-python-3.12"): Path("jupyter/datascience/ubi9-python-3.12"),
-    Path("runtimes/rocm/pytorch/ubi9-python-3.12"): Path("jupyter/rocm/pytorch/ubi9-python-3.12"),
-    Path("runtimes/rocm/tensorflow/ubi9-python-3.12"): Path("jupyter/rocm/tensorflow/ubi9-python-3.12"),
     Path("runtimes/pytorch+llmcompressor/ubi9-python-3.12"): Path(
         "jupyter/pytorch+llmcompressor/ubi9-python-3.12"
     ),

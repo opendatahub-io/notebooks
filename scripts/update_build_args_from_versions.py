@@ -38,7 +38,7 @@ MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline", "co
 POLICY_SCHEMA = object()
 GPU_FLAVORS = {
     "cuda": ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow"),
-    "rocm": ("minimal", "pytorch", "tensorflow"),
+    "rocm": ("minimal",),
 }
 ACCELERATOR_DISPLAY_NAMES = {
     "cuda": "CUDA",
@@ -56,10 +56,6 @@ GPU_FLAVOR_PATHS = {
     },
     "rocm": {
         ("jupyter", "minimal"): "minimal",
-        ("jupyter", "rocm", "pytorch"): "pytorch",
-        ("runtimes", "rocm-pytorch"): "pytorch",
-        ("jupyter", "rocm", "tensorflow"): "tensorflow",
-        ("runtimes", "rocm-tensorflow"): "tensorflow",
     },
 }
 CPU_BASE_IMAGE_SCHEMA = {

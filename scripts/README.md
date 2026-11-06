@@ -36,10 +36,10 @@ Create a Python 3.12 version based on the Python 3.9 version for each one that i
 python scripts/new_python_based_image.py --context-dir . --source 3.9 --target 3.12 --match ./base
 ```
 
-Create a Python 3.11 version based on the Python 3.9 versions for each one that is in the `./jupyter/rocm` directory:
+Create a Python 3.11 version based on the Python 3.9 versions for each one that is in the `./jupyter/minimal` directory:
 
 ```sh
-python scripts/new_python_based_image.py --context-dir . --source 3.9 --target 3.11 --match ./jupyter/rocm
+python scripts/new_python_based_image.py --context-dir . --source 3.9 --target 3.11 --match ./jupyter/minimal
 ```
 
 Create a Python 3.11 version based on the Python 3.9 version for each one in the repository with `DEBUG` logs enabled:

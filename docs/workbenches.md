@@ -10,7 +10,6 @@ Open Data Hub contains the following workbench images with different variations:
 | Jupyter Data Science       | &#9745; | &#9745;      | UBI8/9 | &#9746; | &#9745;  |
 | Jupyter Tensorflow         | &#9745; | &#9745;      | UBI8/9 | &#9745; | &#9745;  |
 | Jupyter PyTorch            | &#9745; | &#9745;      | UBI8/9 | &#9745; | &#9745;  |
-| Jupyter TrustyAI           | &#9745; | &#9745;      | UBI9   | &#9746; | &#9746;  |
 | code-server                | &#9745; | &#9746;      | C9S    | &#9746; | &#9746;  |
 
 These notebooks are incorporated to be used in conjunction with Open Data Hub, specifically utilizing the ODH Notebook Controller as the launching platform. The table above provides insights into the characteristics of each notebook, including their availability in both ODH and OpenShift AI environments, GPU support, and whether they are offered as runtimes ie without the JupyterLab UI.
@@ -51,12 +50,6 @@ TensorFlow is an open-source platform for machine learning. It provides a browse
 PyTorch is an open-source machine learning library optimized for deep learning. If you are working with computer vision or natural language processing models, use the Pytorch notebook image. It provides a browser-based integrated development environment where you can write, edit, and debug code using the familiar interface and features of JupyterLab.
 
 [2023b Packages](https://github.com/opendatahub-io/notebooks/blob/2023b/jupyter/pytorch/ubi9-python-3.9/Pipfile) || [2023a Packages](https://github.com/opendatahub-io/notebooks/blob/2023a/jupyter/pytorch/ubi9-python-3.9/Pipfile)
-
-## Jupyter TrustyAI
-
-Use the TrustyAI notebook image to leverage your data science work with model explainability, tracing and accountability, and runtime monitoring. It provides a browser-based integrated development environment where you can write, edit, and debug code using the familiar interface and features of JupyterLab.
-
-[2023b Packages](https://github.com/opendatahub-io/notebooks/blob/2023b/jupyter/trustyai/ubi9-python-3.9/Pipfile) || [2023a Packages](https://github.com/opendatahub-io/notebooks/blob/2023a/jupyter/trustyai/ubi9-python-3.9/Pipfile)
 
 ## code-server
 

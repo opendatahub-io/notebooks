@@ -13,16 +13,11 @@ NOTE: In overlays/additional there are new set of Python 3.12 images, they are a
 8. jupyter-datascience-cpu-py312-ubi9-imagestream.yaml
 9. jupyter-pytorch-notebook-imagestream.yaml
 10. jupyter-pytorch-cuda-py312-ubi9-imagestream.yaml
-11. jupyter-rocm-pytorch-notebook-imagestream.yaml
-12. jupyter-pytorch-rocm-py312-ubi9-imagestream.yaml
-13. jupyter-tensorflow-notebook-imagestream.yaml
-14. jupyter-tensorflow-cuda-py312-ubi9-imagestream.yaml
-15. jupyter-rocm-tensorflow-notebook-imagestream.yaml
-16. jupyter-trustyai-notebook-imagestream.yaml
-17. jupyter-trustyai-cpu-py312-ubi9-imagestream.yaml
-18. code-server-notebook-imagestream.yaml
-19. codeserver-datascience-cpu-py312-ubi9-imagestream.yaml
-20. code-server-minimal-notebook-imagestream.yaml
+11. jupyter-tensorflow-notebook-imagestream.yaml
+12. jupyter-tensorflow-cuda-py312-ubi9-imagestream.yaml
+13. code-server-notebook-imagestream.yaml
+14. codeserver-datascience-cpu-py312-ubi9-imagestream.yaml
+15. code-server-minimal-notebook-imagestream.yaml
 
 The order would also be same as `opendatahub.io/notebook-image-order` listed in each imagestreams.
 _Note_: On deprecation/removal of imagestream, the index of that image is retired with it.

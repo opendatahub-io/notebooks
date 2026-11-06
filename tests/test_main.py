@@ -23,13 +23,14 @@ import packaging.version
 import pytest
 import yaml
 
+from manifests.tools import notebook_metadata as manifests
 from manifests.tools.commit_env_refs import parse_env_file
 from manifests.tools.generate_kustomization import discover_config
 from manifests.tools.generate_kustomization import (
     imagestream_stopped_producing_tags as _imagestream_stopped_producing_tags,
 )
 from manifests.tools.package_names import all_workbench_pip_names, manifest_name_to_pip
-from tests import PROJECT_ROOT, manifests
+from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
@@ -602,10 +603,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest.Subtests):
 
 def test_files_that_should_be_same_are_same(subtests: pytest.Subtests):
     file_groups = {
-        "ROCm de-vendor script": [
-            PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.12/de-vendor-torch.py",
-            PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.12/de-vendor-torch.py",
-        ],
         "nginx/common.sh": [
             PROJECT_ROOT / "codeserver/ubi9-python-3.12/nginx/root/usr/share/container-scripts/nginx/common.sh",
         ],
@@ -907,7 +904,7 @@ def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_d
 
 def test_make_disable_pushing():
     # NOTE: the image below needs to exist in the Makefile
-    lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.12"], env={"PUSH_IMAGES": ""})
+    lines = dryrun_make(["rocm-jupyter-minimal-ubi9-python-3.12"], env={"PUSH_IMAGES": ""})
     for line in lines:
         assert "podman push" not in line
 

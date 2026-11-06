@@ -25,10 +25,7 @@ ${BASE_IMAGE} (external)
         └── datascience stage           ← NumPy, Pandas, SciPy, scikit-learn
               ├── pytorch stage                ← PyTorch + CUDA/ROCm
               ├── pytorch+llmcompressor stage  ← PyTorch + LLM Compressor
-              ├── tensorflow stage             ← TensorFlow + CUDA
-              ├── trustyai stage               ← TrustyAI explainability
-              ├── rocm/pytorch stage           ← PyTorch + ROCm
-              └── rocm/tensorflow stage        ← TensorFlow + ROCm
+              └── tensorflow stage             ← TensorFlow + CUDA
 ```
 
 Each leaf Dockerfile (e.g. `jupyter/pytorch/.../Dockerfile.cuda`) contains all stages

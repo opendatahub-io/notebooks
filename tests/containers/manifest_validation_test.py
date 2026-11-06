@@ -267,7 +267,7 @@ def _resolve_pypi_duplicates(
        a different Python minor version (e.g. keep ``python-3.11``, drop
        ``python-3.12``).
     2. **Source-hint match** — prefer the entry whose ``sourceInfo`` contains
-       *source_hint* (e.g. ``/jupyter/trustyai/``).
+       *source_hint* (e.g. ``/jupyter/datascience/``).
     3. **Datascience hierarchy fallback** — prefer ``/jupyter/datascience/``
        (common parent for all jupyter notebook types).
     4. **Highest version** — heuristic tie-breaker.

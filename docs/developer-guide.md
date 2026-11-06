@@ -23,12 +23,6 @@ flowchart TD
         pDS --> pPT[cuda-jupyter-pytorch]
     end
 
-    subgraph trustyaiCpu ["jupyter/trustyai — Dockerfile.konflux.cpu"]
-        tBase["${BASE_IMAGE}\n(e.g. AIPCC cpu)"] --> tCpuBase[cpu-base]
-        tCpuBase --> tMinimal[jupyter-minimal]
-        tMinimal --> tDS[jupyter-datascience]
-        tDS --> tTA[jupyter-trustyai]
-    end
 ```
 
 Different images can reference different `${BASE_IMAGE}` values and therefore use
