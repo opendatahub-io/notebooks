@@ -46,6 +46,7 @@ COPY --chown=1001:0 prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/a
 
 ENV ELYRA_INSTALL_PACKAGES="false"
 
+COPY --chown=1001:0 --chmod=0755 scripts/patch_tensorboard_pkg_resources.py /usr/local/bin/patch_tensorboard_pkg_resources.py
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
@@ -60,6 +61,11 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
 # tensorboard-data-server ships a Rust binary linked against ring, which
 # check-payload rejects. TensorBoard --load_fast=auto falls back without it.
 rm -f /opt/app-root/lib/python3.12/site-packages/tensorboard_data_server/bin/server
+
+# setuptools>=83 (RHAIENG-6408) removes pkg_resources, which TensorBoard 2.20
+# imports at startup. Apply the TensorBoard 2.21 import change so
+# --load_fast=auto can fall back after the Rust server binary is removed.
+python3 /usr/local/bin/patch_tensorboard_pkg_resources.py
 
 python3 ./de-vendor-torch.py
 rm ./de-vendor-torch.py
