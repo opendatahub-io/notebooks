@@ -23,13 +23,14 @@ import packaging.version
 import pytest
 import yaml
 
+from manifests.tools import notebook_metadata as manifests
 from manifests.tools.commit_env_refs import parse_env_file
 from manifests.tools.generate_kustomization import discover_config
 from manifests.tools.generate_kustomization import (
     imagestream_stopped_producing_tags as _imagestream_stopped_producing_tags,
 )
 from manifests.tools.package_names import all_workbench_pip_names, manifest_name_to_pip
-from tests import PROJECT_ROOT, manifests
+from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence

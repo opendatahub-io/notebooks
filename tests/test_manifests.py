@@ -5,16 +5,19 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Generator, Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
 from manifests.tools.notebook_metadata import (
     MANIFESTS_ODH_DIR,
+    ROOT_DIR,
     NotebookMetadata,
     NotebookType,
-    ROOT_DIR,
     extract_metadata_from_path,
     get_source_of_truth_filepath,
 )
@@ -87,11 +90,13 @@ class TestManifests:
         env = env or {}
         script_args_str = " ".join(shlex.quote(arg) for arg in script_args)
         function_args_str = " ".join(shlex.quote(arg) for arg in function_args)
+        command = (
+            f"set -- {script_args_str} && "
+            f"source {shlex.quote(str(shell_script_path))} && "
+            f"set -- && {shlex.quote(shell_function_name)} {function_args_str}"
+        )
         shell_notebook_id = subprocess.run(
-            # set temporary positional parameters for the `source`ing
-            f"""set -- {script_args_str} && source {shell_script_path} && set -- && {shell_function_name} {function_args_str}""",
-            shell=True,
-            executable="/bin/bash",
+            ["bash", "-c", command],
             env=env,
             stdout=subprocess.PIPE,
             text=True,
@@ -100,7 +105,7 @@ class TestManifests:
         return shell_notebook_id.stdout.rstrip()
 
     @staticmethod
-    def get_targets() -> Generator[tuple[str, Path]]:
+    def get_targets() -> list[tuple[str, Path]]:
         # TODO(jdanek): should systematize import paths to avoid this hack
         sys.path.insert(0, str(ROOT_DIR / "ci/cached-builds"))
         from ci.cached_builds import gen_gha_matrix_jobs  # ruff: ignore[import-outside-top-level]
@@ -168,6 +173,7 @@ class TestManifests:
             / "base"
             / "code-server-minimal-notebook-imagestream.yaml",
         }
+        rows: list[tuple[str, Path]] = []
         for target in targets:
             if "codeserver" in target and "baseline" not in target:
                 continue
@@ -175,7 +181,8 @@ class TestManifests:
                 expected_manifest_path = expected_manifest_paths[target]
             except KeyError as e:
                 raise ValueError(f"Missing expected manifest path for target '{target}'") from e
-            yield target, expected_manifest_path
+            rows.append((target, expected_manifest_path))
+        return rows
 
     @pytest.mark.parametrize("target,expected_manifest_path", get_targets())
     def test_compare_with_shell_implementation(self, target: str, expected_manifest_path: Path):
