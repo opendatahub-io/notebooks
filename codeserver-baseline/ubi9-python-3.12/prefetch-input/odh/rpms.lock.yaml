@@ -3406,6 +3406,13 @@ arches:
     name: tcl
     evr: 1:8.6.10-7.el9
     sourcerpm: tcl-8.6.10-7.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/t/tzdata-2026f-1.el9_8.noarch.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 936560
+    checksum: sha256:dca72e34b88f487c4e0c473f156d4207f5e1187a2343e89ce28d46dc34a646aa
+    name: tzdata
+    evr: 2026f-1.el9_8
+    sourcerpm: tzdata-2026f-1.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/u/unzip-6.0-60.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 182733
@@ -4862,13 +4869,6 @@ arches:
     name: systemd-rpm-macros
     evr: 252-78.el9
     sourcerpm: systemd-252-78.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/tzdata-2026f-1.el9.noarch.rpm
-    repoid: baseos
-    size: 929791
-    checksum: sha256:d0abd6b7451e1eacef260ddd15c49c18528a06535a45d673d3c38a56d568edbc
-    name: tzdata
-    evr: 2026f-1.el9
-    sourcerpm: tzdata-2026f-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/util-linux-2.37.4-27.el9.aarch64.rpm
     repoid: baseos
     size: 2382280
@@ -4941,10 +4941,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/repodata/7fcaaa64f527ec437a3be967ca017251e4bfb00251acb203406741cd3aeb9536-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/repodata/6455025e6f76038fb7a6354b562f0e6c49486bbb8b6689cf252fdc7c3e01fb26-modules.yaml.gz
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 9604
-    checksum: sha256:7fcaaa64f527ec437a3be967ca017251e4bfb00251acb203406741cd3aeb9536
+    checksum: sha256:6455025e6f76038fb7a6354b562f0e6c49486bbb8b6689cf252fdc7c3e01fb26
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/repodata/c8da9a1c95d353d8706c0152bc7df9fdd1ed09ec7c1339c4eb06f5f36af426eb-modules.yaml.xz
     repoid: appstream
     size: 19192
@@ -8388,6 +8388,13 @@ arches:
     name: tcl
     evr: 1:8.6.10-7.el9
     sourcerpm: tcl-8.6.10-7.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/t/tzdata-2026f-1.el9_8.noarch.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 936560
+    checksum: sha256:dca72e34b88f487c4e0c473f156d4207f5e1187a2343e89ce28d46dc34a646aa
+    name: tzdata
+    evr: 2026f-1.el9_8
+    sourcerpm: tzdata-2026f-1.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/u/unzip-6.0-60.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 190290
@@ -9830,13 +9837,6 @@ arches:
     name: systemd-rpm-macros
     evr: 252-78.el9
     sourcerpm: systemd-252-78.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/tzdata-2026f-1.el9.noarch.rpm
-    repoid: baseos
-    size: 929791
-    checksum: sha256:d0abd6b7451e1eacef260ddd15c49c18528a06535a45d673d3c38a56d568edbc
-    name: tzdata
-    evr: 2026f-1.el9
-    sourcerpm: tzdata-2026f-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/util-linux-2.37.4-27.el9.ppc64le.rpm
     repoid: baseos
     size: 2418969
@@ -9909,10 +9909,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/repodata/2b1fc4c54b207254aa9a22f60684920ec89836cf5491658df065b3a212117412-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/repodata/61ad6307a2b2e4177c546c264b40bd0fee3f44af70a311ce26d12eec45068293-modules.yaml.gz
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 8898
-    checksum: sha256:2b1fc4c54b207254aa9a22f60684920ec89836cf5491658df065b3a212117412
+    checksum: sha256:61ad6307a2b2e4177c546c264b40bd0fee3f44af70a311ce26d12eec45068293
   - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/repodata/7d393059eab6e1394254bb97983b50e5520408f7ac72167ee1f70f399f1409d6-modules.yaml.xz
     repoid: appstream
     size: 19196
@@ -13335,6 +13335,13 @@ arches:
     name: tcl
     evr: 1:8.6.10-7.el9
     sourcerpm: tcl-8.6.10-7.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/t/tzdata-2026f-1.el9_8.noarch.rpm
+    repoid: ubi-9-for-s390x-baseos-rpms
+    size: 936560
+    checksum: sha256:dca72e34b88f487c4e0c473f156d4207f5e1187a2343e89ce28d46dc34a646aa
+    name: tzdata
+    evr: 2026f-1.el9_8
+    sourcerpm: tzdata-2026f-1.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/u/unzip-6.0-60.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 180799
@@ -14770,13 +14777,6 @@ arches:
     name: systemd-rpm-macros
     evr: 252-78.el9
     sourcerpm: systemd-252-78.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/tzdata-2026f-1.el9.noarch.rpm
-    repoid: baseos
-    size: 929791
-    checksum: sha256:d0abd6b7451e1eacef260ddd15c49c18528a06535a45d673d3c38a56d568edbc
-    name: tzdata
-    evr: 2026f-1.el9
-    sourcerpm: tzdata-2026f-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/util-linux-2.37.4-27.el9.s390x.rpm
     repoid: baseos
     size: 2320305
@@ -14849,10 +14849,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/repodata/ec920129acce885b49ee8ca695b60188dc977f6c229a2a4c429e4778b31e11c4-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/appstream/os/repodata/42a1dc03b5da7ebc3ed5e8ebd70324a080f78468b924aefcdd85ea7f4550aff8-modules.yaml.gz
     repoid: ubi-9-for-s390x-appstream-rpms
     size: 8723
-    checksum: sha256:ec920129acce885b49ee8ca695b60188dc977f6c229a2a4c429e4778b31e11c4
+    checksum: sha256:42a1dc03b5da7ebc3ed5e8ebd70324a080f78468b924aefcdd85ea7f4550aff8
   - url: https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/repodata/30995383ef5b467baad5c64a6c8f490213503893129ba4f595350e353bec9012-modules.yaml.xz
     repoid: appstream
     size: 19096
@@ -18289,6 +18289,13 @@ arches:
     name: tcl
     evr: 1:8.6.10-7.el9
     sourcerpm: tcl-8.6.10-7.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/t/tzdata-2026f-1.el9_8.noarch.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 936560
+    checksum: sha256:dca72e34b88f487c4e0c473f156d4207f5e1187a2343e89ce28d46dc34a646aa
+    name: tzdata
+    evr: 2026f-1.el9_8
+    sourcerpm: tzdata-2026f-1.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/u/unzip-6.0-60.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 185941
@@ -19759,13 +19766,6 @@ arches:
     name: systemd-rpm-macros
     evr: 252-78.el9
     sourcerpm: systemd-252-78.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/tzdata-2026f-1.el9.noarch.rpm
-    repoid: baseos
-    size: 929791
-    checksum: sha256:d0abd6b7451e1eacef260ddd15c49c18528a06535a45d673d3c38a56d568edbc
-    name: tzdata
-    evr: 2026f-1.el9
-    sourcerpm: tzdata-2026f-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/util-linux-2.37.4-27.el9.x86_64.rpm
     repoid: baseos
     size: 2375710
@@ -19838,10 +19838,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/repodata/37e4c5bbadf5c6e5e0a91b142b6181cb2513e8baf4f4793f0e39be5022722d5e-modules.yaml.gz
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/repodata/3376ed26500b9215ffaa1dcf64d0a3e2cb447177a2fc490885949f5d43b721d3-modules.yaml.gz
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 8328
-    checksum: sha256:37e4c5bbadf5c6e5e0a91b142b6181cb2513e8baf4f4793f0e39be5022722d5e
+    checksum: sha256:3376ed26500b9215ffaa1dcf64d0a3e2cb447177a2fc490885949f5d43b721d3
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/repodata/b8f9c9c2c7718e980400f772fcb2510eb69fd3983f051ad292120bf6054df9ba-modules.yaml.xz
     repoid: appstream
     size: 19164
