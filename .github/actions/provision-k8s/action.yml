@@ -82,6 +82,28 @@ runs:
 
         sudo systemctl daemon-reload
         sudo systemctl start crio.service
+
+        # crio.conf sets apparmor_profile = "unconfined". Fail here if that
+        # drop-in was ignored, instead of failing later inside papermill.
+        # Write the journal to a file first: under pipefail, `journalctl | grep -q`
+        # is a false failure because grep exits at the first match and journalctl
+        # then dies with SIGPIPE.
+        crio_log="$(mktemp)"
+        apparmor_ok=0
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+          sudo journalctl -u crio.service --no-pager > "${crio_log}"
+          if grep -q 'AppArmor profile is unconfined' "${crio_log}"; then
+            apparmor_ok=1
+            break
+          fi
+          sleep 1
+        done
+        if [[ "${apparmor_ok}" != 1 ]]; then
+          echo "ERROR: CRI-O did not disable AppArmor; image tests cannot signal kernels"
+          tail -n 80 "${crio_log}"
+          exit 1
+        fi
+        rm -f "${crio_log}"
       env:
         CRIO_VERSION: 1.36
         # This has to be kept in sync with the packages above, otherwise
