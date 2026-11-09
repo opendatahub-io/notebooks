@@ -3,7 +3,7 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   labels:
-    opendatahub.io/notebook-image: "false"
+    opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/trustyai"
     opendatahub.io/notebook-image-name: "Jupyter | TrustyAI | CPU | Python 3.12"
@@ -11,6 +11,7 @@ metadata:
     opendatahub.io/notebook-image-order: "20"
     opendatahub.io/notebook-tier: "Red Hat-provided"
     opendatahub.io/deprecated: "true"
+    opendatahub.io/notebook-image-hidden: 'true'
   name: jupyter-trustyai-notebook
 spec:
   lookupPolicy:
