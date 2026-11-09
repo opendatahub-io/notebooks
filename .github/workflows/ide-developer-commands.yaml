@@ -1,0 +1,78 @@
+---
+name: Ide Developer PR Commands
+
+"on":  # yamllint disable-line rule:truthy
+  issue_comment:
+    types:
+      - created
+
+concurrency:
+  group: ide-developer-commands-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  handle-command:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.comment.user.login == 'ide-developer'
+    runs-on: ubuntu-26.04
+    permissions:
+      checks: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Verify command actor
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          login="$(gh api user --jq .login)"
+          if [[ "$login" != "ide-developer" ]]; then
+            echo "::error::GH_ACCESS_TOKEN is not authenticated as ide-developer."
+            exit 1
+          fi
+
+      - name: Handle command
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+
+          command="$(printf '%s\n' "$COMMENT_BODY" | awk '{print $1}')"
+          state="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq .state)"
+          if [[ "$state" != "OPEN" ]]; then
+            echo "Pull request #$PR_NUMBER is not open; ignoring $command."
+            exit 0
+          fi
+
+          case "$command" in
+            /konflux-builds)
+              gh pr comment "$PR_NUMBER" --repo "$REPO" --body "/build-konflux"
+              ;;
+            /ok-to-test)
+              gh api --method POST "repos/$REPO/issues/$PR_NUMBER/labels" \
+                -f 'labels[]=ok-to-test' --silent
+              ;;
+            /approve)
+              sha="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq .headRefOid)"
+              if ! gh api "repos/$REPO/commits/$sha/check-runs?per_page=100" --paginate |
+                jq -se '
+                  map(.check_runs[])
+                  | map(select(.app.slug == "github-actions"))
+                  | map(.status == "completed" and (.conclusion == "success" or .conclusion == "skipped"))
+                  | all
+                '; then
+                echo "::error::Cannot approve pull request #$PR_NUMBER while GitHub Actions checks are pending or failing."
+                exit 1
+              fi
+              gh api --method POST "repos/$REPO/issues/$PR_NUMBER/labels" \
+                -f 'labels[]=approved' --silent
+              ;;
+            *)
+              echo "Ignoring unsupported command: $command"
+              ;;
+          esac

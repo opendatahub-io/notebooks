@@ -62,11 +62,24 @@ for the full list.
 
 RHDS also supports label-based triggers (`kfbuild-all`, `kfbuild-cuda`, etc.).
 
+### ide-developer commands
+
+The `ide-developer-commands.yaml` workflow is the one GitHub Actions exception to the
+slash-command rule. It only accepts comments from `ide-developer` and performs
+repository-scoped actions:
+
+| Command | Effect |
+|---|---|
+| `/konflux-builds` | Posts `/build-konflux` to trigger all PR build pipelines |
+| `/ok-to-test` | Adds the `ok-to-test` label |
+| `/approve` | Adds the `approved` label only after all GitHub Actions checks are green |
+
 ### GitHub Actions
 
-GitHub Actions workflows are **not** triggered by slash commands. They run automatically
-on PR events based on `on:` triggers in `.github/workflows/*.yaml`. To re-run a failed
-GHA workflow, use the GitHub UI "Re-run" button on the Actions or Checks tab.
+Except for `ide-developer-commands.yaml`, GitHub Actions workflows are **not** triggered
+by slash commands. They run automatically on PR events based on `on:` triggers in
+`.github/workflows/*.yaml`. To re-run a failed GHA workflow, use the GitHub UI
+"Re-run" button on the Actions or Checks tab.
 
 ## How the systems interact
 
