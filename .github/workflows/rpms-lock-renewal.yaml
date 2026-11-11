@@ -285,7 +285,7 @@ jobs:
         if: env.changed != '0' && env.VARIANT_COUNT == '1'
         run: |
           set -euo pipefail
-          if [[ "$BRANCH" == "rhoai-3.4" || "$BRANCH" == "rhoai-3.5" ]]; then
+          if [[ "$BRANCH" != "main" ]]; then
             env -u VARIANT PYTEST_ADDOPTS="--ignore=tests/test_pylock_downgrade.py" make test
           else
             env -u VARIANT make test
