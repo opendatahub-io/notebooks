@@ -39,8 +39,8 @@ A multi-stage deprecation process is adopted across consecutive releases:
      * Hide image from the default dashboard UI creation dropdowns (prevent new workbench creation while preserving existing ones).
      * Offboard build jobs from Tekton CI pipelines.
      * Clean up source codebase and associated build automation.
-3. **Stage 3 – Sunset / Outdated / Deletion (**`Version N+2` **& beyond):**
-   * Mark manifests with the red `"Outdated"` label or execute permanent manifest deletion from cluster registries.
+3. **Stage 3 – Sunset / Outdated (**`Version N+2` **& beyond):**
+   * Mark manifests with the red `"Outdated"` label.
 
 -----
 
@@ -61,14 +61,14 @@ Release Timeline & Milestone Matrix:
 |         | • Clean up codebase       |                           |                               |
 |         |   (RHAIENG-7755)          |                           |                               |
 +---------+---------------------------+---------------------------+-------------------------------+
-| 3.8     | • Delete manifests OR     | • No new 3.8 latest tag   |                               |
-| (26 May)|   apply "Outdated" label  | • Hide from dashboard UI  |                               |
+| 3.8     | • Apply "Outdated" label  | • No new 3.8 latest tag   |                               |
+| (26 May)|                           | • Hide from dashboard UI  |                               |
 |         |                           | • Tekton offboarding      |                               |
 |         |                           | • Clean up codebase       |                               |
 |         |                           |   (RHAIENG-7981)          |                               |
 +---------+---------------------------+---------------------------+-------------------------------+
-| 3.9     | • Final manifest deletion | • Delete manifests OR     | Baseline maintained           |
-| (TBD)   |   or Outdated state       |   apply "Outdated" label  |                               |
+| 3.9     | • "Outdated" state        | • Apply "Outdated" label  | Baseline maintained           |
+| (TBD)   |                           |                           |                               |
 +-------------------------------------------------------------------------------------------------+
 
 ```
@@ -98,7 +98,7 @@ Release Timeline & Milestone Matrix:
 
 ### Release 3.8 (26 May GA Release)
 
-* **Wave 1 Action:** Decision point: either complete manifest deletion or assign the persistent red `"Outdated"` tag.
+* **Wave 1 Action:** Apply the persistent red `"Outdated"` label to Wave 1 manifests.
 * **Wave 2 Action (RHAIENG-7981):**
   * Cease new `3.8 latest` tag publishing.
   * Hide Wave 2 images from the dashboard UI.
@@ -107,7 +107,7 @@ Release Timeline & Milestone Matrix:
 
 ### Release 3.9 (TBD)
 
-* **Wave 2 Action:** Finalize manifest deletion or mark as `"Outdated"`.
+* **Wave 2 Action:** Apply the `"Outdated"` label to Wave 2 manifests.
 * **Steady State:** `3 → 3 pipelines` (**0% delta**, fully consolidated core runtime catalog).
 
 -----
