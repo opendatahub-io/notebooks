@@ -52,7 +52,6 @@ spec:
             {"name": "Feast", "version": "0.67"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9
-        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-3-6_PLACEHOLDER
       from:
         kind: DockerImage
@@ -96,7 +95,6 @@ spec:
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-3-5_PLACEHOLDER
-        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-3-5_PLACEHOLDER
