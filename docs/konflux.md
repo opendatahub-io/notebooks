@@ -308,13 +308,12 @@ Our push pipelines use `on-cel-expression` combining event + branch + `pathChang
 - `/build-<type>` -- triggers a specific image, e.g.:
   - `/build-base-cpu`, `/build-base-cuda-12-9`, `/build-base-cuda-13-0`, `/build-base-rocm`
   - `/build-runtime-minimal-cpu`, `/build-runtime-datascience`
-  - `/build-runtime-pytorch-cuda`, `/build-runtime-pytorch-rocm`, `/build-runtime-pytorch-llmcompressor`
-  - `/build-runtime-tensorflow-cuda`, `/build-runtime-tensorflow-rocm`
+  - `/build-runtime-pytorch-cuda`, `/build-runtime-pytorch-llmcompressor`
+  - `/build-runtime-tensorflow-cuda`
   - `/build-minimal-cpu`, `/build-minimal-cuda`, `/build-minimal-rocm`
   - `/build-datascience`, `/build-codeserver`, `/build-codeserver-baseline`, `/build-jupyter-baseline`, `/build-runtime-baseline`
-  - `/build-pytorch-cuda`, `/build-pytorch-rocm`, `/build-pytorch-llmcompressor`
-  - `/build-tensorflow-cuda`, `/build-tensorflow-rocm`
-  - `/build-trustyai`
+  - `/build-pytorch-cuda`, `/build-pytorch-llmcompressor`
+  - `/build-tensorflow-cuda`
 - `/group-test` -- triggers the integration test pipeline (ODH only; tests images from the `stable` branch — see [Integration Testing guide](konflux-integration.md))
 - `kfbuild-*` labels -- PR labels also trigger builds on RHDS (e.g. `kfbuild-all`, `kfbuild-runtime`, `kfbuild-workbench`, `kfbuild-cpu`, `kfbuild-cuda`, `kfbuild-rocm`, `kfbuild-pytorch`, `kfbuild-tensorflow`, etc.)
 
@@ -419,7 +418,7 @@ Push pipelines declare a `build.appstudio.openshift.io/build-nudge-files` annota
 
 ### `prefetch-input/` path watching
 
-Most pipelines intentionally do not watch `prefetch-input/` in their CEL expressions — changing prefetched inputs will not retrigger those builds. This is deliberate: `prefetch-input/odh/` is shared across all images, and watching it would trigger 30+ simultaneous rebuilds on any change. Changes to shared prefetch inputs should be rebuilt via `/kfbuild-all`, `/build-konflux`, or `trigger-pac-build`. See [PR #3232](https://github.com/opendatahub-io/notebooks/pull/3232) (RHAIENG-4234) which centralized prefetch inputs and removed them from triggers. A few workbench pipelines (pytorch-cuda, pytorch-rocm, trustyai) still watch image-specific paths like `prefetch-input/mongocli/**`.
+Most pipelines intentionally do not watch `prefetch-input/` in their CEL expressions — changing prefetched inputs will not retrigger those builds. This is deliberate: `prefetch-input/odh/` is shared across all images, and watching it would trigger 30+ simultaneous rebuilds on any change. Changes to shared prefetch inputs should be rebuilt via `/kfbuild-all`, `/build-konflux`, or `trigger-pac-build`. See [PR #3232](https://github.com/opendatahub-io/notebooks/pull/3232) (RHAIENG-4234) which centralized prefetch inputs and removed them from triggers. Some workbench pipelines (e.g. pytorch-cuda) still watch image-specific paths like `prefetch-input/mongocli/**`.
 
 ### Tenant RBAC for build operations
 
@@ -486,9 +485,9 @@ The integration test pipeline uses a `volumeClaimTemplate` (not `emptyDir`) to s
 
 Dependency updates are managed by [Renovate](https://docs.renovatebot.com/) through two mechanisms. Configuration lives in [`.github/renovate.json5`](../.github/renovate.json5).
 
-**Where MintMaker runs:** `opendatahub-io/notebooks#main` (development) and supported RHDS release branches `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4` on `red-hat-data-services/notebooks`. It does **not** run on RHDS `main` (autosync mirror of ODH), `rhoai-2.24`, or end-of-life RHDS branches (`rhoai-2.21`–`2.23`). Konflux **release-data** may still register `rhoai-2.24` streams until an ops MR freezes them — repo `renovate.json5` and release-data must align (ADR 0013). RHDS support branches must use `renovate.json5` only — a legacy `.github/renovate.json` disables `github-actions` and other managers.
+**Where MintMaker runs:** `opendatahub-io/notebooks#main` (development) and supported RHDS release branches `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`, `rhoai-3.5`, `rhoai-3.6` on `red-hat-data-services/notebooks`. It does **not** run on RHDS `main` (autosync mirror of ODH), `rhoai-2.24`, or end-of-life RHDS branches (`rhoai-2.21`–`2.23`). Konflux **release-data** may still register `rhoai-2.24` streams until an ops MR freezes them — repo `renovate.json5` and release-data must align (ADR 0013). RHDS support branches must use `renovate.json5` only — a legacy `.github/renovate.json` disables `github-actions` and other managers.
 
-**MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/<base-branch>/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5` (for example `main`, `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`). GitHub Actions pins use `konflux/mintmaker/<base-branch>/github-actions`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
+**MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/<base-branch>/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5` (for example `main`, `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`, `rhoai-3.5`, `rhoai-3.6`). GitHub Actions pins use `konflux/mintmaker/<base-branch>/github-actions`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
 
 **Self-hosted Renovate** runs via the `renovate-self-hosted.yaml` workflow with `renovate_run.py` as a wrapper. It creates branches named `konflux/references/main` for Tekton bundle digest updates.
 

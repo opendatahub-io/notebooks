@@ -56,7 +56,7 @@ from manifests.tools.generate_kustomization import (  # ruff: ignore[module-impo
     discover_config,
 )
 from manifests.tools.package_names import manifest_name_to_pip  # ruff: ignore[module-import-not-at-top-of-file]
-from tests.manifests import (  # ruff: ignore[module-import-not-at-top-of-file]
+from manifests.tools.notebook_metadata import (  # ruff: ignore[module-import-not-at-top-of-file]
     extract_metadata_from_path,
     get_source_of_truth_filepath,
 )
@@ -65,6 +65,15 @@ logger = logging.getLogger(__name__)
 
 # Force accelerator flavor when resolving ImageStream paths. ``extract_metadata_from_path`` may
 # infer "cuda" from Dockerfile.konflux.cuda even for the CPU ImageStream (same tree builds both).
+# ImageStreams still shipped in manifests/ but with no in-repo notebook tree (built elsewhere).
+_SKIP_RESOURCE_FILES: frozenset[str] = frozenset(
+    {
+        "jupyter-trustyai-notebook-imagestream.yaml",
+        "jupyter-rocm-pytorch-notebook-imagestream.yaml",
+        "jupyter-rocm-tensorflow-notebook-imagestream.yaml",
+    }
+)
+
 _ACCELERATOR_OVERRIDE_FOR_RESOURCE: dict[str, str | None] = {
     "jupyter-minimal-notebook-imagestream.yaml": None,
     "jupyter-minimal-gpu-notebook-imagestream.yaml": "cuda",
@@ -90,41 +99,6 @@ _CANONICAL_REPO_URL: dict[str, str] = {
 # Commit values from *.env must look like hex object IDs before passing to git (avoid ref injection).
 # Repo env files use short SHAs (7+ chars); full 40-char hashes are also accepted.
 _GIT_HEX_OBJECT_ID = re.compile(r"^[0-9a-f]{7,40}$")
-
-
-def _is_under_jupyter_rocm_tree(directory: Path) -> bool:
-    parts = directory.parts
-    try:
-        j = parts.index("jupyter")
-    except ValueError:
-        return False
-    return len(parts) > j + 1 and parts[j + 1] == "rocm"
-
-
-def _is_under_jupyter_minimal_tree(directory: Path) -> bool:
-    """``jupyter/minimal/<os>-python-*/`` (ROCm minimal uses the same tree as CPU; lockfile is ``pylock.rocm.toml``)."""
-    parts = directory.parts
-    try:
-        j = parts.index("jupyter")
-    except ValueError:
-        return False
-    return len(parts) > j + 1 and parts[j + 1] == "minimal"
-
-
-def _workbench_dir_consistent_with_rocm_policy(wb: Workbench, directory: Path) -> bool:
-    """Skip ``jupyter/rocm/...`` source trees when the ImageStream is not a ROCm workbench."""
-    rf = wb.resource_file
-    rocm_tree = _is_under_jupyter_rocm_tree(directory)
-
-    # ROCm minimal ImageStream is built from jupyter/minimal/..., not jupyter/rocm/minimal/...
-    if rf == "jupyter-rocm-minimal-notebook-imagestream.yaml":
-        return _is_under_jupyter_minimal_tree(directory)
-
-    if rf.startswith("jupyter-rocm-"):
-        return rocm_tree
-    if rf.startswith("jupyter-") and rocm_tree:
-        return False
-    return True
 
 
 def _is_image_directory(directory: Path) -> bool:
@@ -178,8 +152,6 @@ def _dirs_for_workbench(manifests_dir: Path, wb: Workbench, candidate_dirs: list
 
     found: list[Path] = []
     for d in candidate_dirs:
-        if not _workbench_dir_consistent_with_rocm_policy(wb, d):
-            continue
         try:
             meta = extract_metadata_from_path(d)
             if wb.resource_file in _ACCELERATOR_OVERRIDE_FOR_RESOURCE:
@@ -212,6 +184,16 @@ def notebook_dirname_from_base_key(base_key: str) -> str | None:
     return f"{os_name}-python-{py}"
 
 
+def _path_matches_base_key_tree(directory: Path, base_key: str) -> bool:
+    """Disambiguate ``jupyter/...`` vs ``runtimes/...`` trees with the same ``*-python-*`` dirname."""
+    parts = directory.parts
+    if "pipeline-runtime" in base_key or "-runtime-" in base_key:
+        return "runtimes" in parts
+    if "workbench" in base_key:
+        return "runtimes" not in parts
+    return True
+
+
 def pick_notebook_dir_for_base_key(candidates: list[Path], base_key: str) -> Path | None:
     """Return an on-disk notebook tree path when it exists for this tag's Python/OS."""
     if not candidates:
@@ -219,15 +201,25 @@ def pick_notebook_dir_for_base_key(candidates: list[Path], base_key: str) -> Pat
 
     want = notebook_dirname_from_base_key(base_key)
     if want is not None:
-        for d in candidates:
-            if d.name == want:
-                return d
+        matches = [d for d in candidates if d.name == want and _path_matches_base_key_tree(d, base_key)]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            return None
+        # Baseline Konflux params use ``-py312-c9s`` but lockfiles live under ``ubi9-python-*``.
+        if want.startswith("c9s-python-"):
+            ubi9_want = "ubi9-python-" + want.removeprefix("c9s-python-")
+            ubi9_matches = [
+                d for d in candidates if d.name == ubi9_want and _path_matches_base_key_tree(d, base_key)
+            ]
+            if len(ubi9_matches) == 1:
+                return ubi9_matches[0]
         return None
 
     m = re.search(r"-py(\d)(\d+)-", base_key)
     if m:
         py = f"{m.group(1)}.{m.group(2)}"
-        matching = [d for d in candidates if f"python-{py}" in d.name]
+        matching = [d for d in candidates if f"python-{py}" in d.name and _path_matches_base_key_tree(d, base_key)]
         if len(matching) == 1:
             return matching[0]
         if len(matching) > 1:
@@ -403,14 +395,21 @@ def _format_dep_version(pep440: str) -> str:
     return f"{v.major}.{v.minor}"
 
 
-def _load_pylock_packages(pylock_text: str, python_minor: str) -> dict[str, dict[str, Any]]:
-    doc = tomllib.loads(pylock_text)
-    marker_env = {
+def _linux_marker_env(python_minor: str) -> dict[str, str]:
+    """Match ``tests/test_main.py`` marker filtering for pylock alignment checks."""
+    return {
         "python_full_version": f"{python_minor}.0",
         "python_version": python_minor,
         "implementation_name": "cpython",
         "sys_platform": "linux",
+        # Public-index baseline deps gate on x86_64/aarch64; host arm64 is not aarch64.
+        "platform_machine": "x86_64",
     }
+
+
+def _load_pylock_packages(pylock_text: str, python_minor: str) -> dict[str, dict[str, Any]]:
+    doc = tomllib.loads(pylock_text)
+    marker_env = _linux_marker_env(python_minor)
     packages: dict[str, dict[str, Any]] = {}
     for p in doc.get("packages", []):
         if "marker" in p and not packaging.markers.Marker(p["marker"]).evaluate(marker_env):
@@ -424,12 +423,7 @@ def _load_pylock_packages(pylock_text: str, python_minor: str) -> dict[str, dict
 
 def _parse_requirements_txt_packages(text: str, python_minor: str) -> dict[str, dict[str, Any]]:
     """Parse pip-tools / pip ``requirements.txt`` (pinned ``pkg==ver`` lines; skips hash/index options)."""
-    marker_env = {
-        "python_full_version": f"{python_minor}.0",
-        "python_version": python_minor,
-        "implementation_name": "cpython",
-        "sys_platform": "linux",
-    }
+    marker_env = _linux_marker_env(python_minor)
     packages: dict[str, dict[str, Any]] = {}
     for raw_line in text.splitlines():
         line = raw_line.strip()
@@ -470,12 +464,7 @@ def _parse_pipfile_lock_packages(text: str, python_minor: str) -> dict[str, dict
         data = json.loads(text)
     except json.JSONDecodeError as e:
         raise ValueError(f"invalid Pipfile.lock JSON: {e}") from e
-    marker_env = {
-        "python_full_version": f"{python_minor}.0",
-        "python_version": python_minor,
-        "implementation_name": "cpython",
-        "sys_platform": "linux",
-    }
+    marker_env = _linux_marker_env(python_minor)
     packages: dict[str, dict[str, Any]] = {}
     section = data.get("default")
     if not isinstance(section, dict):
@@ -630,6 +619,9 @@ def run_variant(variant: str, dry_run: bool) -> int:
     lockfile_errors: list[str] = []
     candidate_dirs = _discover_candidate_dirs()
     for wb in workbenches:
+        if wb.resource_file in _SKIP_RESOURCE_FILES:
+            logger.info("skip %s: no in-repo source tree (maintained elsewhere)", wb.resource_file)
+            continue
         candidates = _dirs_for_workbench(manifests_dir, wb, candidate_dirs)
         path = base / wb.resource_file
         if not path.is_file():

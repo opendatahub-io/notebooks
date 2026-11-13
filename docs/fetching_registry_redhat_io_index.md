@@ -255,7 +255,7 @@ Not all images support all architectures:
 
 | Image type | Architectures |
 |------------|--------------|
-| CPU images (minimal, datascience, trustyai) | amd64, arm64, ppc64le, s390x |
+| CPU images (minimal, datascience) | amd64, arm64, ppc64le, s390x |
 | CUDA images | amd64, arm64 |
 | ROCm images | amd64 only |
 
@@ -335,8 +335,8 @@ Within a single RHOAI version (e.g. v3.2), images may be built from different so
 
 | Build ID (`release` label) | Source commit (`vcs-ref`) | Images |
 |---------------------------|--------------------------|--------|
-| `1768253544` | `fff8594...` | minimal-cpu, minimal-cuda, datascience-cpu, trustyai-cpu |
-| `1767946734` | `0f8616e...` | minimal-rocm, pytorch-cuda, pytorch-rocm, tensorflow-cuda, tensorflow-rocm, codeserver, llmcompressor |
+| `1768253544` | `fff8594...` | minimal-cpu, minimal-cuda, datascience-cpu |
+| `1767946734` | `0f8616e...` | minimal-rocm, pytorch-cuda, tensorflow-cuda, codeserver, llmcompressor |
 
 This happens because the images are built by separate Konflux pipelines that may pick up different commits from the source repo.
 

@@ -23,9 +23,14 @@ import packaging.version
 import pytest
 import yaml
 
+from manifests.tools import notebook_metadata as manifests
 from manifests.tools.commit_env_refs import parse_env_file
+from manifests.tools.generate_kustomization import discover_config
+from manifests.tools.generate_kustomization import (
+    imagestream_stopped_producing_tags as _imagestream_stopped_producing_tags,
+)
 from manifests.tools.package_names import all_workbench_pip_names, manifest_name_to_pip
-from tests import PROJECT_ROOT, manifests
+from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
@@ -412,6 +417,11 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
                     _check_all_accelerator_variants(directory, manifests_directory, subtests)
 
                 with subtests.test(msg="checking the `notebook-python-dependencies` array", pyproject=file):
+                    if manifest.stopped_producing_tags:
+                        pytest.skip(
+                            f"{manifest.filename.name} is deprecated and no longer receives new tags; "
+                            "frozen annotations are not compared to the current pylock"
+                        )
                     for d in manifest.dep:
                         name = d["name"]
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
@@ -452,6 +462,11 @@ def test_image_pyprojects(subtests: pytest.Subtests, manifests_directory: pathli
                         )
 
                 with subtests.test(msg="checking pylock workbench packages are listed in manifest", pyproject=file):
+                    if manifest.stopped_producing_tags:
+                        pytest.skip(
+                            f"{manifest.filename.name} is deprecated and no longer receives new tags; "
+                            "frozen annotations are not compared to the current pylock"
+                        )
                     known_pip_names = all_workbench_pip_names()
                     manifest_pip_names = {manifest_name_to_pip(d["name"]).lower() for d in manifest.dep}
                     workbench_only_pip = {manifest_name_to_pip(n).lower() for n in workbench_only_packages}
@@ -496,6 +511,9 @@ def test_image_manifests_version_alignment(subtests: pytest.Subtests, manifests_
             continue
 
         manifest = load_manifests_file_for(directory, manifests_directory)
+        if manifest.stopped_producing_tags:
+            # The newest tag is the last release that was published, not the rolling latest.
+            continue
         collected_manifests.append(manifest)
 
     @dataclasses.dataclass
@@ -585,10 +603,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest.Subtests):
 
 def test_files_that_should_be_same_are_same(subtests: pytest.Subtests):
     file_groups = {
-        "ROCm de-vendor script": [
-            PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.12/de-vendor-torch.py",
-            PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.12/de-vendor-torch.py",
-        ],
         "nginx/common.sh": [
             PROJECT_ROOT / "codeserver/ubi9-python-3.12/nginx/root/usr/share/container-scripts/nginx/common.sh",
         ],
@@ -659,7 +673,9 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest.Subtests):
             )
 
 
-_BASE_CANONICAL_TAG_ORDER = ["3.5", "3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
+# Previous releases, newest first. kickoff-release records N-1 here via
+# scripts/update_canonical_tag_order.py; the current release is prepended below.
+_BASE_CANONICAL_TAG_ORDER = ["3.6", "3.5", "3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
 
 
 def _canonical_tag_order_from_versions_config() -> list[str]:
@@ -740,6 +756,9 @@ def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_d
         tags = is_data["spec"]["tags"]
         tag_names = [t["name"] for t in tags]
         is_runtime = is_data["metadata"].get("labels", {}).get("opendatahub.io/runtime-image") == "true"
+        # A frozen ImageStream keeps its last release tag at index 0. It does not
+        # gain a rolling "-n" tag when new releases stop.
+        stopped_producing_tags = _imagestream_stopped_producing_tags(is_data)
         has_kustomize_replacements = any(
             target.get("select", {}).get("name") == is_name for r in replacements for target in r["targets"]
         )
@@ -759,7 +778,8 @@ def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_d
                     else:
                         pytest.fail(
                             f"{is_file.name}: tag name {tn!r} is not in CANONICAL_TAG_ORDER. "
-                            f"Update CANONICAL_TAG_ORDER if a new version was added."
+                            "Record the previous release in _BASE_CANONICAL_TAG_ORDER "
+                            "(make kickoff-release, or scripts/update_canonical_tag_order.py)."
                         )
                 assert canonical_positions == sorted(canonical_positions), (
                     f"{is_file.name}: tags are not in newest-to-oldest order. "
@@ -783,7 +803,7 @@ def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_d
                     )
                     suffix = m.group(2)
 
-                    if idx == 0:
+                    if idx == 0 and not stopped_producing_tags:
                         assert suffix == "-n", (
                             f"{is_file.name} tag {tag_name} (index 0): expected suffix '-n' for latest tag, "
                             f"got {suffix!r} in {from_placeholder!r}"
@@ -884,7 +904,7 @@ def test_imagestream_kustomization_consistency(subtests: pytest.Subtests, base_d
 
 def test_make_disable_pushing():
     # NOTE: the image below needs to exist in the Makefile
-    lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.12"], env={"PUSH_IMAGES": ""})
+    lines = dryrun_make(["rocm-jupyter-minimal-ubi9-python-3.12"], env={"PUSH_IMAGES": ""})
     for line in lines:
         assert "podman push" not in line
 
@@ -1040,6 +1060,83 @@ def _check_all_accelerator_variants(
             )
 
 
+@pytest.mark.parametrize(
+    ("annotations", "labels", "expected"),
+    [
+        (
+            {"opendatahub.io/deprecated": "true", "opendatahub.io/notebook-image-hidden": "true"},
+            {},
+            True,
+        ),
+        (
+            {"opendatahub.io/deprecated": "true"},
+            {"opendatahub.io/notebook-image-hidden": "true"},
+            True,
+        ),
+        ({"opendatahub.io/deprecated": "true"}, {"opendatahub.io/notebook-image": "true"}, False),
+        ({}, {"opendatahub.io/notebook-image-hidden": "true"}, False),
+        (
+            {"opendatahub.io/deprecated": "false", "opendatahub.io/notebook-image-hidden": "true"},
+            {},
+            False,
+        ),
+    ],
+)
+def test_imagestream_stopped_producing_tags(annotations: dict[str, str], labels: dict[str, str], expected: bool):
+    imagestream = {"metadata": {"annotations": annotations, "labels": labels}}
+    assert _imagestream_stopped_producing_tags(imagestream) is expected
+
+
+_FROZEN_IMAGESTREAMS = {
+    "jupyter-trustyai-notebook",
+    "odh-trustyai-notebook",
+    "jupyter-rocm-pytorch",
+    "jupyter-rocm-tensorflow",
+}
+
+
+@pytest.mark.parametrize(
+    "base_dir",
+    [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"],
+)
+def test_frozen_imagestreams_omit_rolling_tag(base_dir: pathlib.Path):
+    """Frozen ImageStreams keep pinned suffixes. Active ones still start at ``-n``."""
+    _resources, workbenches, _runtime_files, _runtimes = discover_config(base_dir)
+    frozen = [wb for wb in workbenches if wb.imagestream in _FROZEN_IMAGESTREAMS]
+    assert frozen, f"{base_dir.parent.name}: expected frozen workbenches"
+    for wb in workbenches:
+        suffixes = [suffix for _base_key, suffix in wb.versions]
+        if wb.imagestream in _FROZEN_IMAGESTREAMS:
+            assert suffixes, f"{wb.imagestream}: expected pinned tags"
+            assert "-n" not in suffixes, f"{wb.imagestream}: frozen ImageStream still has a rolling tag"
+            continue
+        assert suffixes and suffixes[0] == "-n", f"{wb.imagestream}: active ImageStream should keep a rolling -n tag"
+
+
+def test_frozen_rolling_key_without_placeholder_is_allowed(tmp_path: pathlib.Path):
+    """A leftover ``-n`` key for a frozen ImageStream is not a missing replacement."""
+    source = PROJECT_ROOT / "manifests" / "odh" / "base"
+    destination = tmp_path / "base"
+    shutil.copytree(source, destination)
+    latest = destination / "params-latest.env"
+    latest.write_text(latest.read_text() + "odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n=unused\n")
+
+    _resources, workbenches, _runtime_files, _runtimes = discover_config(destination)
+    trustyai = next(wb for wb in workbenches if wb.imagestream == "jupyter-trustyai-notebook")
+    assert [suffix for _base_key, suffix in trustyai.versions] == ["-3-6"]
+
+
+def test_unknown_params_key_still_requires_imagestream(tmp_path: pathlib.Path):
+    source = PROJECT_ROOT / "manifests" / "odh" / "base"
+    destination = tmp_path / "base"
+    shutil.copytree(source, destination)
+    latest = destination / "params-latest.env"
+    latest.write_text(latest.read_text() + "odh-workbench-jupyter-not-a-real-image-py312-ubi9-n=unused\n")
+
+    with pytest.raises(AssertionError, match="not-a-real-image"):
+        discover_config(destination)
+
+
 @dataclasses.dataclass
 class Manifest:
     filename: pathlib.Path
@@ -1047,6 +1144,7 @@ class Manifest:
     metadata: manifests.NotebookMetadata
     sw: list[dict[str, Any]]
     dep: list[dict[str, Any]]
+    stopped_producing_tags: bool = False
 
 
 def _collect_rpms_lock_files() -> list[pathlib.Path]:
@@ -1123,10 +1221,14 @@ def load_manifests_file_for(
         for tag in imagestream["spec"]["tags"]
         if tag["annotations"].get("opendatahub.io/workbench-image-recommended", None) == "true"
     ]
+    stopped_producing_tags = _imagestream_stopped_producing_tags(imagestream)
     assert len(recommended_tags) <= 1, "at most one tag may be recommended at a time"
-    assert recommended_tags or len(imagestream["spec"]["tags"]) == 1, (
-        "Either there has to be recommended image, or there can be only one tag"
-    )
+    # A frozen ImageStream may keep several historical tags and no recommended tag.
+    # Active ImageStreams still need a recommended tag, unless they have only one tag.
+    if not stopped_producing_tags:
+        assert recommended_tags or len(imagestream["spec"]["tags"]) == 1, (
+            "Either there has to be recommended image, or there can be only one tag"
+        )
     current_tag = recommended_tags[0] if recommended_tags else imagestream["spec"]["tags"][0]
 
     try:
@@ -1141,6 +1243,7 @@ def load_manifests_file_for(
         metadata=metadata,
         sw=sw,
         dep=dep,
+        stopped_producing_tags=stopped_producing_tags,
     )
 
 

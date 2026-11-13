@@ -10,12 +10,51 @@ metadata:
     opendatahub.io/notebook-image-desc: "Jupyter notebook image with a set of data science libraries that advanced AI/ML notebooks will use as a base image to provide a standard for libraries available in all notebooks"
     opendatahub.io/notebook-image-order: "10"
     opendatahub.io/notebook-tier: "Red Hat-provided"
+    opendatahub.io/deprecated: "true"
   name: jupyter-datascience-notebook
 spec:
   lookupPolicy:
     local: true
   tags:
     # N Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"},
+            {"name": "Boto3", "version": "1.43"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Kfp", "version": "2.18"},
+            {"name": "Matplotlib", "version": "3.11"},
+            {"name": "Numpy", "version": "2.5"},
+            {"name": "Pandas", "version": "2.2"},
+            {"name": "Scikit-learn", "version": "1.9"},
+            {"name": "Scipy", "version": "1.18"},
+            {"name": "Odh-Elyra", "version": "5.0"},
+            {"name": "PyMongo", "version": "4.19"},
+            {"name": "Pyodbc", "version": "5.3"},
+            {"name": "Codeflare-SDK", "version": "0.40"},
+            {"name": "Feast", "version": "0.67"},
+            {"name": "Sklearn-onnx", "version": "1.20"},
+            {"name": "Psycopg", "version": "3.3"},
+            {"name": "MySQL Connector/Python", "version": "26.10"},
+            {"name": "MLflow", "version": "3.17"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-datascience-cpu-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-datascience-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "3.7"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -45,49 +84,11 @@ spec:
             {"name": "MLflow", "version": "3.17"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9
-        opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-datascience-cpu-py312-ubi9-commit-n_PLACEHOLDER
-      from:
-        kind: DockerImage
-        name: odh-workbench-jupyter-datascience-cpu-py312-ubi9-n_PLACEHOLDER
-      name: "3.6"
-      referencePolicy:
-        type: Source
-    # N - 1 Version of the image
-    - annotations:
-        # language=json
-        opendatahub.io/notebook-software: |
-          [
-            {"name": "Python", "version": "v3.12"}
-          ]
-        # language=json
-        opendatahub.io/notebook-python-dependencies: |
-          [
-            {"name": "JupyterLab", "version": "4.5"},
-            {"name": "Boto3", "version": "1.43"},
-            {"name": "Kafka-Python-ng", "version": "2.2"},
-            {"name": "Kfp", "version": "2.17"},
-            {"name": "Matplotlib", "version": "3.11"},
-            {"name": "Numpy", "version": "2.5"},
-            {"name": "Pandas", "version": "2.3"},
-            {"name": "Scikit-learn", "version": "1.9"},
-            {"name": "Scipy", "version": "1.18"},
-            {"name": "Odh-Elyra", "version": "5.0"},
-            {"name": "PyMongo", "version": "4.17"},
-            {"name": "Pyodbc", "version": "5.3"},
-            {"name": "Codeflare-SDK", "version": "0.38"},
-            {"name": "Feast", "version": "0.64"},
-            {"name": "Sklearn-onnx", "version": "1.20"},
-            {"name": "Psycopg", "version": "3.3"},
-            {"name": "MySQL Connector/Python", "version": "9.7"},
-            {"name": "MLflow", "version": "3.14"}
-          ]
-        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-datascience-cpu-py312-ubi9-commit-3-5_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-datascience-cpu-py312-ubi9-commit-3-6_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-datascience-cpu-py312-ubi9-3-5_PLACEHOLDER
-      name: "3.5"
+        name: odh-workbench-jupyter-datascience-cpu-py312-ubi9-3-6_PLACEHOLDER
+      name: "3.6"
       referencePolicy:
         type: Source

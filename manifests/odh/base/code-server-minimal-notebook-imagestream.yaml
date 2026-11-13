@@ -29,11 +29,32 @@ spec:
             {"name": "JupyterLab", "version": "4.5"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/odh-workbench-codeserver-minimal-cpu-py312
-        opendatahub.io/workbench-image-recommended: "true"
+        opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: odh-workbench-codeserver-minimal-cpu-py312-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
         name: odh-workbench-codeserver-minimal-cpu-py312-n_PLACEHOLDER
+      name: "3.7"
+      referencePolicy:
+        type: Source
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "code-server", "version": "4.122"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.5"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-codeserver-minimal-cpu-py312
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-minimal-cpu-py312-commit-3-6_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-codeserver-minimal-cpu-py312-3-6_PLACEHOLDER
       name: "3.6"
       referencePolicy:
         type: Source

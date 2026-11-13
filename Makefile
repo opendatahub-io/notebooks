@@ -21,7 +21,7 @@ endif
 .RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 3.6
+RELEASE	 		 ?= 3.7
 RELEASE_PYTHON_VERSION	 ?= 3.12
 CHECK_PAYLOAD_VERSION ?= 0.3.17
 CHECK_PAYLOAD_CONFIG_OVERLAY := scripts/check-payload/.overlay.toml
@@ -249,10 +249,6 @@ cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
-.PHONY: jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
-jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/trustyai/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
-
 .PHONY: runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,runtimes/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
@@ -281,31 +277,10 @@ codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
 codeserver-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,codeserver-minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
-.PHONY: che-code-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION)
-che-code-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,codeserver/che-code-ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
-
 ####################################### Buildchain for AMD Python using UBI9 #######################################
 .PHONY: rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
-.PHONY: rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
-.PHONY: rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
-.PHONY: rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
-.PHONY: rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
-
 
 ####################################### Buildchain for Baseline Images (Codeserver, Jupyter, Runtime) using PYPI #######################################
 
@@ -443,12 +418,25 @@ validate-runtime-image: bin/kubectl
 		fi
 		if [ $$cmd == "python3" ]; then
 			echo "=> Checking notebook execution..."
+			papermill_log=$$(mktemp)
 			if ! $(KUBECTL_BIN) cp "$(CURDIR)/ci/requirements-elyra.txt" runtime-pod:/tmp/requirements-elyra.txt || \
 				! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /tmp/requirements-elyra.txt > /dev/null && \
-					python3 -m papermill \$$(python3 -c \"import papermill, pathlib; print(pathlib.Path(papermill.__file__).parent / 'tests/notebooks/simple_execute.ipynb')\") /tmp/output.ipynb > /dev/null" ; then
-				echo "ERROR: Image does not meet Python requirements criteria in pipfile"
-				fail=1
+					python3 -m papermill \$$(python3 -c \"import papermill, pathlib; print(pathlib.Path(papermill.__file__).parent / 'tests/notebooks/simple_execute.ipynb')\") /tmp/output.ipynb > /dev/null" > "$$papermill_log" 2>&1 ; then
+				# jupyter_client signals the kernel with SIGINT on shutdown. In these pods
+				# os.kill can raise EPERM after simple_execute.ipynb has already run.
+				# Cells with a description print "Executing DESC: 100%", not "Executing: 100%".
+				if grep -q 'PermissionError: \[Errno 13\] Permission denied' "$$papermill_log" \
+					&& grep -q 'os\.kill(self\.pid, sig)' "$$papermill_log" \
+					&& grep -Eq 'Executing( DESC)?:[[:space:]]*100%' "$$papermill_log" \
+					&& ! grep -q -e PapermillExecutionError -e CellExecutionError "$$papermill_log"; then
+					echo "WARNING: papermill kernel shutdown hit EPERM after the notebook executed. Continuing."
+				else
+					cat "$$papermill_log"
+					echo "ERROR: Image does not meet Python requirements criteria in pipfile"
+					fail=1
+				fi
 			fi
+			rm -f "$$papermill_log"
 		fi
 	done
 	if [ $$fail -eq 1 ]; then
@@ -526,22 +514,33 @@ sync-build-args-from-versions:
 # Kick off release updates in one command
 # Usage:
 #   gmake kickoff-release SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org>
-#   gmake kickoff-release KICKOFF_START_STEP=5 SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org>
+#   gmake kickoff-release SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org> TAG_OVERRIDE=true
+#   gmake kickoff-release KICKOFF_START_STEP=7 SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org>
 #   gmake kickoff-release KICKOFF_START_STEP=auto SUBSCRIPTION_ACTIVATION_KEY=<key> SUBSCRIPTION_ORG=<org>
 # Step index:
 #   1=sync-build-args-from-versions
 #   2=refresh-lock-files (with FORCE_LOCKFILES_UPGRADE=1)
 #   3=create ODH rpm lockfile (root prefetch input)
 #   4=create ODH rpm lockfile (codeserver prefetch input)
-#   5=create RHDS rpm lockfile (root prefetch input)
-#   6=create RHDS rpm lockfile (codeserver prefetch input)
-#   7=rollout tags on imagestreams
-#   8=validate manifests (make test)
+#   5=create ODH rpm lockfile (codeserver-minimal prefetch input)
+#   6=create ODH rpm lockfile (codeserver-baseline prefetch input)
+#   7=create RHDS rpm lockfile (root prefetch input)
+#   8=create RHDS rpm lockfile (codeserver prefetch input)
+#   9=create RHDS rpm lockfile (codeserver-minimal prefetch input)
+#   10=rollout tags on imagestreams
+#   11=update imagestream annotations
+#   12=record previous release (N-1) in tests/test_main.py _BASE_CANONICAL_TAG_ORDER
+#   13=validate manifests (make test)
 # Notes:
 #   - KICKOFF_START_STEP=auto (default) resumes from .kickoff-release.state when present
 #   - After a successful full run, the state file is removed
+#   - Delete a stale .kickoff-release.state after changing the step list (step numbers shift)
+#   - TAG_OVERRIDE=true honors non-GA tags pinned in manifests/odh/base/params-latest.env
+#     during imagestream rollout. Leave it unset for the default GA tag lookup.
 # ======================================================================================
+TAG_OVERRIDE ?=
 KICKOFF_START_STEP ?= auto
+KICKOFF_LAST_STEP ?= 13
 KICKOFF_STATE_FILE ?= $(ROOT_DIR).kickoff-release.state
 .PHONY: clean-rpm-lockfile-cache
 clean-rpm-lockfile-cache:
@@ -556,7 +555,9 @@ kickoff-release:
 	@# Disable xtrace for this recipe to avoid leaking subscription values in logs.
 	@set +x
 	@start_step="$(KICKOFF_START_STEP)"; \
+	kickoff_last_step="$(KICKOFF_LAST_STEP)"; \
 	state_file="$(KICKOFF_STATE_FILE)"; \
+	tag_override="$(TAG_OVERRIDE)"; \
 	if [[ "$$start_step" == "auto" ]]; then \
 		if [[ -f "$$state_file" ]]; then \
 			start_step="$$(tr -d '[:space:]' < "$$state_file")"; \
@@ -564,10 +565,14 @@ kickoff-release:
 			start_step="1"; \
 		fi; \
 	fi; \
-	if [[ ! "$$start_step" =~ ^[1-8]$$ ]]; then \
-		echo "ERROR: KICKOFF_START_STEP must be auto or an integer from 1 to 8 (got: $(KICKOFF_START_STEP))."; \
+	if [[ ! "$$start_step" =~ ^[0-9]+$$ ]] || (( start_step < 1 || start_step > kickoff_last_step )); then \
+		echo "ERROR: KICKOFF_START_STEP must be auto or an integer from 1 to $(KICKOFF_LAST_STEP) (got: $(KICKOFF_START_STEP))."; \
 		echo "If resuming automatically, delete an invalid state file and retry:"; \
 		echo "  rm -f $$(printf '%q' "$$state_file")"; \
+		exit 1; \
+	fi; \
+	if [[ -n "$$tag_override" && "$$tag_override" != "true" ]]; then \
+		echo "ERROR: TAG_OVERRIDE must be unset or true (got: $$tag_override)."; \
 		exit 1; \
 	fi; \
 	if (( start_step <= 6 )) && [[ -z "$${SUBSCRIPTION_ACTIVATION_KEY:-}" || -z "$${SUBSCRIPTION_ORG:-}" ]]; then \
@@ -579,10 +584,10 @@ kickoff-release:
 	if (( start_step <= 6 )); then \
 		echo "✅ Required subscription environment variables are set."; \
 	fi; \
-	echo "▶️  Running from KICKOFF_START_STEP=$$start_step"
-	@record_step_completion() { \
+	echo "▶️  Running from KICKOFF_START_STEP=$$start_step"; \
+	record_step_completion() { \
 		local step="$$1"; \
-		if (( step < 8 )); then \
+		if (( step < kickoff_last_step )); then \
 			echo "$$((step + 1))" > "$$state_file"; \
 		else \
 			rm -f "$$state_file"; \
@@ -593,11 +598,11 @@ kickoff-release:
 		local desc="$$2"; \
 		shift 2; \
 		if (( start_step <= step )); then \
-			echo "➡️  [$$step/8] $$desc"; \
+			echo "➡️  [$$step/$$kickoff_last_step] $$desc"; \
 			"$$@"; \
 			record_step_completion "$$step"; \
 		else \
-			echo "⏭️  [$$step/8] Skipping $$desc"; \
+			echo "⏭️  [$$step/$$kickoff_last_step] Skipping $$desc"; \
 		fi; \
 	}; \
 	last_rpm_flavor=""; \
@@ -612,21 +617,31 @@ kickoff-release:
 				$(MAKE) clean-rpm-lockfile-cache; \
 				last_rpm_flavor="$$flavor"; \
 			fi; \
-			echo "➡️  [$$step/8] $$desc"; \
+			echo "➡️  [$$step/$$kickoff_last_step] $$desc"; \
 			"$$@"; \
 			record_step_completion "$$step"; \
 		else \
-			echo "⏭️  [$$step/8] Skipping $$desc"; \
+			echo "⏭️  [$$step/$$kickoff_last_step] Skipping $$desc"; \
 		fi; \
 	}; \
 	run_step 1 "sync-build-args-from-versions" $(MAKE) sync-build-args-from-versions; \
 	run_step 2 "refresh-lock-files" env FORCE_LOCKFILES_UPGRADE=1 $(MAKE) refresh-lock-files; \
 	run_rpm_step odh 3 "create ODH rpm lockfile (root prefetch input)" env -u SUBSCRIPTION_ACTIVATION_KEY -u SUBSCRIPTION_ORG ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input prefetch-input/odh/rpms.in.yaml; \
 	run_rpm_step odh 4 "create ODH rpm lockfile (codeserver prefetch input)" env -u SUBSCRIPTION_ACTIVATION_KEY -u SUBSCRIPTION_ORG ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml; \
-	run_rpm_step rhds 5 "create RHDS rpm lockfile (root prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input prefetch-input/rhds/rpms.in.yaml; \
-	run_rpm_step rhds 6 "create RHDS rpm lockfile (codeserver prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml; \
-	run_step 7 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
-	run_step 8 "validate manifests (make test)" $(MAKE) test
+	run_rpm_step odh 5 "create ODH rpm lockfile (codeserver-minimal prefetch input)" env -u SUBSCRIPTION_ACTIVATION_KEY -u SUBSCRIPTION_ORG ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver-minimal/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml; \
+	run_rpm_step odh 6 "create ODH rpm lockfile (codeserver-baseline prefetch input)" env -u SUBSCRIPTION_ACTIVATION_KEY -u SUBSCRIPTION_ORG ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver-baseline/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml; \
+	run_rpm_step rhds 7 "create RHDS rpm lockfile (root prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input prefetch-input/rhds/rpms.in.yaml; \
+	run_rpm_step rhds 8 "create RHDS rpm lockfile (codeserver prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml; \
+	run_rpm_step rhds 9 "create RHDS rpm lockfile (codeserver-minimal prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver-minimal/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml; \
+	if [[ "$$tag_override" == "true" ]]; then \
+		echo "TAG_OVERRIDE=true: non-GA tags in manifests/odh/base/params-latest.env bypass GA tag selection"; \
+		run_step 10 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py --tag-override; \
+	else \
+		run_step 10 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
+	fi; \
+	run_step 11 "update imagestream annotations" $(MAKE) update-imagestream-annotations; \
+	run_step 12 "record N-1 in canonical tag order" uv run scripts/update_canonical_tag_order.py; \
+	run_step 13 "validate manifests (make test)" $(MAKE) test
 
 # ======================================================================================
 #   gmake update-imagestream-annotations
@@ -687,18 +702,12 @@ all-images: \
 	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	codeserver-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	che-code-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
- 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	codeserver-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-baseline-ubi9-python-$(RELEASE_PYTHON_VERSION)

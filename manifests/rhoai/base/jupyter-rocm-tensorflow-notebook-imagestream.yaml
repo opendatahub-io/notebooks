@@ -12,12 +12,13 @@ metadata:
     opendatahub.io/notebook-tier: "Red Hat-provided"
     opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
     opendatahub.io/deprecated: "true"
+    opendatahub.io/notebook-image-hidden: 'true'
   name: jupyter-rocm-tensorflow
 spec:
   lookupPolicy:
     local: true
   tags:
-    # N Version of the image
+    # N Version of the image (stoped at 3.6)
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -51,11 +52,11 @@ spec:
             {"name": "Feast", "version": "0.66"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9
-        opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-n_PLACEHOLDER
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-3-6_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-n_PLACEHOLDER
+        name: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-3-6_PLACEHOLDER
       name: "3.6"
       referencePolicy:
         type: Source
@@ -91,8 +92,8 @@ spec:
             {"name": "Feast", "version": "0.64"}
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9
-        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-3-5_PLACEHOLDER
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-3-5_PLACEHOLDER
@@ -166,7 +167,7 @@ spec:
           ]
         openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-2025-2_PLACEHOLDER
-        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-2025-2_PLACEHOLDER

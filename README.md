@@ -102,10 +102,16 @@ The kickoff recipe runs these steps in order:
 2. `make refresh-lock-files` (with `FORCE_LOCKFILES_UPGRADE=1`)
 3. Generate ODH RPM lockfile (root prefetch input)
 4. Generate ODH RPM lockfile (codeserver prefetch input)
-5. Generate RHDS RPM lockfile (root prefetch input)
-6. Generate RHDS RPM lockfile (codeserver prefetch input)
-7. Roll out imagestream tags (`uv run manifests/tools/rollout_tag_on_imagestreams.py`)
-8. Validate with `make test`
+5. Generate ODH RPM lockfile (codeserver-minimal prefetch input)
+6. Generate ODH RPM lockfile (codeserver-baseline prefetch input)
+7. Generate RHDS RPM lockfile (root prefetch input)
+8. Generate RHDS RPM lockfile (codeserver prefetch input)
+9. Generate RHDS RPM lockfile (codeserver-minimal prefetch input)
+10. Roll out imagestream tags (`uv run manifests/tools/rollout_tag_on_imagestreams.py`)
+11. Refresh ImageStream annotations (`make update-imagestream-annotations`)
+12. Record the previous release (N-1) in `_BASE_CANONICAL_TAG_ORDER`
+    (`uv run scripts/update_canonical_tag_order.py`) so `make test` accepts the rolled-out ImageStream tags.
+13. Validate with `make test`
 
 #### Local kickoff
 
@@ -117,11 +123,19 @@ export SUBSCRIPTION_ORG='...'
 gmake kickoff-release
 ```
 
+If `manifests/odh/base/params-latest.env` pins a tag that is not an ODH GA tag
+(`N.M-vX.Y`), pass `TAG_OVERRIDE=true` so rollout uses that pin. Omit it for the
+default GA lookup:
+
+```shell
+gmake kickoff-release TAG_OVERRIDE=true
+```
+
 If a step fails, rerun the same command to auto-resume from
 `.kickoff-release.state`, or force a step:
 
 ```shell
-gmake kickoff-release KICKOFF_START_STEP=5
+gmake kickoff-release KICKOFF_START_STEP=7
 ```
 
 To clear cached RPM lockfile generator images between ODH/RHDS phases manually:
@@ -142,7 +156,7 @@ Optional workflow inputs:
 ```text
 artifacts.base_image.cuda.tensorflow.acc_version=13.0
 artifacts.base_image.cpu.rhds.channel=fast
-artifacts.base_image.rocm.pytorch.rhds.channel=stable
+artifacts.base_image.rocm.minimal.rhds.channel=stable
 ```
 
 The workflow applies overrides, runs `make kickoff-release`, and opens a PR titled
@@ -304,15 +318,12 @@ This table provides a concise overview of the support status for various contain
 |------------|----------|--------|------|---------|----------|----------|--------|-------------|
 | CPU Minimal | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9?tab=tags) |
 | CPU DataScience | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9?tab=tags) |
-| CPU TrustyAI | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9?tab=tags) |
 | CPU CodeServer | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9?tab=tags) |
 | CUDA Minimal | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9?tab=tags) |
 | CUDA PyTorch | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-cuda-py312-ubi9?tab=tags) |
 | CUDA PyTorch LLMCompressor | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9?tab=tags) |
 | CUDA TensorFlow | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-tensorflow-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-tensorflow-cuda-py312-ubi9?tab=tags) |
 | ROCM Minimal | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9) |
-| ROCM PyTorch | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-rocm-py312-ubi9?tab=tags) |
-| ROCM TensorFlow | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9?tab=tags) |
 
 
 | Runtime | Version | Python | UBI | x86_64 | aarch64 | ppc64le | s390x | Container |
@@ -322,8 +333,6 @@ This table provides a concise overview of the support status for various contain
 | CUDA PyTorch | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-cuda-py312-ubi9?tab=tags) |
 | CUDA PyTorch LLMCompressor | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9) |
 | CUDA TensorFlow | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-tensorflow-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-tensorflow-cuda-py312-ubi9?tab=tags) |
-| ROCM PyTorch | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-rocm-py312-ubi9?tab=tags) |
-| ROCM TensorFlow | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9?tab=tags) |
 
 
 * ✅ supported

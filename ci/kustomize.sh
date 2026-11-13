@@ -59,6 +59,13 @@ function download_kustomize() {
     "${kustomize_bin}" version
 }
 
+function list_base_kustomizations() {
+    # Only */base. Overlays sit on top of those bases and are not checked here:
+    # manifest overlays, accelerator overlays, and the RHOAI baseline ImageStream
+    # overlay (manifests/rhoai/overlays/additional/baseline).
+    find . -name "kustomization.yaml" -print | xargs dirname | grep -E '/base$'
+}
+
 function execute_kustomize() {
     local tmp_dir="${1}"
     local kustomize_version="${2}"
@@ -68,18 +75,12 @@ function execute_kustomize() {
     local kustomize_bin="${tmp_dir}/kustomize-${kustomize_version}"
 
     echo "---------------------------------------------------------------------------------------------------"
-    echo "Starting to run kustomize '${kustomize_version}' for each kustomization.yaml file except components"
+    echo "Starting to run kustomize '${kustomize_version}' for each base kustomization.yaml"
     echo "---------------------------------------------------------------------------------------------------"
-    # We don't want to execute kustomization on the components part as it's not intended to be used that way.
-    # The RHOAI baseline overlay references manifests/odh/base/ (outside its directory) and must be
-    # built with --load-restrictor LoadRestrictionsNone; stock `kustomize build` rejects it.
-    local rhoai_baseline="manifests/rhoai/overlays/additional/baseline"
     # This first run is for the actual execution to get the generated output and eventual errors/warnings.
-    find . -name "kustomization.yaml" | xargs dirname | grep -v "components" | grep -v "${rhoai_baseline}" | xargs -I {} "${kustomize_bin}" build {} >"${kustomize_stdout}" 2>"${kustomize_stderr}"
-    "${kustomize_bin}" build --load-restrictor LoadRestrictionsNone "${rhoai_baseline}" >>"${kustomize_stdout}" 2>>"${kustomize_stderr}"
+    list_base_kustomizations | xargs -I {} "${kustomize_bin}" build {} >"${kustomize_stdout}" 2>"${kustomize_stderr}"
     # This second run is with verbose output to see eventual errors/warnings together with which command they are present for easier debugging.
-    find . -name "kustomization.yaml" | xargs dirname | grep -v "components" | grep -v "${rhoai_baseline}" | xargs --verbose -I {} "${kustomize_bin}" build {} >/dev/null
-    "${kustomize_bin}" build --load-restrictor LoadRestrictionsNone "${rhoai_baseline}" >/dev/null
+    list_base_kustomizations | xargs --verbose -I {} "${kustomize_bin}" build {} >/dev/null
 
     echo "Let's print the STDERR:"
     cat "${kustomize_stderr}"

@@ -299,7 +299,7 @@ before relying on the fallback for a new image variant.
 
 ### ROCm Images
 
-ROCm images (`jupyter-minimal-rocm`, `jupyter-pytorch-rocm`, etc.) include
+ROCm images (for example `jupyter-minimal-rocm`) include
 AMD's ROCm SDK. The same version-matching considerations apply:
 
 1. **Match the ROCm version.** PyTorch publishes ROCm-specific wheels on its

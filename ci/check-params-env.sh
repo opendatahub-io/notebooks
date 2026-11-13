@@ -175,6 +175,8 @@ function check_image_variable_matches_name_and_commitref_and_size() {
     local expected_commitref
     local expected_build_name
     local expected_img_size
+    local image_base=""
+    local release_suffix=""
 
     case "${image_variable}" in
         odh-workbench-jupyter-minimal-cpu-py311-ubi9-2025-1)
@@ -727,9 +729,13 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             # Rollout automation rewrites released workbench keys with numeric
             # release suffixes (for example '-3-5', '-3-6'). Keep this check
             # forward-compatible instead of hardcoding every new release key.
-            if [[ "${image_variable}" =~ ^(odh-workbench-[a-z0-9-]+-py312-(ubi9|c9s))-[0-9]{1,2}-[0-9]+$ ]]; then
-                local image_base
-                image_base="${BASH_REMATCH[1]}"
+            # The distro token is optional: codeserver-minimal ODH keys are
+            # 'odh-workbench-codeserver-minimal-cpu-py312-3-6'.
+            # 3.6 sizes are applied after this case; older suffixes keep the
+            # sizes below.
+            if [[ "${image_variable}" =~ ^(odh-workbench-[a-z0-9-]+-py312)(-(ubi9|c9s))?-([0-9]{1,2}-[0-9]+)$ ]]; then
+                image_base="${BASH_REMATCH[1]}${BASH_REMATCH[2]-}"
+                release_suffix="${BASH_REMATCH[4]}"
 
                 expected_commitref="main"
                 expected_build_name="konflux"
@@ -843,11 +849,70 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                             expected_img_size=8813
                         fi
                         ;;
+                    odh-workbench-codeserver-minimal-cpu-py312|odh-workbench-codeserver-minimal-cpu-py312-ubi9)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-codeserver-minimal-cpu-py312-rhel9"
+                            expected_img_size=1675
+                        else
+                            expected_name="opendatahub/odh-workbench-codeserver-minimal-cpu-py312-ubi9"
+                            expected_img_size=771
+                        fi
+                        ;;
+                    odh-workbench-jupyter-baseline-cpu-py312-c9s)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            echo "Skipping baseline image '${image_variable}' for RHOAI"
+                            return 0
+                        fi
+                        expected_name="opendatahub/odh-workbench-jupyter-baseline-cpu-py312-ubi9"
+                        expected_img_size=1012
+                        ;;
+                    odh-workbench-codeserver-baseline-cpu-py312-c9s)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            echo "Skipping baseline image '${image_variable}' for RHOAI"
+                            return 0
+                        fi
+                        expected_name="opendatahub/odh-workbench-codeserver-baseline-cpu-py312-rhel9"
+                        expected_img_size=910
+                        ;;
+                    odh-workbench-jupyter-universal-cpu-py312-c9s)
+                        if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            echo "Unimplemented variable name: '${image_variable}'"
+                            return 1
+                        fi
+                        expected_name="opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9"
+                        expected_img_size=1072
+                        ;;
                     *)
                         echo "Unimplemented variable name: '${image_variable}'"
                         return 1
                         ;;
                 esac
+
+                # 3.6 images drifted past the shared family size. Older suffixes
+                # (3-5 and earlier) keep the sizes set above.
+                if [ "${release_suffix}" = "3-6" ]; then
+                    case "${_MANIFESTS_VARIANT}:${image_base}" in
+                        rhoai:odh-workbench-jupyter-minimal-cpu-py312-ubi9) expected_img_size=1835 ;;
+                        rhoai:odh-workbench-jupyter-minimal-cuda-py312-ubi9) expected_img_size=4612 ;;
+                        rhoai:odh-workbench-jupyter-minimal-rocm-py312-ubi9) expected_img_size=9578 ;;
+                        rhoai:odh-workbench-jupyter-datascience-cpu-py312-ubi9) expected_img_size=2423 ;;
+                        rhoai:odh-workbench-jupyter-pytorch-cuda-py312-ubi9) expected_img_size=7026 ;;
+                        rhoai:odh-workbench-jupyter-pytorch-rocm-py312-ubi9) expected_img_size=10890 ;;
+                        rhoai:odh-workbench-jupyter-tensorflow-cuda-py312-ubi9) expected_img_size=7348 ;;
+                        rhoai:odh-workbench-jupyter-tensorflow-rocm-py312-ubi9) expected_img_size=10616 ;;
+                        rhoai:odh-workbench-jupyter-trustyai-cpu-py312-ubi9) expected_img_size=2943 ;;
+                        rhoai:odh-workbench-jupyter-universal-cpu-py312-ubi9) expected_img_size=1949 ;;
+                        rhoai:odh-workbench-codeserver-datascience-cpu-py312-ubi9) expected_img_size=2184 ;;
+                        rhoai:odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9) expected_img_size=7107 ;;
+                        odh:odh-workbench-jupyter-minimal-cuda-py312-ubi9) expected_img_size=6531 ;;
+                        odh:odh-workbench-jupyter-datascience-cpu-py312-ubi9) expected_img_size=1517 ;;
+                        odh:odh-workbench-jupyter-pytorch-cuda-py312-ubi9) expected_img_size=8949 ;;
+                        odh:odh-workbench-jupyter-pytorch-rocm-py312-ubi9) expected_img_size=10379 ;;
+                        odh:odh-workbench-jupyter-trustyai-cpu-py312-ubi9) expected_img_size=2115 ;;
+                        odh:odh-workbench-codeserver-datascience-cpu-py312-ubi9) expected_img_size=1329 ;;
+                        odh:odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9) expected_img_size=9030 ;;
+                    esac
+                fi
             else
                 echo "Unimplemented variable name: '${image_variable}'"
                 return 1
@@ -948,6 +1013,13 @@ function check_image() {
     local image_variable="${1}"
     local image_url="${2}"
     local image_url_for_inspect="${image_url}"
+
+    # Baseline images are ODH-only. RHOAI does not ship them in params.env and
+    # must not validate them if a baseline key is present.
+    if [ "${_MANIFESTS_VARIANT}" = "rhoai" ] && [[ "${image_variable}" == *-baseline-* ]]; then
+        echo "Skipping baseline image '${image_variable}' for RHOAI"
+        return 0
+    fi
 
     echo "Checking metadata for image '${image_variable}' with URL '${image_url}'"
 

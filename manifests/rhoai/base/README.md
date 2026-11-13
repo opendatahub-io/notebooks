@@ -13,19 +13,14 @@ Listing the order in which each imagestreams are introduced based on the `openda
 7. jupyter-datascience-notebook-imagestream.yaml (Order: 10)
 8. jupyter-pytorch-notebook-imagestream.yaml (Order: 12)
 9. jupyter-pytorch-llmcompressor-imagestream.yaml (Order: 13)
-10. jupyter-rocm-pytorch-notebook-imagestream.yaml (Order: 15)
-11. jupyter-tensorflow-notebook-imagestream.yaml (Order: 17)
-12. jupyter-rocm-tensorflow-notebook-imagestream.yaml (Order: 19)
-13. jupyter-trustyai-notebook-imagestream.yaml (Order: 19)
-14. code-server-notebook-imagestream.yaml (Order: 22)
+10. jupyter-tensorflow-notebook-imagestream.yaml (Order: 17)
+11. code-server-notebook-imagestream.yaml (Order: 22)
 
 ## Runtime Imagestreams (no order annotations):
 
 - runtime-datascience-imagestream.yaml
 - runtime-minimal-imagestream.yaml
 - runtime-pytorch-imagestream.yaml
-- runtime-rocm-pytorch-imagestream.yaml
-- runtime-rocm-tensorflow-imagestream.yaml
 - runtime-tensorflow-imagestream.yaml
 - runtime-pytorch-llmcompressor-imagestream.yaml
 

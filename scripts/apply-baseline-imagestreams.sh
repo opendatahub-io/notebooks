@@ -172,6 +172,9 @@ cmd_apply() {
   rendered="$(mktemp)"
 
   kustomize_build "${OVERLAY_DIR}" > "${rendered}"
+  if grep -q '_PLACEHOLDER' "${rendered}"; then
+    die "Rendered manifests still contain _PLACEHOLDER. The baseline overlay did not substitute every ImageStream tag."
+  fi
 
   log "Applying baseline ImageStreams to namespace ${APPLICATIONS_NS}"
   if [[ "${DRY_RUN}" == true ]]; then

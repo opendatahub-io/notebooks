@@ -19,7 +19,6 @@ odh-<image type>-<image-feature>-<image-scope>-<accelerator>-<python version>-<o
   - datascience
   - tensorflow
   - pytorch
-  - trustyai
 - Accelerator: cpu, cuda, rocm
 - Python version: 3.11, 3.9, ?3.12
 - Image suffix: rhel8, rhel9

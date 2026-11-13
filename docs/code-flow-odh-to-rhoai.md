@@ -327,7 +327,8 @@ This is the part unique to the `notebooks` component:
 - **`versions_config.yml`** (downstream-only) = "primary release command" file:
   `release.full_version` (e.g. `3.6.0`), `rhds_os_base` (`el9.8`), `python_version` (`3.12`),
   and `artifacts.base_image.*` (rhds `channel: fast|stable`, odh `origin: in-house`, CUDA/ROCm `acc_version`).
-  - **New release stream** (e.g. 3.5→3.6): update `full_version` + preferred image versions → **`make kickoff-release`**.
+  - **New release stream** (e.g. 3.5→3.6): update `full_version` + preferred image versions → **`make kickoff-release`**
+    (also records the previous release in `tests/test_main.py` `_BASE_CANONICAL_TAG_ORDER` before `make test`).
   - **Mid-release image bumps**: update preferred versions → `make sync-build-args-from-versions` → `make refresh-lock-files`.
 - **`release-kickoff.yaml`** — manual GHA: applies optional `versions_config.yml` overrides, runs `make kickoff-release`,
   validates with `make test`, opens a PR. Uses git-crypt secrets + scoped Quay creds (`quay.io/aipcc`, `quay.io/rhoai`).

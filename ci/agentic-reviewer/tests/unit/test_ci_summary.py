@@ -21,7 +21,7 @@ def test_build_clusters_uses_error_contexts_when_excerpt_is_empty() -> None:
             "failed_step": "Run image tests",
             "log_excerpt": "",
             "log_tail": "",
-            "name": "rocm-jupyter-pytorch-ubi9-python-3.12 · linux/amd64 [odh]",
+            "name": "rocm-jupyter-minimal-ubi9-python-3.12 · linux/amd64 [odh]",
         }
     ]
 
@@ -29,7 +29,7 @@ def test_build_clusters_uses_error_contexts_when_excerpt_is_empty() -> None:
 
     assert clusters == [
         {
-            "jobs": ["rocm-jupyter-pytorch-ubi9-python-3.12 · linux/amd64 [odh]"],
+            "jobs": ["rocm-jupyter-minimal-ubi9-python-3.12 · linux/amd64 [odh]"],
             "pattern": "other",
         }
     ]

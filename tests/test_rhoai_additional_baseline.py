@@ -36,7 +36,9 @@ def test_baseline_overlay_references_odh_base():
         env_files.extend(generator.get("envs", []))
     assert env_files == [
         f"{_ODH_BASE_PREFIX}params-latest.env",
+        f"{_ODH_BASE_PREFIX}params.env",
         f"{_ODH_BASE_PREFIX}commit-latest.env",
+        f"{_ODH_BASE_PREFIX}commit.env",
     ]
     for env_file in env_files:
         assert (_OVERLAY / env_file).resolve().is_file()
@@ -77,3 +79,8 @@ def test_baseline_overlay_kustomize_build_with_load_restrictor():
         "quay.io/opendatahub/odh-pipeline-runtime-baseline-cpu-py312-c9s:",
     ):
         assert digest_host in result.stdout
+    for pinned in (
+        "quay.io/opendatahub/odh-workbench-jupyter-baseline-cpu-py312-c9s@sha256:",
+        "quay.io/opendatahub/odh-workbench-codeserver-baseline-cpu-py312-c9s@sha256:",
+    ):
+        assert pinned in result.stdout

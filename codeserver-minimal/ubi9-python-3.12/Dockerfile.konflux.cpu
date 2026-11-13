@@ -384,6 +384,17 @@ COPY ${CODESERVER_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.
 
 # [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index).
 # /cachi2/output/deps/pip/ contains PyPI wheels and RHOAI ppc64le/s390x wheels.
+# The AIPCC base does not bootstrap uv. Install uv from the hermetic/cachi2
+# pip cache (offline) before installing the image's Python packages.
+# UV_VERSION is derived from this image's requirements.cpu.txt by scripts/dockerfile_fragments.py.
+### BEGIN UV version
+ARG UV_VERSION=0.13.6
+
+### END UV version
+RUN python3 -m pip install --no-cache-dir --no-index \
+    --find-links /cachi2/output/deps/pip \
+    "uv==${UV_VERSION}"
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing software and packages"

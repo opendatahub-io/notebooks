@@ -51,6 +51,8 @@ and [README.md § Runtimes](../../README.md#runtimes).
 
 - `tests/containers/` is **excluded from default collection** via `collect_ignore` in
   `tests/conftest.py`. Run container tests explicitly with `pytest tests/containers --image=<img>`.
+- `tests/test_rhoai_additional_baseline.py` is also excluded from default collection
+  (RHOAI opt-in baseline overlay). Run explicitly with `pytest tests/test_rhoai_additional_baseline.py`.
 - Default `make test` collects from `tests/`, `ntb/`, and `ci/` (doctests).
 - `ci/agentic-reviewer/` is excluded from default recursive collection.
   `make test-unit` explicitly collects `tests/`, `ntb/`, and
@@ -294,7 +296,7 @@ generation, CI tooling). These tests are fast and don't require containers.
 ### 4. Build the affected image(s)
 
 ```bash
-# Non-GPU images (minimal, datascience, trustyai):
+# Non-GPU images (minimal, datascience):
 make jupyter-datascience-ubi9-python-3.12 PRODUCT=odh \
   IMAGE_REGISTRY=localhost/workbench-images IMAGE_TAG=latest PUSH_IMAGES=no
 

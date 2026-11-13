@@ -321,7 +321,7 @@ jobs:
           Automated release kickoff run for release **${RELEASE_FULL_VERSION}** using:
 
           - optional \`versions_config.yml\` overrides from workflow inputs
-          - \`make kickoff-release\` (build-args sync, lock refresh, ODH/RHDS RPM locks, rollout)
+          - \`make kickoff-release\` (build-args sync, lock refresh, ODH/RHDS RPM locks, rollout, annotation refresh, canonical tag order)
           - \`make test\` validation gate inside kickoff-release
           EOF
           )" \

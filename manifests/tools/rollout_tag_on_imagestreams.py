@@ -8,6 +8,11 @@ ODH keeps exactly two tags (``N`` and ``N-1``). RHOAI prepends a new ``N`` tag,
 preserves existing ImageStream history, and synchronizes ``params.env`` /
 ``commit.env`` for the new ``N-1`` tag using digest refs from
 ``red-hat-data-services/RHOAI-Build-Config``.
+
+Pass ``--tag-override`` after editing ``manifests/odh/base/params-latest.env``.
+A pinned tag that is not an ODH GA tag (``N.M-vX.Y``) is used as published for
+that image and skips GA selection. Every other image still uses the latest
+published GA tag. Omit the flag to keep the strict GA lookup.
 """
 
 from __future__ import annotations
@@ -130,6 +135,21 @@ class StepReporter:
         self.print_step(done_message)
 
 
+def tag_from_image_ref(image_ref: str) -> str:
+    repository = repository_from_image_ref(image_ref)
+    prefix = f"{repository}:"
+    if image_ref.startswith(prefix):
+        return image_ref.removeprefix(prefix)
+    return ""
+
+
+def pinned_non_ga_tag(tag: str) -> str | None:
+    """Return ``tag`` when it is an explicit non-GA pin, else ``None``."""
+    if not tag or _ODH_GA_BUILD_TAG_RE.fullmatch(tag):
+        return None
+    return tag
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -149,6 +169,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=("all", "odh", "rhoai"),
         default="all",
         help="Roll out only one manifests base directory (default: all)",
+    )
+    parser.add_argument(
+        "--tag-override",
+        action="store_true",
+        help=(
+            "Honor non-GA tags pinned in manifests/odh/base/params-latest.env. "
+            "Tags shaped like '3.6-v1.50' still resolve to the latest published GA tag. "
+            "Omit this flag to require a published GA tag for every image."
+        ),
     )
     parser.add_argument("--dry-run", action="store_true", help="Compute updates without writing files")
     return parser.parse_args(argv)
@@ -278,6 +307,7 @@ def _resolve_odh_released_image(
     *,
     tag_cache: dict[str, tuple[str, ...]],
     tag_cache_lock: Lock,
+    use_params_latest_tag_overrides: bool = False,
 ) -> ReleasedImage:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     tags = data["spec"]["tags"]
@@ -306,8 +336,14 @@ def _resolve_odh_released_image(
         )
 
     release_family = str(tags[1]["name"])
-    published_tags = list(_list_repository_tags_cached(repository, tag_cache, tag_cache_lock))
-    published_tag = select_latest_matching_odh_tag(published_tags, release_family)
+    override_tag = (
+        pinned_non_ga_tag(tag_from_image_ref(latest_ref)) if use_params_latest_tag_overrides else None
+    )
+    if override_tag is None:
+        published_tags = list(_list_repository_tags_cached(repository, tag_cache, tag_cache_lock))
+        published_tag = select_latest_matching_odh_tag(published_tags, release_family)
+    else:
+        published_tag = override_tag
     inspected = _SKOPEO_INSPECT.inspect_image(f"{repository}:{published_tag}")
     digest_ref = f"{repository}@{inspected.digest}"
     commit_sha = extract_short_vcs_ref(inspected.payload, digest_ref)
@@ -329,6 +365,7 @@ def resolve_odh_released_images(
     *,
     paths: list[Path] | None = None,
     on_item: Callable[[str], None] | None = None,
+    use_params_latest_tag_overrides: bool = False,
 ) -> list[ReleasedImage]:
     params_latest = parse_env_file(base_dir / "params-latest.env")
     imagestream_paths = list(paths if paths is not None else iter_workbench_imagestream_paths(base_dir))
@@ -343,6 +380,7 @@ def resolve_odh_released_images(
             params_latest,
             tag_cache=tag_cache,
             tag_cache_lock=tag_cache_lock,
+            use_params_latest_tag_overrides=use_params_latest_tag_overrides,
         )
 
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
@@ -450,6 +488,16 @@ def _quay_rhoai_ref_from_registry_ref(image_ref: str) -> str | None:
     return f"quay.io/rhoai/{image_ref.removeprefix(prefix)}"
 
 
+def _rhoai_registry_inspect_allows_quay_fallback(exc: ValueError) -> bool:
+    """True when the registry manifest cannot be read and the Quay mirror may have it.
+
+    ``manifest unknown`` covers digests that are not published on registry.redhat.io.
+    ``unauthorized`` covers the same digest when the local skopeo session cannot read it.
+    """
+    message = str(exc).lower()
+    return "manifest unknown" in message or "unauthorized" in message
+
+
 def _resolve_rhoai_released_image(
     path: Path,
     related_images_cache: dict[str, dict[str, str]],
@@ -491,7 +539,7 @@ def _resolve_rhoai_released_image(
     try:
         config_payload = _SKOPEO_INSPECT.inspect_config(commit_ref)
     except ValueError as exc:
-        if "manifest unknown" not in str(exc):
+        if not _rhoai_registry_inspect_allows_quay_fallback(exc):
             raise
         quay_ref = _quay_rhoai_ref_from_registry_ref(digest_ref)
         if quay_ref is None:
@@ -816,6 +864,7 @@ def run_odh_params_step(
     reporter: StepReporter,
     step_index: int,
     step_total: int,
+    use_params_latest_tag_overrides: bool = False,
 ) -> tuple[list[Path], list[ReleasedImage]]:
     changed_paths: list[Path] = []
     imagestream_paths = list(iter_workbench_imagestream_paths(base_dir))
@@ -830,6 +879,7 @@ def run_odh_params_step(
             base_dir,
             paths=imagestream_paths,
             on_item=track_item,
+            use_params_latest_tag_overrides=use_params_latest_tag_overrides,
         )
         if sync_odh_params_env(base_dir, released_images, dry_run=dry_run):
             changed_paths.append(base_dir / "params.env")
@@ -929,7 +979,7 @@ def main(argv: list[str] | None = None) -> int:
     reporter = StepReporter()
     changed_paths: list[Path] = []
     rollout_needed = any(variant_needs_rollout(root, variant, target_tag_name) for variant in variants)
-    if not rollout_needed and not args.dry_run:
+    if not rollout_needed and not args.dry_run and not args.tag_override:
         print("Rollout files already match the requested state.")
         return 0
 
@@ -948,7 +998,7 @@ def main(argv: list[str] | None = None) -> int:
     changed_paths.extend(imagestream_changed_paths)
     step_index += 1
 
-    if imagestream_changed_paths:
+    if imagestream_changed_paths or args.tag_override:
         if "odh" in variants:
             params_changed_paths, released_images = run_odh_params_step(
                 root / "manifests" / "odh" / "base",
@@ -956,6 +1006,7 @@ def main(argv: list[str] | None = None) -> int:
                 reporter=reporter,
                 step_index=step_index,
                 step_total=step_total,
+                use_params_latest_tag_overrides=args.tag_override,
             )
             changed_paths.extend(params_changed_paths)
             step_index += 1

@@ -94,7 +94,7 @@ Do not maintain a historical ledger of superseded CVE fixes.
 Example: RHAIENG-2448 - Tornado quadratic DoS repeated header
 
 1. Open the Jira ticket and identify the package name (e.g., "tornado")
-2. Check which images are affected (often all images from minimal to trustyai, tensorflow, pytorch, etc.)
+2. Check which images are affected (often all images from minimal through datascience to tensorflow, pytorch, etc.)
 3. Open one of the linked Jiras from ProdSec to see the summary
 
 ### Step 2: Determine the Fixed Version
