@@ -75,12 +75,6 @@ jobs:
               ;;
           esac
 
-          branch="${INPUT_BRANCH:-main}"
-          if ! printf '%s\n' "${allowed_branches[@]}" | grep -Fxq "$branch"; then
-            echo "Branch ${branch} is not valid for ${REPOSITORY}." >&2
-            exit 1
-          fi
-
           if [[ "$EVENT_NAME" == "schedule" ]]; then
             if [[ "$is_downstream" == "true" ]]; then
               branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
@@ -90,6 +84,12 @@ jobs:
               variant='both'
             fi
           else
+            branch="${INPUT_BRANCH:-main}"
+            if ! printf '%s\n' "${allowed_branches[@]}" | grep -Fxq "$branch"; then
+              echo "Branch ${branch} is not valid for ${REPOSITORY}." >&2
+              exit 1
+            fi
+
             if [[ "$branch" == "all" ]]; then
               if [[ "$is_downstream" == "true" ]]; then
                 branches=(rhoai-2.25 rhoai-3.4 rhoai-3.5 rhoai-3.6)
