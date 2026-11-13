@@ -1,5 +1,5 @@
 ---
-# Fast-forward `stable` to match `main` when `stable` is an ancestor of `main`.
+# Fast-forward `stable` to match `main` when one branch contains the other.
 # See https://redhat.atlassian.net/browse/RHOAIENG-60781
 name: Merge main into stable (fast-forward only)
 
@@ -41,10 +41,16 @@ jobs:
           git checkout stable
           git pull --ff-only origin stable
 
-          if ! git merge-base --is-ancestor HEAD origin/main; then
-            echo "::error::Cannot fast-forward: stable is not an ancestor of main." \
+          if ! git merge-base --is-ancestor HEAD origin/main && \
+             ! git merge-base --is-ancestor origin/main HEAD; then
+            echo "::error::Cannot fast-forward: stable and main have diverged." \
               "Resolve divergence (e.g. reset stable to main via policy, or merge with a regular merge commit) before using this workflow."
             exit 1
+          fi
+
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo "stable already contains main; nothing to merge."
+            exit 0
           fi
 
           if [ "${DRY_RUN}" = "true" ]; then
