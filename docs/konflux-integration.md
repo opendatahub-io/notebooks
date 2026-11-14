@@ -75,6 +75,82 @@ This would reduce test time and cluster resource usage on PRs that only touch a 
 
 ## Test Execution Patterns
 
+### Konflux post-build GHA POC
+
+The Jupyter Minimal CPU, Jupyter Datascience CPU, Jupyter Universal CPU, and Code-Server Datascience CPU test lanes are deliberately
+**post-build only**. Their workflows start on a relevant PR, but each `prepare` job waits
+for that component's Konflux check to succeed and for the published Quay manifest to
+become available. The architecture lanes therefore do not consume runners while the
+Konflux build is queued.
+
+The workflows also listen for `check_run` completions. A successful Konflux rebuild
+therefore starts a fresh test run without requiring another PR push. GitHub only
+delivers `check_run` events to workflows on the default branch, so this automatic
+rebuild path becomes active once the POC workflows are merged.
+
+Retry behavior is keyed by the PR head commit:
+
+- If the Konflux build fails, `prepare` fails and all dependent architecture lanes are skipped.
+- If a failed build is retried and succeeds, the new `check_run` starts a fresh workflow and cancels any stale waiting run for that commit.
+- If tests fail against a successful build, retrying that Konflux build starts another fresh workflow and resolves the newly published digest before tests run.
+
+Once the image is available, `prepare` resolves its immutable digest and fans out one
+GitHub Actions lane per architecture. Each lane starts all eligible test types in
+parallel:
+
+- **Testcontainers**: runs the non-OpenShift workbench container tests.
+- **OpenShift**: deploys the image with the `restricted-v2` SCC and runs the
+  OpenShift-marked workbench container tests.
+- **Browser**: runs the component's Playwright suite (`@jupyter` or `@codeserver`).
+- **E2E**: deploys the image to the workflow's ephemeral Kubernetes cluster and runs
+  the component's Makefile validation test.
+
+Code-Server's ppc64le and s390x lanes run on x86_64 runners with QEMU for the workbench
+image. Its nginx startup uses the Linux AIO `io_setup()` syscall, which QEMU does not
+implement. Nginx logs that known limitation and continues without file AIO; the QEMU
+lanes waive only that exact startup-log message. The Playwright test image itself is
+always built and executed natively as `linux/amd64` because Microsoft does not publish
+ppc64le or s390x Playwright images.
+
+Retrying a failed architecture lane reruns all eligible test types for that
+architecture, but it does **not** rebuild the Konflux image; the lane reuses the digest
+resolved by `prepare`. A Konflux build can still be retried independently with its
+component-specific `/build-*` PR comment. Once the workflows are on the default branch,
+a successful rebuild starts a fresh workflow and resolves the new digest automatically.
+Before that merge, use **Re-run all jobs** after a successful rebuild so `prepare`
+resolves the new digest before the architecture lanes rerun.
+
+Testcontainers, OpenShift, Browser, and E2E tests default to all four published
+architectures: `linux/amd64`, `linux/arm64`, `linux/ppc64le`, and `linux/s390x`.
+Jupyter Datascience CPU supports `linux/amd64`, `linux/arm64`, and
+`linux/ppc64le`; the current image-test matrix excludes `linux/s390x`.
+Jupyter Universal's E2E tests default to the same three architectures because the
+existing GHA image-test template excludes `linux/s390x` when Elyra test requirements
+are not installable there. Universal's ppc64le and s390x browser suites still run but
+skip JupyterLab-specific cases because Path B omits the JupyterLab stack on those
+architectures.
+`ppc64le` and `s390x` lanes use QEMU on the amd64 runner; arm64 lanes use GitHub's
+native arm64 runner.
+
+Each test type's platform list can be overridden for a manual run with its
+`*_platforms` input. For automatic PR runs, repository variables provide persistent
+configuration without editing the workflow:
+
+| Test lane | Repository variable |
+|-----------|----------------------|
+| Testcontainers | `KONFLUX_JUPYTER_MINIMAL_CONTAINER_PLATFORMS` |
+| OpenShift | `KONFLUX_JUPYTER_MINIMAL_OPENSHIFT_PLATFORMS` |
+| Browser | `KONFLUX_JUPYTER_MINIMAL_BROWSER_PLATFORMS` |
+| E2E | `KONFLUX_JUPYTER_MINIMAL_E2E_PLATFORMS` |
+| Testcontainers | `KONFLUX_JUPYTER_DATASCIENCE_CONTAINER_PLATFORMS` |
+| OpenShift | `KONFLUX_JUPYTER_DATASCIENCE_OPENSHIFT_PLATFORMS` |
+| Browser | `KONFLUX_JUPYTER_DATASCIENCE_BROWSER_PLATFORMS` |
+| E2E | `KONFLUX_JUPYTER_DATASCIENCE_E2E_PLATFORMS` |
+| Testcontainers | `KONFLUX_CODESERVER_DATASCIENCE_CONTAINER_PLATFORMS` |
+| OpenShift | `KONFLUX_CODESERVER_DATASCIENCE_OPENSHIFT_PLATFORMS` |
+| Browser | `KONFLUX_CODESERVER_DATASCIENCE_BROWSER_PLATFORMS` |
+| E2E | `KONFLUX_CODESERVER_DATASCIENCE_E2E_PLATFORMS` |
+
 Different ways to run tests against built images in Konflux:
 
 | Pattern | How | Pros | Cons |

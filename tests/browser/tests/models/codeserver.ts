@@ -45,7 +45,7 @@ export class CodeServer {
      * first open; wait for that to finish before typing.
      */
     async waitForTerminalReady(): Promise<void> {
-        const textarea = this.page.locator("textarea.xterm-helper-textarea")
+        const textarea = this.page.locator("textarea.xterm-helper-textarea").last()
         await textarea.waitFor({state: "visible", timeout: 15000})
         await textarea.click()
         if (this.strippedCopilotImage) {
@@ -62,7 +62,7 @@ export class CodeServer {
      * Uses the xterm helper textarea so keystrokes cannot leak to the workbench.
      */
     async runTerminalCommand(command: string): Promise<void> {
-        const textarea = this.page.locator("textarea.xterm-helper-textarea")
+        const textarea = this.page.locator("textarea.xterm-helper-textarea").last()
         await textarea.waitFor({state: "visible", timeout: 15000})
         await textarea.click()
         // Insert the command atomically. Sending one key event at a time can drop
@@ -162,7 +162,8 @@ export class CodeServer {
         await this.executeCommandViaPalette("View: Show Explorer")
         const explorer = this.page.getByRole("tree", {name: "Files Explorer"})
         const fileEntry = explorer.getByRole("treeitem", {name: basename, exact: true})
-        await expect(fileEntry).toBeVisible({timeout: 30000})
+        const timeout = process.env.TEST_TARGET_ARCH === "ppc64le" || process.env.TEST_TARGET_ARCH === "s390x" ? 60000 : 30000
+        await expect(fileEntry).toBeVisible({timeout})
         await fileEntry.dblclick()
         await this.waitForTab(file)
     }

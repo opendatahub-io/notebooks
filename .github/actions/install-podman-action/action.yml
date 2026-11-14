@@ -84,7 +84,7 @@ runs:
         # Same pattern as provision-k8s and microk8s workarounds in this repo.
         # Use iptables, not nft: ubuntu-26.04 is nftables-backed but exposes iptables-nft;
         # netavark installs rules through that API, so this matches what Podman expects.
-        sudo modprobe br_netfilter
+        sudo modprobe br_netfilter || echo "warning: br_netfilter module is unavailable"
         sudo sysctl -w net.ipv4.ip_forward=1
         sudo iptables -P FORWARD ACCEPT
 
@@ -95,7 +95,8 @@ runs:
         sudo cp ci/cached-builds/podman.socket /usr/local/lib/systemd/system/podman.socket
         sudo systemctl daemon-reload
         sudo systemctl unmask podman.service podman.socket
-        sudo systemctl enable --now podman.socket
+        sudo systemctl enable podman.socket
+        sudo systemctl restart podman.socket
 
         # Grant runner user access without sudo for CONTAINER_HOST clients
         sudo setfacl -m "u:${USER}:x" /var/run/podman
@@ -105,6 +106,8 @@ runs:
         podman_sock=/var/run/podman/podman.sock
         echo "PODMAN_SOCK=${podman_sock}" >> "$GITHUB_ENV"
         echo "CONTAINER_HOST=unix://${podman_sock}" >> "$GITHUB_ENV"
+        export PODMAN_SOCK="${podman_sock}"
+        export CONTAINER_HOST="unix://${podman_sock}"
 
         # quick check podman works
         podman ps
@@ -113,8 +116,8 @@ runs:
         sudo iptables -P FORWARD ACCEPT
 
         # Reload netavark rules after FORWARD policy fix (only when a network already exists).
-        if [[ -n "$(podman network ls -q)" ]]; then
-          podman network reload --all
+        if [[ -n "$(sudo podman network ls -q)" ]]; then
+          sudo podman network reload --all
         fi
 
     - run: podman system info
