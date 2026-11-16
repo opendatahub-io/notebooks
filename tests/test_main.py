@@ -1063,11 +1063,23 @@ def _check_all_accelerator_variants(
 @pytest.mark.parametrize(
     ("annotations", "labels", "expected"),
     [
-        ({"opendatahub.io/deprecated": "true"}, {"opendatahub.io/notebook-image": "false"}, True),
-        ({"opendatahub.io/deprecated": "true", "opendatahub.io/notebook-image": "false"}, {}, True),
+        (
+            {"opendatahub.io/deprecated": "true", "opendatahub.io/notebook-image-hidden": "true"},
+            {},
+            True,
+        ),
+        (
+            {"opendatahub.io/deprecated": "true"},
+            {"opendatahub.io/notebook-image-hidden": "true"},
+            True,
+        ),
         ({"opendatahub.io/deprecated": "true"}, {"opendatahub.io/notebook-image": "true"}, False),
-        ({}, {"opendatahub.io/notebook-image": "false"}, False),
-        ({"opendatahub.io/deprecated": "false"}, {"opendatahub.io/notebook-image": "false"}, False),
+        ({}, {"opendatahub.io/notebook-image-hidden": "true"}, False),
+        (
+            {"opendatahub.io/deprecated": "false", "opendatahub.io/notebook-image-hidden": "true"},
+            {},
+            False,
+        ),
     ],
 )
 def test_imagestream_stopped_producing_tags(annotations: dict[str, str], labels: dict[str, str], expected: bool):

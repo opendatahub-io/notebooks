@@ -278,9 +278,9 @@ def imagestream_stopped_producing_tags(document: object) -> bool:
     """True when an ImageStream is frozen and no longer receives a rolling tag.
 
     Both markers are required. Images that are only deprecated still publish a
-    rolling latest tag. ``opendatahub.io/deprecated`` is an annotation and
-    ``opendatahub.io/notebook-image`` is a label on current manifests; either
-    section is accepted.
+    rolling latest tag. ``opendatahub.io/notebook-image-hidden`` is the
+    dashboard-facing way to hide an image without disabling resolution for
+    notebooks that already use it.
     """
     if not isinstance(document, dict):
         return False
@@ -289,7 +289,7 @@ def imagestream_stopped_producing_tags(document: object) -> bool:
         return False
     return (
         _metadata_value(metadata, "opendatahub.io/deprecated") == "true"
-        and _metadata_value(metadata, "opendatahub.io/notebook-image") == "false"
+        and _metadata_value(metadata, "opendatahub.io/notebook-image-hidden") == "true"
     )
 
 

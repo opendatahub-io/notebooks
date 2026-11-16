@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 UV_VERSION_PREFIX = "UV version"
 UV_REQUIREMENT_RE = re.compile(r"^uv==([^\\\s;]+)")
-REQUIREMENTS_CPU = "requirements.cpu.txt"
+REQUIREMENTS_FORMAT = "requirements.{}.txt"
 
 # restricting to the relevant directories significantly speeds up the processing
 docker_directories = (
@@ -55,13 +55,14 @@ def uv_version_from_requirements(requirements: pathlib.Path) -> str:
 
 
 def uv_version_replacement(dockerfile: pathlib.Path) -> dict[str, str]:
-    """Fill ``ARG UV_VERSION`` from the Dockerfile's sibling ``requirements.cpu.txt``."""
+    """Fill ``ARG UV_VERSION`` from the Dockerfile's matching requirements file."""
     begin = f"### BEGIN {UV_VERSION_PREFIX}"
     with open(dockerfile, "rt") as fp:
         has_marker = any(line.rstrip() == begin for line in fp)
     if not has_marker:
         return {}
-    requirements = dockerfile.parent / REQUIREMENTS_CPU
+    flavor = dockerfile.name.rsplit(".", 1)[-1]
+    requirements = dockerfile.parent / REQUIREMENTS_FORMAT.format(flavor)
     if not requirements.is_file():
         raise ValueError(f"{dockerfile} has '{begin}' but {requirements} is missing")
     version = uv_version_from_requirements(requirements)

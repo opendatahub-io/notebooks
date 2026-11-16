@@ -9,8 +9,9 @@ This overlay adds the three baseline `ImageStream` resources to a RHOAI deployme
 `additional/` overlay references it, so a default RHOAI installation does not
 create these ImageStreams. The operator does not discover subdirectories automatically.
 
-ImageStream YAMLs are reused from `manifests/odh/base/`; `quay.io/opendatahub/...`
-refs resolve from the ODH `params-latest.env`.
+ImageStream YAMLs are reused from `manifests/odh/base/`. The rolling tag (`3.7`)
+resolves from `params-latest.env` / `commit-latest.env`. The previous tag (`3.6`)
+resolves from `params.env` / `commit.env`. `runtime-baseline` has only the rolling tag.
 
 Kustomize will not load those ODH files unless you pass
 `--load-restrictor LoadRestrictionsNone`. `oc apply -k` cannot set that flag;

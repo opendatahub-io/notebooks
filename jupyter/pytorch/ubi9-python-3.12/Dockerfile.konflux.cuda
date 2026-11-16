@@ -149,6 +149,17 @@ COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-package
 
 USER 1001:0
 
+# The AIPCC base does not bootstrap uv. Install uv from the hermetic/cachi2
+# pip cache (offline) before installing the image's Python packages.
+# UV_VERSION is derived from this image's requirements.cpu.txt by scripts/dockerfile_fragments.py.
+### BEGIN UV version
+ARG UV_VERSION=0.13.6
+
+### END UV version
+RUN python3 -m pip install --no-cache-dir --no-index \
+    --find-links /cachi2/output/deps/pip \
+    "uv==${UV_VERSION}"
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 umask 0002
