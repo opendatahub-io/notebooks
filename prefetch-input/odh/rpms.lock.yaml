@@ -9192,13 +9192,13 @@ arches:
     name: gdbm-libs
     evr: 1:1.23-1.el9
     sourcerpm: gdbm-1.23-1.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/g/glib-networking-2.68.3-3.el9.ppc64le.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/g/glib-networking-2.68.3-3.el9_9.1.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
-    size: 199111
-    checksum: sha256:1f7344dde3651d1c5302f4d0a50f4b031e7a30f0905396c6efe7fdd040e8c248
+    size: 199276
+    checksum: sha256:fc44a68b3d2347afd570fa8002777655a41abf39223536fa273825cff4782603
     name: glib-networking
-    evr: 2.68.3-3.el9
-    sourcerpm: glib-networking-2.68.3-3.el9.src.rpm
+    evr: 2.68.3-3.el9_9.1
+    sourcerpm: glib-networking-2.68.3-3.el9_9.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/g/glib2-2.68.4-29.el9_9.1.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 2891663
@@ -9374,13 +9374,13 @@ arches:
     name: keyutils-libs
     evr: 1.6.3-1.el9
     sourcerpm: keyutils-1.6.3-1.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/krb5-libs-1.21.1-10.el9_8.1.ppc64le.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/k/krb5-libs-1.21.1-10.el9_9.2.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
-    size: 873073
-    checksum: sha256:f831a49841e0b99f296a43e9a747cd74030002b35f84b9c3f6d296f2cc0742d5
+    size: 876903
+    checksum: sha256:f97e2655f7a99483891af524cab2259fb2f2190e5f7d7da75ae71ecbef1f65a8
     name: krb5-libs
-    evr: 1.21.1-10.el9_8.1
-    sourcerpm: krb5-1.21.1-10.el9_8.1.src.rpm
+    evr: 1.21.1-10.el9_9.2
+    sourcerpm: krb5-1.21.1-10.el9_9.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/less-590-6.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 177816
@@ -10053,6 +10053,20 @@ arches:
     name: readline
     evr: 8.1-4.el9
     sourcerpm: readline-8.1-4.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/r/rpm-4.16.1.3-43.el9_9.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 550344
+    checksum: sha256:9947862d4c0733a779a7cded6309f67112e55839c6ab6eebc29cbfd98303b33a
+    name: rpm
+    evr: 4.16.1.3-43.el9_9
+    sourcerpm: rpm-4.16.1.3-43.el9_9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/r/rpm-libs-4.16.1.3-43.el9_9.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 364743
+    checksum: sha256:7157a35523c467417344f148f4975aa623986774e8b98aa7e4600cb24eb7adcf
+    name: rpm-libs
+    evr: 4.16.1.3-43.el9_9
+    sourcerpm: rpm-4.16.1.3-43.el9_9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/s/sed-4.8-10.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 323929
@@ -12006,20 +12020,6 @@ arches:
     name: pam
     evr: 1.5.1-30.el9
     sourcerpm: pam-1.5.1-30.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/rpm-4.16.1.3-42.el9.ppc64le.rpm
-    repoid: baseos
-    size: 547129
-    checksum: sha256:2f9fef654a27f2593fbfa8df03f29f45f158fe8750c53252cd03a1e091f15556
-    name: rpm
-    evr: 4.16.1.3-42.el9
-    sourcerpm: rpm-4.16.1.3-42.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/rpm-libs-4.16.1.3-42.el9.ppc64le.rpm
-    repoid: baseos
-    size: 358181
-    checksum: sha256:cee5963f87c2276014666d35edb35c18a74f47581f4ceeffaf4ea15f2f8317b7
-    name: rpm-libs
-    evr: 4.16.1.3-42.el9
-    sourcerpm: rpm-4.16.1.3-42.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/xz-libs-5.2.5-10.el9.ppc64le.rpm
     repoid: baseos
     size: 116115
