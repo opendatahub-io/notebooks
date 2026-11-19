@@ -80,6 +80,8 @@ builds publish each image to its own repository, for example
 `quay.io/opendatahub/workbench-images` is a legacy aggregate repository containing
 outdated images from the former OpenShift CI build process. Do not use it for new
 defaults, tests, or documentation when a per-image Konflux repository exists.
+See [docs/quay-repositories.md](docs/quay-repositories.md) for the full map of
+quay.io organizations (including `quay.io/aipcc` bases and legacy `quay.io/modh`).
 
 ## Common commands
 
