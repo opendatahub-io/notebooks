@@ -213,7 +213,14 @@ function _get_source_of_truth_filepath()
                 filename="jupyter-${notebook_id}-gpu-${file_suffix}"
             fi
             ;;
-        *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id* | *$jupyter_universal_notebook_id*)
+        *$jupyter_universal_notebook_id*)
+            # universal's cuda variant ships in a dedicated -gpu- ImageStream
+            filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
+            if [ "${accelerator_flavor}" = 'cuda' ]; then
+                filename="jupyter-${notebook_id}-gpu-${file_suffix}"
+            fi
+            ;;
+        *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
             filename="jupyter-${notebook_id}-${file_suffix}"
             ;;
         *llmcompressor*)

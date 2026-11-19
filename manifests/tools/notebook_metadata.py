@@ -169,9 +169,16 @@ def get_source_of_truth_filepath(
             if accelerator_flavor == "cuda":
                 filename = f"jupyter-{scope}-gpu-{file_suffix}"
 
-        elif scope in (JUPYTER_DATASCIENCE_NOTEBOOK_ID, JUPYTER_UNIVERSAL_NOTEBOOK_ID):
-            # Logic for datascience and universal
+        elif scope == JUPYTER_DATASCIENCE_NOTEBOOK_ID:
+            # Logic for datascience
             filename = f"jupyter-{scope}-{file_suffix}"
+
+        elif scope == JUPYTER_UNIVERSAL_NOTEBOOK_ID:
+            # Logic for universal: cuda variant ships in a dedicated -gpu- ImageStream
+            accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
+            filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
+            if accelerator_flavor == "cuda":
+                filename = f"jupyter-{scope}-gpu-{file_suffix}"
 
         elif scope == JUPYTER_BASELINE_NOTEBOOK_ID:
             filename = f"jupyter-baseline-{file_suffix}"

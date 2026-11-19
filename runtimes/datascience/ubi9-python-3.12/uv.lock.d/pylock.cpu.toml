@@ -364,7 +364,10 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/cpu-
 name = "feast"
 version = "0.67.0+rhaiv.1"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/cpu-torch2.13-el9.8/feast-0.67.0+rhaiv.1-2-py3-none-any.whl", upload-time = 2026-10-29T20:01:49Z, size = 8432563, hashes = { sha256 = "ce8bbcfb9a27e8d33d62b8262f01d38ede803e9b26942bf4f80351f9f8d34a10" } }]
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/cpu-torch2.13-el9.8/feast-0.67.0+rhaiv.1-2-py3-none-any.whl", upload-time = 2026-10-29T20:01:49Z, size = 8432563, hashes = { sha256 = "ce8bbcfb9a27e8d33d62b8262f01d38ede803e9b26942bf4f80351f9f8d34a10" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/cpu-torch2.13-el9.8/feast-0.67.0+rhaiv.1-3-py3-none-any.whl", upload-time = 2026-11-10T20:51:29Z, size = 8468804, hashes = { sha256 = "2348424481a4840f4168ec319144440d9c311b32ee9bd88d579e93bbcb2d93fa" } },
+]
 
 [[packages]]
 name = "filelock"

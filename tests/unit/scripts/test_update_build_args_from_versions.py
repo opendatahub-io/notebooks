@@ -291,6 +291,13 @@ def write_versions_config(
                   channel: stable
                 odh:
                   origin: in-house
+              universal:
+                acc_version: "25.0"
+                channel_torch_version: "2.13"
+                rhds:
+                  channel: stable
+                odh:
+                  origin: in-house
               pytorch:
                 acc_version: "25.0"
                 channel_torch_version: "2.13"
@@ -519,6 +526,14 @@ def test_load_versions_config_rejects_non_scalar_cpu_version(tmp_path: Path) -> 
                     version: "latest"
                 cuda:
                   minimal:
+                    channel_torch_version: "2.13"
+                    rhds:
+                      channel: stable
+                      acc_version: "25.0"
+                    odh:
+                      origin: in-house
+                      acc_version: "25.0"
+                  universal:
                     channel_torch_version: "2.13"
                     rhds:
                       channel: stable
