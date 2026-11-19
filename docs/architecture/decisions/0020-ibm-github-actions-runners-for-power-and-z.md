@@ -79,7 +79,7 @@ below.
 - **AppArmor restrictions on s390x** — podman (rootless and rootful) fails
   to resolve DNS when pulling images, because AppArmor blocks creating UDP
   sockets inside the LXD container:
-  ```
+  ```text
   dial udp 127.0.0.53:53: socket: permission denied
   ```
   IBM confirmed this is a known platform limitation
@@ -128,7 +128,7 @@ below.
 
 Homebrew for Linux only supports x86_64 and ARM64:
 
-```
+```text
 Homebrew on Linux is only supported on Intel x86_64 and ARM64 processors!
 ```
 
@@ -212,13 +212,13 @@ image (see the CI container engine matrix above).
 
 **Podman pull fails** (Go resolver):
 
-```
+```text
 dial tcp: lookup quay.io: Temporary failure in name resolution
 ```
 
 **Podman build `RUN` steps also fail** (glibc/curl inside build container):
 
-```
+```text
 (microdnf:2): librepo-WARNING: Curl error (6): Couldn't resolve host name
 for https://mirrors.centos.org/metalink [Could not resolve host: mirrors.centos.org]
 ```
@@ -535,7 +535,7 @@ No lightweight k8s distribution supports ppc64le/s390x:
 
 ### kubeadm init result: FAILED on both arches
 
-```
+```text
 [ERROR SystemVerification]: failed to parse kernel config: unable to load
 kernel module: "configs", output: "modprobe: FATAL: Module configs not found
 in directory /lib/modules/6.12.0-222.el10.ppc64le"
@@ -589,7 +589,7 @@ but this must be overridden on IBM arches.
 ### Pre-built wheel sources
 
 **IBM Developer First** — ppc64le only (no s390x index):
-```
+```text
 https://wheels.developerfirst.ibm.com/ppc64le/linux/+simple/
 ```
 DevPi server with wheels for Power9/10/11. Versions use
@@ -646,7 +646,7 @@ Both ODH (`Dockerfile.*`) and RHOAI (`Dockerfile.konflux.*`) builds are
 The Makefile detects `prefetch-input/` directories (git submodules) and
 requires `cachi2/output/` to exist, failing with:
 
-```
+```text
 Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh
 ```
 
@@ -768,7 +768,7 @@ AppArmor blocks `socket()` inside those user namespaces regardless of
 IBM runners share outbound IPs across all onboarded projects. Unauthenticated
 Docker Hub pulls hit rate limits quickly:
 
-```
+```text
 toomanyrequests: You have reached your unauthenticated pull rate limit.
 ```
 
@@ -809,7 +809,7 @@ The `hermetic` toggle in `build-notebooks-TEMPLATE.yaml` mirrors Konflux's
 `prefetch-all.sh` runs, `cachi2/output/` is mounted into the build.
 When `false`: submodules are skipped, build pulls deps from network.
 
-```
+```text
 amd64/arm64 (GitHub-hosted):   Homebrew podman -> podman build -> CRI-O k8s -> test
 IBM ppc64le:                   docker run --privileged -> podman-build (renamed) -> podman save | docker load -> testcontainers
 IBM s390x:                     docker run --privileged -> podman-build (renamed, AppArmor bypass) -> podman save | docker load -> testcontainers
@@ -855,7 +855,7 @@ images and layers across build steps.
 The Makefile mounts `cachi2/output` into the build container via
 `--volume` flags for hermetic builds:
 
-```
+```bash
 docker build --volume /path/cachi2/output:/cachi2/output:Z ...
 ```
 

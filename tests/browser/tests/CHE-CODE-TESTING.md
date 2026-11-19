@@ -4,7 +4,7 @@ End-to-end testing of the che-code VS Code workbench image using Playwright.
 
 ## Architecture
 
-```
+```text
 ┌──────────────┐     ┌───────────────────────────────────┐
 │  Playwright  │────▶│  Chrome (--remote-debugging-port) │
 │  Test Runner │     │         or CDP REPL               │
@@ -49,7 +49,7 @@ VS Code notebook webviews use `crypto.subtle` for content security. This API is 
 available in **secure contexts** (HTTPS or `localhost`). Without HTTPS, notebooks render
 as blank pages with this console error:
 
-```
+```text
 'crypto.subtle' is not available so webviews will not work.
 This is likely because the editor is not running in a secure context.
 ```

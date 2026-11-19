@@ -46,7 +46,7 @@ A multi-stage deprecation process is adopted across consecutive releases:
 
 ## 4 Release Milestones & Rollout Plan
 
-```
+```text
 Release Timeline & Milestone Matrix:
 +-------------------------------------------------------------------------------------------------+
 
