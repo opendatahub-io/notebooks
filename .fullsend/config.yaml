@@ -9,7 +9,9 @@ tracker:
                 - red-hat-data-services
 agents:
     - name: code
-      enabled: false
+      enabled: true
+      runtime: claude
+      model: opus
     - name: fix
       enabled: false
     - name: prioritize
