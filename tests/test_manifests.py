@@ -162,6 +162,9 @@ class TestManifests:
             "jupyter-universal-ubi9-python-3.12": MANIFESTS_ODH_DIR
             / "base"
             / "jupyter-universal-notebook-imagestream.yaml",
+            "cuda-jupyter-universal-ubi9-python-3.12": MANIFESTS_ODH_DIR
+            / "base"
+            / "jupyter-universal-gpu-notebook-imagestream.yaml",
             "codeserver-ubi9-python-3.12": MANIFESTS_ODH_DIR / "base" / "code-server-notebook-imagestream.yaml",
             "codeserver-baseline-c9s-python-3.12": MANIFESTS_ODH_DIR
             / "base"
