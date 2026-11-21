@@ -137,6 +137,8 @@ handles hermetic builds transparently for any target that ships a
 
 Targets without a `prefetch-input/` directory skip all of the above.
 
+For the scheduled ODH/RHDS RPM lockfile renewal flow, including repository-specific branches, credentials, and PR handling, see [Automated RPM lockfile renewal](rpm-lock-renewal.md).
+
 ### Konflux
 
 In the Konflux environment, hermetic builds use the Tekton pipeline:
