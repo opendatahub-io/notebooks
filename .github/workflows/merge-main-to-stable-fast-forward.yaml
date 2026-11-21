@@ -4,6 +4,8 @@
 name: Merge main into stable (fast-forward only)
 
 on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -18,6 +20,7 @@ concurrency:
 
 jobs:
   fast-forward-stable:
+    if: github.repository == 'opendatahub-io/notebooks'
     runs-on: ubuntu-26.04
     permissions:
       contents: write
