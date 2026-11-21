@@ -1,6 +1,6 @@
 # Konflux Integration Testing
 
-This document covers Konflux group testing for the notebooks repo — how to trigger it, how images are resolved, workspace sharing pitfalls, ephemeral cluster provisioning, and operational debugging. For basic Konflux setup, links, and resource overrides, see [konflux.md](konflux.md).
+This document covers Konflux integration testing for the notebooks repo: the **group-test** pipeline (ephemeral-cluster, multi-component) and the **cluster-free papermill test** (single image, no cluster). It covers how to trigger each, how images are resolved, workspace sharing pitfalls, ephemeral cluster provisioning, and operational debugging. For basic Konflux setup, links, and resource overrides, see [konflux.md](konflux.md).
 
 **Documentation links:**
 
@@ -203,3 +203,85 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 **add/add conflicts** occur when `.tekton/` pipeline files don't exist in the merge base — both branches independently created them, so git can't do a 3-way merge. The resolution is to pre-apply the conflicting changes to `stable` before the merge (e.g., take `origin/main`'s version of the conflicting files).
 
 After a main-to-stable merge, `stable` may have extra files for older base image variants (e.g., cuda 12.8, rocm 6.3 pipelines) that `main` no longer tracks.
+
+## Cluster-free papermill test (single image, no cluster)
+
+The group-test pipeline above provisions an ephemeral HyperShift cluster for
+multi-component deploy-and-test. For validating a **single** image, that
+machinery is overkill. The **TrustyAI papermill integration test** is the
+cluster-free "papermill part": it runs the image's own
+`jupyter/trustyai/ubi9-python-3.12/test/test_notebook.ipynb` with papermill —
+no ephemeral cluster, no container runtime, no sidecar/agent, no pytest. The
+test step's container image *is* the image under test; the image already ships
+`python3`, `pip`, `git` and the full TrustyAI environment, so the step just
+installs papermill and executes the notebook in place.
+
+The PipelineRun below targets the **ODH (opendatahub-io)** Konflux tenant —
+namespace `open-data-hub-tenant`, application `opendatahub-release`, branch
+`main`, image `quay.io/opendatahub/...`. The RHOAI downstream mirrors it in
+`rhoai-tenant` (application `rhoai-v3-3`, branch `rhoai-3.3`, `quay.io/rhoai/...`).
+
+**PipelineRun:** `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-ubi9-papermill.yaml`
+(hand-managed, `pipelines.appstudio.openshift.io/type: test`). It is parity with
+the GHA papermill leg (`make test-jupyter-trustyai-...` →
+`scripts/test_jupyter_with_papermill.sh`): `expected_versions.json` is generated
+from the imagestream manifest annotations (`opendatahub.io/notebook-software` +
+`opendatahub.io/notebook-python-dependencies`), and the run fails if the
+notebook's `--stderr-file` contains `FAILED`.
+
+### Image resolution
+
+`output-image` is the single source of truth (the step's `image`):
+
+| Mode | Trigger | `output-image` |
+|---|---|---|
+| Manual (default) | `/test-trustyai-papermill` | `quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-stable` (latest stable) |
+| Chained with a build | PR / manual / scenario | the image a build produced (e.g. `on-pr-<sha>`); the step clones at `<sha>` |
+
+Because the step's image *is* `$(params.output-image)`, Tekton's image pull
+doubles as the "wait for the image" gate: the test can only run once the image
+is pullable. To test a specific build, point `output-image` at that build's
+image — no build stage is re-run here (the existing
+`odh-workbench-jupyter-trustyai-cpu-py312-ubi9-pull-request` build pipeline already
+produces PR images).
+
+### Git ref resolution
+
+The ODH konflux **post-build scenario** instantiates this PipelineRun as-is and
+does **not** substitute PaC `{{...}}` template vars (only PR/push triggers do), so
+the test can't rely on `{{source_url}}`/`{{revision}}`. Instead, the step derives
+the git ref **from the SUT image tag**: the ODH trustyai build tags images
+`on-pr-<source-commit-sha>`, so the step extracts `<sha>` from an `on-pr-<sha>`
+tag and clones at that commit (falling back to `main` for tags like
+`odh-stable`). `git-url` is the fixed ODH repo
+(`https://github.com/opendatahub-io/notebooks`). No `generate-snapshot`, no image
+labels, no PaC vars.
+
+### Triggers
+
+- `on-comment ^/test-trustyai-papermill` — manual (tests the default/latest image).
+- `on-cel-expression` — on `main` PRs touching `jupyter/trustyai/ubi9-python-3.12/**`
+  or the PipelineRun; point `output-image` at the build's image to test that build.
+
+### Reproducing locally
+
+The step's script is a plain shell script, so it can be run against any pullable
+TrustyAI image:
+
+```sh
+IMAGE="quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-stable"
+podman run --rm -u 1001 -w /opt/app-root/src "$IMAGE" bash -c '
+  set -euxo pipefail
+  WORK=/opt/app-root/src; TESTDIR_REL=jupyter/trustyai/ubi9-python-3.12/test
+  REPO=$WORK/repo; git init -q "$REPO"; git -C "$REPO" remote add origin https://github.com/opendatahub-io/notebooks
+  git -C "$REPO" fetch -q --depth 1 origin <REVISION> || git -C "$REPO" fetch -q --depth 1 origin
+  git -C "$REPO" checkout -q FETCH_HEAD
+  # (then the expected_versions.json + papermill steps, see the PipelineRun)
+'
+```
+
+### Related
+
+- GHA papermill leg: `scripts/test_jupyter_with_papermill.sh`.
+- Build pipelines for this image: `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-ubi9-pull-request.yaml`, `.tekton/odh-workbench-jupyter-trustyai-cpu-py312-ubi9-push.yaml`.
+- ODH-io upstream per-architecture integration-testing design: `opendatahub-io/notebooks` (the `test-papermill` leg).
