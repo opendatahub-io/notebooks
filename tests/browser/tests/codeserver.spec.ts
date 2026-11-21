@@ -43,14 +43,14 @@ const test = base.extend<TestFixtures>({
         await use(new CodeServer(page, codeServerSource.url));
         break;
       case 'image': {
-        const container = await new GenericContainer(codeServerSource.image)
+        const container = new GenericContainer(codeServerSource.image)
             .withExposedPorts(8888)
-            .withWaitStrategy(new HttpWaitStrategy('/codeserver/?folder=/opt/app-root/src', 8888, {abortOnContainerExit: true}))
-            .start();
+            .withWaitStrategy(new HttpWaitStrategy('/codeserver/?folder=/opt/app-root/src', 8888, {abortOnContainerExit: true}));
+        const startedContainer = await container.start();
         try {
-          await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8888)}/codeserver/`))
+          await use(new CodeServer(page, `http://${startedContainer.getHost()}:${startedContainer.getMappedPort(8888)}/codeserver/`))
         } finally {
-          await container.stop()
+          await startedContainer.stop()
         }
         break;
       }
@@ -70,6 +70,7 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
   })
 
   test('wait for startup surface to load', async ({codeServer, page}, testInfo) => {
+    test.setTimeout(120_000)
     await page.goto(codeServer.url);
 
     expect(await codeServer.isEditorVisible()).toBe(true)
@@ -79,7 +80,7 @@ test.describe('code-server', { tag: '@codeserver' }, () => {
   })
 
   test('use the terminal to run command', async ({codeServer, page}, _testInfo) => {
-    test.setTimeout(120_000)
+    test.setTimeout(240_000)
     await page.goto(codeServer.url);
 
     await test.step("Should always see the code-server editor", async () => {

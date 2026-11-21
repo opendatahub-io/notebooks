@@ -93,8 +93,10 @@ export async function takeScreenshot(page: Page, testInfo: TestInfo, filename: s
  * - default (false) or older pinned images: built-in Welcome page
  */
 export async function assertStartupSurface(page: Page, testInfo: TestInfo): Promise<void> {
+    const emulatedTarget = process.env.TEST_TARGET_ARCH === 'ppc64le' || process.env.TEST_TARGET_ARCH === 's390x'
+    const startupTimeout = emulatedTarget ? 60_000 : 5_000
     const readmeTab = page.getByRole('tab', { name: /README\.md/i })
-    const readmeVisible = await readmeTab.waitFor({state: 'visible', timeout: 5000})
+    const readmeVisible = await readmeTab.waitFor({state: 'visible', timeout: startupTimeout})
         .then(() => true)
         .catch(() => false)
 
@@ -108,9 +110,9 @@ export async function assertStartupSurface(page: Page, testInfo: TestInfo): Prom
         return
     }
 
-    await expect(page.getByRole('tab', { name: /Welcome/i })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'code-server', level: 1 })).toBeVisible()
-    await expect(page.getByText('Editing evolved')).toBeVisible()
+    await expect(page.getByRole('tab', { name: /Welcome/i })).toBeVisible({timeout: startupTimeout})
+    await expect(page.getByRole('heading', { name: 'code-server', level: 1 })).toBeVisible({timeout: startupTimeout})
+    await expect(page.getByText('Editing evolved')).toBeVisible({timeout: startupTimeout})
     await waitForNextRender(page)
     await takeScreenshot(page, testInfo, "welcome.png")
 }

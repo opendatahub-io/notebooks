@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import http.client
 import logging
+import os
 import pathlib
 import platform
 import tempfile
@@ -331,6 +332,8 @@ def grab_and_check_logs(
         # RHAIENG-5644: oauth-proxy / kube-rbac-proxy provides external auth; in-container Jupyter auth is disabled
         "WARNING: The Jupyter server is listening on all IP addresses and not using encryption. This is not recommended.",
     ]
+    if os.environ.get("QEMU_WORKBENCH") == "true":
+        allowed_messages.append("io_setup() failed (38: Function not implemented)")
     if extra_allowed:
         allowed_messages.extend(extra_allowed)
 

@@ -114,7 +114,7 @@ runs:
         set -Eeuxo pipefail
 
         sudo swapoff -a
-        sudo modprobe br_netfilter
+        sudo modprobe br_netfilter || echo "warning: br_netfilter module is unavailable"
         sudo sysctl -w net.ipv4.ip_forward=1
 
         # Was getting strange DNS resolution errors from pods that don't seem to want to go away sometimes:
@@ -133,7 +133,9 @@ runs:
         sudo kubeadm reset -f --cri-socket=unix:///var/run/crio/crio.sock
 
         # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm
-        sudo kubeadm init --config=${{ github.action_path }}/../../../ci/cached-builds/kubeadm.yaml
+        sudo kubeadm init \
+          --config=${{ github.action_path }}/../../../ci/cached-builds/kubeadm.yaml \
+          --ignore-preflight-errors=SystemVerification
 
         mkdir -p $HOME/.kube
         sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
