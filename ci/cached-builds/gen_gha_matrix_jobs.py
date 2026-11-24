@@ -26,6 +26,7 @@ ARM64_COMPATIBLE = {
     "codeserver-ubi9-python-3.12",
     "codeserver-minimal-ubi9-python-3.12",
     "cuda-jupyter-minimal-ubi9-python-3.12",
+    "cuda-jupyter-universal-ubi9-python-3.12",
     "cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12",
     "cuda-jupyter-pytorch-ubi9-python-3.12",
     "cuda-jupyter-tensorflow-ubi9-python-3.12",
@@ -340,6 +341,7 @@ class TestSelf(unittest.TestCase):
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
         assert set(targets) == {
             "cuda-jupyter-minimal-ubi9-python-3.12",
+            "cuda-jupyter-universal-ubi9-python-3.12",
             "cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12",
             "cuda-jupyter-pytorch-ubi9-python-3.12",
             "cuda-jupyter-tensorflow-ubi9-python-3.12",
