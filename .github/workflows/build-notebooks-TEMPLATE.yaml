@@ -319,6 +319,99 @@ jobs:
           fi
           echo "${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}" | podman login quay.io/aipcc -u "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" --password-stdin
 
+      - name: Debug container registry authentication sources
+        if: ${{ inputs.subscription && steps.rhoai_build.outputs.skip != 'true' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          AIPCC_QUAY_BOT_USERNAME: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_QUAY_BOT_PASSWORD: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          echo "Podman version:"
+          podman version
+          echo "Container auth environment:"
+          printf '  HOME=%s\n' "${HOME}"
+          printf '  XDG_RUNTIME_DIR=%s\n' "${XDG_RUNTIME_DIR:-<unset>}"
+          printf '  XDG_CONFIG_HOME=%s\n' "${XDG_CONFIG_HOME:-<unset>}"
+          printf '  DOCKER_CONFIG=%s\n' "${DOCKER_CONFIG:-<unset>}"
+          printf '  REGISTRY_AUTH_FILE=%s\n' "${REGISTRY_AUTH_FILE:-<unset>}"
+          printf '  CONTAINER_HOST=%s\n' "${CONTAINER_HOST:-<unset>}"
+
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+
+          home = Path(os.environ["HOME"])
+          runtime = os.environ.get("XDG_RUNTIME_DIR")
+          config_home = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
+          docker_config = Path(os.environ.get("DOCKER_CONFIG", home / ".docker"))
+          candidates = []
+
+          def add(label, path):
+              if not path:
+                  return
+              path = Path(path)
+              if all(existing_path != path for _, existing_path in candidates):
+                  candidates.append((label, path))
+
+          add("REGISTRY_AUTH_FILE", os.environ.get("REGISTRY_AUTH_FILE"))
+          if runtime:
+              add("XDG_RUNTIME_DIR", Path(runtime) / "containers/auth.json")
+          add("XDG_CONFIG_HOME", config_home / "containers/auth.json")
+          add("DOCKER_CONFIG", docker_config / "config.json")
+          add("HOME/.config", home / ".config/containers/auth.json")
+
+          expected = None
+          username = os.environ.get("AIPCC_QUAY_BOT_USERNAME", "")
+          password = os.environ.get("AIPCC_QUAY_BOT_PASSWORD", "")
+          if username and password:
+              expected = f"{username}:{password}".encode()
+
+          def display_path(path):
+              text = str(path)
+              for variable, value in (("HOME", home), ("XDG_RUNTIME_DIR", runtime), ("XDG_CONFIG_HOME", config_home)):
+                  if value:
+                      text = text.replace(str(value), f"${variable}", 1)
+              return text
+
+          print("Registry auth entries (credential values are never printed):")
+          for label, path in candidates:
+              if not path.is_file():
+                  print(f"  {label}: {display_path(path)} [missing]")
+                  continue
+              try:
+                  data = json.loads(path.read_text())
+              except Exception as exc:
+                  print(f"  {label}: {display_path(path)} [unreadable: {type(exc).__name__}]")
+                  continue
+
+              auths = data.get("auths", {}) or {}
+              helpers = data.get("credHelpers", {}) or {}
+              print(f"  {label}: {display_path(path)}")
+              if not auths and not helpers:
+                  print("    no auth entries")
+              for registry, entry in sorted(auths.items()):
+                  entry = entry or {}
+                  raw = entry.get("auth", "")
+                  matches_aipcc = False
+                  if expected and raw:
+                      try:
+                          matches_aipcc = base64.b64decode(raw).rstrip(b"\n") == expected
+                      except Exception:
+                          pass
+                  print(
+                      "    auth registry="
+                      f"{registry} auth_present={bool(raw)} "
+                      f"identity_token={bool(entry.get('identitytoken'))} "
+                      f"matches_AIPCC_secret={matches_aipcc}"
+                  )
+              for registry, helper in sorted(helpers.items()):
+                  print(f"    credential_helper registry={registry} helper={helper}")
+          PY
+
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
 
