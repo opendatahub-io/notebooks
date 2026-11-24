@@ -1,0 +1,63 @@
+# fullsend manifest for opendatahub-io/notebooks.
+#
+# This file is the source of truth for fullsend in this repo.
+# fullsend renders .fullsend/config.yaml and .github/workflows/fullsend.yaml
+# from it and overwrites any direct edit to those files on the next install.
+#
+# To change a setting or upgrade fullsend:
+#   1. Edit this file (to upgrade, bump github.fullsend_ref to a released tag).
+#   2. Download the fullsend CLI of the SAME release as fullsend_ref:
+#      https://github.com/fullsend-ai/fullsend/releases
+#   3. As a repo admin: fullsend repos install -f repos.yaml --dry-run
+#      then:            fullsend repos install -f repos.yaml
+#   4. Merge the PR that install opens, and commit any edits install makes
+#      to this file.
+#
+# Docs: https://github.com/fullsend-ai/fullsend/blob/main/docs/cli/repos.md
+---
+version: 1
+defaults:
+  inference:
+    auth: vertex-wif
+  config:
+    inference:
+      project: it-gcp-adlc-user-rhai
+    tracker:
+      github:
+        allowed_targets:
+          orgs:
+            - opendatahub-io
+            - red-hat-data-services
+    agents:
+      - name: code
+        enabled: true
+        runtime: claude
+        model: opus
+      - name: fix
+        enabled: false
+      - name: prioritize
+        enabled: false
+      - name: review
+        runtime: pi
+        model: sonnet
+        subagents:
+          challenger: opus
+          correctness: google-vertex/gemini-3.8-flash
+          docs-currency: google-vertex/gemini-3.8-flash
+          intent-coherence: google-vertex/gemini-3.8-flash
+          risk-assessment: google-vertex/gemini-3.8-flash
+          security: google-vertex/gemini-3.8-flash
+          style-conventions: google-vertex/gemini-3.8-flash
+      - name: retro
+        enabled: false
+      - name: triage
+        enabled: true
+        model: sonnet
+github:
+  # The CLI that runs install must be this same release.
+  fullsend_ref: v0.57.1
+  repos:
+    - name: opendatahub-io/notebooks
+      config:
+        inference:
+          wif_provider: projects/950291184545/locations/global/workloadIdentityPools/fullsend-inference/providers/gh-opendatahub-io-notebooks
