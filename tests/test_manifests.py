@@ -104,6 +104,39 @@ class TestManifests:
         )
         return shell_notebook_id.stdout.rstrip()
 
+    def test_papermill_eperm_classifier(self, tmp_path: Path):
+        """Accept only the known post-success kernel-shutdown EPERM signature."""
+        shell_script_path = ROOT_DIR / "scripts/test_jupyter_with_papermill.sh"
+        successful_shutdown_log = tmp_path / "successful-shutdown.log"
+        successful_shutdown_log.write_text(
+            "content: {'name': 'stderr', 'text': '----------------------------------------------------------------------\\n"
+            "Ran 4 tests in 0.012s\\n\\nOK\\n'}\n"
+            "os.kill(self.pid, sig)\n"
+            "PermissionError: [Errno 13] Permission denied\n",
+            encoding="utf-8",
+        )
+        failed_notebook_log = tmp_path / "failed-notebook.log"
+        failed_notebook_log.write_text(
+            successful_shutdown_log.read_text(encoding="utf-8") + "PapermillExecutionError: cell failed\n",
+            encoding="utf-8",
+        )
+
+        def classify(log_file: Path) -> subprocess.CompletedProcess[str]:
+            command = (
+                f"source {shlex.quote(str(shell_script_path))} "
+                "jupyter-minimal-ubi9-python-3.12 >/dev/null 2>&1; "
+                f"_papermill_exit_is_kernel_signal_eperm {shlex.quote(str(log_file))}"
+            )
+            return subprocess.run(
+                ["bash", "-c", command],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        assert classify(successful_shutdown_log).returncode == 0
+        assert classify(failed_notebook_log).returncode != 0
+
     @staticmethod
     def get_targets() -> list[tuple[str, Path]]:
         # TODO(jdanek): should systematize import paths to avoid this hack
