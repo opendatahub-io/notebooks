@@ -683,48 +683,6 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=5859
             ;;
-        odh-pipeline-runtime-datascience-cpu-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=1015
-            ;;
-        odh-pipeline-runtime-minimal-cpu-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-pipeline-runtime-minimal-cpu-py312-rhel9"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=595
-            ;;
-        odh-pipeline-runtime-pytorch-cuda-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-pipeline-runtime-pytorch-cuda-py312-rhel9"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=8768
-            ;;
-        odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-rhel9"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=8723
-            ;;
-        odh-pipeline-runtime-pytorch-rocm-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-pipeline-runtime-pytorch-rocm-py312-rhel9"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=8725
-            ;;
-        odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-pipeline-runtime-tensorflow-cuda-py312-rhel9"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=8206
-            ;;
-        odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-pipeline-runtime-tensorflow-rocm-py312-rhel9"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=6614
-            ;;
         *)
             # Rollout automation rewrites released workbench keys with numeric
             # release suffixes (for example '-3-5', '-3-6'). Keep this check
