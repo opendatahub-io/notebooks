@@ -8,7 +8,7 @@ name: Test Git-Crypt Auth Action
       - '.github/workflows/test-git-crypt-auth.yaml'
       - 'ci/secrets/**'
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths: *git-crypt-auth-paths
 
 concurrency:

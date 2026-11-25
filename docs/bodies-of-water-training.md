@@ -11,6 +11,11 @@ size: 16:9
 
 ### The Stream → Lake → Ocean release flow — team training
 
+> **Historical note (November 2026):** ODH no longer maintains a `stable` branch. ODH
+> CI/nightly components build directly from `main`; the `stable`/Lake and fast-forward workflow
+> descriptions below are preserved as historical training context and are not current operating
+> steps.
+
 **RHAIENG-1264** · docs PR [opendatahub-io/notebooks#4583](https://github.com/opendatahub-io/notebooks/pull/4583)
 
 <!-- notes:

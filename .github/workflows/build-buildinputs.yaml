@@ -3,7 +3,7 @@ name: Build buildinputs image
 
 "on":
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths: &buildinputs_paths
       - .github/workflows/build-buildinputs.yaml
       - scripts/buildinputs/**

@@ -3,7 +3,7 @@ name: Build check-payload image
 
 "on":
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths: &check_payload_paths
       - .github/workflows/build-check-payload.yaml
       - Makefile

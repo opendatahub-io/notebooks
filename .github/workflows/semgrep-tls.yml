@@ -2,7 +2,7 @@
 name: Semgrep TLS Rules
 on:  # yamllint disable-line rule:truthy
   pull_request:
-    branches: [main, master, dev, odh, incubation, stable, stable-2.x]
+    branches: [main, master, dev, odh, incubation, stable-2.x]
 
 permissions:
   contents: read

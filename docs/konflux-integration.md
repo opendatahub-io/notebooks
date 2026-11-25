@@ -54,9 +54,9 @@ The `generate-snapshot` task (from [rhoai-konflux-tasks](https://github.com/red-
 3. If the PR image exists, uses it (newly built). Otherwise falls back to the `odh-stable` tag.
 4. Queries the Quay API for the image digest and extracts `git.url` / `git.commit` labels from the image metadata
 
-**Implication:** On a manual `/group-test` trigger for a non-build PR (e.g., only `.tekton/` changes), all components fall back to stable images. On a real build PR, rebuilt components get their PR-specific images.
+**Implication:** On a manual `/group-test` trigger for a non-build PR (e.g., only `.tekton/` changes), all components fall back to the latest `odh-stable` images. On a real build PR, rebuilt components get their PR-specific images.
 
-**Changed vs reused:** The snapshot JSON distinguishes them. Components with populated `git.url`/`git.commit` were rebuilt for the PR; those with empty values are reused stable images. The `image_tag` field shows `odh-pr-<N>` vs `odh-stable`.
+**Changed vs reused:** The snapshot JSON distinguishes them. Components with populated `git.url`/`git.commit` were rebuilt for the PR; those with empty values are reused `odh-stable` images. The `image_tag` field shows `odh-pr-<N>` vs `odh-stable`.
 
 **Empty `git.url` fallback:** When a component wasn't rebuilt, its `git.url` and `git.commit` are empty. The `deploy-and-test` script needs a repo to clone for the Makefile and test harness (deploy manifests, test scripts), so it falls back to the PR's own `{{repo_url}}` and `{{revision}}` (passed as pipeline params `repo-url` and `revision` from PaC template variables). This ensures tests always run against the PR's source tree.
 
@@ -196,10 +196,8 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   "$KA_HOST/apis/tekton.dev/v1/namespaces/open-data-hub-tenant/pipelineruns?labelSelector=pipelinesascode.tekton.dev/original-prname%3Dnotebooks-group-test&limit=5"
 ```
 
-## Stable vs Main Branch Sync
+## Main-only ODH nightly source
 
-`stable` is a lagging branch of `main`, periodically synced via merge PRs.
-
-**add/add conflicts** occur when `.tekton/` pipeline files don't exist in the merge base — both branches independently created them, so git can't do a 3-way merge. The resolution is to pre-apply the conflicting changes to `stable` before the merge (e.g., take `origin/main`'s version of the conflicting files).
-
-After a main-to-stable merge, `stable` may have extra files for older base image variants (e.g., cuda 12.8, rocm 6.3 pipelines) that `main` no longer tracks.
+ODH CI/nightly components build directly from `main`. The former `stable` branch and the
+main-to-stable fast-forward workflow are no longer part of the ODH build flow, so `.tekton/`
+changes and source changes are delivered together on the same branch.

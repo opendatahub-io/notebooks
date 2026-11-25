@@ -9,7 +9,7 @@ name: Test Playwright Action
       - 'tests/browser/**'
       - '.github/workflows/build-browser-tests.yaml'
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths: *playwright-action-paths
 
 concurrency:

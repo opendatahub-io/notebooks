@@ -71,7 +71,7 @@ jobs:
           # value would mirror build-notebooks-TEMPLATE.yaml's max_ref_len formula
           # (128 - len(target) - 7-char short sha - len(suffix) - 3 separators),
           # minimized over `required` since that formula is computed per target
-          # there. In practice it doesn't matter: real branch names (main, stable,
+          # there. In practice it doesn't matter: real branch names (main,
           # rhoai-X.Y[-eaN]) are far shorter than either cap, so no truncation ever
           # actually happens on either side.
           ref_prefix = re.sub(r"[^a-zA-Z0-9._-]", "_", os.environ["REF_NAME"])[:40]
