@@ -79,6 +79,10 @@ files = [
     "/opt/app-root/checode/extensions/copilot/node_modules/@github/copilot/sdk/ripgrep/bin/linux-x64/rg",
     "/opt/app-root/checode/extensions/copilot/node_modules/@github/copilot/sdk/tgrep/bin/linux-x64/tgrep",
     "/opt/app-root/checode/extensions/copilot/node_modules/@github/copilot/tgrep/bin/linux-x64/tgrep",
+    # Microsoft Python Environment Tools (`pet`) is a non-cryptographic helper
+    # shipped by the vscode-python-envs extension; ProdSec review required.
+    "/opt/app-root/extensions-temp/ms-python.vscode-python-envs-1.44.0-linux-x64/python-env-tools/bin/pet",
+    "/opt/app-root/extensions-temp/ms-python.vscode-python-envs-1.44.0-linux-arm64/python-env-tools/bin/pet",
 ]
 dirs = [
     # VS Code 1.122+ @vscode/sandbox-runtime seccomp BPF loaders (no crypto)
