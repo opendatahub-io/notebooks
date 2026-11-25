@@ -4,6 +4,7 @@ set -Eeuxo pipefail
 ARCH=${TARGETARCH}
 _=${PYTHON}
 _=${VIRTUAL_ENV}
+# Keep the AIPCC package-index contract explicit for all shared image builds.
 _=${PIP_INDEX_URL:?PIP_INDEX_URL must be set}
 
 DNF_OPTS=(-y --nodocs --setopt=install_weak_deps=False --setopt=keepcache=True --setopt=max_parallel_downloads=10)
