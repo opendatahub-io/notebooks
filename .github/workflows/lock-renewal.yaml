@@ -244,6 +244,7 @@ jobs:
             "prefetch-input/${VARIANT}/rpms.in.yaml"
             "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
             "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver-minimal/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
           )
 
           echo "Regenerating RPM lockfiles for variant: ${VARIANT} (USE_CACHE=${USE_CACHE})"
@@ -262,7 +263,8 @@ jobs:
           for lockfile in \
             "prefetch-input/${VARIANT}/rpms.lock.yaml" \
             "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml" \
-            "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
+            "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver-minimal/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
             if [[ -f "$lockfile" ]]; then
               git add "$lockfile"
             fi
@@ -333,6 +335,7 @@ jobs:
             "prefetch-input/${VARIANT}/rpms.in.yaml"
             "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
             "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver-minimal/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
           )
 
           echo "Regenerating RPM lockfiles for variant: ${VARIANT} (USE_CACHE=${USE_CACHE})"
@@ -351,7 +354,8 @@ jobs:
           for lockfile in \
             "prefetch-input/${VARIANT}/rpms.lock.yaml" \
             "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml" \
-            "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
+            "codeserver-baseline/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver-minimal/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
             if [[ -f "$lockfile" ]]; then
               git add "$lockfile"
             fi

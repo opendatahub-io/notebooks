@@ -386,7 +386,7 @@ COPY ${CODESERVER_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.
 # pip cache (offline) before installing the image's Python packages.
 # UV_VERSION is derived from this image's requirements.cpu.txt by scripts/dockerfile_fragments.py.
 ### BEGIN UV version
-ARG UV_VERSION=0.13.6
+ARG UV_VERSION=0.13.9
 
 ### END UV version
 RUN python3 -m pip install --no-cache-dir --no-index \
