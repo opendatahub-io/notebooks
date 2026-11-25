@@ -35,6 +35,7 @@ docker_directories = (
     ntb.ROOT_DIR / "jupyter",
     ntb.ROOT_DIR / "codeserver",
     ntb.ROOT_DIR / "codeserver-baseline",
+    ntb.ROOT_DIR / "codeserver-minimal",
     ntb.ROOT_DIR / "runtimes",
 )
 
