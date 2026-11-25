@@ -36,9 +36,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "argon2-cffi-bindings"
-version = "26.1.0"
+version = "26.2.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/argon2_cffi_bindings-26.1.0-1-cp310-abi3-linux_x86_64.whl", upload-time = 2026-10-08T18:41:16Z, size = 28310, hashes = { sha256 = "8a5e4837672866cda851e8df8024b1cd93eae63f3ddd4adbc90f88223772ce49" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/argon2_cffi_bindings-26.2.0-1-cp310-abi3-linux_x86_64.whl", upload-time = 2026-11-16T15:11:46Z, size = 28402, hashes = { sha256 = "77747e2678072865fe91c6f8c3a662c34c1155c8abe0f104255bb4f1835cc6ca" } }]
 
 [[packages]]
 name = "arrow"
@@ -84,9 +84,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "certifi"
-version = "2026.10.23"
+version = "2026.11.20"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/certifi-2026.10.23-1-py3-none-any.whl", upload-time = 2026-10-27T13:40:10Z, size = 6245, hashes = { sha256 = "d43dfc46b32b849091095fc8a05e744d894397c8033417c7a68ec976c89ab869" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/certifi-2026.11.20-1-py3-none-any.whl", upload-time = 2026-11-24T16:20:27Z, size = 6428, hashes = { sha256 = "a6137451de49cb3c91638aed3711d925dd5f3b5e7d06d9ab7ec23d3e5ff82fd8" } }]
 
 [[packages]]
 name = "cffi"
@@ -228,9 +228,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "jsonpointer"
-version = "3.7"
+version = "3.12"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/jsonpointer-3.7-1-py3-none-any.whl", upload-time = 2026-11-06T05:32:00Z, size = 11077, hashes = { sha256 = "2365e108417c9361aacf98f9d3b6a1ad6befc6d839e991189a1a9db5fedc4d9c" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/jsonpointer-3.12-1-py3-none-any.whl", upload-time = 2026-11-14T15:18:35Z, size = 12290, hashes = { sha256 = "af09c9398a31ea98949d22c1ec7d01d83dcaa336b53d553e7d01c7f35896b226" } }]
 
 [[packages]]
 name = "jsonschema"
@@ -276,9 +276,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "jupyter-server-proxy"
-version = "4.6.0"
+version = "4.6.1"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/jupyter_server_proxy-4.6.0-1-py3-none-any.whl", upload-time = 2026-10-20T02:52:03Z, size = 48146, hashes = { sha256 = "7ad53fcd7354971e9dea69b1f8e7554216cc1e873c4f262902a7bf92d3753342" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/jupyter_server_proxy-4.6.1-1-py3-none-any.whl", upload-time = 2026-11-20T02:39:51Z, size = 48685, hashes = { sha256 = "84a32253054efc575f177d7962b4edce5bd9fed979a85d478013a9c9d6c28d7d" } }]
 
 [[packages]]
 name = "jupyter-server-terminals"
@@ -410,7 +410,10 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 name = "pandoc-rhai"
 version = "3.9.0.2+rhaiv.1"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pandoc_rhai-3.9.0.2+rhaiv.1-3-py3-none-linux_x86_64.whl", upload-time = 2026-10-08T18:41:16Z, size = 65861469, hashes = { sha256 = "bf096f792435a436e57e42c77192cb033cd2332b8451c03ac96fb7e88acabc42" } }]
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pandoc_rhai-3.9.0.2+rhaiv.1-3-py3-none-linux_x86_64.whl", upload-time = 2026-10-08T18:41:16Z, size = 65861469, hashes = { sha256 = "bf096f792435a436e57e42c77192cb033cd2332b8451c03ac96fb7e88acabc42" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pandoc_rhai-3.9.0.2+rhaiv.1-4-py3-none-linux_x86_64.whl", upload-time = 2026-11-20T02:39:51Z, size = 65861511, hashes = { sha256 = "3e3503228f683d1f22e25096dffee529868efaa8c0636333f7f49ae926972b64" } },
+]
 
 [[packages]]
 name = "pandocfilters"
@@ -432,15 +435,15 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "pip"
-version = "26.2.2"
+version = "26.3"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pip-26.2.2-2-py3-none-any.whl", upload-time = 2026-10-26T14:09:43Z, size = 1689462, hashes = { sha256 = "0b55c3a2a7b4b88f7d42d52aa79ae31dc7d4d74f61a20be24e5e8176554b2336" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pip-26.3-1-py3-none-any.whl", upload-time = 2026-11-09T17:35:29Z, size = 1821870, hashes = { sha256 = "7f675a4a716a5a3cfc336c2e190ea696aea15433d823a31d09c6eabfd13c8414" } }]
 
 [[packages]]
 name = "platformdirs"
-version = "4.14.3"
+version = "4.14.8"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/platformdirs-4.14.3-1-py3-none-any.whl", upload-time = 2026-11-05T21:30:57Z, size = 37037, hashes = { sha256 = "0e4c39117a2f5f764e8b1d9adc66ecbd88a44d15f6055b5475c730bffb059c5c" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/platformdirs-4.14.8-1-py3-none-any.whl", upload-time = 2026-11-23T14:09:57Z, size = 98913, hashes = { sha256 = "539c91548547bd3ed057a15ecf952806d7ebe79a7b9019ea1b23ed7acb7d0a80" } }]
 
 [[packages]]
 name = "prometheus-client"
@@ -504,15 +507,15 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "pyyaml"
-version = "6.0.3"
+version = "6.0.4"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pyyaml-6.0.3-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-10-13T04:41:50Z, size = 647977, hashes = { sha256 = "6c2ccd8bda2bb91cfdba15030235be2f1563114c23195036a867f9aa9976c94b" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pyyaml-6.0.4-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-11-24T16:20:27Z, size = 660483, hashes = { sha256 = "db2f61701431dfdfeb3f0dbe6ce21923eb61ec137b28c9b94bd5e2f2d1f5bcf4" } }]
 
 [[packages]]
 name = "pyzmq"
-version = "27.2.0"
+version = "27.3.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pyzmq-27.2.0-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-10-08T18:41:16Z, size = 261839, hashes = { sha256 = "f68d7e13055af7ea9d8f4c9fefc4f120c7d1f33ea556e2bca490d097f613b5a7" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/pyzmq-27.3.0-1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-11-09T17:35:29Z, size = 272097, hashes = { sha256 = "cb06682de19755d3d9f2e69152d473ed3dbce8a7582d237b90e3de736283d2a4" } }]
 
 [[packages]]
 name = "referencing"
@@ -552,9 +555,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "send2trash"
-version = "2.1.0"
+version = "2.2.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/send2trash-2.1.0-1-py3-none-any.whl", upload-time = 2026-10-08T18:41:16Z, size = 19287, hashes = { sha256 = "803dc641ac5e1fec6179b3a89533333d0218d0cdc1673d276f3e86a6222965f8" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/send2trash-2.2.0-1-py3-none-any.whl", upload-time = 2026-11-16T15:11:46Z, size = 19168, hashes = { sha256 = "4fcb765ae32e23ee8b3935bdbdc1860b16e132511a945a735121637de04e9774" } }]
 
 [[packages]]
 name = "setuptools"
@@ -582,9 +585,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "soupsieve"
-version = "3.0.4"
+version = "4.1.3"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/soupsieve-3.0.4-1-py3-none-any.whl", upload-time = 2026-10-27T13:40:10Z, size = 44117, hashes = { sha256 = "755f136f6b47e4c3ee37d6f08b68c2d7a1951b8e638730d77ddf6a2f6acbb7ef" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/soupsieve-4.1.3-1-py3-none-any.whl", upload-time = 2026-11-24T13:14:29Z, size = 61628, hashes = { sha256 = "2bdc690f968221996bc5e8523dab6cadec466090f864ccb618b634b1726d2d5d" } }]
 
 [[packages]]
 name = "stack-data"
@@ -606,9 +609,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "tornado"
-version = "6.6"
+version = "6.6.1"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/tornado-6.6-1-cp311-abi3-linux_x86_64.whl", upload-time = 2026-10-27T13:40:10Z, size = 530248, hashes = { sha256 = "f830d120fb818f5d9e82d7858aa6e47fdd21f585837ecd25da725b62f392a96e" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/tornado-6.6.1-1-cp311-abi3-linux_x86_64.whl", upload-time = 2026-11-13T05:42:33Z, size = 535233, hashes = { sha256 = "aa5103531f3c80c6881c066f098df0dacd1f540ab21aea4cd3be0f0bbd49159a" } }]
 
 [[packages]]
 name = "traitlets"
@@ -642,9 +645,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm
 
 [[packages]]
 name = "uv"
-version = "0.13.6"
+version = "0.13.9"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/uv-0.13.6-1-py3-none-linux_x86_64.whl", upload-time = 2026-11-02T23:23:36Z, size = 18195287, hashes = { sha256 = "00b37ba15efb987de9efca49920475fa1d0fd53c9ba769df87b0d16fd9f84e84" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rocm7.14-torch2.12-el9.8/uv-0.13.9-1-py3-none-linux_x86_64.whl", upload-time = 2026-11-21T14:38:17Z, size = 18434254, hashes = { sha256 = "b42b88b5a9af599e6d4a6b692d3d6945130592a3d859d0af8e1c897f70cbe3b4" } }]
 
 [[packages]]
 name = "wcwidth"
