@@ -233,6 +233,10 @@ jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION):
 jupyter-universal-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/universal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
+.PHONY: cuda-jupyter-universal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+cuda-jupyter-universal-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/universal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
+
 .PHONY: cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
@@ -697,6 +701,7 @@ all-images: \
 	jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-universal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-universal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \

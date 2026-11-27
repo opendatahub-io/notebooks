@@ -57,6 +57,42 @@ class TestManifests:
                 accelerator_flavor="rocm",
             )
 
+    def test_jupyter_universal_cuda_metadata_and_gpu_manifest(self):
+        """Universal tree holds CPU and CUDA Dockerfiles; inference picks CUDA, resolving to the -gpu- ImageStream."""
+        metadata = extract_metadata_from_path(ROOT_DIR / "jupyter/universal/ubi9-python-3.12")
+        assert metadata == NotebookMetadata(
+            type=NotebookType.WORKBENCH,
+            feature="jupyter",
+            scope="universal",
+            os_flavor="ubi9",
+            python_flavor="python-3.12",
+            accelerator_flavor="cuda",
+        )
+        path = get_source_of_truth_filepath(manifests_directory=_TEST_MANIFESTS_ODH_DIR, metadata=metadata)
+        assert path == _TEST_MANIFESTS_ODH_DIR / "base" / "jupyter-universal-gpu-notebook-imagestream.yaml"
+
+    def test_jupyter_universal_cpu_override_resolves_to_cpu_manifest(self):
+        """The annotation-update loop forces flavor None for the unsuffixed universal ImageStream."""
+        metadata = NotebookMetadata(
+            type=NotebookType.WORKBENCH,
+            feature="jupyter",
+            scope="universal",
+            os_flavor="ubi9",
+            python_flavor="python-3.12",
+            accelerator_flavor=None,
+        )
+        path = get_source_of_truth_filepath(manifests_directory=_TEST_MANIFESTS_ODH_DIR, metadata=metadata)
+        assert path == _TEST_MANIFESTS_ODH_DIR / "base" / "jupyter-universal-notebook-imagestream.yaml"
+
+    def test_jupyter_universal_imagestream_override_entries(self):
+        """Both universal ImageStreams must be in the override map (tree-level inference alone is ambiguous)."""
+        from manifests.tools.update_imagestream_annotations_from_pylock import (
+            _ACCELERATOR_OVERRIDE_FOR_RESOURCE,
+        )
+
+        assert _ACCELERATOR_OVERRIDE_FOR_RESOURCE["jupyter-universal-notebook-imagestream.yaml"] is None
+        assert _ACCELERATOR_OVERRIDE_FOR_RESOURCE["jupyter-universal-gpu-notebook-imagestream.yaml"] == "cuda"
+
     def test_runtime_cuda_tensorflow_manifest(self):
         metadata = extract_metadata_from_path(ROOT_DIR / "runtimes/tensorflow/ubi9-python-3.12")
         assert metadata.type == NotebookType.RUNTIME
@@ -195,6 +231,9 @@ class TestManifests:
             "jupyter-universal-ubi9-python-3.12": MANIFESTS_ODH_DIR
             / "base"
             / "jupyter-universal-notebook-imagestream.yaml",
+            "cuda-jupyter-universal-ubi9-python-3.12": MANIFESTS_ODH_DIR
+            / "base"
+            / "jupyter-universal-gpu-notebook-imagestream.yaml",
             "codeserver-ubi9-python-3.12": MANIFESTS_ODH_DIR / "base" / "code-server-notebook-imagestream.yaml",
             "codeserver-baseline-c9s-python-3.12": MANIFESTS_ODH_DIR
             / "base"

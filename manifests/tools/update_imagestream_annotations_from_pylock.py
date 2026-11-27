@@ -88,6 +88,10 @@ _ACCELERATOR_OVERRIDE_FOR_RESOURCE: dict[str, str | None] = {
     "jupyter-pytorch-llmcompressor-imagestream.yaml": "cuda",
     "jupyter-baseline-notebook-imagestream.yaml": None,
     "code-server-baseline-notebook-imagestream.yaml": None,
+    # jupyter/universal builds CPU and CUDA from one tree; inference sees
+    # Dockerfile.konflux.cuda, so force the flavor per ImageStream.
+    "jupyter-universal-notebook-imagestream.yaml": None,
+    "jupyter-universal-gpu-notebook-imagestream.yaml": "cuda",
 }
 
 # Canonical Git URLs for ``git fetch`` when the ``-n`` tag commit is not already in the local object DB.

@@ -37,7 +37,7 @@ DEFAULT_CONFIG_PATH = ROOT_DIR / "versions_config.yml"
 MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver", "codeserver-baseline", "codeserver-minimal")
 POLICY_SCHEMA = object()
 GPU_FLAVORS = {
-    "cuda": ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow"),
+    "cuda": ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow", "universal"),
     "rocm": ("minimal",),
 }
 ACCELERATOR_DISPLAY_NAMES = {
@@ -53,6 +53,7 @@ GPU_FLAVOR_PATHS = {
         ("runtimes", "pytorch+llmcompressor"): "pytorch-llmcompressor",
         ("jupyter", "tensorflow"): "tensorflow",
         ("runtimes", "tensorflow"): "tensorflow",
+        ("jupyter", "universal"): "universal",
     },
     "rocm": {
         ("jupyter", "minimal"): "minimal",

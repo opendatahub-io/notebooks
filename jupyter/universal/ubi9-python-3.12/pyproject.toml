@@ -29,13 +29,19 @@ dependencies = [
 # FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
 exclude-dependencies = ["py-spy"]
 
-# Four arch-specific environments so uv export emits ``== x86_64 or == aarch64``
-# allowlist markers on gated deps instead of ``!= ppc64le`` denylist markers.
+# RHAIENG-5451 / RHAIENG-7088: only the intersection across this file's
+# flavors is listed here (not each flavor's own full requirement) -- this
+# pyproject.toml is shared by cpu/cuda. ppc64le/s390x cannot be listed
+# because pandoc-rhai -- a shared, non-GPU dependency -- has no wheels for
+# those architectures in the cpu-torch2.13/cuda13.0-torch2.13 channels.
+# universal has no ROCm flavor, so the ROCm-driven x86_64-only narrowing
+# used by other images does not apply here: aarch64 resolves for both
+# flavors and is kept. Full per-flavor coverage requires the dynamic
+# per-flavor injection in opendatahub-io/notebooks#4422.
+
 required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
     "sys_platform == 'linux' and platform_machine == 'aarch64'",
-    "sys_platform == 'linux' and platform_machine == 'ppc64le'",
-    "sys_platform == 'linux' and platform_machine == 's390x'",
 ]
 
 environments = [
