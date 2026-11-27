@@ -6,16 +6,16 @@ This directory contains [Pipelines-as-Code](https://pipelinesascode.com/) Pipeli
 
 Most files follow the pattern `<component>-push.yaml` and `<component>-pull-request.yaml`, where `<component>` is the Konflux component name from the `appstudio.openshift.io/component` label inside the file. Base-image pipelines use version-specific legacy filenames (see [Base images](#base-images) below).
 
-## Main vs stable branch pipelines
+## Main-branch pipelines
 
-Each notebook image has two Konflux components — one building from `main` and one from `stable`:
+Each notebook image has two Konflux components on the same `main` source branch:
 
-| Component | Branch | Filename example |
+| Component | Purpose | Filename example |
 |---|---|---|
-| `odh-pipeline-runtime-minimal-cpu-py312-ubi9` | `main` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-push.yaml` |
-| `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci` | `stable` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci-push.yaml` |
+| `odh-pipeline-runtime-minimal-cpu-py312-ubi9` | Main/release image build | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-push.yaml` |
+| `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci` | ODH CI/nightly image build | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci-push.yaml` |
 
-The `-ci` suffix distinguishes stable components. Both sets of files live on `main` — PaC reads `.tekton/` from the component's configured branch, so stable pipelines take effect once they reach the `stable` branch via merge.
+The `-ci` suffix distinguishes the ODH CI/nightly components and their `odh-stable` image tags; it no longer identifies a Git branch. Both sets of files live on `main`, and the CI/nightly PipelineRuns are triggered by `target_branch == "main"`.
 
 ## metadata.name contract
 
@@ -42,15 +42,15 @@ Base image pipelines (cuda, rocm) have version-specific filenames but version-ag
 
 ## Service account naming
 
-Service accounts (`taskRunTemplate.serviceAccountName`) in the stable push files (`*-ci-push.yaml`) do **not** follow a single convention. There are three patterns:
+Service accounts (`taskRunTemplate.serviceAccountName`) in the CI/nightly push files (`*-ci-push.yaml`) do **not** follow a single convention. There are three patterns:
 
 | Pattern | Count | Example SA | Notes |
 |---|---|---|---|
-| Main-branch SA (no `-ci`) | 15 | `build-pipeline-...-ubi9` | Uses the main component's SA for the stable build |
+| Main-branch SA (no `-ci`) | 15 | `build-pipeline-...-ubi9` | Uses the main component's SA for the CI/nightly build |
 | `-poc` suffix | 3 | `build-pipeline-...-poc` | Leftover from initial PoC onboarding |
-| `-ci` suffix | 0 | — | No stable file uses its own component's SA |
+| `-ci` suffix | 0 | — | No CI/nightly file uses its own component's SA |
 
-The `-poc` SAs exist in the cluster alongside the `-ubi9` SAs — both work. This was [documented as intentional in PR #3463](https://github.com/opendatahub-io/notebooks/pull/3463) when stable pipelines were moved to `.tekton/` on `main`. Andriana requested removing the `-poc` suffix in a [DevTestOps thread](https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1756972225109469), but this requires cross-team coordination with the Konflux onboarding team (Mohammadi) who manages SAs in the tenant. We don't have permissions to create or rename SAs ourselves.
+The `-poc` SAs exist in the cluster alongside the `-ubi9` SAs — both work. This was [documented as intentional in PR #3463](https://github.com/opendatahub-io/notebooks/pull/3463) when CI/nightly pipelines were moved to `.tekton/` on `main`. Andriana requested removing the `-poc` suffix in a [DevTestOps thread](https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1756972225109469), but this requires cross-team coordination with the Konflux onboarding team (Mohammadi) who manages SAs in the tenant. We don't have permissions to create or rename SAs ourselves.
 
 The build-service controller auto-creates SAs named `build-pipeline-<component>` when components are onboarded. Both `-ubi9` and `-ubi9-ci` SAs exist and have equivalent permissions, so the mismatch is cosmetic. Tracked in [#3517](https://github.com/opendatahub-io/notebooks/issues/3517).
 

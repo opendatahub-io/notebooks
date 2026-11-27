@@ -191,7 +191,7 @@ The `check-generated-code` job runs `ci/generate_code.sh`, then verifies a clean
   --pr-to-ref <pr-branch>` with `gha_pr_changed_files.list_changed_files()` (`git diff`
   three-dot). Locally: `bash ci/generate_code.sh --pr-base origin/main` (default head: `HEAD`).
   See [RHAIENG-6397](https://redhat.atlassian.net/browse/RHAIENG-6397).
-- **Push** (`main`, `stable`, `rhoai-*`): full lock regen for all image dirs (unchanged).
+- **Push** (`main`, `rhoai-*`): full lock regen for all image dirs (unchanged).
 
 ## Frameworks and tools
 

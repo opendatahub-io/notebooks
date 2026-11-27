@@ -8,7 +8,7 @@ name: Test Trivy Scan Action
       - '.github/workflows/test-trivy-scan-action.yaml'
       - 'ci/trivy-markdown.tpl'
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths:
       - '.github/actions/trivy-scan-action/**'
       - '.github/workflows/test-trivy-scan-action.yaml'

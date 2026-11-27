@@ -7,13 +7,13 @@
 
 ## 0. The model in one line (corroborated by the "Bodies Of Water" doc)
 
-The whole thing is the **Stream → Lake → Ocean** release strategy
+The broader release model is described as **Stream → Lake → Ocean**; for notebooks, ODH CI/nightly now builds directly from `main`.
 ([Release Strategy - The Bodies Of Water](https://docs.google.com/document/d/1LXbAylu-1rCw1gkqNuhLoPC5tzD70gg0jdGy-SBgyYI/edit)):
 
 | Body of water | Meaning | Branch | Org / tenant | Built where |
 |---|---|---|---|---|
 | **Stream** (mainline) | "Your development. Your way." sandbox / trunk | `main` | component-owned | — |
-| **Lake** (ODH) | ODH stable, first joint deliverable | `stable` | `opendatahub-io` / `open-data-hub-tenant` | **ODH Nightly** |
+| **ODH CI/nightly** | Main-sourced ODH CI/nightly deliverable | `main` | `opendatahub-io` / `open-data-hub-tenant` | **ODH Nightly** |
 | **Ocean** (RHOAI) | RHOAI stable, product-releasable | `rhoai` → synced to RHDS `main` → release branches | `red-hat-data-services` / `rhoai-tenant` | **RHOAI Nightly** + **RC/GA** |
 
 > Note: the doc is the *foundational design* (not actively maintained). Current phase status
@@ -26,7 +26,7 @@ The whole thing is the **Stream → Lake → Ocean** release strategy
 ┌──────────────────────────────────────────────────┐        ┌──────────────────────────────────────────────────────┐
 │  opendatahub-io/notebooks                          │        │  red-hat-data-services/notebooks                      │
 │   • main        (Stream)                           │  sync  │   • main        (Ocean — DevOps-owned)                │
-│   • stable      (Lake)  ── ODH build ──────────────┼───────▶│   • rhoai-3.5 / 3.6-ea.2 ... (release branches)       │
+│   • main        (Stream + ODH CI/nightly) ──────────┼───────▶│   • rhoai-3.5 / 3.6-ea.2 ... (release branches)       │
 │   • 2025a/2024b (ODH release branches)             │        │   • .tekton/* synced from konflux-central             │
 └──────────────────────────────────────────────────┘        └──────────────────────────────────────────────────────┘
    Konflux ODH builds (open-data-hub-tenant,                    Konflux RHOAI builds (rhoai-tenant, rhoai-vX)
@@ -49,15 +49,15 @@ The whole thing is the **Stream → Lake → Ocean** release strategy
 
 - Development happens in **`opendatahub-io/<repo>`** (e.g. `opendatahub-io/notebooks`, the repo in this checkout).
 - PRs merge to `main` via **`openshift-merge-bot[bot]`** (verified in commit history).
-- Branches (upstream): `main` (Stream), `stable` (Lake), plus ODH release branches `2025a`, `2024b`, `2024a`, `1.10.x`, ...
-- The `stable` branch is the **Lake**: ODH images are built from it.
+- Branches (upstream): `main` plus ODH release branches `2025a`, `2024b`, `2024a`, `1.10.x`, ...
+- ODH CI/nightly images are built directly from `main` by the `opendatahub-builds` components.
   - Example `.tekton` PipelineRun (downstream copy, `build.appstudio.openshift.io/repo` → `opendatahub-io/notebooks`):
     - `appstudio.openshift.io/application: opendatahub-builds`
     - `namespace: open-data-hub-tenant`
     - `output-image: quay.io/opendatahub/odh-workbench-...:odh-stable`
-    - trigger CEL: `event == "push" && target_branch == "stable" && !(...params-latest.env changed)`
+    - trigger CEL: `event == "push" && target_branch == "main" && !(...params-latest.env changed)`
     - `dockerfile: .../Dockerfile.konflux.cpu`, multi-arch (x86_64/arm64/ppc64le/s390x), hermetic, RPM/pip/npm prefetch.
-- **ODH Nightly** = builds off `stable`. There is also an ODH nightly CronJob:
+- **ODH Nightly** = builds off `main`. There is also an ODH nightly CronJob:
   - `rhods-devops-infra/.github/workflows/trigger-odh-nightly.yaml` → `oc create job --from=cronjob/nightly-cronjob -n open-data-hub-tenant`.
 
 ## 2. Phase 2 — Upstream → Downstream sync (`opendatahub-io` → `red-hat-data-services`)
@@ -107,7 +107,7 @@ Three mechanisms exist; which is used is per-component. (The Bodies doc: *"7/12 
 - **Freeze behavior**: when a newer train is onboarded, auto-merge is turned **off** for the older train
   (e.g. 3.6-EA1) to prevent leak-through; older branches become **manual cherry-pick only** (documented in `#wg-3_6_ea1`).
 - Within-repo branch sync: `notebooks/.github/workflows/sync-branches-through-pr.yml` (source→target PR).
-- `merge-main-to-stable-fast-forward.yaml` fast-forwards `stable` from `main` (RHOAIENG-60781).
+- No ODH branch synchronization is required; the ODH CI/nightly components build directly from `main`.
 
 ## 4. Phase 4 — Konflux builds (RHOAI downstream) + the auto-nudge chain
 
@@ -340,7 +340,7 @@ This is the part unique to the `notebooks` component:
 
 | Concern | Repo / workflow |
 |---|---|
-| Upstream source of truth | `opendatahub-io/<component>` (`main`/`stable`/release branches) |
+| Upstream source of truth | `opendatahub-io/<component>` (`main`/release branches) |
 | Downstream mirror | `red-hat-data-services/<component>` (forks) |
 | Upstream→downstream sync | `Gated-Auto-Merger` (Hydra/UMB), `sync-upstream-repo`, `sync-git-branches`, `upstream/main` merge |
 | Dashboard sync (exception) | direct team sync into `red-hat-data-services/odh-dashboard` (upstream squash SHAs preserved); GAM/`odh-dashboard-sync` defunct since 2025-01 |

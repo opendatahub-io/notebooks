@@ -4,9 +4,9 @@ on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch name or commit SHA to build (default: stable)"
+        description: "Branch name or commit SHA to build (default: main)"
         required: false
-        default: "stable"
+        default: "main"
         type: string
       dry_run:
         description: "List triggers without posting commit comments"
@@ -15,7 +15,7 @@ on:  # yamllint disable-line rule:truthy
         type: boolean
 
 concurrency:
-  group: trigger-konflux-builds-${{ inputs.ref || 'stable' }}
+  group: trigger-konflux-builds-${{ inputs.ref || 'main' }}
   cancel-in-progress: false
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
       - name: Checkout target ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ inputs.ref || 'stable' }}
+          ref: ${{ inputs.ref || 'main' }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -59,8 +59,8 @@ jobs:
               exit 1
             fi
 
-            if grep -qx 'origin/stable' <<<"${branches}"; then
-              branch="origin/stable"
+            if grep -qx 'origin/main' <<<"${branches}"; then
+              branch="origin/main"
             else
               branch="$(head -n 1 <<<"${branches}")"
             fi
@@ -83,6 +83,7 @@ jobs:
               sort -z |
               while IFS= read -r -d '' file; do
                 grep -Fq "target_branch == \"${BRANCH}\"" "${file}" || continue
+                grep -Fq 'appstudio.openshift.io/application: opendatahub-builds' "${file}" || continue
                 awk '/^metadata:/{in_metadata=1; next}
                      in_metadata && /^  name:/{
                        sub(/^  name:[[:space:]]*/, "")

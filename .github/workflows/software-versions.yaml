@@ -2,7 +2,7 @@
 name: Validation of software versions referenced in ImageStream manifests
 on:  # yamllint disable-line rule:truthy
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     # We use a YAML anchor (&trigger_paths) and alias (*trigger_paths) to deduplicate paths.
     # Docs: https://yaml.org/spec/1.2.2/#3222-anchors-and-aliases
     # Tutorial & Gotchas: https://frenck.dev/github-actions-yaml-anchors-aliases-merge-keys/

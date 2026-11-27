@@ -3,7 +3,7 @@ name: Test Capture Kernel Logs Action
 
 "on":
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths:
       - '.github/actions/capture-kernel-logs/**'
       - '.github/workflows/test-capture-kernel-logs.yaml'

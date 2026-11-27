@@ -104,7 +104,7 @@ project: `open-data-hub-tenant` on cluster **stone-prd-rh01** (GitHub checks: **
 
 * **Konflux UI:** View and monitor applications, components, and pipelines running in the ODH tenant.
     * [opendatahub-release](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-release/components) — main branch components (base images, runtimes, workbenches)
-    * [opendatahub-builds](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-builds/components) — stable branch (`-ci`) components
+    * [opendatahub-builds](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-builds/components) — ODH CI/nightly (`-ci`) components built from `main`
 * **OpenShift Console:** Access the underlying **OpenShift** cluster for deeper insights, logs, and resource management.
     * [openshift console](https://console-openshift-console.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/k8s/cluster/projects/open-data-hub-tenant)
 * **Configuration Repository (`odh-konflux-central`):** The primary source of truth for the Konflux configuration (GitOps).
@@ -119,16 +119,16 @@ project: `open-data-hub-tenant` on cluster **stone-prd-rh01** (GitHub checks: **
 
 ### Konflux components (notebooks)
 
-The notebook image components live in `open-data-hub-tenant` across two applications. Each notebook image has two components: one in `opendatahub-release` building from `main`, and one (with `-ci` suffix) in `opendatahub-builds` building from `stable`.
+The notebook image components live in `open-data-hub-tenant` across two applications. Each notebook image has two components: one in `opendatahub-release` and one (with `-ci` suffix) in `opendatahub-builds`; both build from `main`, with the latter providing the ODH CI/nightly image tag.
 
 | Application | Component pattern | Branch | Example |
 |---|---|---|---|
 | `opendatahub-release` | `odh-pipeline-runtime-*-py312-ubi9` | `main` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9` |
-| `opendatahub-builds` | `odh-pipeline-runtime-*-py312-ubi9-ci` | `stable` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci` |
+| `opendatahub-builds` | `odh-pipeline-runtime-*-py312-ubi9-ci` | `main` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci` |
 | `opendatahub-release` | `odh-workbench-jupyter-*-py312-ubi9` | `main` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9` |
-| `opendatahub-builds` | `odh-workbench-jupyter-*-py312-ubi9-ci` | `stable` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9-ci` |
+| `opendatahub-builds` | `odh-workbench-jupyter-*-py312-ubi9-ci` | `main` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9-ci` |
 | `opendatahub-release` | `odh-workbench-codeserver-*` | `main` | same pattern |
-| `opendatahub-release` | `odh-base-image-cpu-py312-{c9s,ubi9}` | `main` | base images (no `-ci` / `stable` counterpart) |
+| `opendatahub-release` | `odh-base-image-cpu-py312-{c9s,ubi9}` | `main` | base images (no `-ci` nightly counterpart) |
 
 ```bash
 # list all notebook components
@@ -195,10 +195,10 @@ The `.tekton/` PipelineRun YAMLs in this repo are **generated** by `ci/cached-bu
 
 The two repos have **different Tekton pipelines** with different Dockerfile/conf file references:
 
-- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the ODH build-args files (`build-args/<variant>.conf`). The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
+- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH main push/PR pipelines and ODH CI/nightly push pipelines (the `*-ci-push.yaml` files). These reference the ODH build-args files (`build-args/<variant>.conf`). The CI/nightly push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
 - **`red-hat-data-services/notebooks`** (the fork) -- `.tekton/` contains RHOAI push/PR pipelines synced from [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton). These reference the downstream build-args files (`build-args/konflux.<variant>.conf`) and keep the `Dockerfile.konflux.<variant>` naming convention.
 
-Previously, the ODH notebook PipelineRuns lived in `odh-konflux-central/pipelineruns/notebooks/`. They were migrated back into this repo's `.tekton/` so that pipeline definition changes (e.g., resource limits, CEL trigger expressions) ship alongside the code on the `stable` branch, rather than requiring a separate PR to a central repo.
+Previously, the ODH notebook PipelineRuns lived in `odh-konflux-central/pipelineruns/notebooks/`. They were migrated back into this repo's `.tekton/` so that pipeline definition changes (e.g., resource limits, CEL trigger expressions) ship alongside the code on `main`, rather than requiring a separate PR to a central repo.
 
 ## Repository ecosystem
 
@@ -206,8 +206,8 @@ Previously, the ODH notebook PipelineRuns lived in `odh-konflux-central/pipeline
 
 Central configuration store for Konflux CI/CD artifacts across all ODH components (~44 components).
 
-- **`pipeline/`** -- Shared Tekton Pipeline definitions (e.g., `multi-arch-container-build.yaml`) that define the full build-and-scan workflow. The ODH stable push pipelines in this repo's `.tekton/*-push.yaml` reference these via `pipelineRef`.
-- **`pipelineruns/`** -- Per-component PipelineRun definitions. The notebooks PipelineRuns have been **migrated back** into this repo's `.tekton/` directory (see `pipelineruns/notebooks/README.md` deprecation notice), so pipeline updates sync to the `stable` branch alongside code changes.
+- **`pipeline/`** -- Shared Tekton Pipeline definitions (e.g., `multi-arch-container-build.yaml`) that define the full build-and-scan workflow. The ODH CI/nightly push pipelines in this repo's `.tekton/*-ci-push.yaml` reference these via `pipelineRef`.
+- **`pipelineruns/`** -- Per-component PipelineRun definitions. The notebooks PipelineRuns have been **migrated back** into this repo's `.tekton/` directory (see `pipelineruns/notebooks/README.md` deprecation notice), so pipeline updates land on `main` alongside code changes.
 - **`gitops/`** -- Kubernetes/Konflux resource manifests that register each component with the Konflux application (`opendatahub-builds`). `Component` CRs point to each repo's source, output image in `quay.io/opendatahub/`, and the build pipeline to use.
 - **`integration-tests/`** -- Integration test configurations, including a `notebooks/` subdirectory.
 - **`workflows/notebooks/`** -- Contains `insta-merge.yaml` for auto-merging notebook changes.
@@ -314,7 +314,7 @@ Our push pipelines use `on-cel-expression` combining event + branch + `pathChang
   - `/build-datascience`, `/build-codeserver`, `/build-codeserver-baseline`, `/build-jupyter-baseline`, `/build-runtime-baseline`
   - `/build-pytorch-cuda`, `/build-pytorch-llmcompressor`
   - `/build-tensorflow-cuda`
-- `/group-test` -- triggers the integration test pipeline (ODH only; tests images from the `stable` branch — see [Integration Testing guide](konflux-integration.md))
+- `/group-test` -- triggers the integration test pipeline (ODH only; tests the `main`-sourced CI/nightly images — see [Integration Testing guide](konflux-integration.md))
 - `kfbuild-*` labels -- PR labels also trigger builds on RHDS (e.g. `kfbuild-all`, `kfbuild-runtime`, `kfbuild-workbench`, `kfbuild-cpu`, `kfbuild-cuda`, `kfbuild-rocm`, `kfbuild-pytorch`, `kfbuild-tensorflow`, etc.)
 
 **Reference-only PRs** (e.g. MintMaker "Update Konflux references" that only
@@ -368,7 +368,7 @@ this is the PipelineRun name, not the component name or filename).
 **Constraints** ([source: PaC `handleCommitCommentEvent`](https://github.com/tektoncd/pipelines-as-code/blob/main/pkg/provider/github/parse_payload.go)):
 - Only works on the **latest commit (HEAD)** of the branch -- PaC calls `isHeadCommitOfBranch`
   and rejects comments on older commits ([source](https://github.com/tektoncd/pipelines-as-code/blob/main/pkg/provider/github/github.go))
-- Without `branch:`, defaults to the **default branch** (`main`). For `stable` or `rhoai-*`
+- Without `branch:`, defaults to the **default branch** (`main`). For `rhoai-*`
   branches, you must specify `branch:<name>`
 - Does **not** trigger nudging PRs (use `trigger-pac-build` annotation when you need nudge propagation)
 
@@ -477,7 +477,7 @@ Deleting and recreating a Konflux component too closely together (as happens dur
 
 ## Integration testing
 
-The `/group-test` PR comment triggers the integration test pipeline (`notebooks-group-test.yaml`), which provisions an ephemeral OpenShift cluster via SpaceRequest/ClusterTemplateInstance (MAPT). Cluster credentials are available only within the TaskRun workspace — there is no SSH access for interactive debugging. When triggered via `/group-test` (not as part of a PR build), images come from **stable branch** builds, not the PR's changes; unchanged components reuse existing builds.
+The `/group-test` PR comment triggers the integration test pipeline (`notebooks-group-test.yaml`), which provisions an ephemeral OpenShift cluster via SpaceRequest/ClusterTemplateInstance (MAPT). Cluster credentials are available only within the TaskRun workspace — there is no SSH access for interactive debugging. When triggered via `/group-test` (not as part of a PR build), images come from the latest **main-sourced CI/nightly** builds, not the PR's changes; unchanged components reuse existing builds.
 
 The integration test pipeline uses a `volumeClaimTemplate` (not `emptyDir`) to share data between tasks because the Konflux SNAPSHOT JSON for 18+ components exceeds Tekton's 4KB result size limit. For details on test structure and adding new tests, see [`docs/konflux-integration.md`](konflux-integration.md).
 
@@ -506,7 +506,7 @@ Open issues for `.tekton/` pipeline improvements identified during trigger inves
 - [#3517](https://github.com/opendatahub-io/notebooks/issues/3517) — stable push pipeline serviceAccountName alignment
 - [#3518](https://github.com/opendatahub-io/notebooks/issues/3518) — stale nudge paths in CEL guards
 - [#3519](https://github.com/opendatahub-io/notebooks/issues/3519) — missing clair-scan/ecosystem-cert taskRunSpecs in main push
-- [#3520](https://github.com/opendatahub-io/notebooks/issues/3520) — hermetic builds for stable-branch push pipelines
+- [#3520](https://github.com/opendatahub-io/notebooks/issues/3520) — hermetic builds for CI/nightly push pipelines
 - [#3521](https://github.com/opendatahub-io/notebooks/issues/3521) — drop `-odh-main-` infix from base image pipeline filenames
 
 ## CLI tools
@@ -535,8 +535,7 @@ These GitHub Actions workflows manage the automated synchronization of configura
     * [ODH-io -> RHDS auto-merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/upstream-auto-merge.yaml)
 * **RHDS/main -> RHOAI-* Auto-Merge (Release Propagation):** Manages the promotion of changes from the main RHDS branch to specific release branches (e.g., `rhoai-vX.Y`), facilitating new product releases.
     * [RHDS/main -> rhoai-* auto-merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/main-release-auto-merge.yaml)
-* **ODH main -> stable Auto-Merge:** Merges `main` into `stable` for the notebooks repo (RHOAIENG-60781).
-    * [main -> stable auto-merge](https://github.com/opendatahub-io/notebooks/actions/workflows/merge-main-to-stable-fast-forward.yaml)
+* **ODH nightly:** The `opendatahub-builds` CI/nightly components build directly from `main`; no branch synchronization job is required.
 
 ## Dockerfile deduplication
 

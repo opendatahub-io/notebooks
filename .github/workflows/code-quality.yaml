@@ -2,7 +2,7 @@
 name: Code static analysis
 on:  # yamllint disable-line rule:truthy
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
   pull_request:
   workflow_dispatch:
 
@@ -175,7 +175,7 @@ jobs:
           # FORCE_COLOR forces it back on for the (colorable) GitHub Actions log viewer.
           FORCE_COLOR: "1"
           # PR: compare to the PR base (fork PRs vs upstream main, not the fork default branch).
-          # Push: compare to the previous tip of this branch (not origin/main on stable/rhoai-*).
+          # Push: compare to the previous tip of this branch (not origin/main on rhoai-*).
           NOTEBOOKS_DOWNGRADE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
 
       - name: Upload pytest debug log

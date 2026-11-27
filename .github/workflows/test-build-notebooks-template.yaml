@@ -3,7 +3,7 @@ name: Test Build Notebooks Template
 
 "on":
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths:
       - '.github/workflows/build-notebooks-TEMPLATE.yaml'
       - '.github/workflows/test-build-notebooks-template.yaml'

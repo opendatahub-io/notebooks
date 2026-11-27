@@ -18,31 +18,29 @@ what we do, when, and where to escalate.
 | Body of water | Meaning | Notebooks branch | Org | Built where |
 |---|---|---|---|---|
 | **Stream** | Component-owned development trunk | `main` | `opendatahub-io/notebooks` | — |
-| **Lake** (ODH) | ODH stable, first joint deliverable | `stable` | `opendatahub-io/notebooks` | **ODH Nightly** (Konflux, `open-data-hub-tenant`) |
+| **ODH CI/nightly** | Main-sourced ODH nightly deliverable | `main` | `opendatahub-io/notebooks` | **ODH Nightly** (Konflux, `open-data-hub-tenant`) |
 | **Ocean** (RHOAI) | RHOAI stable, product-releasable | `rhoai-X.Y` trains in RHDS (via RHDS `main`) | `red-hat-data-services/notebooks` | **RHOAI Nightly** + **RC/GA** (Konflux, `rhoai-tenant`) |
 
-**Both waters are fed from the same stream** — `main` fans out in two directions; `stable` does
-*not* feed RHOAI:
+**Both product flows are fed from the same stream** — `main` is the single source for ODH CI/nightly and fans out to RHDS/RHOAI:
 
 ```text
 opendatahub-io/notebooks                     red-hat-data-services/notebooks
-  main  (Stream) ──────────────────────────▶  main  (Ocean — DevOps-owned, auto-synced
-    │                                           from ODH main; .tekton/ + params excluded)
-    │ fast-forward only (GHA)                    │ auto-merge — newest onboarded train only
-    ▼                                            ▼
-  stable (Lake)                               rhoai-X.Y  (trains)
-    └─ ODH nightly + ODH GA (2025a/… branches)   └─ RHOAI nightly + RC/GA
+  main  (Stream + ODH CI/nightly) ─────────▶  main  (Ocean — DevOps-owned, auto-synced
+                                              from ODH main; .tekton/ + params excluded)
+                                              │ auto-merge — newest onboarded train only
+                                              ▼
+                                           rhoai-X.Y  (trains)
+                                           └─ RHOAI nightly + RC/GA
 ```
 
 ## Branch strategy
 
 ### Branches and ownership
 
-- **`main`** (Stream, this org): all development lands here first — features, fixes, CVEs.
-  This is the single source that feeds **both** waters below.
-- **`stable`** (Lake, this org): the **ODH** integration point. **ODH Nightly is built from
-  `stable`** (see "ODH kickoff" below). Promoted from `main` only by fast-forward. `stable` is
-  *not* the source for RHOAI — RHOAI is fed from `main` (via RHDS, below).
+- **`main`** (this org): all development lands here first — features, fixes, CVEs. It is the
+  single source for ODH CI/nightly and the RHDS/RHOAI flow.
+- **No ODH `stable` branch:** ODH CI/nightly components remain separate Konflux components for
+  tagging and nudge-chain purposes, but their Git source revision is `main`.
 - **`2025a`, `2024b`, …** (ODH GA release branches, this org): cut per ODH release cycle;
   image tags for an ODH release are built from these.
 - **RHDS `main`** (Ocean, **DevOps-owned**): receives **ODH `main`** via DevOps auto-sync
@@ -85,14 +83,14 @@ Consequences:
 | Transition | Mechanism | Gates that must be green |
 |---|---|---|
 | PR → `main` (Stream) | PR to `opendatahub-io/notebooks`, merged via Prow/Tide (`/lgtm` `/approve`); merge bot `openshift-merge-bot[bot]` | Code-quality GHAs (`.github/workflows/code-quality.yaml`), unit tests, container integration tests (testcontainers), Konflux PR builds for changed images. Full catalog: [docs/agents/testing.md](agents/testing.md) |
-| `main` → `stable` (Stream → Lake) | **"Merge main into stable (fast-forward only)"** GHA (`.github/workflows/merge-main-to-stable-fast-forward.yaml`); use `dry_run: true` to verify | `stable` must be an ancestor of `main` (pure fast-forward). Then the ODH nightly gate: ODH nightly build + smoke/ITS tests pass against it (see below) |
+| `main` → ODH nightly | ODH CI/nightly Konflux components (`opendatahub-builds`, `-ci`) | ODH nightly build + smoke/ITS tests pass against the `main`-sourced images (see below) |
 | `main` → RHDS `main` (Stream → Ocean) | DevOps auto-sync — git merge of `upstream/main` into downstream `main` (`rhods-devops-infra`, `upstream-source-map.yaml`) | Downstream builds from RHDS `main` stay green |
 | RHDS `main` → RHOAI train (Ocean) | DevOps `main-release-auto-merge.yaml` — **newest onboarded train only** | RHOAI nightly build from the train + product-level E2E on Jenkins (ods-ci `0500__ide` + opendatahub-tests against the nightly) |
 | Nightly → RC/GA | **DevOps-owned** (Stage Promoter, release CRs, image mirroring) — see code-flow doc §9 | Component team role: keep the train green; do not block on our side |
 
 ### ODH nightly
 
-- Built from `stable` by Konflux (`open-data-hub-tenant`), images tagged `odh-stable`-style
+- Built from `main` by the ODH CI/nightly Konflux components (`open-data-hub-tenant`), images tagged `odh-stable`-style
   (no date; branch/SHA/`-nightly` conventions — code-flow doc §4).
 - Release kickoff: **`make kickoff-release`** (driven from `versions_config.yml`, opens a PR;
   the **"Release Kickoff Action"** GHA in `.github/workflows/release-kickoff.yaml` automates
@@ -168,8 +166,8 @@ This table is the core of the in-team training; walk it in onboarding.
 
 | Situation | Do | Notes |
 |---|---|---|
-| New feature / normal fix | PR to `main`; land when all PR gates are green | Never commit directly to `stable` or RHDS branches |
-| Change must reach ODH nightly | Land on `main`, then fast-forward to `stable` via the GHA (`dry_run` first) | Only when `stable` is an ancestor of `main` |
+| New feature / normal fix | PR to `main`; land when all PR gates are green | Never commit directly to RHDS branches |
+| Change must reach ODH nightly | Land on `main`; the ODH CI/nightly components build it directly | Verify the ODH nightly build + smoke/ITS gate |
 | Change must reach the *newest* RHOAI train | Land on `main` — it flows via RHDS `main` | Verify via RHOAI nightly build + Jenkins |
 | Change must reach an *older* (frozen) train | Cherry-pick downward by hand (procedure above) | DevOps will not do it; PR needs review before freeze |
 | ODH release cycle | Six steps above; clone the release ticket | Tracker: the cycle's `[Release Tracker]` issue in opendatahub-community |
@@ -208,9 +206,9 @@ This table is the core of the in-team training; walk it in onboarding.
 
 **We provide to DevOps** (this is the signoff contract):
 
-| Component | Signoff | Date | Stream | Lake | Ocean | RHDS branch |
+| Component | Signoff | Date | Stream | ODH CI/nightly | Ocean | RHDS branch |
 |---|---|---|---|---|---|---|
-| Notebooks | Jiri Daněk | 2025-08-05 | `main` | `stable` | `rhoai` | `main` |
+| Notebooks | Jiri Daněk | 2025-08-05 | `main` | `main` | `rhoai` | `main` |
 
 Keep this row current in the [canonical signoff table](https://docs.google.com/document/d/1LXbAylu-1rCw1gkqNuhLoPC5tzD70gg0jdGy-SBgyYI/edit)
 when branch names change.

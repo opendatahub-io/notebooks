@@ -8,7 +8,7 @@ name: Test Jupyter Addons
       - 'jupyter/utils/addons/**'
       - 'scripts/get-pnpm-version.sh'
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths: *test-addons-paths
 
 concurrency:

@@ -3,7 +3,7 @@ name: Test setup-uv action
 
 "on":
   push:
-    branches: [main, stable, 'rhoai-*']
+    branches: [main, 'rhoai-*']
     paths:
       - '.github/actions/setup-uv/**'
       - '.github/workflows/test-setup-uv.yaml'
